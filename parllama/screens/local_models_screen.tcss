@@ -1,0 +1,12 @@
+LocalModelsScreen {
+
+    #PsStatusBar {
+        height: 1;
+        padding-left: 1;
+        background: $surface;
+    }
+
+    #search {
+        margin-bottom: 1;
+    }
+}

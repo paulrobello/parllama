@@ -1,0 +1,9 @@
+LogScreen {
+  #tool_bar {
+    height: 3;
+    background: $panel;
+  }
+  #logs {
+    border: solid $primary;
+  }
+}

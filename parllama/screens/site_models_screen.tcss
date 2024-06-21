@@ -1,0 +1,46 @@
+SiteModelsScreen {
+  & > Vertical {
+    background: $background;
+    align: left top;
+
+    & > Horizontal {
+      height: 3;
+      margin-bottom: 1;
+
+      #search {
+        height: 3;
+        width: 1fr;
+      }
+
+      #namespace {
+        height: 3;
+        width: 30;
+      }
+    }
+
+    #site-model-list {
+      width: 1fr;
+      height: 1fr;
+    }
+  }
+}
+
+ListView > SiteModelListItem.--highlight {
+  background: $panel;
+  border: double $primary;
+  border-title-color: $primary-lighten-2;
+
+  & > Widget:hover {
+    background: $surface;
+  }
+}
+
+ListView:focus > SiteModelListItem.--highlight {
+  background: $panel;
+  border: double $primary;
+  border-title-color: $primary-lighten-2;
+
+  & > Widget:hover {
+    background: $surface;
+  }
+}

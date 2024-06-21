@@ -1,0 +1,25 @@
+{
+  "dark": {
+    "primary": "#e49500",
+    "secondary": "#6e4800",
+    "warning": "#da8b28",
+    "error": "#ba3c5b",
+    "success": "#4EBF71",
+    "accent": "#6e4800",
+    "panel": "#111",
+    "surface":"#1e1e1e",
+    "background":"#121212",
+    "dark": true
+  },
+  "light": {
+    "primary": "#004578",
+    "secondary": "#ffa62b",
+    "warning": "#ffa62b",
+    "error": "#ba3c5b",
+    "success": "#4EBF71",
+    "accent": "#0178D4",
+    "background":"#efefef",
+    "surface":"#f5f5f5",
+    "dark": false
+  }
+}

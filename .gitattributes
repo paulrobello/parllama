@@ -1,0 +1,50 @@
+# Autodetect text files
+* text=auto
+
+# ...Unless the name matches the following
+# overriding patterns
+
+# Definitively text files
+*.txt text
+*.json text
+*.js text
+*.ts text
+.env text
+.env-* text
+*.sh text
+*.sql text
+*.yml text
+*.py text
+*.js text
+*.ts text
+*.ini text
+*.jq text
+Dockerfile text
+Dockerfile.* text
+makefile text
+makefile.* text
+Makefile text
+Makefile.* text
+
+# Ensure those won't be messed up with
+*.jpg binary
+*.gif binary
+*.png binary
+
+# force line endings to be lf so db container does not blow up
+**/*.sh text eol=lf
+**/*.sql text eol=lf
+**/.env text eol=lf
+**/.env-* text eol=lf
+**/Dockerfile text eol=lf
+**/Dockerfile.* text eol=lf
+**/*.py text eol=lf
+**/*.js text eol=lf
+**/*.ts text eol=lf
+**/*.jq text eol=lf
+**/*.json text eol=lf
+**/*.yml text eol=lf
+**/Makefile text eol=lf
+**/Makefile.* text eol=lf
+**/makefile text eol=lf
+**/makefile.* text eol=lf

@@ -1,0 +1,41 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+urllib3 = "*"
+requests = "*"
+simplejson = "*"
+attrs = "*"
+certifi = "*"
+requests-file = "*"
+textual = { version = "*", extras = ["syntax"] }
+asyncio = "*"
+humanize = "*"
+argparse = "*"
+pyperclip = "*"
+rich = "*"
+python-dotenv = "*"
+pydantic = "*"
+ollama = "*"
+bs4 = "*"
+docker = "*"
+
+
+[dev-packages]
+mypy = "*"
+build = "*"
+twine = "*"
+typing-extensions = "*"
+types-simplejson = "*"
+black = "*"
+pylint = "*"
+types-pytz = "*"
+textual-dev = "*"
+types-requests = "*"
+types-beautifulsoup4 = "*"
+pydevd_pycharm = "*"
+
+[requires]
+python_version = "3.11"
