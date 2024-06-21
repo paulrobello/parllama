@@ -163,7 +163,7 @@ jobs:
         run: |
           if [[ "${{ github.event.head_commit.message }}" == *"Create Release"* ]] ; then
             echo "do_release=true" >> $GITHUB_OUTPUT
-            git tag -a "release-$VERSION" -m "Release $VERSION"
+            git tag -a "release-v$VERSION" -m "Release $VERSION"
             git push origin "release-v$VERSION"
           elif  [[ ${{ github.ref }} == "refs/tags/release-v"* ]] ; then
             echo "do_release=true" >> $GITHUB_OUTPUT
