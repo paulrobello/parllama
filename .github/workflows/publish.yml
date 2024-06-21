@@ -44,7 +44,7 @@ jobs:
       contents: write  # Grant write access to the repository
     needs:
       - build
-    if: ${{ !startsWith(github.ref, 'refs/tags/release-') }}  # tag if not a release
+    if: ${{ !startsWith(github.ref, 'refs/tags/release-v') }}  # tag if not a release
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -163,8 +163,8 @@ jobs:
           if [[ "${{ github.event.head_commit.message }}" == *"Create Release"* ]] ; then
             echo "do_release=true" >> $GITHUB_OUTPUT
             git tag -a "release-$VERSION" -m "Release $VERSION"
-            git push origin "release-$VERSION"
-          elif  [[ ${{ github.ref }} == "refs/tags/release-"* ]] ; then
+            git push origin "release-v$VERSION"
+          elif  [[ ${{ github.ref }} == "refs/tags/release-v"* ]] ; then
             echo "do_release=true" >> $GITHUB_OUTPUT
           else
             echo "do_release=false" >> $GITHUB_OUTPUT
