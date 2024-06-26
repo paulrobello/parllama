@@ -7,7 +7,7 @@ from textual import on
 from textual.app import ComposeResult
 from textual.containers import Vertical, VerticalScroll
 from textual.screen import Screen
-from textual.widgets import ContentSwitcher, Footer, Header, Static, Button
+from textual.widgets import Button, ContentSwitcher, Footer, Header, Static
 
 from parllama.screens.create_model_screen import CreateModelScreen
 from parllama.widgets.clickable_label import CopyToClipboardLabel

@@ -1,18 +1,17 @@
 """Create new model screen."""
 
 from __future__ import annotations
+
 from rich.console import RenderableType
 from textual import on
 from textual.app import ComposeResult
 from textual.containers import VerticalScroll
 from textual.screen import Screen
-from textual.widgets import Footer, Header, Input, Static, TextArea, Button
+from textual.widgets import Button, Footer, Header, Input, Static, TextArea
 
 from parllama.data_manager import dm
 from parllama.dialogs.error_dialog import ErrorDialog
-from parllama.messages.main import (
-    StatusMessage,
-)
+from parllama.messages.main import StatusMessage
 
 
 class CreateModelScreen(Screen[None]):
