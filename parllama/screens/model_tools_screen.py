@@ -3,11 +3,13 @@
 import os
 import webbrowser
 
+from textual import on
 from textual.app import ComposeResult
 from textual.containers import Vertical, VerticalScroll
 from textual.screen import Screen
-from textual.widgets import ContentSwitcher, Footer, Header, Static
+from textual.widgets import ContentSwitcher, Footer, Header, Static, Button
 
+from parllama.screens.create_model_screen import CreateModelScreen
 from parllama.widgets.clickable_label import CopyToClipboardLabel
 
 
@@ -39,7 +41,7 @@ class ModelToolsScreen(Screen[None]):
                 pub_key = f.read().strip()
         with ContentSwitcher(initial="menu"):
             with VerticalScroll(id="menu"):
-
+                yield Button("Create new model", id="new_model", variant="success")
                 with Vertical(id="publish_panel") as v:
                     v.border_title = "Setup Ollama for pushing to your namespace"
                     with Vertical(id="pub_key") as v:
@@ -50,6 +52,11 @@ class ModelToolsScreen(Screen[None]):
                         "[@click=screen.open_keys_page]Open https://ollama.com/settings/keys[/]",
                         id="open_keys_page",
                     )
+
+    @on(Button.Pressed, "#new_model")
+    def action_new_model(self) -> None:
+        """Open the new model screen."""
+        self.app.push_screen(CreateModelScreen())
 
     def action_open_keys_page(self):
         """Open the Ollama keys page."""
