@@ -94,3 +94,26 @@ When you start ollama on your machine, it will create a keypair used specificall
 When you want to publish, you take the contents of id_ed25519.pub and import into [ollama settings keys](https://ollama.com/settings/keys)
 
 If you have Ollama running on multiple machines you must import each machines key into Ollama.com
+
+## Command line arguments
+```
+usage: PAR LLAMA [-h] [-v] [-d DATA_DIR] [-t THEME_NAME] [-m {dark,light}] [-s {local,site,tools,create,logs}] [--restore-defaults]
+                 [--clear-cache] [--no-save]
+
+PAR LLAMA -- Ollama TUI.
+
+options:
+  -h, --help            show this help message and exit
+  -v, --version         Show version information.
+  -d DATA_DIR, --data-dir DATA_DIR
+                        Data Directory. Defaults to ~/.parllama
+  -t THEME_NAME, --theme-name THEME_NAME
+                        Theme name. Defaults to par
+  -m {dark,light}, --theme-mode {dark,light}
+                        Dark / Light mode. Defaults to dark
+  -s {local,site,tools,create,logs}, --starting-screen {local,site,tools,create,logs}
+                        Starting screen. Defaults to local
+  --restore-defaults    Restore default settings and theme
+  --clear-cache         Clear cached data
+  --no-save             Prevent saving settings for this session.
+```

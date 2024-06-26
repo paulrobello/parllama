@@ -58,9 +58,10 @@ make first-setup
 
 ## Command line arguments
 ```
-usage: PAR LLAMA TUI [-h] [-v] [-d DATA_DIR] [-t THEME_NAME] [-m {dark,light}] [--restore-defaults] [--clear-cache] [--no-save]
+usage: PAR LLAMA [-h] [-v] [-d DATA_DIR] [-t THEME_NAME] [-m {dark,light}] [-s {local,site,tools,create,logs}] [--restore-defaults]
+                 [--clear-cache] [--no-save]
 
-PAR LLAMA TUI -- Ollama TUI.
+PAR LLAMA -- Ollama TUI.
 
 options:
   -h, --help            show this help message and exit
@@ -71,10 +72,11 @@ options:
                         Theme name. Defaults to par
   -m {dark,light}, --theme-mode {dark,light}
                         Dark / Light mode. Defaults to dark
+  -s {local,site,tools,create,logs}, --starting-screen {local,site,tools,create,logs}
+                        Starting screen. Defaults to local
   --restore-defaults    Restore default settings and theme
   --clear-cache         Clear cached data
   --no-save             Prevent saving settings for this session.
-  --clear-cache         Clear cached data
 ```
 
 ## Environment Variables
