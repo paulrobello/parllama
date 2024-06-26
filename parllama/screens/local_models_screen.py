@@ -56,9 +56,15 @@ class LocalModelsScreen(Screen[None]):
             priority=True,
         ),
         Binding(
-            key="ctrl+p",
+            key="p",
             action="pull_model",
             description="Pull",
+            show=True,
+        ),
+        Binding(
+            key="ctrl+p",
+            action="pull_all_models",
+            description="Pull All",
             show=True,
         ),
         Binding(
@@ -130,6 +136,12 @@ class LocalModelsScreen(Screen[None]):
         model_name: str = self.grid.selected.model.name
         self.grid.selected.loading = True
         self.post_message(ModelPullRequested(model_name))
+
+    def action_pull_all_models(self) -> None:
+        """Pull all local models"""
+        for item in self.grid.query(LocalModelListItem):
+            item.loading = True
+            self.post_message(ModelPullRequested(item.model.name))
 
     def action_push_model(self) -> None:
         """Pull model"""

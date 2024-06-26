@@ -40,7 +40,8 @@ This screen displays all local models currently available to your local Ollama.
 | `enter`  | Open model details dialog                |
 | `ctrl+f` | Focus the Filter / search input          |
 | `ctrl+r` | Refresh local model grid list            |
-| `ctrl+p` | Pull selected model from Ollama.com      |
+| `p`      | Pull selected model from Ollama.com      |
+| `ctrl+p` | Pull all local models from Ollama.com    |
 | `ctrl+u` | Push selected model to Ollama.com        |
 | `ctrl+c` | Copy selected model to new name          |
 
