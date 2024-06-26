@@ -47,6 +47,7 @@ from parllama.messages.main import (
 from parllama.models.jobs import CopyModelJob, PullModelJob, PushModelJob, QueueJob
 from parllama.models.settings_data import settings
 from parllama.par_logger import ParLogger
+from parllama.screens.create_model_screen import CreateModelScreen
 from parllama.screens.local_models_screen import LocalModelsScreen
 from parllama.screens.log_screen import LogScreen
 from parllama.screens.model_tools_screen import ModelToolsScreen
@@ -100,7 +101,13 @@ class ParLlamaApp(App[None]):
     ]
     SCREENS = {}
 
-    MODES = {"local": "local", "site": "site", "tools": "tools", "logs": "logs"}
+    MODES = {
+        "local": "local",
+        "site": "site",
+        "tools": "tools",
+        "create": "create",
+        "logs": "logs",
+    }
 
     commands: list[dict[str, str]] = [
         {
@@ -117,6 +124,7 @@ class ParLlamaApp(App[None]):
     local_models_screen: LocalModelsScreen
     site_models_screen: SiteModelsScreen
     model_tools_screen: ModelToolsScreen
+    create_model_screen: CreateModelScreen
     log_screen: LogScreen | None
     job_queue: Queue[QueueJob]
     is_busy: bool = False
@@ -168,6 +176,7 @@ class ParLlamaApp(App[None]):
         self.SCREENS["local"] = LocalModelsScreen()
         self.SCREENS["site"] = SiteModelsScreen()
         self.SCREENS["tools"] = ModelToolsScreen()
+        self.SCREENS["create"] = CreateModelScreen()
         self.SCREENS["logs"] = LogScreen()
 
         self._installed_screens.update(**self.SCREENS)
@@ -175,9 +184,10 @@ class ParLlamaApp(App[None]):
         self.local_models_screen = self.SCREENS["local"]  # type: ignore
         self.site_models_screen = self.SCREENS["site"]  # type: ignore
         self.model_tools_screen = self.SCREENS["tools"]  # type: ignore
+        self.create_model_screen = self.SCREENS["create"]  # type: ignore
         self.log_screen = self.SCREENS["logs"]  # type: ignore
 
-        await self.switch_mode("local")
+        await self.switch_mode(settings.starting_screen)
 
         self.set_timer(1, self.do_jobs)
         self.set_timer(1, self.update_ps)

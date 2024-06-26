@@ -3,6 +3,7 @@
 import os
 import shutil
 from argparse import Namespace
+from typing import Literal
 
 import simplejson as json
 from pydantic import BaseModel
@@ -18,6 +19,7 @@ class Settings(BaseModel):
     cache_dir: str = ""
     settings_file: str = "settings.json"
     theme_name: str = "par"
+    starting_screen: Literal["local", "site", "tools", "create", "logs"] = "local"
     theme_mode: str = "dark"
     site_models_namespace: str = ""
 
@@ -64,6 +66,8 @@ class Settings(BaseModel):
             self.theme_name = args.theme_name
         if args.theme_mode:
             self.theme_mode = args.theme_mode
+        if args.starting_screen:
+            self.starting_screen = args.starting_screen
 
         self.save_settings_to_file()
 
