@@ -79,6 +79,7 @@ class Settings(BaseModel):
                 self.theme_name = data.get("theme_name", self.theme_name)
                 self.theme_mode = data.get("theme_mode", self.theme_mode)
                 self.site_models_namespace = data.get("site_models_namespace", "")
+                self.starting_screen = data.get("starting_screen", "local")
         except FileNotFoundError:
             pass  # If file does not exist, continue with default settings
 
