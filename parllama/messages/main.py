@@ -1,7 +1,7 @@
 """Messages for application."""
 
 from dataclasses import dataclass
-from typing import Optional, Literal
+from typing import Literal, Optional
 
 from rich.console import RenderableType
 from textual.message import Message

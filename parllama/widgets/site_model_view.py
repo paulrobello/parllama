@@ -6,16 +6,16 @@ from typing import cast
 from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Container, Vertical, Horizontal
+from textual.containers import Container, Horizontal, Vertical
 from textual.events import Show
 from textual.suggester import SuggestFromList
-from textual.widgets import Input, Static, ListView
+from textual.widgets import Input, ListView, Static
 
 from parllama.data_manager import dm
 from parllama.messages.main import (
     ModelPullRequested,
-    SiteModelsRefreshRequested,
     SiteModelsLoaded,
+    SiteModelsRefreshRequested,
 )
 from parllama.models.settings_data import settings
 from parllama.widgets.input_tab_complete import InputTabComplete

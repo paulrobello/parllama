@@ -5,7 +5,7 @@ import webbrowser
 
 from textual import on
 from textual.app import ComposeResult
-from textual.containers import Vertical, VerticalScroll, Container
+from textual.containers import Container, Vertical, VerticalScroll
 from textual.widgets import Button, ContentSwitcher, Static
 
 from parllama.messages.main import ChangeTab

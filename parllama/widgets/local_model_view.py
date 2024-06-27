@@ -6,7 +6,7 @@ from typing import List
 from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import VerticalScroll, Container
+from textual.containers import Container, VerticalScroll
 from textual.events import Show
 from textual.widget import Widget
 from textual.widgets import Input
@@ -16,18 +16,18 @@ from parllama.dialogs.input_dialog import InputDialog
 from parllama.dialogs.model_details_dialog import ModelDetailsDialog
 from parllama.dialogs.yes_no_dialog import YesNoDialog
 from parllama.messages.main import (
-    LocalModelListRefreshRequested,
-    ModelPullRequested,
-    ModelPushRequested,
-    LocalModelListLoaded,
-    LocalModelDeleteRequested,
+    LocalModelCopied,
+    LocalModelCopyRequested,
     LocalModelDelete,
     LocalModelDeleted,
-    ShowLocalModel,
+    LocalModelDeleteRequested,
+    LocalModelListLoaded,
+    LocalModelListRefreshRequested,
     ModelPulled,
-    LocalModelCopyRequested,
-    LocalModelCopied,
+    ModelPullRequested,
+    ModelPushRequested,
     SetModelNameLoading,
+    ShowLocalModel,
 )
 from parllama.widgets.filter_input import FilterInput
 from parllama.widgets.grid_list import GridList

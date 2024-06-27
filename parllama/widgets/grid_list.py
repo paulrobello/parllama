@@ -232,7 +232,7 @@ class GridList(Grid, can_focus=False):
         """Delete the selected item."""
         if not self.selected:
             return
-        self.post_message(LocalModelDeleteRequested(self.selected.model.name))
+        self.post_message(LocalModelDeleteRequested(widget=self,model_name=self.selected.model.name))
 
     def remove_item(self, model_name: str) -> None:
         """Remove a model from the list."""

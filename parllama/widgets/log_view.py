@@ -2,7 +2,7 @@
 
 from textual import on
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical, Container
+from textual.containers import Container, Horizontal, Vertical
 from textual.widgets import Button, Checkbox, RichLog
 
 

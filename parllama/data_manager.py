@@ -4,7 +4,7 @@ import os.path
 import re
 from datetime import datetime
 from os import PathLike
-from typing import Any, Dict, Generator, Iterator, List, Mapping, Union, Optional
+from typing import Any, Dict, Generator, Iterator, List, Mapping, Optional, Union
 
 import docker  # type: ignore
 import docker.errors  # type: ignore
@@ -105,11 +105,11 @@ class DataManager:
             f.split("-")[1].split(".")[0]
             for f in os.listdir(settings.cache_dir)
             if os.path.isfile(os.path.join(settings.cache_dir, f))
-            and f.lower().endswith(".json")
+               and f.lower().endswith(".json")
         ]
 
     def refresh_site_models(
-        self, namespace: str, force: bool = True
+            self, namespace: str, force: bool = True
     ) -> List[SiteModelListItem]:
         """Get list of all available models from Ollama.com."""
 
@@ -125,7 +125,7 @@ class DataManager:
                 with open(file_name, "r", encoding="utf-8") as f:
                     ret: SiteModelData = SiteModelData(**json.load(f))
                     if ret.last_update and ret.last_update.timestamp() > (
-                        ret.last_update.timestamp() - 60 * 60 * 24
+                            ret.last_update.timestamp() - 60 * 60 * 24
                     ):
                         self.site_models = [SiteModelListItem(m) for m in ret.models]
                         return self.site_models
@@ -184,12 +184,13 @@ class DataManager:
 
     @staticmethod
     def create_model(
-        model_name: str,
-        model_code: str | PathLike,
-        quantize_level: Optional[str] = None,
+            model_name: str,
+            model_code: str | PathLike,
+            quantize_level: Optional[str] = None,
     ) -> Iterator[Dict[str, Any]]:
         """Create a new model."""
-        return ollama.create(model=model_name, modelfile=model_code, quantize=quantize_level, stream=True)  # type: ignore
+        return ollama.create(model=model_name, modelfile=model_code, quantize=quantize_level,
+                             stream=True)  # type: ignore
 
     @staticmethod
     def copy_model(src_name: str, dst_name: str) -> Mapping[str, Any]:
@@ -198,7 +199,7 @@ class DataManager:
 
     @staticmethod
     def quantize_model(
-        model_name: str, quantize_level: str = "q4_0"
+            model_name: str, quantize_level: str = "q4_0"
     ) -> Union[str, Container, Generator[bytes, None, None]]:
         """
         Quantize a model

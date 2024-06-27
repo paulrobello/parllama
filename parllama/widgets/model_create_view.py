@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from textual import on
 from textual.app import ComposeResult
-from textual.containers import VerticalScroll, Horizontal, Container
-from textual.widgets import Button, Input, TextArea, Label
+from textual.containers import Container, Horizontal, VerticalScroll
+from textual.widgets import Button, Input, Label, TextArea
 
 from parllama.dialogs.error_dialog import ErrorDialog
 from parllama.messages.main import ModelCreateRequested

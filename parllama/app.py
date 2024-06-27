@@ -26,12 +26,16 @@ from parllama import __application_title__
 from parllama.data_manager import dm
 from parllama.dialogs.help_dialog import HelpDialog
 from parllama.messages.main import (
+    AppRequest,
+    ChangeTab,
     LocalModelCopied,
     LocalModelCopyRequested,
     LocalModelDelete,
     LocalModelDeleted,
     LocalModelListLoaded,
     LocalModelListRefreshRequested,
+    ModelCreated,
+    ModelCreateRequested,
     ModelPulled,
     ModelPullRequested,
     ModelPushed,
@@ -40,21 +44,17 @@ from parllama.messages.main import (
     NotifyInfoMessage,
     PsMessage,
     SendToClipboard,
+    SetModelNameLoading,
     SiteModelsLoaded,
     SiteModelsRefreshRequested,
     StatusMessage,
-    ModelCreateRequested,
-    ModelCreated,
-    SetModelNameLoading,
-    AppRequest,
-    ChangeTab,
 )
 from parllama.models.jobs import (
     CopyModelJob,
+    CreateModelJob,
     PullModelJob,
     PushModelJob,
     QueueJob,
-    CreateModelJob,
 )
 from parllama.models.settings_data import settings
 from parllama.par_logger import ParLogger
@@ -474,7 +474,7 @@ class ParLlamaApp(App[None]):
 
     @on(LocalModelListRefreshRequested)
     def on_model_list_refresh_requested(
-        self, msg: LocalModelListRefreshRequested
+        self
     ) -> None:
         """Model refresh request event"""
         if self.is_refreshing:

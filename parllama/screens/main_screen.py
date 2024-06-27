@@ -8,10 +8,7 @@ from textual.app import ComposeResult
 from textual.screen import Screen
 from textual.widgets import Footer, Header, Static, TabbedContent, TabPane
 
-from parllama.messages.main import (
-    PsMessage,
-    StatusMessage,
-)
+from parllama.messages.main import PsMessage, StatusMessage
 from parllama.models.settings_data import settings
 from parllama.widgets.local_model_view import LocalModelView
 from parllama.widgets.model_create_view import ModelCreateView
