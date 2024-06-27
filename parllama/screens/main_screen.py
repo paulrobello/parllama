@@ -68,7 +68,7 @@ class MainScreen(Screen[None]):
     @on(StatusMessage)
     def on_status_message(self, msg: StatusMessage) -> None:
         """Status message event"""
-        msg.stop()
+        # msg.stop()
         self.update_status(msg.msg)
 
     def update_status(self, msg: RenderableType):
