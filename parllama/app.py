@@ -473,9 +473,7 @@ class ParLlamaApp(App[None]):
             self.notify_subs["*"].add(msg.widget)
 
     @on(LocalModelListRefreshRequested)
-    def on_model_list_refresh_requested(
-        self
-    ) -> None:
+    def on_model_list_refresh_requested(self) -> None:
         """Model refresh request event"""
         if self.is_refreshing:
             self.notify("A model refresh is already in progress. Please wait.")
@@ -522,7 +520,7 @@ class ParLlamaApp(App[None]):
                     f"Site models for {msg.ollama_namespace or 'models'} refreshing... force={msg.force}"
                 )
             )
-            dm.refresh_site_models(msg.ollama_namespace, msg.force)
+            dm.refresh_site_models(msg.ollama_namespace, None, msg.force)
             self.post_message_all(
                 SiteModelsLoaded(ollama_namespace=msg.ollama_namespace)
             )

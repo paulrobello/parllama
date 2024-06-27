@@ -91,3 +91,7 @@ class MainScreen(Screen[None]):
     ) -> None:
         """Change active tab."""
         # self.tabbed_content.active = tab
+
+    def action_site_tag_clicked(self, model_tag: str) -> None:
+        """Update search box with tag"""
+        self.query_one("#site_models", SiteModelView).search_input.value = model_tag

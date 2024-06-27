@@ -4,7 +4,17 @@ import os.path
 import re
 from datetime import datetime
 from os import PathLike
-from typing import Any, Dict, Generator, Iterator, List, Mapping, Optional, Union
+from typing import (
+    Any,
+    Dict,
+    Generator,
+    Iterator,
+    List,
+    Literal,
+    Mapping,
+    Optional,
+    Union,
+)
 
 import docker  # type: ignore
 import docker.errors  # type: ignore
@@ -32,6 +42,7 @@ from parllama.widgets.site_model_list_item import SiteModelListItem
 class DataManager:
     """Data manager for Par Llama."""
 
+    ollama_site_categories: List[str] = ["popular", "featured", "newest"]
     models: List[LocalModelListItem]
     site_models: List[SiteModelListItem]
 
@@ -105,11 +116,14 @@ class DataManager:
             f.split("-")[1].split(".")[0]
             for f in os.listdir(settings.cache_dir)
             if os.path.isfile(os.path.join(settings.cache_dir, f))
-               and f.lower().endswith(".json")
+            and f.lower().endswith(".json")
         ]
 
     def refresh_site_models(
-            self, namespace: str, force: bool = True
+        self,
+        namespace: str,
+        category: Optional[Literal["popular", "featured", "newest"]] = None,
+        force: bool = True,
     ) -> List[SiteModelListItem]:
         """Get list of all available models from Ollama.com."""
 
@@ -125,53 +139,69 @@ class DataManager:
                 with open(file_name, "r", encoding="utf-8") as f:
                     ret: SiteModelData = SiteModelData(**json.load(f))
                     if ret.last_update and ret.last_update.timestamp() > (
-                            ret.last_update.timestamp() - 60 * 60 * 24
+                        ret.last_update.timestamp() - 60 * 60 * 24
                     ):
                         self.site_models = [SiteModelListItem(m) for m in ret.models]
                         return self.site_models
             except Exception as e:  # pylint: disable=broad-exception-caught
                 print(f"Error: {e}")
 
-        url: str = f"https://ollama.com/{namespace}"
-        if namespace == "models":
-            url += "?sort=popular"
-        response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
-        soup = BeautifulSoup(response.content.decode("utf-8"), "html.parser")
+        url_base: str = f"https://ollama.com/{namespace}"
         models: List[SiteModel] = []
 
-        for card in soup.find_all("li", class_="items-baseline"):
-            meta_data = {
-                "name": card.find("h2").text.strip(),
-                "description": card.find("p").text.strip(),
-                "model_url": card.find("a")["href"],
-                "url": f'{url}{card.find("a")["href"]}',
-                "num_pulls": "",
-                "num_tags": "",
-                "updated": "",
-            }
-
-            pres = card.find_all(
-                "span", class_=["flex", "items-center"], recursive=True
+        for cat in self.ollama_site_categories:
+            if category and category != cat:
+                continue
+            url = url_base
+            if namespace == "models":
+                url += f"?sort={cat}"
+            response = requests.get(
+                url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10
             )
-            pres = [p.text.strip() for p in pres]
-            pres = [p for p in pres if p]
+            soup = BeautifulSoup(response.content.decode("utf-8"), "html.parser")
+            for card in soup.find_all("li", class_="items-baseline"):
+                meta_data = {
+                    "name": card.find("h2").text.strip(),
+                    "description": card.find("p").text.strip(),
+                    "model_url": card.find("a")["href"],
+                    "url": f'{url}{card.find("a")["href"]}',
+                    "num_pulls": "",
+                    "num_tags": "",
+                    "updated": "",
+                }
 
-            for p in pres:
-                if "Pulls" in p:
-                    meta_data["num_pulls"] = p.split("\n")[0].strip()
-                if "Tags" in p:
-                    meta_data["num_tags"] = p.split("\xa0")[0].strip()
-                if "Updated" in p:
-                    meta_data["updated"] = p.split("\xa0")[-1].strip()
-            # tags = []
-            tags = card.find_all("span", class_=["text-blue-600"], recursive=True)
-            tags = [p.text.strip() for p in tags]
-            tags = [p for p in tags if p]
-            meta_data["tags"] = tags
+                pres = card.find_all(
+                    "span", class_=["flex", "items-center"], recursive=True
+                )
+                pres = [p.text.strip() for p in pres]
+                pres = [p for p in pres if p]
 
-            model = SiteModel(**meta_data)
-            # print(model.model_dump_json(indent=4))
-            models.append(model)
+                for p in pres:
+                    if "Pulls" in p:
+                        meta_data["num_pulls"] = p.split("\n")[0].strip()
+                    if "Tags" in p:
+                        meta_data["num_tags"] = p.split("\xa0")[0].strip()
+                    if "Updated" in p:
+                        meta_data["updated"] = p.split("\xa0")[-1].strip()
+                # tags = []
+                tags = card.find_all("span", class_=["text-blue-600"], recursive=True)
+                tags = [p.text.strip() for p in tags]
+                tags = [p for p in tags if p]
+                meta_data["tags"] = tags
+
+                model = SiteModel(**meta_data)
+                # print(model.model_dump_json(indent=4))
+                found = False
+                for m in models:
+                    if m.name == model.name:
+                        found = True
+                        break
+                if not found:
+                    models.append(model)
+
+            if namespace != "models":
+                break
+
         if len(models) > 0 and not settings.no_save:
             with open(file_name, "w", encoding="utf-8") as f:
                 f.write(
@@ -184,13 +214,14 @@ class DataManager:
 
     @staticmethod
     def create_model(
-            model_name: str,
-            model_code: str | PathLike,
-            quantize_level: Optional[str] = None,
+        model_name: str,
+        model_code: str | PathLike,
+        quantize_level: Optional[str] = None,
     ) -> Iterator[Dict[str, Any]]:
         """Create a new model."""
-        return ollama.create(model=model_name, modelfile=model_code, quantize=quantize_level,
-                             stream=True)  # type: ignore
+        return ollama.create(
+            model=model_name, modelfile=model_code, quantize=quantize_level, stream=True
+        )  # type: ignore
 
     @staticmethod
     def copy_model(src_name: str, dst_name: str) -> Mapping[str, Any]:
@@ -199,7 +230,7 @@ class DataManager:
 
     @staticmethod
     def quantize_model(
-            model_name: str, quantize_level: str = "q4_0"
+        model_name: str, quantize_level: str = "q4_0"
     ) -> Union[str, Container, Generator[bytes, None, None]]:
         """
         Quantize a model

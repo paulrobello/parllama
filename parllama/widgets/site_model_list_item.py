@@ -64,7 +64,7 @@ class SiteModelListItem(ListItem):
                         "Tags: "
                         + " ".join(
                             [
-                                f"[@click=screen.tag_clicked('{self.model.name}:{t.lower()}')]{t}[/]"
+                                f"[@click=screen.site_tag_clicked('{self.model.name}:{t.lower()}')]{t}[/]"
                                 for t in self.model.tags
                             ]
                         ),
