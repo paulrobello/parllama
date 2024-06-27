@@ -1,25 +1,22 @@
-"""Screen for the model tools."""
+"""View for the model tools."""
 
 import os
 import webbrowser
 
 from textual import on
 from textual.app import ComposeResult
-from textual.containers import Vertical, VerticalScroll
-from textual.screen import Screen
-from textual.widgets import Button, ContentSwitcher, Footer, Header, Static
+from textual.containers import Vertical, VerticalScroll, Container
+from textual.widgets import Button, ContentSwitcher, Static
 
-from parllama.screens.create_model_screen import CreateModelScreen
+from parllama.messages.main import ChangeTab
 from parllama.widgets.clickable_label import CopyToClipboardLabel
 
 
-class ModelToolsScreen(Screen[None]):
-    """Screen for the model tools."""
+class ModelToolsView(Container):
+    """View for the model tools."""
 
     DEFAULT_CSS = """
     	"""
-
-    CSS_PATH = "model_tools_screen.tcss"
 
     BINDINGS = []
 
@@ -29,9 +26,7 @@ class ModelToolsScreen(Screen[None]):
         self.sub_title = "Model tools"
 
     def compose(self) -> ComposeResult:
-        """Compose the content of the screen."""
-        yield Header(show_clock=True)
-        yield Footer()
+        """Compose the content of the view."""
         pub_key: str = ""
         pub_key_path = os.path.join(
             os.path.expanduser("~"), ".ollama", "id_ed25519.pub"
@@ -56,7 +51,7 @@ class ModelToolsScreen(Screen[None]):
     @on(Button.Pressed, "#new_model")
     def action_new_model(self) -> None:
         """Open the new model screen."""
-        self.app.push_screen(CreateModelScreen())
+        self.app.post_message(ChangeTab(tab="Create"))
 
     def action_open_keys_page(self):
         """Open the Ollama keys page."""

@@ -47,6 +47,7 @@ class ModelDetailsDialog(ModalScreen[None]):
         Binding("left,up", "app.focus_previous", "", show=False),
         Binding("right,down", "app.focus_next", "", show=False),
         Binding("escape, ctrl+q", "app.pop_screen", "", show=True),
+        Binding("ctrl+c", "app.copy_to_clipboard", "", show=True),
     ]
     model: FullModel
 

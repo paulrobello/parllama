@@ -1,44 +1,41 @@
-"""Main screen for TUI."""
+"""Local Model View"""
 
 from functools import partial
 from typing import List
 
-from rich.console import RenderableType
 from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import VerticalScroll
-from textual.screen import Screen
+from textual.containers import VerticalScroll, Container
+from textual.events import Show
 from textual.widget import Widget
-from textual.widgets import Footer, Header, Input, Static
+from textual.widgets import Input
 
 from parllama.data_manager import dm
 from parllama.dialogs.input_dialog import InputDialog
 from parllama.dialogs.model_details_dialog import ModelDetailsDialog
 from parllama.dialogs.yes_no_dialog import YesNoDialog
 from parllama.messages.main import (
-    LocalModelCopied,
-    LocalModelCopyRequested,
-    LocalModelDelete,
-    LocalModelDeleted,
-    LocalModelDeleteRequested,
-    LocalModelListLoaded,
     LocalModelListRefreshRequested,
-    ModelPulled,
     ModelPullRequested,
     ModelPushRequested,
-    PsMessage,
+    LocalModelListLoaded,
+    LocalModelDeleteRequested,
+    LocalModelDelete,
+    LocalModelDeleted,
     ShowLocalModel,
-    StatusMessage,
+    ModelPulled,
+    LocalModelCopyRequested,
+    LocalModelCopied,
+    SetModelNameLoading,
 )
-from parllama.screens.site_models_screen import SiteModelsScreen
 from parllama.widgets.filter_input import FilterInput
 from parllama.widgets.grid_list import GridList
 from parllama.widgets.local_model_list_item import LocalModelListItem
 
 
-class LocalModelsScreen(Screen[None]):
-    """Local model screen."""
+class LocalModelView(Container):
+    """Local Model View"""
 
     BINDINGS = [
         Binding(
@@ -88,46 +85,34 @@ class LocalModelsScreen(Screen[None]):
         # Binding(key="ctrl+t", action="app.toggle_dark", description="Toggle Dark Mode"),
         # Binding(key="f1", action="app.help", description="Help"),
     ]
-
-    CSS_PATH = "local_models_screen.tcss"
-
-    grid: GridList
-    status_bar: Static
-    ps_status_bar: Static
     search_input: FilterInput
 
     def __init__(self, **kwargs) -> None:
-        """Initialize the Main screen."""
+        """Initialise the view"""
         super().__init__(**kwargs)
         self.sub_title = "Local Models"
-        self.status_bar = Static("", id="StatusBar")
-        self.ps_status_bar = Static("", id="PsStatusBar")
-        self.ps_status_bar.display = False
         self.search_input = FilterInput(id="search", placeholder="Filter local models")
+        self.grid = GridList(id="grid_view")
+
+    def _on_show(self, event: Show) -> None:
+        """ "Focus the search on show"""
+        self.set_timer(0.25, self.search_input.focus)
+
+    def compose(self) -> ComposeResult:
+        """Compose the Main screen."""
+        yield self.search_input
+        with VerticalScroll():
+            with self.grid:
+                yield from dm.models
 
     async def on_mount(self) -> None:
         """Mount the Main screen."""
         self.set_timer(0.25, self.action_refresh_models)
-        self.set_timer(0.5, self.search_input.focus)
-
-    def compose(self) -> ComposeResult:
-        """Compose the Main screen."""
-        yield Header(show_clock=True)
-        yield Footer()
-        yield self.ps_status_bar
-        yield self.search_input
-        yield self.status_bar
-        vs = VerticalScroll(id="main")
-        vs.can_focus = False
-        with vs:
-            self.grid = GridList(id="grid_view")
-            with self.grid:
-                yield from dm.models
 
     def action_refresh_models(self):
         """Refresh the models."""
         self.grid.loading = True
-        self.post_message(LocalModelListRefreshRequested())
+        self.post_message(LocalModelListRefreshRequested(widget=self))
 
     def action_pull_model(self) -> None:
         """Pull model"""
@@ -135,13 +120,15 @@ class LocalModelsScreen(Screen[None]):
             return
         model_name: str = self.grid.selected.model.name
         self.grid.selected.loading = True
-        self.post_message(ModelPullRequested(model_name))
+        self.post_message(ModelPullRequested(widget=self, model_name=model_name))
 
     def action_pull_all_models(self) -> None:
         """Pull all local models"""
         for item in self.grid.query(LocalModelListItem):
             item.loading = True
-            self.post_message(ModelPullRequested(item.model.name))
+            self.post_message(
+                ModelPullRequested(widget=self, model_name=item.model.name)
+            )
 
     def action_push_model(self) -> None:
         """Pull model"""
@@ -149,12 +136,12 @@ class LocalModelsScreen(Screen[None]):
             return
         model_name: str = self.grid.selected.model.name
         self.grid.selected.loading = True
-        self.post_message(ModelPushRequested(model_name))
+        self.post_message(ModelPushRequested(widget=self, model_name=model_name))
 
     @on(LocalModelListLoaded)
-    def on_model_data_loaded(self) -> None:
+    def on_model_data_loaded(self, msg: LocalModelListLoaded) -> None:
         """Rebuild model grid."""
-
+        msg.stop()
         model_name: str = ""
         if self.grid.selected:
             model_name = self.grid.selected.model.name
@@ -170,15 +157,16 @@ class LocalModelsScreen(Screen[None]):
         self.grid.loading = False
         if self.search_input.value:
             self.grid.filter(self.search_input.value)
-
-        if model_name:
-            self.grid.select_by_name(model_name)
-        else:
-            self.grid.select_first_item()
+        if self.parent.has_focus:
+            if model_name:
+                self.grid.select_by_name(model_name)
+            else:
+                self.grid.select_first_item()
 
     @on(LocalModelDeleteRequested)
     def on_model_delete_requested(self, msg: LocalModelDeleteRequested) -> None:
         """Delete model requested."""
+        msg.stop()
         self.app.push_screen(
             YesNoDialog(
                 "Delete Model", "Delete model from local filesystem?", yes_first=False
@@ -197,46 +185,27 @@ class LocalModelsScreen(Screen[None]):
     @on(LocalModelDeleted)
     def on_model_deleted(self, msg: LocalModelDeleted) -> None:
         """Model deleted event"""
+        msg.stop()
         self.grid.remove_item(msg.model_name)
         self.grid.action_select_left()
 
     @on(ShowLocalModel)
     def on_show_model(self, msg: ShowLocalModel) -> None:
         """Show model"""
+        msg.stop()
         self.app.push_screen(ModelDetailsDialog(msg.model))
-
-    def action_search_site_models(self):
-        """Search Site Models"""
-        self.app.push_screen(SiteModelsScreen())
 
     @on(ModelPulled)
     def on_model_pulled(self, msg: ModelPulled) -> None:
         """Model pulled event"""
+        msg.stop()
         self.grid.set_item_loading(msg.model_name, False)
 
-    @on(StatusMessage)
-    def on_status_message(self, msg: StatusMessage) -> None:
-        """Status message event"""
-        self.update_status(msg.msg)
-
-    def update_status(self, msg: RenderableType):
-        """Update the status bar."""
-        self.status_bar.update(msg)
-
-    @on(PsMessage)
-    def on_ps_message(self, msg: PsMessage) -> None:
-        """PS status message event"""
-        self.update_ps_status(msg.msg)
-
-    def update_ps_status(self, msg: RenderableType):
-        """Update the ps status bar."""
-        self.ps_status_bar.update(msg)
-        self.ps_status_bar.display = bool(msg)
-
     @on(Input.Changed, "#search")
-    def on_search_input_changed(self, event: Input.Changed) -> None:
+    def on_search_input_changed(self, msg: Input.Changed) -> None:
         """Handle search input change"""
-        self.grid.filter(event.value)
+        msg.stop()
+        self.grid.filter(msg.value)
 
     def action_search_input_focus(self) -> None:
         """Focus the search input."""
@@ -265,7 +234,9 @@ class LocalModelsScreen(Screen[None]):
             return
         self.post_message(
             LocalModelCopyRequested(
-                src_model_name=src_model_name, dst_model_name=dst_model_name
+                widget=self,
+                src_model_name=src_model_name,
+                dst_model_name=dst_model_name,
             )
         )
         self.notify(f"copy {src_model_name} to {dst_model_name}")
@@ -273,3 +244,9 @@ class LocalModelsScreen(Screen[None]):
     @on(LocalModelCopied)
     def on_local_model_copied(self, msg: LocalModelCopied) -> None:
         """Model copied event"""
+
+    @on(SetModelNameLoading)
+    def on_set_model_name_loading(self, msg: SetModelNameLoading) -> None:
+        """Set model name loading"""
+        msg.stop()
+        self.grid.set_item_loading(msg.model_name, msg.loading)

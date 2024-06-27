@@ -10,10 +10,6 @@ The app is separated into 3 sections.
 |----------|-------------------------|
 | `F1`     | This help               |
 | `F10`    | Toggle dark/light theme |
-| `ctrl+l` | Local models            |
-| `ctrl+s` | Site models             |
-| `ctrl+t` | Model tools             |
-| `ctrl+d` | Debug log               |
 | `ctrl+q` | Quit the application    |
 
 
@@ -76,8 +72,6 @@ You can use `ctrl+b` to open the model card in a web browser
 
 ## Model Tools Screen
 This screen allows you to access tools to create, modify, and publish models  
-
-Work in progress...
 
 
 ## Publishing

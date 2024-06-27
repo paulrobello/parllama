@@ -3,7 +3,7 @@
 import asyncio
 import inspect
 from queue import Empty, Queue
-from typing import Any, Dict, Iterator, List
+from typing import Any, Dict, Iterator, List, Set
 
 import ollama
 import pyperclip  # type: ignore
@@ -43,16 +43,24 @@ from parllama.messages.main import (
     SiteModelsLoaded,
     SiteModelsRefreshRequested,
     StatusMessage,
+    ModelCreateRequested,
+    ModelCreated,
+    SetModelNameLoading,
+    AppRequest,
+    ChangeTab,
 )
-from parllama.models.jobs import CopyModelJob, PullModelJob, PushModelJob, QueueJob
+from parllama.models.jobs import (
+    CopyModelJob,
+    PullModelJob,
+    PushModelJob,
+    QueueJob,
+    CreateModelJob,
+)
 from parllama.models.settings_data import settings
 from parllama.par_logger import ParLogger
-from parllama.screens.create_model_screen import CreateModelScreen
-from parllama.screens.local_models_screen import LocalModelsScreen
-from parllama.screens.log_screen import LogScreen
-from parllama.screens.model_tools_screen import ModelToolsScreen
-from parllama.screens.site_models_screen import SiteModelsScreen
+from parllama.screens.main_screen import MainScreen
 from parllama.theme_manager import theme_manager
+from parllama.widgets.log_view import LogView
 
 
 class ParLlamaApp(App[None]):
@@ -63,34 +71,6 @@ class ParLlamaApp(App[None]):
         Binding(key="f1", action="help", description="Help", show=True, priority=True),
         Binding(key="ctrl+q", action="app.quit", description="Quit", show=True),
         Binding(
-            key="ctrl+l",
-            action="app.switch_mode('local')",
-            description="Local",
-            show=True,
-            priority=True,
-        ),
-        Binding(
-            key="ctrl+s",
-            action="app.switch_mode('site')",
-            description="Site",
-            show=True,
-            priority=True,
-        ),
-        Binding(
-            key="ctrl+t",
-            action="app.switch_mode('tools')",
-            description="Tools",
-            show=True,
-            priority=True,
-        ),
-        Binding(
-            key="ctrl+d",
-            action="app.switch_mode('logs')",
-            description="Debug",
-            show=True,
-            priority=True,
-        ),
-        Binding(
             key="f10",
             action="toggle_dark",
             description="Toggle Dark Mode",
@@ -99,15 +79,6 @@ class ParLlamaApp(App[None]):
         ),
         Binding(key="ctrl+c", action="noop", show=False),
     ]
-    SCREENS = {}
-
-    MODES = {
-        "local": "local",
-        "site": "site",
-        "tools": "tools",
-        "create": "create",
-        "logs": "logs",
-    }
 
     commands: list[dict[str, str]] = [
         {
@@ -121,19 +92,18 @@ class ParLlamaApp(App[None]):
     DEFAULT_CSS = """
     """
 
-    local_models_screen: LocalModelsScreen
-    site_models_screen: SiteModelsScreen
-    model_tools_screen: ModelToolsScreen
-    create_model_screen: CreateModelScreen
-    log_screen: LogScreen | None
+    notify_subs: Dict[str, Set[Widget]]
+    main_screen: MainScreen
     job_queue: Queue[QueueJob]
     is_busy: bool = False
     last_status: RenderableType = ""
+    log_view: LogView | None
 
     def __init__(self) -> None:
         """Initialize the application."""
         super().__init__()
         self._logger = ParLogger(self._log)
+        self.notify_subs = {"*": set[Widget]()}
 
         self.title = __application_title__
         self.dark = settings.theme_mode != "light"
@@ -142,7 +112,8 @@ class ParLlamaApp(App[None]):
         self.is_busy = False
         self.is_refreshing = False
         self.last_status = ""
-        self.log_screen = None
+        self.log_view = LogView()
+        self.main_screen = MainScreen()
 
     def _watch_dark(self, value: bool) -> None:
         """Watch the dark property."""
@@ -173,21 +144,7 @@ class ParLlamaApp(App[None]):
 
     async def on_mount(self) -> None:
         """Display the main or locked screen."""
-        self.SCREENS["local"] = LocalModelsScreen()
-        self.SCREENS["site"] = SiteModelsScreen()
-        self.SCREENS["tools"] = ModelToolsScreen()
-        self.SCREENS["create"] = CreateModelScreen()
-        self.SCREENS["logs"] = LogScreen()
-
-        self._installed_screens.update(**self.SCREENS)
-
-        self.local_models_screen = self.SCREENS["local"]  # type: ignore
-        self.site_models_screen = self.SCREENS["site"]  # type: ignore
-        self.model_tools_screen = self.SCREENS["tools"]  # type: ignore
-        self.create_model_screen = self.SCREENS["create"]  # type: ignore
-        self.log_screen = self.SCREENS["logs"]  # type: ignore
-
-        await self.switch_mode(settings.starting_screen)
+        await self.push_screen(self.main_screen)
 
         self.set_timer(1, self.do_jobs)
         self.set_timer(1, self.update_ps)
@@ -248,8 +205,7 @@ class ParLlamaApp(App[None]):
     def on_model_push_requested(self, msg: ModelPushRequested) -> None:
         """Push requested model event"""
         self.job_queue.put(PushModelJob(modelName=msg.model_name))
-        if self.local_models_screen:
-            self.local_models_screen.grid.set_item_loading(msg.model_name, True)
+        self.post_message_all(SetModelNameLoading(msg.model_name, True))
         # self.notify(f"Model push {msg.model_name} requested")
 
         # primary_style = Style(
@@ -263,16 +219,25 @@ class ParLlamaApp(App[None]):
         #                 self.theme, self.dark
         #             ).surface
 
+    @on(ModelCreateRequested)
+    def on_model_create_requested(self, msg: ModelCreateRequested) -> None:
+        """Create model requested event"""
+        self.job_queue.put(
+            CreateModelJob(
+                modelName=msg.model_name,
+                modelCode=msg.model_code,
+                quantizationLevel=msg.quantization_level,
+            )
+        )
+
     @on(LocalModelDelete)
     def on_local_model_delete(self, msg: LocalModelDelete) -> None:
         """Delete model event"""
         if not dm.delete_model(msg.model_name):
-            if self.local_models_screen:
-                self.local_models_screen.grid.set_item_loading(msg.model_name, False)
+            self.post_message_all(SetModelNameLoading(msg.model_name, False))
             self.notify(f"Error deleting model {msg.model_name}.", severity="error")
             return
-        if self.local_models_screen:
-            self.local_models_screen.post_message(LocalModelDeleted(msg.model_name))
+        self.post_message_all(LocalModelDeleted(msg.model_name))
 
     @on(LocalModelDeleted)
     def on_model_deleted(self, msg: LocalModelDeleted) -> None:
@@ -283,8 +248,7 @@ class ParLlamaApp(App[None]):
     def on_model_pull_requested(self, msg: ModelPullRequested) -> None:
         """Pull requested model event"""
         self.job_queue.put(PullModelJob(modelName=msg.model_name))
-        if self.local_models_screen:
-            self.local_models_screen.grid.set_item_loading(msg.model_name, True)
+        self.post_message_all(SetModelNameLoading(msg.model_name, True))
         # self.notify(f"Model pull {msg.model_name} requested")
 
         # primary_style = Style(
@@ -328,7 +292,7 @@ class ParLlamaApp(App[None]):
     async def do_copy_local_model(self, msg: CopyModelJob) -> None:
         """Copy local model"""
         ret = dm.copy_model(msg.modelName, msg.dstModelName)
-        self.local_models_screen.post_message(
+        self.post_message_all(
             LocalModelCopied(
                 src_model_name=msg.modelName,
                 dst_model_name=msg.dstModelName,
@@ -410,7 +374,7 @@ class ParLlamaApp(App[None]):
             res = dm.pull_model(job.modelName)
             last_status = await self.do_progress(job, res)
 
-            self.local_models_screen.post_message(
+            self.post_message_all(
                 ModelPulled(model_name=job.modelName, success=last_status == "success")
             )
         except ollama.ResponseError:
@@ -427,6 +391,30 @@ class ParLlamaApp(App[None]):
             )
         except ollama.ResponseError:
             self.post_message_all(ModelPushed(model_name=job.modelName, success=False))
+
+    async def do_create_model(self, job: CreateModelJob) -> None:
+        """Create a model"""
+        try:
+            res = dm.create_model(job.modelName, job.modelCode, job.quantizationLevel)
+            last_status = await self.do_progress(job, res)
+
+            self.post_message_all(
+                ModelCreated(
+                    model_name=job.modelName,
+                    model_code=job.modelCode,
+                    quantization_level=job.quantizationLevel,
+                    success=last_status == "success",
+                )
+            )
+        except ollama.ResponseError:
+            self.post_message_all(
+                ModelCreated(
+                    model_name=job.modelName,
+                    model_code=job.modelCode,
+                    quantization_level=job.quantizationLevel,
+                    success=False,
+                )
+            )
 
     @work(group="do_jobs", thread=True)
     async def do_jobs(self) -> None:
@@ -445,13 +433,15 @@ class ParLlamaApp(App[None]):
                     await self.do_push(job)
                 elif isinstance(job, CopyModelJob):
                     await self.do_copy_local_model(job)
+                elif isinstance(job, CreateModelJob):
+                    await self.do_create_model(job)
                 else:
                     self.notify(f"Unknown job type {type(job)}", severity="error")
             except Empty:
                 if self._exit:
                     return
                 if self.is_busy:
-                    self.post_message(LocalModelListRefreshRequested())
+                    self.post_message(LocalModelListRefreshRequested(widget=None))
                     self.is_busy = False
                 continue
 
@@ -463,12 +453,29 @@ class ParLlamaApp(App[None]):
         else:
             self.notify(f"Model {msg.model_name} failed to pull.", severity="error")
 
-    def action_refresh_models(self):
+    @on(ModelCreated)
+    def on_model_created(self, msg: ModelCreated) -> None:
+        """Model created event"""
+        if msg.success:
+            self.notify(f"Model {msg.model_name} created.")
+            self.set_timer(1, self.action_refresh_models)
+        else:
+            self.notify(f"Model {msg.model_name} failed to create.", severity="error")
+
+    def action_refresh_models(self) -> None:
         """Refresh models action."""
         self.refresh_models()
 
+    @on(AppRequest)
+    def on_app_request(self, msg: AppRequest) -> None:
+        """Add any widget that requests an action to notify_subs"""
+        if msg.widget:
+            self.notify_subs["*"].add(msg.widget)
+
     @on(LocalModelListRefreshRequested)
-    def on_model_list_refresh_requested(self) -> None:
+    def on_model_list_refresh_requested(
+        self, msg: LocalModelListRefreshRequested
+    ) -> None:
         """Model refresh request event"""
         if self.is_refreshing:
             self.notify("A model refresh is already in progress. Please wait.")
@@ -482,7 +489,7 @@ class ParLlamaApp(App[None]):
         try:
             self.post_message_all(StatusMessage("Local model list refreshing..."))
             dm.refresh_models()
-            self.screen.post_message(LocalModelListLoaded())
+            self.post_message_all(LocalModelListLoaded())
         finally:
             self.is_refreshing = False
 
@@ -516,7 +523,7 @@ class ParLlamaApp(App[None]):
                 )
             )
             dm.refresh_site_models(msg.ollama_namespace, msg.force)
-            self.screen.post_message(
+            self.post_message_all(
                 SiteModelsLoaded(ollama_namespace=msg.ollama_namespace)
             )
             self.post_message_all(
@@ -537,12 +544,12 @@ class ParLlamaApp(App[None]):
             ret = dm.model_ps()
             if not ret:
                 if not was_blank:
-                    self.screen.post_message(PsMessage(msg=""))
+                    self.main_screen.post_message(PsMessage(msg=""))
                 was_blank = True
                 continue
             was_blank = False
             info = ret[0]
-            self.local_models_screen.post_message(
+            self.main_screen.post_message(
                 PsMessage(
                     msg=Text.assemble(
                         "Name: ",
@@ -563,11 +570,10 @@ class ParLlamaApp(App[None]):
         if isinstance(msg, StatusMessage):
             self.log(msg.msg)
             self.last_status = msg.msg
-
-        if self.local_models_screen:
-            self.local_models_screen.post_message(msg)
-        if self.site_models_screen:
-            self.site_models_screen.post_message(msg)
+        for w in list(self.notify_subs["*"]):
+            w.post_message(msg)
+        if self.main_screen:
+            self.main_screen.post_message(msg)
 
     def _log(
         self,
@@ -593,7 +599,7 @@ class ParLlamaApp(App[None]):
             verbosity: Verbosity level 0-3.
         """
 
-        if self.log_screen and self.log_screen.richlog:
+        if self.log_view and self.log_view.richlog:
             if len(objects) == 1:
                 types_to_check = [ConsoleRenderable, RichCast, str]
                 renderable: RenderableType | None = None
@@ -607,19 +613,25 @@ class ParLlamaApp(App[None]):
                             break
                 if renderable:
                     # dont log duplicate messages
-                    if len(self.log_screen.richlog.lines) > 0:
+                    if len(self.log_view.richlog.lines) > 0:
                         if (
                             Strip.from_lines(
                                 list(
                                     Segment.split_lines(self.console.render(renderable))
                                 )
                             )[0].text
-                            != self.log_screen.richlog.lines[-1].text
+                            != self.log_view.richlog.lines[-1].text
                         ):
-                            self.log_screen.richlog.write(renderable)
+                            self.log_view.richlog.write(renderable)
                             return
                     else:
-                        self.log_screen.richlog.write(renderable)
+                        self.log_view.richlog.write(renderable)
                         return
 
         super()._log(group, verbosity, _textual_calling_frame, *objects, **kwargs)
+
+    @on(ChangeTab)
+    def on_change_tab(self, msg: ChangeTab) -> None:
+        """Change tab event"""
+        msg.stop()
+        self.main_screen.change_tab(msg.tab)

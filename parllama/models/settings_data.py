@@ -19,7 +19,7 @@ class Settings(BaseModel):
     cache_dir: str = ""
     settings_file: str = "settings.json"
     theme_name: str = "par"
-    starting_screen: Literal["local", "site", "tools", "create", "logs"] = "local"
+    starting_screen: Literal["Local", "Site", "Tools", "Create", "Logs"] = "Local"
     theme_mode: str = "dark"
     site_models_namespace: str = ""
 
@@ -67,7 +67,7 @@ class Settings(BaseModel):
         if args.theme_mode:
             self.theme_mode = args.theme_mode
         if args.starting_screen:
-            self.starting_screen = args.starting_screen
+            self.starting_screen = args.starting_screen.capitalize()
 
         self.save_settings_to_file()
 

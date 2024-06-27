@@ -1,21 +1,16 @@
-"""Screen for viewing application logs."""
+"""Widget for viewing application logs."""
 
 from textual import on
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical
-from textual.screen import Screen
-from textual.widgets import Button, Checkbox, Footer, Header, RichLog
+from textual.containers import Horizontal, Vertical, Container
+from textual.widgets import Button, Checkbox, RichLog
 
 
-class LogScreen(Screen[None]):
-    """Screen for viewing application logs."""
+class LogView(Container):
+    """Widget for viewing application logs."""
 
     DEFAULT_CSS = """
     """
-
-    CSS_PATH = "log_screen.tcss"
-
-    BINDINGS = []
 
     richlog: RichLog
 
@@ -27,9 +22,7 @@ class LogScreen(Screen[None]):
         self.auto_scroll = Checkbox(label="Auto Scroll", value=True, id="auto_scroll")
 
     def compose(self) -> ComposeResult:
-        """Compose the content of the screen."""
-        yield Header(show_clock=True)
-        yield Footer()
+        """Compose the content of the view."""
 
         with Vertical(id="menu"):
             with Horizontal(id="tool_bar"):
