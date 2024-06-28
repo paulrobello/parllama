@@ -26,6 +26,7 @@ from parllama.dialogs.help_dialog import HelpDialog
 from parllama.messages.main import (
     AppRequest,
     ChangeTab,
+    CreateModelFromExistingRequested,
     LocalModelCopied,
     LocalModelCopyRequested,
     LocalModelDelete,
@@ -394,10 +395,11 @@ class ParLlamaApp(App[None]):
     async def do_create_model(self, job: CreateModelJob) -> None:
         """Create a model"""
         try:
+            self.main_screen.log_view.richlog.write(job.modelCode)
             res = dm.create_model(job.modelName, job.modelCode, job.quantizationLevel)
             last_status = await self.do_progress(job, res)
 
-            self.post_message_all(
+            self.main_screen.local_view.post_message(
                 ModelCreated(
                     model_name=job.modelName,
                     model_code=job.modelCode,
@@ -406,7 +408,7 @@ class ParLlamaApp(App[None]):
                 )
             )
         except ollama.ResponseError:
-            self.post_message_all(
+            self.main_screen.local_view.post_message(
                 ModelCreated(
                     model_name=job.modelName,
                     model_code=job.modelCode,
@@ -555,7 +557,7 @@ class ParLlamaApp(App[None]):
         """Update ps msg"""
         was_blank = False
         while self.is_running:
-            await asyncio.sleep(1)
+            await asyncio.sleep(2)
             ret = dm.model_ps()
             if not ret:
                 if not was_blank:
@@ -600,3 +602,16 @@ class ParLlamaApp(App[None]):
         """Change tab event"""
         msg.stop()
         self.main_screen.change_tab(msg.tab)
+
+    @on(CreateModelFromExistingRequested)
+    def on_create_model_from_existing_requested(
+        self, msg: CreateModelFromExistingRequested
+    ) -> None:
+        """Create model from existing event"""
+        msg.stop()
+
+        self.main_screen.create_view.name_input.value = f"my-{msg.model_name}:latest"
+        self.main_screen.create_view.text_area.text = msg.model_code
+        self.main_screen.create_view.quantize_input.value = msg.quantization_level or ""
+        self.main_screen.change_tab("Create")
+        self.main_screen.create_view.name_input.focus()

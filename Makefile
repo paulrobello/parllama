@@ -14,32 +14,32 @@ export PIPENV_VERBOSITY=-1
 ##############################################################################
 # Run the app.
 .PHONY: run
-run:
+run:	        # Run the app
 	$(python) -m $(lib)
 
 .PHONY: app_help
-app_help:
+app_help:	        # Show app help
 	$(python) -m $(lib) --help
 
 .PHONY: restore_defaults
-restore_defaults:
+restore_defaults:	        # Restore application default settings
 	$(python) -m $(lib) --restore-defaults
 
 .PHONY: clear_cache
-clear_cache:
+clear_cache:	        # Clear application cache
 	$(python) -m $(lib) --clear-cache
 
 .PHONY: dev
-dev:
+dev:	        # Run in dev mode
 	$(run) textual run --dev $(lib).app:ParLlamaApp
 
 
 .PHONY: debug
-debug:
+debug:	        # Run in debug mode
 	TEXTUAL=devtools make
 
 .PHONY: console
-console:
+console:	        # Run textual dev console
 	$(run) textual console
 
 ##############################################################################
@@ -48,7 +48,7 @@ pip-lock:
 	pipenv lock
 
 .PHONY: first-setup
-first-setup: pip-lock setup typecheck setupstubs
+first-setup: pip-lock setup typecheck setupstubs	        # use this for first time run
 
 # Setup/update packages the system requires.
 .PHONY: setup
@@ -59,7 +59,7 @@ setup:				# Install all dependencies and type stubs
 resetup: remove-venv setup			# Recreate the virtual environment from scratch
 
 .PHONY: remove-venv
-remove-venv:			# remove the virtual environment
+remove-venv:			# Remove the virtual environment
 	rm -rf $(shell pipenv --venv)
 
 .PHONY: depsoutdated
@@ -74,7 +74,7 @@ depsupdate:			# Update all dependencies
 depsshow:			# Show the dependency graph
 	pipenv graph
 
-.PHONY: setupsubs  # install mypy type stubs
+.PHONY: setupsubs  # Install mypy type stubs
 setupstubs:
 	$(run) mypy --install-types --non-interactive
 
@@ -93,7 +93,10 @@ stricttypecheck:	        # Perform a strict static type checks with mypy
 	$(mypy) --scripts-are-modules --strict $(lib)
 
 .PHONY: checkall
-checkall: lint stricttypecheck # Check all the things
+checkall: lint typecheck	        # Check all the things
+
+.PHONY: dobeforecommit
+dobeforecommit: ugly checkall	        # Format then check
 
 ##############################################################################
 # Package/publish.

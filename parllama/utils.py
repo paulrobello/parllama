@@ -23,7 +23,7 @@ from typing import Any, Dict, Generator, List, Union
 from textual.widgets import Button, Input
 from textual.widgets._button import ButtonVariant
 
-from parllama import __application_title__, __version__, __application_binary__
+from parllama import __application_binary__, __application_title__, __version__
 from parllama.icons import PENCIL_EMOJI, TRASH_EMOJI
 
 DECIMAL_PRECESSION = 5

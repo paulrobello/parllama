@@ -95,6 +95,15 @@ class ModelCreateRequested(AppRequest):
 
 
 @dataclass
+class CreateModelFromExistingRequested(AppRequest):
+    """Message to open create model screen with current model file as starting point."""
+
+    model_name: str
+    model_code: str
+    quantization_level: Optional[str]
+
+
+@dataclass
 class ModelCreated(Message):
     """Message to notify that a model has been created."""
 

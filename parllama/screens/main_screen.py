@@ -10,9 +10,9 @@ from textual.widgets import Footer, Header, Static, TabbedContent, TabPane
 
 from parllama.messages.main import PsMessage, StatusMessage
 from parllama.models.settings_data import ScreenType, settings
+from parllama.widgets.create_model_view import ModelCreateView
 from parllama.widgets.local_model_view import LocalModelView
 from parllama.widgets.log_view import LogView
-from parllama.widgets.model_create_view import ModelCreateView
 from parllama.widgets.model_tools_view import ModelToolsView
 from parllama.widgets.site_model_view import SiteModelView
 
@@ -28,6 +28,10 @@ class MainScreen(Screen[None]):
     ps_status_bar: Static
     tabbed_content: TabbedContent
     log_view: LogView
+    local_view: LocalModelView
+    site_view: SiteModelView
+    model_tools_view: ModelToolsView
+    create_view: ModelCreateView
 
     def __init__(self, **kwargs) -> None:
         """Initialize the Main screen."""
@@ -35,6 +39,11 @@ class MainScreen(Screen[None]):
         self.status_bar = Static("", id="StatusBar")
         self.ps_status_bar = Static("", id="PsStatusBar")
         self.ps_status_bar.display = False
+
+        self.local_view = LocalModelView(id="local_models")
+        self.site_view = SiteModelView(id="site_models")
+        self.create_view = ModelCreateView(id="model_create")
+        self.model_tools_view = ModelToolsView(id="model_tools")
         self.log_view = LogView()
 
     async def on_mount(self) -> None:
@@ -57,13 +66,13 @@ class MainScreen(Screen[None]):
             tc.loading = True
 
             with TabPane("Local", id="Local"):
-                yield LocalModelView(id="local_models")
+                yield self.local_view
             with TabPane("Site", id="Site"):
-                yield SiteModelView(id="site_models")
+                yield self.site_view
             with TabPane("Tools", id="Tools"):
-                yield ModelToolsView(id="model_tools")
+                yield self.model_tools_view
             with TabPane("Create", id="Create"):
-                yield ModelCreateView(id="model_create")
+                yield self.create_view
             with TabPane("Logs", id="Logs"):
                 yield self.log_view
 
@@ -101,7 +110,7 @@ class MainScreen(Screen[None]):
         self, tab: Literal["Local", "Site", "Tools", "Create", "Logs"]
     ) -> None:
         """Change active tab."""
-        # self.tabbed_content.active = tab
+        self.tabbed_content.active = tab
 
     def action_site_tag_clicked(self, model_tag: str) -> None:
         """Update search box with tag"""
