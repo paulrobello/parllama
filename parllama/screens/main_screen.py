@@ -9,7 +9,7 @@ from textual.screen import Screen
 from textual.widgets import Footer, Header, Static, TabbedContent, TabPane
 
 from parllama.messages.main import PsMessage, StatusMessage
-from parllama.models.settings_data import settings, ScreenType
+from parllama.models.settings_data import ScreenType, settings
 from parllama.widgets.local_model_view import LocalModelView
 from parllama.widgets.log_view import LogView
 from parllama.widgets.model_create_view import ModelCreateView

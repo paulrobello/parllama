@@ -3,7 +3,7 @@
 from textual import on
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, Vertical
-from textual.widgets import Button, Checkbox, RichLog, Input
+from textual.widgets import Button, Checkbox, Input, RichLog
 
 from parllama.models.settings_data import settings
 

@@ -119,6 +119,7 @@ class DataManager:
             and f.lower().endswith(".json")
         ]
 
+    # pylint: disable=too-many-branches
     def refresh_site_models(
         self,
         namespace: str,

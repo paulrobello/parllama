@@ -3,7 +3,7 @@
 import os
 import shutil
 from argparse import Namespace
-from typing import Literal, TypeAlias, List
+from typing import List, Literal, TypeAlias
 
 import simplejson as json
 from pydantic import BaseModel
@@ -28,6 +28,7 @@ class Settings(BaseModel):
     site_models_namespace: str = ""
     max_log_lines: int = 1000
 
+    # pylint: disable=too-many-branches
     def __init__(self) -> None:
         """Initialize BwItemData."""
         super().__init__()
