@@ -1,11 +1,20 @@
 """Messages for application."""
 
 from dataclasses import dataclass
+from typing import Literal, Optional
 
 from rich.console import RenderableType
 from textual.message import Message
+from textual.widget import Widget
 
-from parllama.models.ollama_data import FullModel
+from ..models.ollama_data import FullModel
+
+
+@dataclass
+class AppRequest(Message):
+    """Request to app to perform an action."""
+
+    widget: Optional[Widget]
 
 
 @dataclass
@@ -18,7 +27,7 @@ class LocalModelCopied(Message):
 
 
 @dataclass
-class LocalModelCopyRequested(Message):
+class LocalModelCopyRequested(AppRequest):
     """Local model copy requested."""
 
     src_model_name: str
@@ -33,7 +42,7 @@ class SiteModelsLoaded(Message):
 
 
 @dataclass
-class SiteModelsRefreshRequested(Message):
+class SiteModelsRefreshRequested(AppRequest):
     """Site models refresh requested."""
 
     ollama_namespace: str
@@ -45,6 +54,7 @@ class StatusMessage(Message):
     """Message to update status bar."""
 
     msg: RenderableType
+    log_it: bool = True
 
 
 @dataclass
@@ -76,21 +86,40 @@ class ModelPushed(Message):
 
 
 @dataclass
-class ModelPullRequested(Message):
+class ModelCreateRequested(AppRequest):
+    """Message to notify that a model create has been requested."""
+
+    model_name: str
+    model_code: str
+    quantization_level: Optional[str]
+
+
+@dataclass
+class ModelCreated(Message):
+    """Message to notify that a model has been created."""
+
+    model_name: str
+    quantization_level: Optional[str]
+    model_code: str
+    success: bool
+
+
+@dataclass
+class ModelPullRequested(AppRequest):
     """Message to notify that a model pull has been requested."""
 
     model_name: str
 
 
 @dataclass
-class ModelPushRequested(Message):
+class ModelPushRequested(AppRequest):
     """Message to notify that a model pull has been requested."""
 
     model_name: str
 
 
 @dataclass
-class LocalModelListRefreshRequested(Message):
+class LocalModelListRefreshRequested(AppRequest):
     """Message to notify that a local model list refresh has been requested."""
 
 
@@ -102,7 +131,7 @@ class LocalModelDeleted(Message):
 
 
 @dataclass
-class LocalModelDeleteRequested(Message):
+class LocalModelDeleteRequested(AppRequest):
     """Message to notify that a local model delete has been requested."""
 
     model_name: str
@@ -142,3 +171,18 @@ class SendToClipboard(Message):
 
     message: str
     notify: bool = True
+
+
+@dataclass
+class SetModelNameLoading(Message):
+    """Set model name loading."""
+
+    model_name: str
+    loading: bool
+
+
+@dataclass
+class ChangeTab(Message):
+    """Change to requested tab."""
+
+    tab: Literal["Local", "Site", "Tools", "Create", "Logs"]

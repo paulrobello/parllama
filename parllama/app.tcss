@@ -135,9 +135,6 @@ Rule {
     margin: 0 0 1 0;
 }
 
-#main {
-    background: $background;
-}
 
 LoadingIndicator.-textual-loading-indicator {
     background: $panel;
@@ -149,4 +146,10 @@ MarkdownH1 {
 
 MarkdownH2 {
     color: $primary-darken-2;
+}
+
+Widget {
+    scrollbar-color: $primary-darken-2;
+    scrollbar-color-active: $primary;
+    scrollbar-color-hover: $primary-darken-1;
 }

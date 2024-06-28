@@ -10,10 +10,6 @@ The app is separated into 3 sections.
 |----------|-------------------------|
 | `F1`     | This help               |
 | `F10`    | Toggle dark/light theme |
-| `ctrl+l` | Local models            |
-| `ctrl+s` | Site models             |
-| `ctrl+t` | Model tools             |
-| `ctrl+d` | Debug log               |
 | `ctrl+q` | Quit the application    |
 
 
@@ -40,7 +36,8 @@ This screen displays all local models currently available to your local Ollama.
 | `enter`  | Open model details dialog                |
 | `ctrl+f` | Focus the Filter / search input          |
 | `ctrl+r` | Refresh local model grid list            |
-| `ctrl+p` | Pull selected model from Ollama.com      |
+| `p`      | Pull selected model from Ollama.com      |
+| `ctrl+p` | Pull all local models from Ollama.com    |
 | `ctrl+u` | Push selected model to Ollama.com        |
 | `ctrl+c` | Copy selected model to new name          |
 
@@ -76,8 +73,8 @@ You can use `ctrl+b` to open the model card in a web browser
 ## Model Tools Screen
 This screen allows you to access tools to create, modify, and publish models  
 
-Work in progress...
-
+## Logs Screen
+This screen allows viewing any messages that have passed through the status bar.
 
 ## Publishing
  
@@ -93,3 +90,26 @@ When you start ollama on your machine, it will create a keypair used specificall
 When you want to publish, you take the contents of id_ed25519.pub and import into [ollama settings keys](https://ollama.com/settings/keys)
 
 If you have Ollama running on multiple machines you must import each machines key into Ollama.com
+
+## Command line arguments
+```
+usage: PAR LLAMA [-h] [-v] [-d DATA_DIR] [-t THEME_NAME] [-m {dark,light}] [-s {local,site,tools,create,logs}] [--restore-defaults]
+                 [--clear-cache] [--no-save]
+
+PAR LLAMA -- Ollama TUI.
+
+options:
+  -h, --help            show this help message and exit
+  -v, --version         Show version information.
+  -d DATA_DIR, --data-dir DATA_DIR
+                        Data Directory. Defaults to ~/.parllama
+  -t THEME_NAME, --theme-name THEME_NAME
+                        Theme name. Defaults to par
+  -m {dark,light}, --theme-mode {dark,light}
+                        Dark / Light mode. Defaults to dark
+  -s {local,site,tools,create,logs}, --starting-screen {local,site,tools,create,logs}
+                        Starting screen. Defaults to local
+  --restore-defaults    Restore default settings and theme
+  --clear-cache         Clear cached data
+  --no-save             Prevent saving settings for this session.
+```

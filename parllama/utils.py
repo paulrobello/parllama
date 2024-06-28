@@ -505,6 +505,13 @@ def get_args() -> Namespace:
     )
 
     parser.add_argument(
+        "-s",
+        "--starting-screen",
+        help="Starting screen. Defaults to local",
+        choices=["local", "site", "tools", "create", "logs"],
+    )
+
+    parser.add_argument(
         "--restore-defaults",
         help="Restore default settings and theme",
         default=False,

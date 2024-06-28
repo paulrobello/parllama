@@ -3,11 +3,15 @@
 import os
 import shutil
 from argparse import Namespace
+from typing import List, Literal, TypeAlias
 
 import simplejson as json
 from pydantic import BaseModel
 
-from parllama.utils import get_args
+from ..utils import get_args
+
+ScreenType: TypeAlias = Literal["Local", "Site", "Tools", "Create", "Logs"]
+valid_screens: List[ScreenType] = ["Local", "Site", "Tools", "Create", "Logs"]
 
 
 class Settings(BaseModel):
@@ -18,9 +22,13 @@ class Settings(BaseModel):
     cache_dir: str = ""
     settings_file: str = "settings.json"
     theme_name: str = "par"
+    starting_screen: ScreenType = "Local"
+    last_screen: ScreenType = "Local"
     theme_mode: str = "dark"
     site_models_namespace: str = ""
+    max_log_lines: int = 1000
 
+    # pylint: disable=too-many-branches
     def __init__(self) -> None:
         """Initialize BwItemData."""
         super().__init__()
@@ -64,6 +72,10 @@ class Settings(BaseModel):
             self.theme_name = args.theme_name
         if args.theme_mode:
             self.theme_mode = args.theme_mode
+        if args.starting_screen:
+            self.starting_screen = args.starting_screen.capitalize()
+            if self.starting_screen not in valid_screens:
+                self.starting_screen = "Local"
 
         self.save_settings_to_file()
 
@@ -75,6 +87,15 @@ class Settings(BaseModel):
                 self.theme_name = data.get("theme_name", self.theme_name)
                 self.theme_mode = data.get("theme_mode", self.theme_mode)
                 self.site_models_namespace = data.get("site_models_namespace", "")
+                self.starting_screen = data.get("starting_screen", "Local")
+                if self.starting_screen not in valid_screens:
+                    self.starting_screen = "Local"
+
+                self.last_screen = data.get("last_screen", "Local")
+                if self.last_screen not in valid_screens:
+                    self.last_screen = self.starting_screen
+
+                self.max_log_lines = max(0, data.get("max_log_lines", 1000))
         except FileNotFoundError:
             pass  # If file does not exist, continue with default settings
 

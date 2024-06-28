@@ -1,5 +1,6 @@
 """Data classes for job queue"""
 
+from typing import Optional
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -28,3 +29,10 @@ class CopyModelJob(QueueJob):
     """Copy model job"""
 
     dstModelName: str
+
+
+class CreateModelJob(QueueJob):
+    """Create model job"""
+
+    modelCode: str
+    quantizationLevel: Optional[str]

@@ -1,28 +1,15 @@
-SiteModelsScreen {
-  & > Vertical {
-    background: $background;
-    align: left top;
-
-    & > Horizontal {
-      height: 3;
-      margin-bottom: 1;
-
-      #search {
-        height: 3;
+MainScreen {
+    #tabbed_content {
         width: 1fr;
-      }
-
-      #namespace {
-        height: 3;
-        width: 30;
-      }
+        height: 1fr;
     }
 
-    #site-model-list {
-      width: 1fr;
-      height: 1fr;
+    #PsStatusBar {
+        height: 1;
+        padding-left: 1;
+        background: $surface;
     }
-  }
+
 }
 
 ListView > SiteModelListItem.--highlight {

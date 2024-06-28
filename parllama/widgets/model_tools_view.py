@@ -1,23 +1,33 @@
-"""Screen for the model tools."""
+"""View for the model tools."""
 
 import os
 import webbrowser
 
+from textual import on
 from textual.app import ComposeResult
-from textual.containers import Vertical, VerticalScroll
-from textual.screen import Screen
-from textual.widgets import ContentSwitcher, Footer, Header, Static
+from textual.containers import Container, Vertical, VerticalScroll
+from textual.widgets import Button, ContentSwitcher, Static
 
+from parllama.messages.main import ChangeTab
 from parllama.widgets.clickable_label import CopyToClipboardLabel
 
 
-class ModelToolsScreen(Screen[None]):
-    """Screen for the model tools."""
+class ModelToolsView(Container):
+    """View for the model tools."""
 
     DEFAULT_CSS = """
-    	"""
-
-    CSS_PATH = "model_tools_screen.tcss"
+    ModelToolsView {
+      #publish_panel {
+        padding: 1;
+        border: solid $primary;
+        height: auto;
+      }
+      #pub_key {
+        border: solid $primary;
+        height: 4;
+      }
+    }
+    """
 
     BINDINGS = []
 
@@ -27,9 +37,7 @@ class ModelToolsScreen(Screen[None]):
         self.sub_title = "Model tools"
 
     def compose(self) -> ComposeResult:
-        """Compose the content of the screen."""
-        yield Header(show_clock=True)
-        yield Footer()
+        """Compose the content of the view."""
         pub_key: str = ""
         pub_key_path = os.path.join(
             os.path.expanduser("~"), ".ollama", "id_ed25519.pub"
@@ -39,7 +47,7 @@ class ModelToolsScreen(Screen[None]):
                 pub_key = f.read().strip()
         with ContentSwitcher(initial="menu"):
             with VerticalScroll(id="menu"):
-
+                yield Button("Create new model", id="new_model", variant="success")
                 with Vertical(id="publish_panel") as v:
                     v.border_title = "Setup Ollama for pushing to your namespace"
                     with Vertical(id="pub_key") as v:
@@ -50,6 +58,11 @@ class ModelToolsScreen(Screen[None]):
                         "[@click=screen.open_keys_page]Open https://ollama.com/settings/keys[/]",
                         id="open_keys_page",
                     )
+
+    @on(Button.Pressed, "#new_model")
+    def action_new_model(self) -> None:
+        """Open the new model screen."""
+        self.app.post_message(ChangeTab(tab="Create"))
 
     def action_open_keys_page(self):
         """Open the Ollama keys page."""
