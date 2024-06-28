@@ -11,6 +11,7 @@ from textual.widgets import Footer, Header, Static, TabbedContent, TabPane
 from parllama.messages.main import PsMessage, StatusMessage
 from parllama.models.settings_data import settings
 from parllama.widgets.local_model_view import LocalModelView
+from parllama.widgets.log_view import LogView
 from parllama.widgets.model_create_view import ModelCreateView
 from parllama.widgets.model_tools_view import ModelToolsView
 from parllama.widgets.site_model_view import SiteModelView
@@ -26,6 +27,7 @@ class MainScreen(Screen[None]):
     status_bar: Static
     ps_status_bar: Static
     tabbed_content: TabbedContent
+    log_view: LogView
 
     def __init__(self, **kwargs) -> None:
         """Initialize the Main screen."""
@@ -33,6 +35,7 @@ class MainScreen(Screen[None]):
         self.status_bar = Static("", id="StatusBar")
         self.ps_status_bar = Static("", id="PsStatusBar")
         self.ps_status_bar.display = False
+        self.log_view = LogView()
 
     async def on_mount(self) -> None:
         """Mount the Main screen."""
@@ -62,14 +65,15 @@ class MainScreen(Screen[None]):
             with TabPane("Create", id="Create"):
                 yield ModelCreateView(id="model_create")
             with TabPane("Logs", id="Logs"):
-                assert hasattr(self.app, "log_view")
-                yield self.app.log_view
+                yield self.log_view
 
     @on(StatusMessage)
     def on_status_message(self, msg: StatusMessage) -> None:
         """Status message event"""
         # msg.stop()
         self.update_status(msg.msg)
+        if msg.log_it:
+            self.log_view.richlog.write(msg.msg)
 
     def update_status(self, msg: RenderableType):
         """Update the status bar."""

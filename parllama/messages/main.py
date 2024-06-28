@@ -54,6 +54,7 @@ class StatusMessage(Message):
     """Message to update status bar."""
 
     msg: RenderableType
+    log_it: bool = True
 
 
 @dataclass

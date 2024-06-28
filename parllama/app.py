@@ -57,7 +57,6 @@ from parllama.models.jobs import (
 from parllama.models.settings_data import settings
 from parllama.screens.main_screen import MainScreen
 from parllama.theme_manager import theme_manager
-from parllama.widgets.log_view import LogView
 
 
 class ParLlamaApp(App[None]):
@@ -94,7 +93,6 @@ class ParLlamaApp(App[None]):
     job_queue: Queue[QueueJob]
     is_busy: bool = False
     last_status: RenderableType = ""
-    log_view: LogView
 
     def __init__(self) -> None:
         """Initialize the application."""
@@ -108,7 +106,6 @@ class ParLlamaApp(App[None]):
         self.is_busy = False
         self.is_refreshing = False
         self.last_status = ""
-        self.log_view = LogView()
         self.main_screen = MainScreen()
 
     def _watch_dark(self, value: bool) -> None:
@@ -360,7 +357,9 @@ class ParLlamaApp(App[None]):
                 if pb:
                     parts.append(pb)
 
-                self.main_screen.post_message(StatusMessage(Columns(parts)))
+                self.main_screen.post_message(
+                    StatusMessage(Columns(parts), log_it=False)
+                )
             return last_status
         except ollama.ResponseError as e:
             self.main_screen.post_message(
@@ -586,11 +585,6 @@ class ParLlamaApp(App[None]):
         self.notify(msg, severity=severity)
         self.main_screen.post_message(StatusMessage(msg))
 
-    @on(StatusMessage)
-    def on_status_message(self, msg: StatusMessage) -> None:
-        """Status message event"""
-        self.logit(msg.msg)
-
     def post_message_all(self, msg: Message) -> None:
         """Post a message to all screens"""
         if isinstance(msg, StatusMessage):
@@ -600,11 +594,6 @@ class ParLlamaApp(App[None]):
             w.post_message(msg)
         if self.main_screen:
             self.main_screen.post_message(msg)
-
-    def logit(self, renderable: RenderableType) -> None:
-        """Write to logs to log view."""
-        if isinstance(renderable, str):
-            self.log_view.richlog.write(renderable)
 
     @on(ChangeTab)
     def on_change_tab(self, msg: ChangeTab) -> None:
