@@ -34,6 +34,11 @@ Pull the docker image ollama/quantize
 docker pull ollama/quantize
 ```
 
+## Installing from mypi using pipx
+```bash
+pipx install parllama
+```
+
 ## Installing from mypi using pip
 Create a virtual environment and install using pip
 ```bash
@@ -42,11 +47,6 @@ cd parllama
 python -m venv venv
 source venv/Scripts/activate
 pip install parllama
-```
-
-## Installing from mypi using pipx
-```bash
-pipx install parllama
 ```
 
 ## Installing for dev mode
@@ -58,8 +58,8 @@ make first-setup
 
 ## Command line arguments
 ```
-usage: PAR LLAMA [-h] [-v] [-d DATA_DIR] [-t THEME_NAME] [-m {dark,light}] [-s {local,site,tools,create,logs}] [--restore-defaults]
-                 [--clear-cache] [--no-save]
+usage: parllama [-h] [-v] [-d DATA_DIR] [-t THEME_NAME] [-m {dark,light}] [-s {local,site,tools,create,logs}] [--restore-defaults]
+                [--clear-cache] [--no-save]
 
 PAR LLAMA -- Ollama TUI.
 
