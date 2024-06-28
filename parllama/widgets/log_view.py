@@ -3,7 +3,7 @@
 from textual import on
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, Vertical
-from textual.widgets import Button, Checkbox, Input, RichLog
+from textual.widgets import Button, Checkbox, Input, Label, RichLog
 
 from parllama.models.settings_data import settings
 
@@ -12,6 +12,22 @@ class LogView(Container):
     """Widget for viewing application logs."""
 
     DEFAULT_CSS = """
+    LogView {
+      #tool_bar {
+        height: 3;
+        background: $surface-darken-1;
+        #max_lines {
+          width: 10;
+        }
+        Label {
+          margin-top: 1;
+          background: transparent;
+        }
+      }
+      #logs {
+        border: solid $primary;
+      }
+    }
     """
 
     richlog: RichLog
@@ -37,6 +53,7 @@ class LogView(Container):
         with Vertical(id="menu"):
             with Horizontal(id="tool_bar"):
                 yield self.auto_scroll
+                yield Label("Max Lines: ")
                 yield self.max_lines_input
                 yield Button("Clear", id="clear", variant="warning")
             yield self.richlog

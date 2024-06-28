@@ -1,4 +1,4 @@
-LocalModelsScreen {
+MainScreen {
     #tabbed_content {
         width: 1fr;
         height: 1fr;
@@ -10,47 +10,6 @@ LocalModelsScreen {
         background: $surface;
     }
 
-}
-
-LocalModelView {
-    height: 1fr;
-    width: 1fr;
-    #search {
-        margin-bottom: 1;
-    }
-    GridList {
-        min-height: 1fr;
-    }
-}
-
-SiteModelView {
-  height: 1fr;
-  width: 1fr;
-  background: blue;
-  & > Vertical {
-    background: $background;
-    align: left top;
-
-    & > Horizontal {
-      height: 3;
-      margin-bottom: 1;
-
-      #search {
-        height: 3;
-        width: 1fr;
-      }
-
-      #namespace {
-        height: 3;
-        width: 30;
-      }
-    }
-
-    #site-model-list {
-      width: 1fr;
-      height: 1fr;
-    }
-  }
 }
 
 ListView > SiteModelListItem.--highlight {
@@ -70,57 +29,5 @@ ListView:focus > SiteModelListItem.--highlight {
 
   & > Widget:hover {
     background: $surface;
-  }
-}
-
-LogView {
-  #tool_bar {
-    height: 3;
-    background: $panel;
-  }
-  #logs {
-    border: solid $primary;
-  }
-}
-
-ModelToolsView {
-  #publish_panel {
-    padding: 1;
-    border: solid $primary;
-    height: auto;
-  }
-  #pub_key {
-    border: solid $primary;
-    height: 4;
-  }
-}
-
-CreateModelView {
-  #name_quantize_row {
-    height: 3;
-    #model_name{
-      width: 2fr;
-      height: 3;
-    }
-    #ql {
-      height: 3;
-      width: 1fr;
-      Label {
-        width: 16;
-        height: 1;
-        margin: 1;
-      }
-      #quantize_level {
-        width: 1fr;
-        height: 3;
-      }
-    }
-  }
-  #editor {
-    border: double $background;
-    border-title-color: $accent;
-  }
-  #editor:focus {
-    border: double $accent;
   }
 }

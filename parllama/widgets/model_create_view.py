@@ -15,6 +15,35 @@ class ModelCreateView(Container):
     """Create new model view."""
 
     DEFAULT_CSS = """
+    ModelCreateView {
+      #name_quantize_row {
+        height: 3;
+        #model_name{
+          width: 2fr;
+          height: 3;
+        }
+        #ql {
+          height: 3;
+          width: 1fr;
+          Label {
+            width: 16;
+            height: 1;
+            margin: 1;
+          }
+          #quantize_level {
+            width: 1fr;
+            height: 3;
+          }
+        }
+      }
+      #editor {
+        border: double $background;
+        border-title-color: $accent;
+      }
+      #editor:focus {
+        border: double $accent;
+      }
+    }
 	"""
 
     BINDINGS = []

@@ -16,7 +16,18 @@ class ModelToolsView(Container):
     """View for the model tools."""
 
     DEFAULT_CSS = """
-    	"""
+    ModelToolsView {
+      #publish_panel {
+        padding: 1;
+        border: solid $primary;
+        height: auto;
+      }
+      #pub_key {
+        border: solid $primary;
+        height: 4;
+      }
+    }
+    """
 
     BINDINGS = []
 

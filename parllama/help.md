@@ -73,6 +73,8 @@ You can use `ctrl+b` to open the model card in a web browser
 ## Model Tools Screen
 This screen allows you to access tools to create, modify, and publish models  
 
+## Logs Screen
+This screen allows viewing any messages that have passed through the status bar.
 
 ## Publishing
  

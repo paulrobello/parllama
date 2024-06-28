@@ -85,6 +85,18 @@ class LocalModelView(Container):
         # Binding(key="ctrl+t", action="app.toggle_dark", description="Toggle Dark Mode"),
         # Binding(key="f1", action="app.help", description="Help"),
     ]
+    DEFAULT_CSS = """
+    LocalModelView {
+        height: 1fr;
+        width: 1fr;
+        #search {
+            margin-bottom: 1;
+        }
+        GridList {
+            min-height: 1fr;
+        }
+    }
+    """
     search_input: FilterInput
 
     def __init__(self, **kwargs) -> None:

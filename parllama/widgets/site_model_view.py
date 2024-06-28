@@ -27,6 +27,35 @@ class SiteModelView(Container):
     """Site model view"""
 
     DEFAULT_CSS = """
+    SiteModelView {
+      height: 1fr;
+      width: 1fr;
+      background: blue;
+      & > Vertical {
+        background: $background;
+        align: left top;
+    
+        & > Horizontal {
+          height: 3;
+          margin-bottom: 1;
+    
+          #search {
+            height: 3;
+            width: 1fr;
+          }
+    
+          #namespace {
+            height: 3;
+            width: 30;
+          }
+        }
+    
+        #site-model-list {
+          width: 1fr;
+          height: 1fr;
+        }
+      }
+    }
     """
 
     BINDINGS = [
@@ -97,7 +126,7 @@ class SiteModelView(Container):
 
     def _on_show(self, event: Show) -> None:
         """Focus the search on show"""
-        self.set_timer(0.25, self.namespace_input.focus)
+        self.set_timer(0.1, self.search_input.focus)
 
     async def on_list_view_highlighted(self, event: ListView.Highlighted) -> None:
         """Update search field with model name"""
