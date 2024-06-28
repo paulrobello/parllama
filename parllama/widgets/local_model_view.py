@@ -1,7 +1,7 @@
 """Local Model View"""
 
 from functools import partial
-from typing import List, cast
+from typing import List
 
 from textual import on
 from textual.app import ComposeResult
@@ -107,8 +107,8 @@ class LocalModelView(Container):
         self.grid = GridList(id="grid_view")
 
     def _on_show(self, event: Show) -> None:
-        """ "Focus the search on show"""
-        self.set_timer(0.25, self.search_input.focus)
+        """Focus the search on show"""
+        self.search_input.focus()
 
     def compose(self) -> ComposeResult:
         """Compose the Main screen."""
@@ -118,8 +118,8 @@ class LocalModelView(Container):
                 yield from dm.models
 
     async def on_mount(self) -> None:
-        """Mount the Main screen."""
-        self.set_timer(0.25, self.action_refresh_models)
+        """Mount the view."""
+        self.action_refresh_models()
 
     def action_refresh_models(self):
         """Refresh the models."""
@@ -154,9 +154,9 @@ class LocalModelView(Container):
     def on_model_data_loaded(self, msg: LocalModelListLoaded) -> None:
         """Rebuild model grid."""
         msg.stop()
-        model_name: str = ""
-        if self.grid.selected:
-            model_name = self.grid.selected.model.name
+        # model_name: str = ""
+        # if self.grid.selected:
+        #     model_name = self.grid.selected.model.name
 
         to_remove: List[Widget] = []
         for child in self.grid.children:
@@ -169,11 +169,11 @@ class LocalModelView(Container):
         self.grid.loading = False
         if self.search_input.value:
             self.grid.filter(self.search_input.value)
-        if self.parent and cast(Widget, self.parent).has_focus:
-            if model_name:
-                self.grid.select_by_name(model_name)
-            else:
-                self.grid.select_first_item()
+        # if self.parent and cast(Widget, self.parent).has_focus:
+        #     if model_name:
+        #         self.grid.select_by_name(model_name)
+        #     else:
+        #         self.grid.select_first_item()
 
     @on(LocalModelDeleteRequested)
     def on_model_delete_requested(self, msg: LocalModelDeleteRequested) -> None:
@@ -196,20 +196,20 @@ class LocalModelView(Container):
 
     @on(LocalModelDeleted)
     def on_model_deleted(self, msg: LocalModelDeleted) -> None:
-        """Model deleted event"""
+        """Model deleted remove item from grid."""
         msg.stop()
         self.grid.remove_item(msg.model_name)
         self.grid.action_select_left()
 
     @on(ShowLocalModel)
     def on_show_model(self, msg: ShowLocalModel) -> None:
-        """Show model"""
+        """Show model details"""
         msg.stop()
         self.app.push_screen(ModelDetailsDialog(msg.model))
 
     @on(ModelPulled)
     def on_model_pulled(self, msg: ModelPulled) -> None:
-        """Model pulled event"""
+        """Model pulled turn off loading indicator."""
         msg.stop()
         self.grid.set_item_loading(msg.model_name, False)
 

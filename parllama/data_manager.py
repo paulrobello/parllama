@@ -3,7 +3,6 @@
 import os.path
 import re
 from datetime import datetime
-from os import PathLike
 from typing import (
     Any,
     Dict,
@@ -216,12 +215,15 @@ class DataManager:
     @staticmethod
     def create_model(
         model_name: str,
-        model_code: str | PathLike,
+        model_code: str,
         quantize_level: Optional[str] = None,
     ) -> Iterator[Dict[str, Any]]:
         """Create a new model."""
         return ollama.create(
-            model=model_name, modelfile=str(model_code), quantize=quantize_level, stream=True
+            model=model_name,
+            modelfile=model_code,
+            quantize=quantize_level,
+            stream=True,
         )  # type: ignore
 
     @staticmethod

@@ -1,6 +1,7 @@
 """Grid list of models."""
 
 import webbrowser
+from typing import Optional
 
 from textual.binding import Binding
 from textual.containers import Grid
@@ -64,22 +65,22 @@ class GridList(Grid, can_focus=False):
         align: left top;
     }
     """
-    selected: Reactive[LocalModelListItem | None] = Reactive(None)
-    old_selected: LocalModelListItem | None = None
+    selected: Reactive[Optional[LocalModelListItem]] = Reactive(None)
+    old_selected: Optional[LocalModelListItem] = None
 
     def __init__(self, **kwargs) -> None:
         """Initialise the widget."""
         super().__init__(**kwargs)
-        self.can_focus = False
 
     def watch_selected(self, selected: LocalModelListItem | None) -> None:
         """Watch the selected item."""
-        if self.old_selected and self.old_selected != selected:
-            self.old_selected.set_class(False, "--highlight")
-        self.old_selected = selected
-        if selected:
-            selected.set_class(True, "--highlight")
-            selected.focus()
+        if self.old_selected != selected:
+            if self.old_selected:
+                self.old_selected.set_class(False, "--highlight")
+            if selected:
+                selected.set_class(True, "--highlight")
+                selected.focus()
+            self.old_selected = selected
 
     def select_first_item(self):
         """Select the first item."""
@@ -272,7 +273,7 @@ class GridList(Grid, can_focus=False):
 
     def filter(self, value: str) -> None:
         """Filter the list use value from search / filter box."""
-        first_visible: Widget | None = None
+        first_visible: Optional[Widget] = None
         num_visible: int = 0
         for item in self.query(LocalModelListItem):
             if not value:

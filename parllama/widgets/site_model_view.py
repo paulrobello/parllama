@@ -1,7 +1,7 @@
 """Site Model View"""
 
 import webbrowser
-from typing import cast
+from typing import Optional, cast
 
 from textual import on
 from textual.app import ComposeResult
@@ -79,7 +79,7 @@ class SiteModelView(Container):
         ),
     ]
     lv: SiteModelListView
-    item: SiteModelListItem | None = None
+    item: Optional[SiteModelListItem] = None
     search_input: Input
 
     def __init__(self, **kwargs) -> None:
@@ -126,7 +126,7 @@ class SiteModelView(Container):
 
     def _on_show(self, event: Show) -> None:
         """Focus the search on show"""
-        self.set_timer(0.1, self.search_input.focus)
+        self.search_input.focus()
 
     async def on_list_view_highlighted(self, event: ListView.Highlighted) -> None:
         """Update search field with model name"""

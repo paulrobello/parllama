@@ -5,12 +5,15 @@ from typing import List, cast
 
 import humanize
 import ollama
+from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import VerticalScroll
+from textual.events import Focus
 from textual.screen import ModalScreen
-from textual.widgets import MarkdownViewer, Static, TextArea
+from textual.widgets import Button, MarkdownViewer, Static, TextArea
 
+from ..messages.main import CreateModelFromExistingRequested
 from ..models.ollama_data import FullModel, MessageRoles
 from ..widgets.field_set import FieldSet
 
@@ -57,9 +60,9 @@ class ModelDetailsDialog(ModalScreen[None]):
 
     def compose(self) -> ComposeResult:
         """Compose the content of the dialog."""
-        vs = VerticalScroll()
-        vs.border_title = f"[ {self.model.name} ]"
-        with vs:
+        with VerticalScroll() as vs:
+            vs.border_title = f"[ {self.model.name} ]"
+            yield Button("Copy to create", id="copy_to_create")
             # yield FieldSet("Name", Static(self.model.name, id="name"))
             yield FieldSet(
                 "Modified", Static(str(self.model.modified_at), id="modified_at")
@@ -131,3 +134,22 @@ class ModelDetailsDialog(ModalScreen[None]):
             )
             md.border_title = "Messages"
             yield md
+
+    async def on_mount(self) -> None:
+        """Mount the view."""
+        self.query_one("#copy_to_create").focus()
+
+    @on(Button.Pressed, "#copy_to_create")
+    def copy_to_create(self, event: Button.Pressed) -> None:
+        """Copy model to create screen."""
+        event.stop()
+        with self.prevent(Focus):
+            self.app.pop_screen()
+        self.app.post_message(
+            CreateModelFromExistingRequested(
+                widget=None,
+                model_name=self.model.name,
+                model_code=self.model.modelfile,
+                quantization_level=None,
+            )
+        )

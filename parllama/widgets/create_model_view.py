@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from textual import on
 from textual.app import ComposeResult
+from textual.binding import Binding
 from textual.containers import Container, Horizontal, VerticalScroll
+from textual.events import Show
 from textual.widgets import Button, Input, Label, TextArea
 
 from parllama.dialogs.error_dialog import ErrorDialog
-from parllama.messages.main import ModelCreateRequested
+from parllama.messages.main import ChangeTab, ModelCreateRequested
 
 
 class ModelCreateView(Container):
@@ -44,9 +46,11 @@ class ModelCreateView(Container):
         border: double $accent;
       }
     }
-	"""
+    """
 
-    BINDINGS = []
+    BINDINGS = [
+        Binding("ctrl+c", "app.copy_to_clipboard", "", show=True),
+    ]
 
     text_area: TextArea
 
@@ -77,9 +81,9 @@ class ModelCreateView(Container):
             yield self.text_area
             yield self.create_button
 
-    def on_mount(self) -> None:
-        """Configure the dialog once the DOM is ready."""
-        # self.name_input.focus()
+    def _on_show(self, event: Show) -> None:
+        """Focus the name on show"""
+        self.name_input.focus()
 
     @on(Button.Pressed, "#create_button")
     def action_create_model(self) -> None:
@@ -97,7 +101,7 @@ class ModelCreateView(Container):
                 ErrorDialog(title="Input Error", message="Please enter a model code")
             )
             return
-        self.post_message(
+        self.app.post_message(
             ModelCreateRequested(
                 widget=self,
                 model_name=name,
@@ -105,3 +109,4 @@ class ModelCreateView(Container):
                 quantization_level=quantization_level,
             )
         )
+        self.app.post_message(ChangeTab(tab="Local"))

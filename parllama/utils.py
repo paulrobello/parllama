@@ -23,7 +23,7 @@ from typing import Any, Dict, Generator, List, Union
 from textual.widgets import Button, Input
 from textual.widgets._button import ButtonVariant
 
-from parllama import __application_title__, __version__
+from parllama import __application_binary__, __application_title__, __version__
 from parllama.icons import PENCIL_EMOJI, TRASH_EMOJI
 
 DECIMAL_PRECESSION = 5
@@ -477,7 +477,7 @@ def get_args() -> Namespace:
 
     # Create the parser object.
     parser = ArgumentParser(
-        prog=__application_title__,
+        prog=__application_binary__,
         description=f"{__application_title__} -- Ollama TUI.",
         epilog=f"v{__version__}",
     )

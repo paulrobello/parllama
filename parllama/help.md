@@ -93,8 +93,8 @@ If you have Ollama running on multiple machines you must import each machines ke
 
 ## Command line arguments
 ```
-usage: PAR LLAMA [-h] [-v] [-d DATA_DIR] [-t THEME_NAME] [-m {dark,light}] [-s {local,site,tools,create,logs}] [--restore-defaults]
-                 [--clear-cache] [--no-save]
+usage: parllama [-h] [-v] [-d DATA_DIR] [-t THEME_NAME] [-m {dark,light}] [-s {local,site,tools,create,logs}] [--restore-defaults]
+                [--clear-cache] [--no-save]
 
 PAR LLAMA -- Ollama TUI.
 

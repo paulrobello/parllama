@@ -10,7 +10,7 @@ from parllama.models.ollama_data import FullModel
 from parllama.widgets.field_set import FieldSet
 
 
-class LocalModelListItem(Widget):
+class LocalModelListItem(Widget, can_focus=True):
     """Local Model List Item."""
 
     DEFAULT_CSS = """
@@ -41,7 +41,6 @@ class LocalModelListItem(Widget):
         """Initialize the item."""
         super().__init__()
         self.model = model
-        self.can_focus = True
 
     def watch_has_focus(self, value: bool) -> None:
         """Watch the has_focus property and updated parent selected."""
