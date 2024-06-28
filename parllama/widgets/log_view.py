@@ -3,7 +3,9 @@
 from textual import on
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, Vertical
-from textual.widgets import Button, Checkbox, RichLog
+from textual.widgets import Button, Checkbox, RichLog, Input
+
+from parllama.models.settings_data import settings
 
 
 class LogView(Container):
@@ -13,6 +15,7 @@ class LogView(Container):
     """
 
     richlog: RichLog
+    max_lines_input: Input
 
     def __init__(self, **kwargs) -> None:
         """Initialise the screen."""
@@ -20,6 +23,13 @@ class LogView(Container):
         self.sub_title = "Application Logs"
         self.richlog = RichLog(id="logs", wrap=True, highlight=True, auto_scroll=True)
         self.auto_scroll = Checkbox(label="Auto Scroll", value=True, id="auto_scroll")
+        self.max_lines_input = Input(
+            id="max_lines",
+            placeholder="Max Lines",
+            value=str(settings.max_log_lines),
+            type="integer",
+        )
+        self.richlog.max_lines = int(self.max_lines_input.value)
 
     def compose(self) -> ComposeResult:
         """Compose the content of the view."""
@@ -27,6 +37,7 @@ class LogView(Container):
         with Vertical(id="menu"):
             with Horizontal(id="tool_bar"):
                 yield self.auto_scroll
+                yield self.max_lines_input
                 yield Button("Clear", id="clear", variant="warning")
             yield self.richlog
 
@@ -41,3 +52,11 @@ class LogView(Container):
     def on_clear_pressed(self) -> None:
         """Handle clear button press"""
         self.richlog.clear()
+
+    @on(Input.Changed, "#max_lines")
+    def on_max_lines_changed(self, event: Input.Changed) -> None:
+        """Handle max lines input change"""
+        max_lines: int = max(0, int(event.value or "0"))
+        self.richlog.max_lines = max_lines
+        settings.max_log_lines = max_lines
+        settings.save_settings_to_file()

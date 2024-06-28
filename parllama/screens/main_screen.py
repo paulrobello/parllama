@@ -1,6 +1,6 @@
 """Main screen for TUI."""
 
-from typing import Literal
+from typing import Literal, cast
 
 from rich.console import RenderableType
 from textual import on
@@ -9,7 +9,7 @@ from textual.screen import Screen
 from textual.widgets import Footer, Header, Static, TabbedContent, TabPane
 
 from parllama.messages.main import PsMessage, StatusMessage
-from parllama.models.settings_data import settings
+from parllama.models.settings_data import settings, ScreenType
 from parllama.widgets.local_model_view import LocalModelView
 from parllama.widgets.log_view import LogView
 from parllama.widgets.model_create_view import ModelCreateView
@@ -66,6 +66,13 @@ class MainScreen(Screen[None]):
                 yield ModelCreateView(id="model_create")
             with TabPane("Logs", id="Logs"):
                 yield self.log_view
+
+    @on(TabbedContent.TabActivated)
+    def on_tab_activated(self, msg: TabbedContent.TabActivated) -> None:
+        """Tab activated event"""
+        msg.stop()
+        settings.last_screen = cast(ScreenType, msg.tab.label.plain)
+        settings.save_settings_to_file()
 
     @on(StatusMessage)
     def on_status_message(self, msg: StatusMessage) -> None:
