@@ -1,7 +1,7 @@
 """Local Model View"""
 
 from functools import partial
-from typing import List
+from typing import List, cast
 
 from textual import on
 from textual.app import ComposeResult
@@ -169,7 +169,7 @@ class LocalModelView(Container):
         self.grid.loading = False
         if self.search_input.value:
             self.grid.filter(self.search_input.value)
-        if self.parent.has_focus:
+        if self.parent and cast(Widget, self.parent).has_focus:
             if model_name:
                 self.grid.select_by_name(model_name)
             else:

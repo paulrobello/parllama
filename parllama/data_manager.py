@@ -221,7 +221,7 @@ class DataManager:
     ) -> Iterator[Dict[str, Any]]:
         """Create a new model."""
         return ollama.create(
-            model=model_name, modelfile=model_code, quantize=quantize_level, stream=True
+            model=model_name, modelfile=str(model_code), quantize=quantize_level, stream=True
         )  # type: ignore
 
     @staticmethod
