@@ -143,9 +143,3 @@ Themes have a dark and light mode are in the following format:
 You must specify at least one of light or dark for the theme to be usable.  
 
 Theme can be changed via command line with the ```--theme-name``` option.
-
-
-# Changelog
-
-### 0.2.0
-Initial Release
