@@ -18,7 +18,7 @@ from decimal import Decimal
 from io import StringIO
 from os import listdir
 from os.path import isfile, join
-from typing import Any, Dict, Generator, List, Union
+from typing import Any, Dict, Generator, List, Literal, TypeAlias, Union
 
 from textual.widgets import Button, Input
 from textual.widgets._button import ButtonVariant
@@ -27,6 +27,9 @@ from parllama import __application_binary__, __application_title__, __version__
 from parllama.icons import PENCIL_EMOJI, TRASH_EMOJI
 
 DECIMAL_PRECESSION = 5
+
+ScreenType: TypeAlias = Literal["Local", "Site", "Tools", "Create", "Logs", "Chat"]
+valid_screens: List[ScreenType] = ["Local", "Site", "Tools", "Create", "Logs", "Chat"]
 
 
 def id_generator(
@@ -508,7 +511,7 @@ def get_args() -> Namespace:
         "-s",
         "--starting-screen",
         help="Starting screen. Defaults to local",
-        choices=["local", "site", "tools", "create", "logs"],
+        choices=[s.lower() for s in valid_screens],
     )
 
     parser.add_argument(

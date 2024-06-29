@@ -12,6 +12,7 @@ from typing import (
     Literal,
     Mapping,
     Optional,
+    Tuple,
     Union,
 )
 
@@ -71,6 +72,10 @@ class DataManager:
         """Refresh all local model data."""
         self.models = self._get_all_model_data()
         return self.models
+
+    def get_model_select_options(self) -> List[Tuple[str, str]]:
+        """Get select options."""
+        return [(model.model.name, model.model.name) for model in self.models]
 
     @staticmethod
     def model_ps() -> List[dict[str, Any]]:

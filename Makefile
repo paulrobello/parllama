@@ -33,6 +33,13 @@ clear_cache:	        # Clear application cache
 dev:	        # Run in dev mode
 	$(run) textual run --dev $(lib).app:ParLlamaApp
 
+.PHONY: chat_dev
+chat_dev:	        # Run in dev mode
+	$(run) textual run --dev $(lib).app:ParLlamaApp -s chat
+
+.PHONY: chat
+chat:	        # Run in dev mode
+	$(python) -m $(lib) -s chat
 
 .PHONY: debug
 debug:	        # Run in debug mode

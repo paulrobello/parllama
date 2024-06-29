@@ -3,15 +3,11 @@
 import os
 import shutil
 from argparse import Namespace
-from typing import List, Literal, TypeAlias
 
 import simplejson as json
 from pydantic import BaseModel
 
-from ..utils import get_args
-
-ScreenType: TypeAlias = Literal["Local", "Site", "Tools", "Create", "Logs"]
-valid_screens: List[ScreenType] = ["Local", "Site", "Tools", "Create", "Logs"]
+from ..utils import ScreenType, get_args, valid_screens
 
 
 class Settings(BaseModel):

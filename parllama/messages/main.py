@@ -195,3 +195,8 @@ class ChangeTab(Message):
     """Change to requested tab."""
 
     tab: Literal["Local", "Site", "Tools", "Create", "Logs"]
+
+
+@dataclass
+class RegisterForUpdates(AppRequest):
+    """Register widget for updates."""
