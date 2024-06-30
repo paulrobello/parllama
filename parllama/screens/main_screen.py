@@ -112,9 +112,7 @@ class MainScreen(Screen[None]):
         self.ps_status_bar.update(msg)
         self.ps_status_bar.display = bool(msg)
 
-    def change_tab(
-        self, tab: ScreenType
-    ) -> None:
+    def change_tab(self, tab: ScreenType) -> None:
         """Change active tab."""
         self.tabbed_content.active = tab
 

@@ -18,6 +18,11 @@ class AppRequest(Message):
 
 
 @dataclass
+class RegisterForUpdates(AppRequest):
+    """Register widget for updates."""
+
+
+@dataclass
 class LocalModelCopied(Message):
     """Message to notify screen that local model has been copied."""
 
@@ -184,7 +189,7 @@ class SendToClipboard(Message):
 
 @dataclass
 class SetModelNameLoading(Message):
-    """Set model name loading."""
+    """Set model name loading indicator."""
 
     model_name: str
     loading: bool
@@ -195,8 +200,3 @@ class ChangeTab(Message):
     """Change to requested tab."""
 
     tab: Literal["Local", "Site", "Tools", "Create", "Logs"]
-
-
-@dataclass
-class RegisterForUpdates(AppRequest):
-    """Register widget for updates."""

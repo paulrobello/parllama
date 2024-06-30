@@ -48,6 +48,7 @@ from parllama.messages.main import (
     SiteModelsRefreshRequested,
     StatusMessage,
 )
+from parllama.models.chat_manager import ChatManager
 from parllama.models.jobs import (
     CopyModelJob,
     CreateModelJob,
@@ -94,6 +95,7 @@ class ParLlamaApp(App[None]):
     job_queue: Queue[QueueJob]
     is_busy: bool = False
     last_status: RenderableType = ""
+    chat_manager: ChatManager
 
     def __init__(self) -> None:
         """Initialize the application."""
@@ -108,6 +110,7 @@ class ParLlamaApp(App[None]):
         self.is_refreshing = False
         self.last_status = ""
         self.main_screen = MainScreen()
+        self.chat_manager = ChatManager(self)
 
     def _watch_dark(self, value: bool) -> None:
         """Watch the dark property."""
@@ -507,6 +510,18 @@ class ParLlamaApp(App[None]):
             self.post_message_all(LocalModelListLoaded())
         finally:
             self.is_refreshing = False
+
+    @work()
+    async def send_chat(self, model_name: str, msg: str) -> None:
+        """Send a chat message to a model"""
+        ret = await self.chat_manager.get_or_create_session(
+            "New Session", model_name, None
+        ).send_chat(msg)
+        if not ret:
+            self.status_notify(
+                f"Failed to send chat to {model_name}",
+                severity="error",
+            )
 
     @on(LocalModelListLoaded)
     def on_model_data_loaded(self) -> None:
