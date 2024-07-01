@@ -1,10 +1,13 @@
 """Model for application settings."""
 
+import functools
 import os
 import shutil
 from argparse import Namespace
+from functools import cache
 from typing import List, Literal, TypeAlias
 
+import ollama
 import simplejson as json
 from pydantic import BaseModel
 
@@ -27,6 +30,7 @@ class Settings(BaseModel):
     theme_mode: str = "dark"
     site_models_namespace: str = ""
     max_log_lines: int = 1000
+    ollama_host: str = "http://localhost:11434"
 
     # pylint: disable=too-many-branches
     def __init__(self) -> None:
@@ -62,6 +66,14 @@ class Settings(BaseModel):
                 shutil.rmtree(self.cache_dir, ignore_errors=True)
 
         self.load_from_file()
+        url = os.environ.get("OLLAMA_HOST")
+        if args.ollama_url:
+            url = args.ollama_url
+        if url:
+            if not (url.startswith("http://") or url.startswith("https://")):
+                raise ValueError("Ollama URL must start with http:// or https://")
+            self.ollama_host = url
+
         if os.environ.get("PARLLAMA_THEME_NAME"):
             self.theme_name = os.environ.get("PARLLAMA_THEME_NAME", self.theme_name)
 
@@ -84,6 +96,12 @@ class Settings(BaseModel):
         try:
             with open(self.settings_file, mode="rt", encoding="utf-8") as f:
                 data = json.load(f)
+                url = data.get("ollama_host", self.ollama_host)
+
+                if url.startswith("http://") or url.startswith("https://"):
+                    self.ollama_host = url
+                else:
+                    print("ollama_host must start with http:// or https://")
                 self.theme_name = data.get("theme_name", self.theme_name)
                 self.theme_mode = data.get("theme_mode", self.theme_mode)
                 self.site_models_namespace = data.get("site_models_namespace", "")
@@ -116,6 +134,11 @@ class Settings(BaseModel):
         """Ensure the cache folder exists."""
         if not os.path.exists(self.cache_dir):
             os.mkdir(self.cache_dir)
+
+    @functools.cached_property
+    def ollama_client(self) -> ollama.Client:
+        """Get the ollama client."""
+        return ollama.Client(host=self.ollama_host)
 
 
 settings = Settings()
