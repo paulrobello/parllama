@@ -93,8 +93,8 @@ If you have Ollama running on multiple machines you must import each machines ke
 
 ## Command line arguments
 ```
-usage: parllama [-h] [-v] [-d DATA_DIR] [-t THEME_NAME] [-m {dark,light}] [-s {local,site,tools,create,logs}] [--restore-defaults]
-                [--clear-cache] [--no-save]
+usage: parllama [-h] [-v] [-d DATA_DIR] [-u OLLAMA_URL] [-t THEME_NAME] [-m {dark,light}] [-s {local,site,tools,create,logs}]
+                [--restore-defaults] [--clear-cache] [--no-save]
 
 PAR LLAMA -- Ollama TUI.
 
@@ -103,6 +103,8 @@ options:
   -v, --version         Show version information.
   -d DATA_DIR, --data-dir DATA_DIR
                         Data Directory. Defaults to ~/.parllama
+  -u OLLAMA_URL, --ollama-url OLLAMA_URL
+                        URL of your Ollama instance. Defaults to http://localhost:11434
   -t THEME_NAME, --theme-name THEME_NAME
                         Theme name. Defaults to par
   -m {dark,light}, --theme-mode {dark,light}

@@ -19,7 +19,6 @@ from typing import (
 import docker  # type: ignore
 import docker.errors  # type: ignore
 import docker.types  # type: ignore
-import ollama
 import requests
 import simplejson as json
 from bs4 import BeautifulSoup
@@ -51,15 +50,14 @@ class DataManager:
         self.models = []
         self.site_models = []
 
-    @staticmethod
-    def _get_all_model_data() -> List[LocalModelListItem]:
+    def _get_all_model_data(self) -> List[LocalModelListItem]:
         """Get all model data."""
         all_models: List[LocalModelListItem] = []
-        res = ModelListPayload(**ollama.list())
+        res = ModelListPayload(**settings.ollama_client.list())
         pattern = r"^(# Modelfile .*)\n(# To build.*)\n# (FROM .*\n)\n(FROM .*)\n(.*)$"
         replacement = r"\3\5"
         for model in res.models:
-            res2 = ModelShowPayload(**ollama.show(model.name))
+            res2 = ModelShowPayload(**settings.ollama_client.show(model.name))
 
             res2.modelfile = re.sub(
                 pattern, replacement, res2.modelfile, flags=re.MULTILINE | re.IGNORECASE
@@ -89,16 +87,16 @@ class DataManager:
     @staticmethod
     def pull_model(model_name: str) -> Iterator[Dict[str, Any]]:
         """Pull a model."""
-        return ollama.pull(model_name, stream=True)  # type: ignore
+        return settings.ollama_client.pull(model_name, stream=True)  # type: ignore
 
     @staticmethod
     def push_model(model_name: str) -> Iterator[Dict[str, Any]]:
         """Push a model."""
-        return ollama.push(model_name, stream=True)  # type: ignore
+        return settings.ollama_client.push(model_name, stream=True)  # type: ignore
 
     def delete_model(self, model_name: str) -> bool:
         """Delete a model."""
-        ret = ollama.delete(model_name).get("status", False)
+        ret = settings.ollama_client.delete(model_name).get("status", False)
         # ret = True
         if not ret:
             return False
@@ -224,7 +222,7 @@ class DataManager:
         quantize_level: Optional[str] = None,
     ) -> Iterator[Dict[str, Any]]:
         """Create a new model."""
-        return ollama.create(
+        return settings.ollama_client.create(
             model=model_name,
             modelfile=model_code,
             quantize=quantize_level,
@@ -234,7 +232,7 @@ class DataManager:
     @staticmethod
     def copy_model(src_name: str, dst_name: str) -> Mapping[str, Any]:
         """Copy local model to new name"""
-        return ollama.copy(source=src_name, destination=dst_name)
+        return settings.ollama_client.copy(source=src_name, destination=dst_name)
 
     @staticmethod
     def quantize_model(
