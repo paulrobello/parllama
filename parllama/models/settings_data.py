@@ -4,7 +4,6 @@ import functools
 import os
 import shutil
 from argparse import Namespace
-from functools import cache
 from typing import List, Literal, TypeAlias
 
 import ollama

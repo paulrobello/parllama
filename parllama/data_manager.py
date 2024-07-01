@@ -3,7 +3,6 @@
 import os.path
 import re
 from datetime import datetime
-from functools import cache
 from typing import (
     Any,
     Dict,
@@ -19,7 +18,6 @@ from typing import (
 import docker  # type: ignore
 import docker.errors  # type: ignore
 import docker.types  # type: ignore
-import ollama
 import requests
 import simplejson as json
 from bs4 import BeautifulSoup
