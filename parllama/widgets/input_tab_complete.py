@@ -1,4 +1,5 @@
 """Input widget with special tab completion."""
+from __future__ import annotations
 
 from textual import events
 from textual.widgets import Input

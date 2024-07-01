@@ -1,15 +1,24 @@
 """Widget for chatting with LLM."""
-
-from typing import Optional
+from __future__ import annotations
 
 from textual import on
 from textual.app import ComposeResult
-from textual.containers import Container, Horizontal, Vertical, VerticalScroll
-from textual.widgets import Button, Input, Label, MarkdownViewer, Select
+from textual.containers import Container
+from textual.containers import Horizontal
+from textual.containers import Vertical
+from textual.containers import VerticalScroll
+from textual.widgets import Button
+from textual.widgets import Input
+from textual.widgets import Label
+from textual.widgets import MarkdownViewer
+from textual.widgets import Select
 
 from parllama.data_manager import dm
-from parllama.messages.main import LocalModelListLoaded, RegisterForUpdates
-from parllama.models.chat_manager import ChatMessage, ChatSession, chat_manager
+from parllama.messages.main import LocalModelListLoaded
+from parllama.messages.main import RegisterForUpdates
+from parllama.models.chat_manager import chat_manager
+from parllama.models.chat_manager import ChatMessage
+from parllama.models.chat_manager import ChatSession
 
 
 class ChatView(Container):
@@ -20,7 +29,7 @@ class ChatView(Container):
 
     model_select: Select[str]
     send_button: Button
-    session: Optional[ChatSession] = None
+    session: ChatSession | None = None
     md: MarkdownViewer
 
     def __init__(self, **kwargs) -> None:
@@ -86,8 +95,10 @@ class ChatView(Container):
         self.user_input.disabled = v == Select.BLANK
 
     @on(Button.Pressed, "#send_button")
-    def action_send_message(self) -> None:
+    async def action_send_message(self) -> None:
         """Send the message."""
+        if not self.model_select.value or self.model_select.value == Select.BLANK:
+            return
         if not self.user_input.value:
             return
 
@@ -97,10 +108,10 @@ class ChatView(Container):
         if not self.session:
             self.session = chat_manager.get_or_create_session(
                 "Default",
-                self.model_select.value,
+                str(self.model_select.value),
                 {"temperature": float(self.temperature_input.value)},
             )
-        self.session.send_chat(self.user_input.value, self)
+        await self.session.send_chat(self.user_input.value, self)
         self.user_input.value = ""
         self.user_input.focus()
 

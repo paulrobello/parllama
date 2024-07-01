@@ -1,8 +1,11 @@
 """The main application class."""
+from __future__ import annotations
 
 import asyncio
-from queue import Empty, Queue
-from typing import Any, Dict, Iterator, List, Set
+from collections.abc import Iterator
+from queue import Empty
+from queue import Queue
+from typing import Any
 
 import ollama
 import pyperclip  # type: ignore
@@ -11,51 +14,51 @@ from rich.console import RenderableType
 from rich.progress_bar import ProgressBar
 from rich.style import Style
 from rich.text import Text
-from textual import on, work
+from textual import on
+from textual import work
 from textual.app import App
 from textual.binding import Binding
 from textual.color import Color
 from textual.message import Message
 from textual.notifications import SeverityLevel
 from textual.widget import Widget
-from textual.widgets import Input, Select, TextArea
+from textual.widgets import Input
+from textual.widgets import Select
+from textual.widgets import TextArea
 
 from parllama import __application_title__
 from parllama.data_manager import dm
 from parllama.dialogs.help_dialog import HelpDialog
-from parllama.messages.main import (
-    AppRequest,
-    ChangeTab,
-    CreateModelFromExistingRequested,
-    LocalModelCopied,
-    LocalModelCopyRequested,
-    LocalModelDelete,
-    LocalModelDeleted,
-    LocalModelListLoaded,
-    LocalModelListRefreshRequested,
-    ModelCreated,
-    ModelCreateRequested,
-    ModelPulled,
-    ModelPullRequested,
-    ModelPushed,
-    ModelPushRequested,
-    NotifyErrorMessage,
-    NotifyInfoMessage,
-    PsMessage,
-    SendToClipboard,
-    SetModelNameLoading,
-    SiteModelsLoaded,
-    SiteModelsRefreshRequested,
-    StatusMessage,
-)
-from parllama.models.chat_manager import ChatManager, chat_manager
-from parllama.models.jobs import (
-    CopyModelJob,
-    CreateModelJob,
-    PullModelJob,
-    PushModelJob,
-    QueueJob,
-)
+from parllama.messages.main import AppRequest
+from parllama.messages.main import ChangeTab
+from parllama.messages.main import CreateModelFromExistingRequested
+from parllama.messages.main import LocalModelCopied
+from parllama.messages.main import LocalModelCopyRequested
+from parllama.messages.main import LocalModelDelete
+from parllama.messages.main import LocalModelDeleted
+from parllama.messages.main import LocalModelListLoaded
+from parllama.messages.main import LocalModelListRefreshRequested
+from parllama.messages.main import ModelCreated
+from parllama.messages.main import ModelCreateRequested
+from parllama.messages.main import ModelPulled
+from parllama.messages.main import ModelPullRequested
+from parllama.messages.main import ModelPushed
+from parllama.messages.main import ModelPushRequested
+from parllama.messages.main import NotifyErrorMessage
+from parllama.messages.main import NotifyInfoMessage
+from parllama.messages.main import PsMessage
+from parllama.messages.main import SendToClipboard
+from parllama.messages.main import SetModelNameLoading
+from parllama.messages.main import SiteModelsLoaded
+from parllama.messages.main import SiteModelsRefreshRequested
+from parllama.messages.main import StatusMessage
+from parllama.models.chat_manager import chat_manager
+from parllama.models.chat_manager import ChatManager
+from parllama.models.jobs import CopyModelJob
+from parllama.models.jobs import CreateModelJob
+from parllama.models.jobs import PullModelJob
+from parllama.models.jobs import PushModelJob
+from parllama.models.jobs import QueueJob
 from parllama.models.settings_data import settings
 from parllama.screens.main_screen import MainScreen
 from parllama.theme_manager import theme_manager
@@ -90,7 +93,7 @@ class ParLlamaApp(App[None]):
     DEFAULT_CSS = """
     """
 
-    notify_subs: Dict[str, Set[Widget]]
+    notify_subs: dict[str, set[Widget]]
     main_screen: MainScreen
     job_queue: Queue[QueueJob]
     is_busy: bool = False
@@ -312,7 +315,7 @@ class ParLlamaApp(App[None]):
                 severity="error",
             )
 
-    async def do_progress(self, job: QueueJob, res: Iterator[Dict[str, Any]]) -> str:
+    async def do_progress(self, job: QueueJob, res: Iterator[dict[str, Any]]) -> str:
         """Update progress bar"""
         try:
             last_status = ""
@@ -348,7 +351,7 @@ class ParLlamaApp(App[None]):
                     msg["percent"] = ""
                 if msg["percent"] and msg["status"] == "success":
                     msg["percent"] = "100%"
-                parts: List[RenderableType] = [
+                parts: list[RenderableType] = [
                     Text.assemble(
                         job.modelName,
                         " ",

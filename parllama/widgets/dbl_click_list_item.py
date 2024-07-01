@@ -1,4 +1,5 @@
 """Double clickable List Item."""
+from __future__ import annotations
 
 import time
 

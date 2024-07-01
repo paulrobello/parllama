@@ -1,4 +1,5 @@
 """Local Model View"""
+from __future__ import annotations
 
 from functools import partial
 from typing import List
@@ -6,7 +7,8 @@ from typing import List
 from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Container, VerticalScroll
+from textual.containers import Container
+from textual.containers import VerticalScroll
 from textual.events import Show
 from textual.widget import Widget
 from textual.widgets import Input
@@ -15,20 +17,18 @@ from parllama.data_manager import dm
 from parllama.dialogs.input_dialog import InputDialog
 from parllama.dialogs.model_details_dialog import ModelDetailsDialog
 from parllama.dialogs.yes_no_dialog import YesNoDialog
-from parllama.messages.main import (
-    LocalModelCopied,
-    LocalModelCopyRequested,
-    LocalModelDelete,
-    LocalModelDeleted,
-    LocalModelDeleteRequested,
-    LocalModelListLoaded,
-    LocalModelListRefreshRequested,
-    ModelPulled,
-    ModelPullRequested,
-    ModelPushRequested,
-    SetModelNameLoading,
-    ShowLocalModel,
-)
+from parllama.messages.main import LocalModelCopied
+from parllama.messages.main import LocalModelCopyRequested
+from parllama.messages.main import LocalModelDelete
+from parllama.messages.main import LocalModelDeleted
+from parllama.messages.main import LocalModelDeleteRequested
+from parllama.messages.main import LocalModelListLoaded
+from parllama.messages.main import LocalModelListRefreshRequested
+from parllama.messages.main import ModelPulled
+from parllama.messages.main import ModelPullRequested
+from parllama.messages.main import ModelPushRequested
+from parllama.messages.main import SetModelNameLoading
+from parllama.messages.main import ShowLocalModel
 from parllama.widgets.filter_input import FilterInput
 from parllama.widgets.grid_list import GridList
 from parllama.widgets.local_model_list_item import LocalModelListItem
@@ -158,7 +158,7 @@ class LocalModelView(Container):
         # if self.grid.selected:
         #     model_name = self.grid.selected.model.name
 
-        to_remove: List[Widget] = []
+        to_remove: list[Widget] = []
         for child in self.grid.children:
             if isinstance(child, LocalModelListItem):
                 to_remove.append(child)

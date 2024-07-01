@@ -8,7 +8,7 @@ The application was built with [Textual](https://textual.textualize.io/) and [Ri
 Supports Dark and Light mode as well as custom themes.
 
 ![Local Models Dark](https://raw.githubusercontent.com/paulrobello/parllama/main/docs/local_models_dark_1.png)
-    
+
 ![Model View Dark](https://raw.githubusercontent.com/paulrobello/parllama/main/docs/models_view_dark_1.png)
 
 ![Site Models Dark](https://raw.githubusercontent.com/paulrobello/parllama/main/docs/site_models_dark_1.png)
@@ -16,7 +16,7 @@ Supports Dark and Light mode as well as custom themes.
 ![Local Models Light](https://raw.githubusercontent.com/paulrobello/parllama/main/docs/local_models_light_1.png)
 
 ## Prerequisites for running
-* Install and run [Ollama](https://ollama.com/download) 
+* Install and run [Ollama](https://ollama.com/download)
 * Install Python 3.11 or newer
 
 ## Prerequisites for dev
@@ -24,7 +24,7 @@ Supports Dark and Light mode as well as custom themes.
 * Install GNU Compatible Make command
 
 ## Prerequisites for model quantization
-If you want to be able to quantize custom models, download the following tool from the releases area: 
+If you want to be able to quantize custom models, download the following tool from the releases area:
 [HuggingFaceModelDownloader](https://github.com/bodaay/HuggingFaceModelDownloader)
 
 Install [Docker Desktop](https://www.docker.com/products/docker-desktop/)

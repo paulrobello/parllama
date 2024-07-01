@@ -1,4 +1,5 @@
 """Model for application settings."""
+from __future__ import annotations
 
 import functools
 import os
@@ -9,7 +10,9 @@ import ollama
 import simplejson as json
 from pydantic import BaseModel
 
-from ..utils import ScreenType, get_args, valid_screens
+from ..utils import get_args
+from ..utils import ScreenType
+from ..utils import valid_screens
 
 
 class Settings(BaseModel):
@@ -89,7 +92,7 @@ class Settings(BaseModel):
     def load_from_file(self) -> None:
         """Load settings from file."""
         try:
-            with open(self.settings_file, mode="rt", encoding="utf-8") as f:
+            with open(self.settings_file, encoding="utf-8") as f:
                 data = json.load(f)
                 url = data.get("ollama_host", self.ollama_host)
 
@@ -122,7 +125,7 @@ class Settings(BaseModel):
                 f"Par Llama data directory does not exist: {self.data_dir}"
             )
 
-        with open(self.settings_file, "wt", encoding="utf-8") as f:
+        with open(self.settings_file, "w", encoding="utf-8") as f:
             f.write(self.model_dump_json(indent=4))
 
     def ensure_cache_folder(self) -> None:

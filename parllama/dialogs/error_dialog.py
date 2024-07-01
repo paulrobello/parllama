@@ -1,4 +1,5 @@
 """Provides an error dialog."""
+from __future__ import annotations
 
 from textual.widgets._button import ButtonVariant
 
@@ -13,7 +14,7 @@ class ErrorDialog(TextDialog):
         background: $error 15%;
         border: thick $error 50%;
     }
-    
+
     ErrorDialog #message {
         border-top: solid $panel;
         border-bottom: solid $panel;

@@ -1,9 +1,13 @@
 """Theme manager for Textual"""
+from __future__ import annotations
 
 import os
 import shutil
 from pathlib import Path
-from typing import Dict, List, Literal, TypeAlias
+from typing import Dict
+from typing import List
+from typing import Literal
+from typing import TypeAlias
 
 import simplejson as json
 from textual.design import ColorSystem
@@ -11,7 +15,7 @@ from textual.design import ColorSystem
 from parllama.models.settings_data import settings
 
 ThemeMode: TypeAlias = Literal["dark", "light"]
-ThemeModes: List[ThemeMode] = ["dark", "light"]
+ThemeModes: list[ThemeMode] = ["dark", "light"]
 Theme: TypeAlias = Dict[ThemeMode, ColorSystem]
 Themes: TypeAlias = Dict[str, Theme]
 
@@ -64,9 +68,7 @@ class ThemeManager:
 
         theme: Theme = {}
         theme_name = os.path.basename(theme_name)
-        with open(
-            os.path.join(self.theme_folder, theme_name), "r", encoding="utf-8"
-        ) as f:
+        with open(os.path.join(self.theme_folder, theme_name), encoding="utf-8") as f:
             theme_def = json.load(f)
             if "dark" not in theme_def and "light" not in theme_def:
                 raise ThemeModeError(theme_name)
@@ -91,7 +93,7 @@ class ThemeManager:
         """Get theme by name"""
         return self.themes[theme_name]
 
-    def list_themes(self) -> List[str]:
+    def list_themes(self) -> list[str]:
         """Get list of themes"""
         return list(self.themes.keys())
 

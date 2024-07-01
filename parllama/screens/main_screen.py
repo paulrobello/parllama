@@ -1,4 +1,5 @@
 """Main screen for TUI."""
+from __future__ import annotations
 
 from typing import cast
 
@@ -6,10 +7,16 @@ from rich.console import RenderableType
 from textual import on
 from textual.app import ComposeResult
 from textual.screen import Screen
-from textual.widgets import Footer, Header, Static, TabbedContent, TabPane
+from textual.widgets import Footer
+from textual.widgets import Header
+from textual.widgets import Static
+from textual.widgets import TabbedContent
+from textual.widgets import TabPane
 
-from parllama.messages.main import PsMessage, StatusMessage
-from parllama.models.settings_data import ScreenType, settings
+from parllama.messages.main import PsMessage
+from parllama.messages.main import StatusMessage
+from parllama.models.settings_data import ScreenType
+from parllama.models.settings_data import settings
 from parllama.widgets.chat_view import ChatView
 from parllama.widgets.create_model_view import ModelCreateView
 from parllama.widgets.local_model_view import LocalModelView

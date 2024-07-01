@@ -20,7 +20,7 @@ Lists / screens will automatically refresh once the action is completed.
 ## Local Model Screen
 This screen displays all local models currently available to your local Ollama.
 `ctrl+q` will quit the application.  
-`ctrl+r` will refresh the list.   
+`ctrl+r` will refresh the list.  
 `enter` will open its details dialog for the selected item.
 `ctrl+b` will open the model card from ollama.com in a web browser.
 `ctrl+f` can be used to quickly focus the filter input box.  
@@ -49,7 +49,7 @@ Web scraping is not an overly reliable method to get structured data so this sea
 
 The Namespace field tells the app where to search. Leaving the field blank or using "models" as a value will search the main Ollama.com model list.  
 If you have a private namespace enter it and hit tab to populate the list of available models.
-Scraped data is cached in a local json file to increase responsiveness.   
+Scraped data is cached in a local json file to increase responsiveness.  
 Use `ctrl+r` to force a refresh if needed.  
 The Namespace field provides auto complete from previous successful searches.  
 
@@ -77,15 +77,15 @@ This screen allows you to access tools to create, modify, and publish models
 This screen allows viewing any messages that have passed through the status bar.
 
 ## Publishing
- 
+
 To publish a model to Ollama.com you need to create your own namespace and setup your public key.
 
 The tools screen can help you with this.  
 
 When creating a free account on [Ollama.com](https://ollama.com/signup) your username will also be your namespace.  
 
-When you start ollama on your machine, it will create a keypair used specifically for ollama and save it into either 
-~/.ollama or /usr/share/ollama/.ollama as id_ed25519 (private key) and id_ed25519.pub (public key). 
+When you start ollama on your machine, it will create a keypair used specifically for ollama and save it into either
+~/.ollama or /usr/share/ollama/.ollama as id_ed25519 (private key) and id_ed25519.pub (public key).
 
 When you want to publish, you take the contents of id_ed25519.pub and import into [ollama settings keys](https://ollama.com/settings/keys)
 

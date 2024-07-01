@@ -1,6 +1,9 @@
 """Functions for formatting timestamps and converting datetimes to the local timezone."""
+from __future__ import annotations
 
-from datetime import datetime, timezone, tzinfo
+from datetime import datetime
+from datetime import timezone
+from datetime import tzinfo
 
 import simplejson as json
 

@@ -1,9 +1,16 @@
 """Widget for viewing application logs."""
+from __future__ import annotations
 
 from textual import on
 from textual.app import ComposeResult
-from textual.containers import Container, Horizontal, Vertical
-from textual.widgets import Button, Checkbox, Input, Label, RichLog
+from textual.containers import Container
+from textual.containers import Horizontal
+from textual.containers import Vertical
+from textual.widgets import Button
+from textual.widgets import Checkbox
+from textual.widgets import Input
+from textual.widgets import Label
+from textual.widgets import RichLog
 
 from parllama.models.settings_data import settings
 

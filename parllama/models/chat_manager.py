@@ -1,15 +1,19 @@
 """Chat manager class"""
-
 from __future__ import annotations
 
 import uuid
+from collections.abc import Iterator
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Iterator, List, Mapping, Optional
+from typing import Any
+from typing import List
+from typing import Optional
 
 import ollama
 from ollama import Message as OllamaMessage
 from ollama import Options as OllamaOptions
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+from pydantic import Field
 from textual.app import App
 from textual.message import Message
 from textual.widget import Widget
@@ -30,14 +34,14 @@ class ChatSession(BaseModel):
     manager: ChatManager
     session_name: str
     llm_model_name: str
-    messages: List[OllamaMessage] = []
+    messages: list[OllamaMessage] = []
     options: OllamaOptions = {}
 
     def push_message(self, message: OllamaMessage) -> None:
         """Push a message"""
         self.messages.append(message)
 
-    async def send_chat(self, msg: str, widget: Optional[Widget] = None) -> bool:
+    async def send_chat(self, msg: str, widget: Widget | None = None) -> bool:
         """Send a chat message to LLM"""
         self.messages.append(OllamaMessage(content=msg, role="user"))
         stream: Iterator[Mapping[str, Any]] = ollama.chat(  # type: ignore
@@ -60,9 +64,9 @@ class ChatManager:
     """Chat manager class"""
 
     app: App[Any]
-    sessions: List[ChatSession] = []
+    sessions: list[ChatSession] = []
     options: OllamaOptions = {}
-    current_session: Optional[ChatSession] = None
+    current_session: ChatSession | None = None
 
     def __init__(self) -> None:
         """Initialize the chat manager"""
@@ -75,7 +79,7 @@ class ChatManager:
         self,
         session_name: str,
         model_name: str,
-        options: Optional[OllamaOptions] = None,
+        options: OllamaOptions | None = None,
     ) -> ChatSession:
         """Create a new chat session"""
         session = ChatSession(
@@ -88,14 +92,14 @@ class ChatManager:
         self.current_session = session
         return session
 
-    def get_session(self, session_id: uuid.UUID) -> Optional[ChatSession]:
+    def get_session(self, session_id: uuid.UUID) -> ChatSession | None:
         """Get a chat session"""
         for session in self.sessions:
             if session.id == session_id:
                 return session
         return None
 
-    def get_session_by_name(self, session_name: str) -> Optional[ChatSession]:
+    def get_session_by_name(self, session_name: str) -> ChatSession | None:
         """Get a chat session by name"""
         for session in self.sessions:
             if session.session_name == session_name:
@@ -111,7 +115,7 @@ class ChatManager:
                     self.current_session = None
                 return
 
-    def get_current_session(self) -> Optional[ChatSession]:
+    def get_current_session(self) -> ChatSession | None:
         """Get the current chat session"""
         return self.current_session
 
@@ -124,7 +128,7 @@ class ChatManager:
             session = self.new_session(session_name, model_name, options)
         return session
 
-    def set_current_session(self, session_id: uuid.UUID) -> Optional[ChatSession]:
+    def set_current_session(self, session_id: uuid.UUID) -> ChatSession | None:
         """Set the current chat session"""
         self.current_session = self.get_session(session_id)
         return self.current_session

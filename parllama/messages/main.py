@@ -1,7 +1,9 @@
 """Messages for application."""
+from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal, Optional
+from typing import Literal
+from typing import Optional
 
 from rich.console import RenderableType
 from textual.message import Message
@@ -14,7 +16,7 @@ from ..models.ollama_data import FullModel
 class AppRequest(Message):
     """Request to app to perform an action."""
 
-    widget: Optional[Widget]
+    widget: Widget | None
 
 
 @dataclass
@@ -96,7 +98,7 @@ class ModelCreateRequested(AppRequest):
 
     model_name: str
     model_code: str
-    quantization_level: Optional[str]
+    quantization_level: str | None
 
 
 @dataclass
@@ -105,7 +107,7 @@ class CreateModelFromExistingRequested(AppRequest):
 
     model_name: str
     model_code: str
-    quantization_level: Optional[str]
+    quantization_level: str | None
 
 
 @dataclass
@@ -113,7 +115,7 @@ class ModelCreated(Message):
     """Message to notify that a model has been created."""
 
     model_name: str
-    quantization_level: Optional[str]
+    quantization_level: str | None
     model_code: str
     success: bool
 

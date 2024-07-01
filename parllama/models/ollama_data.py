@@ -1,7 +1,11 @@
 """Ollama API Models"""
+from __future__ import annotations
 
 from datetime import datetime
-from typing import List, Literal, Optional, TypeAlias
+from typing import List
+from typing import Literal
+from typing import Optional
+from typing import TypeAlias
 
 from pydantic import BaseModel
 
@@ -16,14 +20,14 @@ class SiteModel(BaseModel):
     url: str
     num_pulls: str
     num_tags: str
-    tags: List[str]
+    tags: list[str]
     updated: str
 
 
 class SiteModelData(BaseModel):
     """Ollama Site Model Data."""
 
-    models: List[SiteModel]
+    models: list[SiteModel]
     last_update: datetime = datetime.now()
 
 
@@ -33,7 +37,7 @@ class ModelDetails(BaseModel):
     parent_model: str
     format: str
     family: str
-    families: List[str]
+    families: list[str]
     parameter_size: str
     quantization_level: str
 
@@ -41,9 +45,9 @@ class ModelDetails(BaseModel):
 class ModelShowPayload(BaseModel):
     """Ollama Model Show Payload."""
 
-    license: Optional[str] = None
+    license: str | None = None
     modelfile: str
-    parameters: Optional[str] = None
+    parameters: str | None = None
     template: str
     # details: ModelDetails # omit of being combined with Model
 
@@ -57,19 +61,19 @@ class Model(BaseModel):
     size: int
     digest: str
     details: ModelDetails
-    expires_at: Optional[datetime] = None
+    expires_at: datetime | None = None
 
 
 class ModelListPayload(BaseModel):
     """List models response."""
 
-    models: List[Model]
+    models: list[Model]
 
 
 class FullModel(Model):
     """Ollama Full Model"""
 
-    license: Optional[str] = None
+    license: str | None = None
     modelfile: str
-    parameters: Optional[str] = None
-    template: Optional[str] = None
+    parameters: str | None = None
+    template: str | None = None

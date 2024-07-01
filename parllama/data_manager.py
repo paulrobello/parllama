@@ -1,22 +1,20 @@
 """Data manager for Par Llama."""
+from __future__ import annotations
 
 import os.path
 import re
+from collections.abc import Generator
+from collections.abc import Iterator
+from collections.abc import Mapping
 from datetime import datetime
-from typing import (
-    Any,
-    Dict,
-    Generator,
-    Iterator,
-    List,
-    Literal,
-    Mapping,
-    Optional,
-    Tuple,
-    Union,
-)
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Literal
+from typing import Optional
+from typing import Tuple
+from typing import Union
 
-import docker  # type: ignore
 import docker.errors  # type: ignore
 import docker.types  # type: ignore
 import requests
@@ -25,15 +23,14 @@ from bs4 import BeautifulSoup
 from docker.models.containers import Container  # type: ignore
 
 from parllama.docker_utils import start_docker_container
-from parllama.models.ollama_data import (
-    FullModel,
-    ModelListPayload,
-    ModelShowPayload,
-    SiteModel,
-    SiteModelData,
-)
+from parllama.models.ollama_data import FullModel
+from parllama.models.ollama_data import ModelListPayload
+from parllama.models.ollama_data import ModelShowPayload
+from parllama.models.ollama_data import SiteModel
+from parllama.models.ollama_data import SiteModelData
 from parllama.models.settings_data import settings
-from parllama.utils import output_to_dicts, run_cmd
+from parllama.utils import output_to_dicts
+from parllama.utils import run_cmd
 from parllama.widgets.local_model_list_item import LocalModelListItem
 from parllama.widgets.site_model_list_item import SiteModelListItem
 
@@ -41,18 +38,18 @@ from parllama.widgets.site_model_list_item import SiteModelListItem
 class DataManager:
     """Data manager for Par Llama."""
 
-    ollama_site_categories: List[str] = ["popular", "featured", "newest"]
-    models: List[LocalModelListItem]
-    site_models: List[SiteModelListItem]
+    ollama_site_categories: list[str] = ["popular", "featured", "newest"]
+    models: list[LocalModelListItem]
+    site_models: list[SiteModelListItem]
 
     def __init__(self):
         """ "Initialize the data manager."""
         self.models = []
         self.site_models = []
 
-    def _get_all_model_data(self) -> List[LocalModelListItem]:
+    def _get_all_model_data(self) -> list[LocalModelListItem]:
         """Get all model data."""
-        all_models: List[LocalModelListItem] = []
+        all_models: list[LocalModelListItem] = []
         res = ModelListPayload(**settings.ollama_client.list())
         pattern = r"^(# Modelfile .*)\n(# To build.*)\n# (FROM .*\n)\n(FROM .*)\n(.*)$"
         replacement = r"\3\5"
@@ -66,17 +63,17 @@ class DataManager:
             all_models.append(LocalModelListItem(res3))
         return all_models
 
-    def refresh_models(self) -> List[LocalModelListItem]:
+    def refresh_models(self) -> list[LocalModelListItem]:
         """Refresh all local model data."""
         self.models = self._get_all_model_data()
         return self.models
 
-    def get_model_select_options(self) -> List[Tuple[str, str]]:
+    def get_model_select_options(self) -> list[tuple[str, str]]:
         """Get select options."""
         return [(model.model.name, model.model.name) for model in self.models]
 
     @staticmethod
-    def model_ps() -> List[dict[str, Any]]:
+    def model_ps() -> list[dict[str, Any]]:
         """Get model ps."""
         ret = run_cmd(["ollama", "ps"])
 
@@ -85,12 +82,12 @@ class DataManager:
         return output_to_dicts(ret)
 
     @staticmethod
-    def pull_model(model_name: str) -> Iterator[Dict[str, Any]]:
+    def pull_model(model_name: str) -> Iterator[dict[str, Any]]:
         """Pull a model."""
         return settings.ollama_client.pull(model_name, stream=True)  # type: ignore
 
     @staticmethod
-    def push_model(model_name: str) -> Iterator[Dict[str, Any]]:
+    def push_model(model_name: str) -> Iterator[dict[str, Any]]:
         """Push a model."""
         return settings.ollama_client.push(model_name, stream=True)  # type: ignore
 
@@ -109,7 +106,7 @@ class DataManager:
 
         return False
 
-    def list_cache_files(self) -> List[str]:
+    def list_cache_files(self) -> list[str]:
         """List cache files."""
         if not os.path.exists(settings.cache_dir):
             return []
@@ -125,9 +122,9 @@ class DataManager:
     def refresh_site_models(
         self,
         namespace: str,
-        category: Optional[Literal["popular", "featured", "newest"]] = None,
+        category: Literal["popular", "featured", "newest"] | None = None,
         force: bool = True,
-    ) -> List[SiteModelListItem]:
+    ) -> list[SiteModelListItem]:
         """Get list of all available models from Ollama.com."""
 
         settings.ensure_cache_folder()
@@ -139,7 +136,7 @@ class DataManager:
         file_name = os.path.join(settings.cache_dir, f"site_models-{namespace}.json")
         if not force and os.path.exists(file_name):
             try:
-                with open(file_name, "r", encoding="utf-8") as f:
+                with open(file_name, encoding="utf-8") as f:
                     ret: SiteModelData = SiteModelData(**json.load(f))
                     if ret.last_update and ret.last_update.timestamp() > (
                         ret.last_update.timestamp() - 60 * 60 * 24
@@ -150,7 +147,7 @@ class DataManager:
                 print(f"Error: {e}")
 
         url_base: str = f"https://ollama.com/{namespace}"
-        models: List[SiteModel] = []
+        models: list[SiteModel] = []
 
         for cat in self.ollama_site_categories:
             if category and category != cat:
@@ -219,8 +216,8 @@ class DataManager:
     def create_model(
         model_name: str,
         model_code: str,
-        quantize_level: Optional[str] = None,
-    ) -> Iterator[Dict[str, Any]]:
+        quantize_level: str | None = None,
+    ) -> Iterator[dict[str, Any]]:
         """Create a new model."""
         return settings.ollama_client.create(
             model=model_name,
@@ -237,7 +234,7 @@ class DataManager:
     @staticmethod
     def quantize_model(
         model_name: str, quantize_level: str = "q4_0"
-    ) -> Union[str, Container, Generator[bytes, None, None]]:
+    ) -> str | Container | Generator[bytes, None, None]:
         """
         Quantize a model
 
