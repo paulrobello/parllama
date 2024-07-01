@@ -70,7 +70,7 @@ class ModelCreateView(Container):
             id="quantize_level",
             placeholder="e.g. q4_0 or blank for none",
         )
-        self.text_area = TextArea.code_editor("", id="editor")
+        self.text_area = TextArea.code_editor("", id="editor", theme="css")
         self.text_area.indent_type = "tabs"
         self.text_area.border_title = "Model Code"
         self.create_button = Button("Create", id="create_button")

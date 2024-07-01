@@ -35,6 +35,11 @@ docker pull ollama/quantize
 ```
 
 ## Installing from mypi using pipx
+If you don't have pipx installed you can run the following:  
+```bash
+pip install pipx
+```
+Once pipx is installed, run the following:  
 ```bash
 pipx install parllama
 ```
@@ -145,6 +150,28 @@ Themes have a dark and light mode are in the following format:
 You must specify at least one of light or dark for the theme to be usable.  
 
 Theme can be changed via command line with the ```--theme-name``` option.
+
+## Contributing
+Start by following the instructions in the section **Installing for dev mode**.  
+
+Please ensure that all pull requests are formatted with black, pass mypy and pylint with 10/10 checks.  
+You can run the make target **do-before-commit** to ensure the pipeline will pass with your changes.  
+There is also a pre-commit config to that will assist with formatting and checks.  
+The easiest way to setup your environment to ensure smooth pull requests is:  
+
+If you don't have pipx installed you can run the following:  
+```bash
+pip install pipx
+```
+
+```bash
+pipx install pylint
+pipx install pre-commit
+pre-commit install
+pre-commit run --all-files
+```
+After running the above all future commits will auto run pre-commit. pre-commit will fix what it can and show what
+if anything remains to be fixed before the commit is allowed.
 
 
 ## Roadmap

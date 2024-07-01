@@ -100,10 +100,10 @@ stricttypecheck:	        # Perform a strict static type checks with mypy
 	$(mypy) --scripts-are-modules --strict $(lib)
 
 .PHONY: checkall
-checkall: lint typecheck	        # Check all the things
+checkall: typecheck lint 	        # Check all the things
 
-.PHONY: dobeforecommit
-dobeforecommit: ugly checkall	        # Format then check
+.PHONY: do-before-commit
+do-before-commit: ugly checkall	        # Format then check
 
 ##############################################################################
 # Package/publish.
