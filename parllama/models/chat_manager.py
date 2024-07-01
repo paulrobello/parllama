@@ -12,6 +12,7 @@ from ollama import Options as OllamaOptions
 from pydantic import BaseModel, Field
 from textual.app import App
 from textual.message import Message
+from textual.widget import Widget
 
 
 @dataclass
@@ -28,7 +29,7 @@ class ChatSession(BaseModel):
     id: uuid.UUID = Field(default_factory=uuid.uuid4)
     manager: ChatManager
     session_name: str
-    model_name: str
+    llm_model_name: str
     messages: List[OllamaMessage] = []
     options: OllamaOptions = {}
 
@@ -36,11 +37,11 @@ class ChatSession(BaseModel):
         """Push a message"""
         self.messages.append(message)
 
-    async def send_chat(self, msg: str) -> bool:
+    async def send_chat(self, msg: str, widget: Optional[Widget] = None) -> bool:
         """Send a chat message to LLM"""
         self.messages.append(OllamaMessage(content=msg, role="user"))
         stream: Iterator[Mapping[str, Any]] = ollama.chat(  # type: ignore
-            model=self.model_name,
+            model=self.llm_model_name,
             messages=self.messages,
             options=self.options,
             stream=True,
@@ -48,7 +49,7 @@ class ChatSession(BaseModel):
         res_msg: str = ""
         for chunk in stream:
             res_msg += chunk["message"]["content"]
-            self.manager.app.post_message(
+            (widget or self.manager.app).post_message(
                 ChatMessage(session_id=self.id, content=res_msg)
             )
         self.messages.append(OllamaMessage(content=res_msg, role="assistant"))
@@ -63,8 +64,11 @@ class ChatManager:
     options: OllamaOptions = {}
     current_session: Optional[ChatSession] = None
 
-    def __init__(self, app: App[Any]) -> None:
+    def __init__(self) -> None:
         """Initialize the chat manager"""
+
+    def set_app(self, app: App[Any]) -> None:
+        """Set the app"""
         self.app = app
 
     def new_session(
@@ -77,7 +81,7 @@ class ChatManager:
         session = ChatSession(
             manager=self,
             session_name=session_name,
-            model_name=model_name,
+            llm_model_name=model_name,
             options=options or self.options,
         )
         self.sessions.append(session)
@@ -124,3 +128,6 @@ class ChatManager:
         """Set the current chat session"""
         self.current_session = self.get_session(session_id)
         return self.current_session
+
+
+chat_manager = ChatManager()

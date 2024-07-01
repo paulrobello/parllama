@@ -48,7 +48,7 @@ from parllama.messages.main import (
     SiteModelsRefreshRequested,
     StatusMessage,
 )
-from parllama.models.chat_manager import ChatManager
+from parllama.models.chat_manager import ChatManager, chat_manager
 from parllama.models.jobs import (
     CopyModelJob,
     CreateModelJob,
@@ -110,7 +110,7 @@ class ParLlamaApp(App[None]):
         self.is_refreshing = False
         self.last_status = ""
         self.main_screen = MainScreen()
-        self.chat_manager = ChatManager(self)
+        chat_manager.set_app(self)
 
     def _watch_dark(self, value: bool) -> None:
         """Watch the dark property."""
