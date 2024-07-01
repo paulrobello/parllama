@@ -31,3 +31,9 @@ repos:
     hooks:
     -   id: reorder-python-imports
         args: [--py39-plus, --add-import, 'from __future__ import annotations']
+
+-   repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.10.1
+    hooks:
+    -   id: mypy
+        additional_dependencies: [textual, rich, pydantic, ollama, docker, types-beautifulsoup4, types-requests, types-pytz, types-simplejson, typing-extensions, asyncio, humanize, argparse, python-dotenv]
