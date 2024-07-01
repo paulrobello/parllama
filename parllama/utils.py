@@ -496,6 +496,13 @@ def get_args() -> Namespace:
         "--data-dir",
         help="Data Directory. Defaults to ~/.parllama",
     )
+
+    parser.add_argument(
+        "-u",
+        "--ollama-url",
+        help="URL of your Ollama instance. Defaults to http://localhost:11434",
+    )
+
     parser.add_argument("-t", "--theme-name", help="Theme name. Defaults to par")
     parser.add_argument(
         "-m",
