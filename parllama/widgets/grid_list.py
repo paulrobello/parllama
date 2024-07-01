@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import webbrowser
-from typing import Optional
 
 from textual.binding import Binding
 from textual.containers import Grid

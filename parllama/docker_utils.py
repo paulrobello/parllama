@@ -2,8 +2,6 @@
 from __future__ import annotations
 
 import os
-from typing import List
-from typing import Union
 
 import docker.errors  # type: ignore
 import docker.types  # type: ignore

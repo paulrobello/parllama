@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from functools import partial
-from typing import List
 
 from textual import on
 from textual.app import ComposeResult

@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import webbrowser
 from typing import cast
-from typing import Optional
 
 from textual import on
 from textual.app import ComposeResult

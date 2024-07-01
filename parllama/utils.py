@@ -24,15 +24,12 @@ from os import listdir
 from os.path import isfile
 from os.path import join
 from typing import Any
-from typing import Dict
-from typing import List
 from typing import Literal
 from typing import TypeAlias
-from typing import Union
 
 from textual.widgets import Button
 from textual.widgets import Input
-from textual.widgets._button import ButtonVariant
+from textual.widgets.button import ButtonVariant
 
 from parllama import __application_binary__
 from parllama import __application_title__

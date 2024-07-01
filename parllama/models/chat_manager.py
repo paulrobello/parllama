@@ -6,8 +6,6 @@ from collections.abc import Iterator
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
-from typing import List
-from typing import Optional
 
 import ollama
 from ollama import Message as OllamaMessage

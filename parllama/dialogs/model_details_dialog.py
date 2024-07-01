@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import re
 from typing import cast
-from typing import List
 
 import humanize
 import ollama

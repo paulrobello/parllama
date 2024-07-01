@@ -8,12 +8,7 @@ from collections.abc import Iterator
 from collections.abc import Mapping
 from datetime import datetime
 from typing import Any
-from typing import Dict
-from typing import List
 from typing import Literal
-from typing import Optional
-from typing import Tuple
-from typing import Union
 
 import docker.errors  # type: ignore
 import docker.types  # type: ignore

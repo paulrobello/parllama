@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Literal
-from typing import Optional
 
 from rich.console import RenderableType
 from textual.message import Message
