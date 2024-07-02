@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os.path
 import re
+import shutil
 from collections.abc import Generator
 from collections.abc import Iterator
 from collections.abc import Mapping
@@ -36,13 +37,21 @@ class DataManager:
     ollama_site_categories: list[str] = ["popular", "featured", "newest"]
     models: list[LocalModelListItem]
     site_models: list[SiteModelListItem]
+    ollama_bin: str
 
     def __init__(self):
         """ "Initialize the data manager."""
         self.models = []
         self.site_models = []
+        # get location of ollama binary in path
+        ollama_bin = shutil.which("ollama") or shutil.which("ollama.exe")
+        if not ollama_bin:
+            raise FileNotFoundError("Could not find ollama binary in path")
 
-    def _get_all_model_data(self) -> list[LocalModelListItem]:
+        self.ollama_bin = str(ollama_bin)
+
+    @staticmethod
+    def _get_all_model_data() -> list[LocalModelListItem]:
         """Get all model data."""
         all_models: list[LocalModelListItem] = []
         res = ModelListPayload(**settings.ollama_client.list())
@@ -67,10 +76,9 @@ class DataManager:
         """Get select options."""
         return [(model.model.name, model.model.name) for model in self.models]
 
-    @staticmethod
-    def model_ps() -> list[dict[str, Any]]:
+    def model_ps(self) -> list[dict[str, Any]]:
         """Get model ps."""
-        ret = run_cmd(["ollama", "ps"])
+        ret = run_cmd([self.ollama_bin, "ps"])
 
         if not ret:
             return []

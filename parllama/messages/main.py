@@ -209,3 +209,8 @@ class ChatMessage(Message):
 
     session_id: str
     message_id: str
+
+
+@dataclass
+class ChatMessageSent(Message):
+    """Chat message sent class"""

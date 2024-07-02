@@ -145,6 +145,23 @@ class ParLlamaApp(App[None]):
     async def on_mount(self) -> None:
         """Display the main or locked screen."""
         await self.push_screen(self.main_screen)
+        self.main_screen.post_message(
+            StatusMessage(f"Data directory: {settings.data_dir}")
+        )
+        self.main_screen.post_message(
+            StatusMessage(f"Using Ollama server url: {settings.ollama_host}")
+        )
+        self.main_screen.post_message(
+            StatusMessage(
+                f"""Theme: "{settings.theme_name}" in {settings.theme_mode} mode"""
+            )
+        )
+        self.main_screen.post_message(
+            StatusMessage(f"Last screen: {settings.last_screen}")
+        )
+        self.main_screen.post_message(
+            StatusMessage(f"Last chat model: {settings.last_chat_model}")
+        )
 
         self.set_timer(1, self.do_jobs)
         self.set_timer(1, self.update_ps)
@@ -207,17 +224,6 @@ class ParLlamaApp(App[None]):
         self.job_queue.put(PushModelJob(modelName=msg.model_name))
         self.post_message_all(SetModelNameLoading(msg.model_name, True))
         # self.notify(f"Model push {msg.model_name} requested")
-
-        # primary_style = Style(
-        #     color=theme_manager.get_color_system_for_theme_mode(
-        #         self.theme, self.dark
-        #     ).primary.rich_color
-        # )
-        # background_style = Style(
-        #     color=(
-        #             theme_manager.get_color_system_for_theme_mode(
-        #                 self.theme, self.dark
-        #             ).surface
 
     @on(ModelCreateRequested)
     def on_model_create_requested(self, msg: ModelCreateRequested) -> None:
@@ -598,6 +604,7 @@ class ParLlamaApp(App[None]):
         if isinstance(msg, StatusMessage):
             self.log(msg.msg)
             self.last_status = msg.msg
+
         for w in list(self.notify_subs["*"]):
             w.post_message(msg)
         if self.main_screen:

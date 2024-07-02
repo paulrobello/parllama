@@ -11,6 +11,7 @@ from textual.containers import VerticalScroll
 from textual.events import Show
 from textual.widget import Widget
 from textual.widgets import Input
+from textual.widgets import TabbedContent
 
 from parllama.data_manager import dm
 from parllama.dialogs.input_dialog import InputDialog
@@ -75,14 +76,6 @@ class LocalModelView(Container):
             description="Copy",
             show=True,
         ),
-        # Binding(
-        #     key="ctrl+s",
-        #     action="search_site_models",
-        #     description="Site Models",
-        #     show=True,
-        # ),
-        # Binding(key="ctrl+t", action="app.toggle_dark", description="Toggle Dark Mode"),
-        # Binding(key="f1", action="app.help", description="Help"),
     ]
     DEFAULT_CSS = """
     LocalModelView {
@@ -107,7 +100,8 @@ class LocalModelView(Container):
 
     def _on_show(self, event: Show) -> None:
         """Focus the search on show"""
-        self.search_input.focus()
+        with self.screen.prevent(TabbedContent.TabActivated):
+            self.search_input.focus()
 
     def compose(self) -> ComposeResult:
         """Compose the Main screen."""
@@ -152,7 +146,9 @@ class LocalModelView(Container):
     @on(LocalModelListLoaded)
     def on_model_data_loaded(self, msg: LocalModelListLoaded) -> None:
         """Rebuild model grid."""
+
         msg.stop()
+
         # model_name: str = ""
         # if self.grid.selected:
         #     model_name = self.grid.selected.model.name

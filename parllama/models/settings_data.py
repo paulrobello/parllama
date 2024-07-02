@@ -25,6 +25,8 @@ class Settings(BaseModel):
     theme_name: str = "par"
     starting_screen: ScreenType = "Local"
     last_screen: ScreenType = "Local"
+    last_chat_model: str = ""
+    last_chat_temperature: float = 0.5
     theme_mode: str = "dark"
     site_models_namespace: str = ""
     max_log_lines: int = 1000
@@ -64,7 +66,7 @@ class Settings(BaseModel):
                 shutil.rmtree(self.cache_dir, ignore_errors=True)
 
         self.load_from_file()
-        url = os.environ.get("OLLAMA_HOST")
+        url = os.environ.get("OLLAMA_URL")
         if args.ollama_url:
             url = args.ollama_url
         if url:
@@ -108,9 +110,12 @@ class Settings(BaseModel):
                     self.starting_screen = "Local"
 
                 self.last_screen = data.get("last_screen", "Local")
-                if self.last_screen not in valid_screens:
-                    self.last_screen = self.starting_screen
-
+                # if self.last_screen not in valid_screens:
+                #     self.last_screen = self.starting_screen
+                self.last_chat_model = data.get("last_chat_model", self.last_chat_model)
+                self.last_chat_temperature = data.get(
+                    "last_chat_temperature", self.last_chat_temperature
+                )
                 self.max_log_lines = max(0, data.get("max_log_lines", 1000))
         except FileNotFoundError:
             pass  # If file does not exist, continue with default settings

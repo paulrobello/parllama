@@ -33,6 +33,14 @@ clear_cache:	        # Clear application cache
 dev:	        # Run in dev mode
 	$(run) textual run --dev $(lib).app:ParLlamaApp
 
+.PHONY: wsl-dev
+wsl-dev:	        # Run in dev mode
+	$(run) textual run --dev $(lib).app:ParLlamaApp -u "http://$(shell hostname).local:11434"
+
+.PHONY: wsl-run
+wsl-run:	        # Run in dev mode
+	$(python) -m $(lib) -u "http://$(shell hostname).local:11434"
+
 .PHONY: chat_dev
 chat_dev:	        # Run in dev mode
 	$(run) textual run --dev $(lib).app:ParLlamaApp -s chat

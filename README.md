@@ -86,13 +86,15 @@ options:
   --no-save             Prevent saving settings for this session.
 ```
 
+Unless you specify "--no-save" most flags such as -u, -t, -m, -s are sticky and will be used next time you start PAR_LLAMA.
+
 ## Environment Variables
 * PARLLAMA_DATA_DIR - Used to set --data-dir
 * PARLLAMA_THEME_NAME - Used to set --theme-name
 * PARLLAMA_THEME_MODE - Used to set --theme-mode
-* OLLAMA_HOST - Used to set --ollama-url
+* OLLAMA_URL - Used to set --ollama-url
 
-## Running Par Llama
+## Running PAR_LLAMA
 
 ### with pipx installation
 From anywhere:
@@ -106,6 +108,25 @@ From parent folder of venv
 source venv/Scripts/activate
 parllama
 ```
+
+## Running under Windows WSL
+Ollama by default only listens to localhost for connections, so you must set the environment variable OLLAMA_HOST=0.0.0.0:11434
+to make it listen on all interfaces.  
+**Note: this will allow connections to your Ollama server from other devices on any network you are connected to.**  
+If you have Ollama installed via the native Windows installer you must set OLLAMA_HOST=0.0.0.0:11434 in the "System Variable" section
+of the "Environment Variables" control panel.  
+If you installed Ollama under WSL, setting the var with ```export OLLAMA_HOST=0.0.0.0:11434``` before starting the Ollama server will have it listen on all interfaces.
+If your Ollama server is already running, stop and start it to ensure it picks up the new environment variable.  
+You can validate what interfaces the Ollama server is listening on by looking at the server.log file in the Ollama config folder.  
+You should see as one of the first few lines "OLLAMA_HOST:http://0.0.0.0:11434"  
+
+Now that the server is listening on all interfaces you must instruct PAR_LLAMA to use a custom Ollama connection url with the "-u" flag.  
+The command will look something like this:  
+```bash
+parllama -u "http://$(hostname).local:11434"
+```
+
+PAR_LLAMA will remember the -u flag so subsequent runs will not require that you specify it.
 
 ### Dev mode
 From repo root:
@@ -176,10 +197,10 @@ if anything remains to be fixed before the commit is allowed.
 ## Roadmap
 
 **Where we are**  
-* Initial release - Maintain and create new models
+* Initial release - Find, maintain and create new models
+* Basic chat with LLM
 
 **Where we're going**
-* Basic chat with LLM
 * Chat history / conversation management
 * Chat with multiple models at same time to compare outputs
 * LLM tool use

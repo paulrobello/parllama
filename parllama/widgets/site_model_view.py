@@ -15,6 +15,7 @@ from textual.suggester import SuggestFromList
 from textual.widgets import Input
 from textual.widgets import ListView
 from textual.widgets import Static
+from textual.widgets import TabbedContent
 
 from parllama.data_manager import dm
 from parllama.messages.main import ModelPullRequested
@@ -129,7 +130,8 @@ class SiteModelView(Container):
 
     def _on_show(self, event: Show) -> None:
         """Focus the search on show"""
-        self.search_input.focus()
+        with self.screen.prevent(TabbedContent.TabActivated):
+            self.search_input.focus()
 
     async def on_list_view_highlighted(self, event: ListView.Highlighted) -> None:
         """Update search field with model name"""

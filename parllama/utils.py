@@ -39,8 +39,8 @@ from parllama.icons import TRASH_EMOJI
 
 DECIMAL_PRECESSION = 5
 
-ScreenType: TypeAlias = Literal["Local", "Site", "Tools", "Create", "Logs", "Chat"]
-valid_screens: list[ScreenType] = ["Local", "Site", "Tools", "Create", "Logs", "Chat"]
+ScreenType: TypeAlias = Literal["Local", "Site", "Tools", "Create", "Chat", "Logs"]
+valid_screens: list[ScreenType] = ["Local", "Site", "Tools", "Create", "Chat", "Logs"]
 
 
 def id_generator(

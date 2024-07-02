@@ -58,7 +58,6 @@ class MainScreen(Screen[None]):
 
     async def on_mount(self) -> None:
         """Mount the Main screen."""
-        self.change_tab(settings.starting_screen)
         self.set_timer(0.5, self.done_loading)
 
     def done_loading(self) -> None:
@@ -93,6 +92,7 @@ class MainScreen(Screen[None]):
     def on_tab_activated(self, msg: TabbedContent.TabActivated) -> None:
         """Tab activated event"""
         msg.stop()
+        # self.notify(f"tab activated: {msg.tab.label.plain}")
         settings.last_screen = cast(ScreenType, msg.tab.label.plain)
         settings.save_settings_to_file()
 
