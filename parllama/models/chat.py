@@ -7,12 +7,12 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
-import ollama
 from ollama import Message as OMessage
 from ollama import Options as OllamaOptions
 from textual.widget import Widget
 
 from parllama.messages.main import ChatMessage
+from parllama.models.settings_data import settings
 
 
 class OllamaMessage(OMessage):
@@ -61,7 +61,7 @@ class ChatSession:
         msg_id = uuid.uuid4().hex
         self.messages.append(OllamaMessage(id=msg_id, content=from_user, role="user"))
         widget.post_message(ChatMessage(session_id=self.id, message_id=msg_id))
-        stream: Iterator[Mapping[str, Any]] = ollama.chat(  # type: ignore
+        stream: Iterator[Mapping[str, Any]] = settings.ollama_client.chat(  # type: ignore
             model=self.llm_model_name,
             messages=self.messages,
             options=self.options,
