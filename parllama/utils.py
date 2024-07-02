@@ -1,4 +1,5 @@
 """Various utility functions and decorators."""
+from __future__ import annotations
 
 import csv
 import hashlib
@@ -11,22 +12,35 @@ import subprocess
 import sys
 import time
 import uuid
-from argparse import ArgumentParser, Namespace
+from argparse import ArgumentParser
+from argparse import Namespace
+from collections.abc import Generator
 from contextlib import contextmanager
-from datetime import date, datetime
+from datetime import date
+from datetime import datetime
 from decimal import Decimal
 from io import StringIO
 from os import listdir
-from os.path import isfile, join
-from typing import Any, Dict, Generator, List, Union
+from os.path import isfile
+from os.path import join
+from typing import Any
+from typing import Literal
+from typing import TypeAlias
 
-from textual.widgets import Button, Input
-from textual.widgets._button import ButtonVariant
+from textual.widgets import Button
+from textual.widgets import Input
+from textual.widgets.button import ButtonVariant
 
-from parllama import __application_binary__, __application_title__, __version__
-from parllama.icons import PENCIL_EMOJI, TRASH_EMOJI
+from parllama import __application_binary__
+from parllama import __application_title__
+from parllama import __version__
+from parllama.icons import PENCIL_EMOJI
+from parllama.icons import TRASH_EMOJI
 
 DECIMAL_PRECESSION = 5
+
+ScreenType: TypeAlias = Literal["Local", "Site", "Tools", "Create", "Chat", "Logs"]
+valid_screens: list[ScreenType] = ["Local", "Site", "Tools", "Create", "Chat", "Logs"]
 
 
 def id_generator(
@@ -239,7 +253,7 @@ def read_text_file_to_stringio(file_path: str, encoding: str = "utf-8") -> Strin
     Returns:
             StringIO: The text file as a StringIO object.
     """
-    with open(file_path, "r", encoding=encoding) as file:
+    with open(file_path, encoding=encoding) as file:
         return StringIO(file.read())
 
 
@@ -515,7 +529,7 @@ def get_args() -> Namespace:
         "-s",
         "--starting-screen",
         help="Starting screen. Defaults to local",
-        choices=["local", "site", "tools", "create", "logs"],
+        choices=[s.lower() for s in valid_screens],
     )
 
     parser.add_argument(
@@ -543,7 +557,7 @@ def get_args() -> Namespace:
     return parser.parse_args()
 
 
-def output_to_dicts(output: str) -> List[dict[str, Any]]:
+def output_to_dicts(output: str) -> list[dict[str, Any]]:
     """Convert a tab-delimited output to a list of dicts."""
     if not output:
         return []
@@ -559,7 +573,7 @@ def output_to_dicts(output: str) -> List[dict[str, Any]]:
     return ret
 
 
-def run_cmd(params: list[str]) -> Union[str, None]:
+def run_cmd(params: list[str]) -> str | None:
     """Run a command and return the output."""
     try:
         result = subprocess.run(
@@ -580,7 +594,7 @@ def run_cmd(params: list[str]) -> Union[str, None]:
         return None
 
 
-def read_env_file(filename: str) -> Dict[str, str]:
+def read_env_file(filename: str) -> dict[str, str]:
     """
     Read environment variables from a file into a dictionary
 
@@ -590,10 +604,10 @@ def read_env_file(filename: str) -> Dict[str, str]:
     Returns:
         Dict[str, str]: A dictionary containing the environment variables
     """
-    env_vars: Dict[str, str] = {}
+    env_vars: dict[str, str] = {}
     if not os.path.exists(filename):
         return env_vars
-    with open(filename, "r", encoding="utf-8") as f:
+    with open(filename, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line or line.startswith("#") or not "=" in line:

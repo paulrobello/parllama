@@ -1,10 +1,12 @@
 """Toggleable hidden text input field."""
+from __future__ import annotations
 
 from textual import on
 from textual.app import ComposeResult
 from textual.containers import Horizontal
 from textual.widget import Widget
-from textual.widgets import Button, Input
+from textual.widgets import Button
+from textual.widgets import Input
 
 from parllama.icons import EYE_EMOJI
 from parllama.utils import to_class_case
@@ -20,7 +22,7 @@ class HiddenInputField(Widget):
         Input {
             width: 1fr;
         }
-    }   
+    }
     """
     base_name: str
     input: Input

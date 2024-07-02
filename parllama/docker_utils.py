@@ -1,7 +1,7 @@
 """Docker related functions"""
+from __future__ import annotations
 
 import os
-from typing import List, Union
 
 import docker.errors  # type: ignore
 import docker.types  # type: ignore
@@ -20,11 +20,11 @@ def start_docker_container(
     env: dict | None = None,
     ports: dict | None = None,
     network_name: str | None = None,
-    mounts: List[docker.types.Mount] | None = None,
+    mounts: list[docker.types.Mount] | None = None,
     re_create: bool = False,
     remove: bool = False,
     background: bool = True,
-) -> Union[str, Container, Exception]:
+) -> str | Container | Exception:
     """
     Start a docker container if it exists, otherwise create it
 

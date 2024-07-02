@@ -1,7 +1,8 @@
 """Messages for application."""
+from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal, Optional
+from typing import Literal
 
 from rich.console import RenderableType
 from textual.message import Message
@@ -14,7 +15,12 @@ from ..models.ollama_data import FullModel
 class AppRequest(Message):
     """Request to app to perform an action."""
 
-    widget: Optional[Widget]
+    widget: Widget | None
+
+
+@dataclass
+class RegisterForUpdates(AppRequest):
+    """Register widget for updates."""
 
 
 @dataclass
@@ -91,7 +97,7 @@ class ModelCreateRequested(AppRequest):
 
     model_name: str
     model_code: str
-    quantization_level: Optional[str]
+    quantization_level: str | None
 
 
 @dataclass
@@ -100,7 +106,7 @@ class CreateModelFromExistingRequested(AppRequest):
 
     model_name: str
     model_code: str
-    quantization_level: Optional[str]
+    quantization_level: str | None
 
 
 @dataclass
@@ -108,7 +114,7 @@ class ModelCreated(Message):
     """Message to notify that a model has been created."""
 
     model_name: str
-    quantization_level: Optional[str]
+    quantization_level: str | None
     model_code: str
     success: bool
 
@@ -184,7 +190,7 @@ class SendToClipboard(Message):
 
 @dataclass
 class SetModelNameLoading(Message):
-    """Set model name loading."""
+    """Set model name loading indicator."""
 
     model_name: str
     loading: bool
@@ -195,3 +201,23 @@ class ChangeTab(Message):
     """Change to requested tab."""
 
     tab: Literal["Local", "Site", "Tools", "Create", "Logs"]
+
+
+@dataclass
+class ChatMessage(Message):
+    """Chat message class"""
+
+    session_id: str
+    message_id: str
+
+
+@dataclass
+class ChatMessageSent(Message):
+    """Chat message sent class"""
+
+
+@dataclass
+class NewChatSession(Message):
+    """Chat message sent class"""
+
+    id: str

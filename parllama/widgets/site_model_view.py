@@ -1,22 +1,26 @@
 """Site Model View"""
+from __future__ import annotations
 
 import webbrowser
-from typing import Optional, cast
+from typing import cast
 
 from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Container, Horizontal, Vertical
+from textual.containers import Container
+from textual.containers import Horizontal
+from textual.containers import Vertical
 from textual.events import Show
 from textual.suggester import SuggestFromList
-from textual.widgets import Input, ListView, Static
+from textual.widgets import Input
+from textual.widgets import ListView
+from textual.widgets import Static
+from textual.widgets import TabbedContent
 
 from parllama.data_manager import dm
-from parllama.messages.main import (
-    ModelPullRequested,
-    SiteModelsLoaded,
-    SiteModelsRefreshRequested,
-)
+from parllama.messages.main import ModelPullRequested
+from parllama.messages.main import SiteModelsLoaded
+from parllama.messages.main import SiteModelsRefreshRequested
 from parllama.models.settings_data import settings
 from parllama.widgets.input_tab_complete import InputTabComplete
 from parllama.widgets.site_model_list_item import SiteModelListItem
@@ -34,22 +38,22 @@ class SiteModelView(Container):
       & > Vertical {
         background: $background;
         align: left top;
-    
+
         & > Horizontal {
           height: 3;
           margin-bottom: 1;
-    
+
           #search {
             height: 3;
             width: 1fr;
           }
-    
+
           #namespace {
             height: 3;
             width: 30;
           }
         }
-    
+
         #site-model-list {
           width: 1fr;
           height: 1fr;
@@ -79,7 +83,7 @@ class SiteModelView(Container):
         ),
     ]
     lv: SiteModelListView
-    item: Optional[SiteModelListItem] = None
+    item: SiteModelListItem | None = None
     search_input: Input
 
     def __init__(self, **kwargs) -> None:
@@ -126,7 +130,8 @@ class SiteModelView(Container):
 
     def _on_show(self, event: Show) -> None:
         """Focus the search on show"""
-        self.search_input.focus()
+        with self.screen.prevent(TabbedContent.TabActivated):
+            self.search_input.focus()
 
     async def on_list_view_highlighted(self, event: ListView.Highlighted) -> None:
         """Update search field with model name"""

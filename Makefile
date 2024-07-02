@@ -33,6 +33,21 @@ clear_cache:	        # Clear application cache
 dev:	        # Run in dev mode
 	$(run) textual run --dev $(lib).app:ParLlamaApp
 
+.PHONY: wsl-dev
+wsl-dev:	        # Run in dev mode
+	$(run) textual run --dev $(lib).app:ParLlamaApp -u "http://$(shell hostname).local:11434"
+
+.PHONY: wsl-run
+wsl-run:	        # Run in dev mode
+	$(python) -m $(lib) -u "http://$(shell hostname).local:11434"
+
+.PHONY: chat_dev
+chat_dev:	        # Run in dev mode
+	$(run) textual run --dev $(lib).app:ParLlamaApp -s chat
+
+.PHONY: chat
+chat:	        # Run in dev mode
+	$(python) -m $(lib) -s chat
 
 .PHONY: debug
 debug:	        # Run in debug mode
@@ -93,10 +108,10 @@ stricttypecheck:	        # Perform a strict static type checks with mypy
 	$(mypy) --scripts-are-modules --strict $(lib)
 
 .PHONY: checkall
-checkall: lint typecheck	        # Check all the things
+checkall: typecheck lint 	        # Check all the things
 
-.PHONY: dobeforecommit
-dobeforecommit: ugly checkall	        # Format then check
+.PHONY: do-before-commit
+do-before-commit: ugly checkall	        # Format then check
 
 ##############################################################################
 # Package/publish.

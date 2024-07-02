@@ -1,14 +1,15 @@
 """Grid list of models."""
+from __future__ import annotations
 
 import webbrowser
-from typing import Optional
 
 from textual.binding import Binding
 from textual.containers import Grid
 from textual.reactive import Reactive
 from textual.widget import Widget
 
-from parllama.messages.main import LocalModelDeleteRequested, ShowLocalModel
+from parllama.messages.main import LocalModelDeleteRequested
+from parllama.messages.main import ShowLocalModel
 from parllama.widgets.local_model_list_item import LocalModelListItem
 
 
@@ -65,8 +66,8 @@ class GridList(Grid, can_focus=False):
         align: left top;
     }
     """
-    selected: Reactive[Optional[LocalModelListItem]] = Reactive(None)
-    old_selected: Optional[LocalModelListItem] = None
+    selected: Reactive[LocalModelListItem | None] = Reactive(None)
+    old_selected: LocalModelListItem | None = None
 
     def __init__(self, **kwargs) -> None:
         """Initialise the widget."""
@@ -273,7 +274,7 @@ class GridList(Grid, can_focus=False):
 
     def filter(self, value: str) -> None:
         """Filter the list use value from search / filter box."""
-        first_visible: Optional[Widget] = None
+        first_visible: Widget | None = None
         num_visible: int = 0
         for item in self.query(LocalModelListItem):
             if not value:

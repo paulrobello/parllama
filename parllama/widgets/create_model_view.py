@@ -1,16 +1,21 @@
 """Create new model view."""
-
 from __future__ import annotations
 
 from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Container, Horizontal, VerticalScroll
+from textual.containers import Container
+from textual.containers import Horizontal
+from textual.containers import VerticalScroll
 from textual.events import Show
-from textual.widgets import Button, Input, Label, TextArea
+from textual.widgets import Button
+from textual.widgets import Input
+from textual.widgets import Label
+from textual.widgets import TextArea
 
 from parllama.dialogs.error_dialog import ErrorDialog
-from parllama.messages.main import ChangeTab, ModelCreateRequested
+from parllama.messages.main import ChangeTab
+from parllama.messages.main import ModelCreateRequested
 
 
 class ModelCreateView(Container):
@@ -65,7 +70,7 @@ class ModelCreateView(Container):
             id="quantize_level",
             placeholder="e.g. q4_0 or blank for none",
         )
-        self.text_area = TextArea.code_editor("", id="editor")
+        self.text_area = TextArea.code_editor("", id="editor", theme="css")
         self.text_area.indent_type = "tabs"
         self.text_area.border_title = "Model Code"
         self.create_button = Button("Create", id="create_button")

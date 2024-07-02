@@ -1,15 +1,23 @@
 """Main screen for TUI."""
+from __future__ import annotations
 
-from typing import Literal, cast
+from typing import cast
 
 from rich.console import RenderableType
 from textual import on
 from textual.app import ComposeResult
 from textual.screen import Screen
-from textual.widgets import Footer, Header, Static, TabbedContent, TabPane
+from textual.widgets import Footer
+from textual.widgets import Header
+from textual.widgets import Static
+from textual.widgets import TabbedContent
+from textual.widgets import TabPane
 
-from parllama.messages.main import PsMessage, StatusMessage
-from parllama.models.settings_data import ScreenType, settings
+from parllama.messages.main import PsMessage
+from parllama.messages.main import StatusMessage
+from parllama.models.settings_data import ScreenType
+from parllama.models.settings_data import settings
+from parllama.widgets.chat_view import ChatView
 from parllama.widgets.create_model_view import ModelCreateView
 from parllama.widgets.local_model_view import LocalModelView
 from parllama.widgets.log_view import LogView
@@ -32,6 +40,7 @@ class MainScreen(Screen[None]):
     site_view: SiteModelView
     model_tools_view: ModelToolsView
     create_view: ModelCreateView
+    chat_view: ChatView
 
     def __init__(self, **kwargs) -> None:
         """Initialize the Main screen."""
@@ -44,11 +53,11 @@ class MainScreen(Screen[None]):
         self.site_view = SiteModelView(id="site_models")
         self.create_view = ModelCreateView(id="model_create")
         self.model_tools_view = ModelToolsView(id="model_tools")
+        self.chat_view = ChatView(id="chat_view")
         self.log_view = LogView()
 
     async def on_mount(self) -> None:
         """Mount the Main screen."""
-        self.change_tab(settings.starting_screen)
         self.set_timer(0.5, self.done_loading)
 
     def done_loading(self) -> None:
@@ -61,7 +70,8 @@ class MainScreen(Screen[None]):
         yield Footer()
         yield self.status_bar
         yield self.ps_status_bar
-        with TabbedContent(id="tabbed_content", initial=settings.starting_screen) as tc:
+
+        with TabbedContent(id="tabbed_content", initial=settings.last_screen) as tc:
             self.tabbed_content = tc
             tc.loading = True
 
@@ -73,6 +83,8 @@ class MainScreen(Screen[None]):
                 yield self.model_tools_view
             with TabPane("Create", id="Create"):
                 yield self.create_view
+            with TabPane("Chat", id="Chat"):
+                yield self.chat_view
             with TabPane("Logs", id="Logs"):
                 yield self.log_view
 
@@ -80,6 +92,7 @@ class MainScreen(Screen[None]):
     def on_tab_activated(self, msg: TabbedContent.TabActivated) -> None:
         """Tab activated event"""
         msg.stop()
+        # self.notify(f"tab activated: {msg.tab.label.plain}")
         settings.last_screen = cast(ScreenType, msg.tab.label.plain)
         settings.save_settings_to_file()
 
@@ -106,9 +119,7 @@ class MainScreen(Screen[None]):
         self.ps_status_bar.update(msg)
         self.ps_status_bar.display = bool(msg)
 
-    def change_tab(
-        self, tab: Literal["Local", "Site", "Tools", "Create", "Logs"]
-    ) -> None:
+    def change_tab(self, tab: ScreenType) -> None:
         """Change active tab."""
         self.tabbed_content.active = tab
 

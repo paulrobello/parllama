@@ -1,9 +1,11 @@
 """Data classes for job queue"""
+from __future__ import annotations
 
-from typing import Optional
-from uuid import UUID, uuid4
+from uuid import UUID
+from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+from pydantic import Field
 
 
 class QueueJob(BaseModel):
@@ -35,4 +37,4 @@ class CreateModelJob(QueueJob):
     """Create model job"""
 
     modelCode: str
-    quantizationLevel: Optional[str]
+    quantizationLevel: str | None

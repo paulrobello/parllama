@@ -1,10 +1,15 @@
 """Field set consisting of Label and Input for editing items."""
+from __future__ import annotations
 
 from textual import on
 from textual.app import ComposeResult
 from textual.containers import Horizontal
 from textual.widget import Widget
-from textual.widgets import Button, Input, Label, Select, TextArea
+from textual.widgets import Button
+from textual.widgets import Input
+from textual.widgets import Label
+from textual.widgets import Select
+from textual.widgets import TextArea
 
 from parllama.icons import COPY_EMOJI
 from parllama.messages.main import SendToClipboard
@@ -29,7 +34,7 @@ class FieldSet(Widget):
                 width: 3fr;
             }
         }
-    
+
         Input, Select, TextArea, Checkbox, HiddenInputField{
             width: 1fr;
         }

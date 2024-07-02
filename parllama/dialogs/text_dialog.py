@@ -1,11 +1,14 @@
 """Provides a base modal dialog for showing text to the user."""
+from __future__ import annotations
 
 from rich.text import TextType
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Center, Vertical
+from textual.containers import Center
+from textual.containers import Vertical
 from textual.screen import ModalScreen
-from textual.widgets import Button, Static
+from textual.widgets import Button
+from textual.widgets import Static
 from textual.widgets._button import ButtonVariant
 
 
@@ -16,11 +19,11 @@ class TextDialog(ModalScreen[None]):
 	TextDialog {
 		align: center middle;
 	}
-	
+
 	TextDialog Center {
 		width: 100%;
 	}
-	
+
 	TextDialog > Vertical {
 		background: $boost;
 		min-width: 30%;
@@ -28,15 +31,15 @@ class TextDialog(ModalScreen[None]):
 		height: auto;
 		border: round $primary;
 	}
-	
+
 	TextDialog Static {
 		width: auto;
 	}
-	
+
 	TextDialog .spaced {
 		padding: 1 4;
 	}
-	
+
 	TextDialog #message {
 		min-width: 100%;
 	}

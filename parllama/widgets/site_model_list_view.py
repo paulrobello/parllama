@@ -1,4 +1,5 @@
 """Site Model List View"""
+from __future__ import annotations
 
 from textual.widgets import ListView
 

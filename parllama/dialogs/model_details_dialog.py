@@ -1,7 +1,8 @@
 """Provides model details dialog."""
+from __future__ import annotations
 
 import re
-from typing import List, cast
+from typing import cast
 
 import humanize
 import ollama
@@ -11,10 +12,14 @@ from textual.binding import Binding
 from textual.containers import VerticalScroll
 from textual.events import Focus
 from textual.screen import ModalScreen
-from textual.widgets import Button, MarkdownViewer, Static, TextArea
+from textual.widgets import Button
+from textual.widgets import MarkdownViewer
+from textual.widgets import Static
+from textual.widgets import TextArea
 
 from ..messages.main import CreateModelFromExistingRequested
-from ..models.ollama_data import FullModel, MessageRoles
+from ..models.ollama_data import FullModel
+from ..models.ollama_data import MessageRoles
 from ..widgets.field_set import FieldSet
 
 
@@ -108,7 +113,7 @@ class ModelDetailsDialog(ModalScreen[None]):
 
             system_regex = re.compile(r"^system (.*)", re.I)
             message_regex = re.compile(r"^message (user|assistant|system) (.*)", re.I)
-            messages: List[ollama.Message] = []
+            messages: list[ollama.Message] = []
             system_msg: str = ""
             for line in self.model.modelfile.splitlines():
                 match = message_regex.match(line)

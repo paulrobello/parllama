@@ -1,17 +1,22 @@
 """The main help dialog for the application."""
+from __future__ import annotations
 
 import os
 import webbrowser
 from pathlib import Path
+from typing import Final
 
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Center, Vertical, VerticalScroll
+from textual.containers import Center
+from textual.containers import Vertical
+from textual.containers import VerticalScroll
 from textual.screen import ModalScreen
-from textual.widgets import Button, Markdown
-from typing_extensions import Final
+from textual.widgets import Button
+from textual.widgets import Markdown
 
-from parllama import __application_title__, __version__
+from parllama import __application_title__
+from parllama import __version__
 
 HELP: Final[
     str
@@ -30,18 +35,18 @@ class HelpDialog(ModalScreen[None]):
     HelpDialog {
         align: center middle;
     }
-    
+
     HelpDialog > Vertical {
         border: thick $primary 50%;
         width: 80%;
         height: 80%;
         background: $boost;
     }
-    
+
     HelpDialog > Vertical > VerticalScroll {
         height: 1fr;
     }
-    
+
     HelpDialog > Vertical > Center {
         padding: 1;
         height: auto;
@@ -53,7 +58,7 @@ class HelpDialog(ModalScreen[None]):
     def compose(self) -> ComposeResult:
         """Compose the help screen."""
         with open(
-            f"{os.path.dirname(Path(__file__).parent)}/help.md", "r", encoding="utf-8"
+            f"{os.path.dirname(Path(__file__).parent)}/help.md", encoding="utf-8"
         ) as f:
             help_text = f.read()
         with Vertical():

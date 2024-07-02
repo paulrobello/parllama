@@ -1,19 +1,18 @@
 """Model for application settings."""
+from __future__ import annotations
 
 import functools
 import os
 import shutil
 from argparse import Namespace
-from typing import List, Literal, TypeAlias
 
 import ollama
 import simplejson as json
 from pydantic import BaseModel
 
 from ..utils import get_args
-
-ScreenType: TypeAlias = Literal["Local", "Site", "Tools", "Create", "Logs"]
-valid_screens: List[ScreenType] = ["Local", "Site", "Tools", "Create", "Logs"]
+from ..utils import ScreenType
+from ..utils import valid_screens
 
 
 class Settings(BaseModel):
@@ -26,6 +25,8 @@ class Settings(BaseModel):
     theme_name: str = "par"
     starting_screen: ScreenType = "Local"
     last_screen: ScreenType = "Local"
+    last_chat_model: str = ""
+    last_chat_temperature: float = 0.5
     theme_mode: str = "dark"
     site_models_namespace: str = ""
     max_log_lines: int = 1000
@@ -65,7 +66,7 @@ class Settings(BaseModel):
                 shutil.rmtree(self.cache_dir, ignore_errors=True)
 
         self.load_from_file()
-        url = os.environ.get("OLLAMA_HOST")
+        url = os.environ.get("OLLAMA_URL")
         if args.ollama_url:
             url = args.ollama_url
         if url:
@@ -93,7 +94,7 @@ class Settings(BaseModel):
     def load_from_file(self) -> None:
         """Load settings from file."""
         try:
-            with open(self.settings_file, mode="rt", encoding="utf-8") as f:
+            with open(self.settings_file, encoding="utf-8") as f:
                 data = json.load(f)
                 url = data.get("ollama_host", self.ollama_host)
 
@@ -109,9 +110,12 @@ class Settings(BaseModel):
                     self.starting_screen = "Local"
 
                 self.last_screen = data.get("last_screen", "Local")
-                if self.last_screen not in valid_screens:
-                    self.last_screen = self.starting_screen
-
+                # if self.last_screen not in valid_screens:
+                #     self.last_screen = self.starting_screen
+                self.last_chat_model = data.get("last_chat_model", self.last_chat_model)
+                self.last_chat_temperature = data.get(
+                    "last_chat_temperature", self.last_chat_temperature
+                )
                 self.max_log_lines = max(0, data.get("max_log_lines", 1000))
         except FileNotFoundError:
             pass  # If file does not exist, continue with default settings
@@ -126,7 +130,7 @@ class Settings(BaseModel):
                 f"Par Llama data directory does not exist: {self.data_dir}"
             )
 
-        with open(self.settings_file, "wt", encoding="utf-8") as f:
+        with open(self.settings_file, "w", encoding="utf-8") as f:
             f.write(self.model_dump_json(indent=4))
 
     def ensure_cache_folder(self) -> None:

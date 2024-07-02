@@ -1,12 +1,17 @@
 """View for the model tools."""
+from __future__ import annotations
 
 import os
 import webbrowser
 
 from textual import on
 from textual.app import ComposeResult
-from textual.containers import Container, Vertical, VerticalScroll
-from textual.widgets import Button, ContentSwitcher, Static
+from textual.containers import Container
+from textual.containers import Vertical
+from textual.containers import VerticalScroll
+from textual.widgets import Button
+from textual.widgets import ContentSwitcher
+from textual.widgets import Static
 
 from parllama.messages.main import ChangeTab
 from parllama.widgets.clickable_label import CopyToClipboardLabel
@@ -43,7 +48,7 @@ class ModelToolsView(Container):
             os.path.expanduser("~"), ".ollama", "id_ed25519.pub"
         )
         if os.path.exists(pub_key_path):
-            with open(pub_key_path, "rt", encoding="utf-8") as f:
+            with open(pub_key_path, encoding="utf-8") as f:
                 pub_key = f.read().strip()
         with ContentSwitcher(initial="menu"):
             with VerticalScroll(id="menu"):

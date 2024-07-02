@@ -1,12 +1,14 @@
 """Provides a dialog for getting a yes/no response from the user."""
-
 from __future__ import annotations
 
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Center, Horizontal, Vertical
+from textual.containers import Center
+from textual.containers import Horizontal
+from textual.containers import Vertical
 from textual.screen import ModalScreen
-from textual.widgets import Button, Static
+from textual.widgets import Button
+from textual.widgets import Static
 
 
 class YesNoDialog(ModalScreen[bool]):
@@ -23,30 +25,30 @@ class YesNoDialog(ModalScreen[bool]):
 		width: auto;
 		border: thick $secondary;
 	}
-	
+
 	YesNoDialog > Vertical > * {
 		width: auto;
 		height: auto;
 	}
-	
+
 	YesNoDialog Static {
 		width: auto;
 	}
-	
+
 	YesNoDialog .spaced {
 		padding: 1;
 	}
-	
+
 	YesNoDialog #question {
 		min-width: 100%;
 		border-top: solid $secondary;
 		border-bottom: solid $secondary;
 	}
-	
+
 	YesNoDialog Button {
 		margin-right: 1;
 	}
-	
+
 	YesNoDialog #buttons {
 		width: 100%;
 		align-horizontal: right;
