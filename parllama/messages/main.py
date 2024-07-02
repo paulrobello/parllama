@@ -214,3 +214,10 @@ class ChatMessage(Message):
 @dataclass
 class ChatMessageSent(Message):
     """Chat message sent class"""
+
+
+@dataclass
+class NewChatSession(Message):
+    """Chat message sent class"""
+
+    id: str

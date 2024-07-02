@@ -7,7 +7,7 @@ MainScreen {
     #PsStatusBar {
         height: 1;
         padding-left: 1;
-        background: $surface;
+        background: $panel;
     }
 
 }

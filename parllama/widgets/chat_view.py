@@ -40,6 +40,9 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
         #temperature_input {
           width: 11;
         }
+        #clear_button {
+          margin-left: 2;
+        }
         Label {
           margin: 1;
           background: transparent;
@@ -108,6 +111,7 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
                 yield self.model_select
                 yield Label("Temperature")
                 yield self.temperature_input
+                yield Button("Clear", id="clear_button", variant="warning")
             yield self.vs
             with Horizontal(id="send_bar"):
                 yield self.user_input
@@ -139,6 +143,9 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
         self.send_button.disabled = (
             self.user_input.disabled or len(self.user_input.value) == 0
         )
+        if self.model_select.value != Select.BLANK:
+            with self.screen.prevent(TabbedContent.TabActivated):
+                self.user_input.focus()
 
     @on(Select.Changed)
     def on_model_select_changed(self) -> None:
@@ -167,9 +174,14 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
             if v == old_v:
                 self.model_select.value = old_v
         self.update_control_states()
-        if self.model_select.value != Select.BLANK:
-            with self.screen.prevent(TabbedContent.TabActivated):
-                self.user_input.focus()
+
+    @on(Button.Pressed, "#clear_button")
+    def on_clear_button_pressed(self) -> None:
+        """Clear button pressed"""
+        if self.session:
+            self.session.new_session()
+            self.vs.remove_children("*")
+            self.update_control_states()
 
     @on(Button.Pressed, "#send_button")
     @on(Input.Submitted, "#user_input")

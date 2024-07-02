@@ -75,3 +75,8 @@ class ChatSession:
             widget.post_message(ChatMessage(session_id=self.id, message_id=msg_id))
 
         return True
+
+    def new_session(self):
+        """Start new session"""
+        self.id = uuid.uuid4().hex
+        self.messages.clear()
