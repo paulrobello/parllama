@@ -41,7 +41,7 @@ class ChatManager:
         self.current_session = session
         return session
 
-    def get_session(self, session_id: uuid.UUID) -> ChatSession | None:
+    def get_session(self, session_id: str) -> ChatSession | None:
         """Get a chat session"""
         for session in self.sessions:
             if session.id == session_id:
@@ -77,7 +77,7 @@ class ChatManager:
             session = self.new_session(session_name, model_name, options)
         return session
 
-    def set_current_session(self, session_id: uuid.UUID) -> ChatSession | None:
+    def set_current_session(self, session_id: str) -> ChatSession | None:
         """Set the current chat session"""
         self.current_session = self.get_session(session_id)
         return self.current_session

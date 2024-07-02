@@ -1,7 +1,6 @@
 """Messages for application."""
 from __future__ import annotations
 
-import uuid
 from dataclasses import dataclass
 from typing import Literal
 
@@ -208,5 +207,5 @@ class ChangeTab(Message):
 class ChatMessage(Message):
     """Chat message class"""
 
-    session_id: uuid.UUID
-    content: str
+    session_id: str
+    message_id: str

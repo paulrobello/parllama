@@ -8,11 +8,17 @@ from dataclasses import dataclass
 from typing import Any
 
 import ollama
-from ollama import Message as OllamaMessage
+from ollama import Message as OMessage
 from ollama import Options as OllamaOptions
 from textual.widget import Widget
 
 from parllama.messages.main import ChatMessage
+
+
+class OllamaMessage(OMessage):
+    """Ollama message class"""
+
+    id: str
 
 
 @dataclass
@@ -21,7 +27,7 @@ class ChatSession:
 
     session_name: str
     llm_model_name: str
-    id: uuid.UUID
+    id: str
     messages: list[OllamaMessage]
     options: OllamaOptions
 
@@ -33,29 +39,39 @@ class ChatSession:
         options: OllamaOptions | None = None,
     ):
         """Initialize the chat session"""
-        self.id = uuid.uuid4()
+        self.id = uuid.uuid4().hex
         self.messages = []
         self.session_name = session_name
         self.llm_model_name = llm_model_name
         self.options = options or {}
 
+    def get_message(self, message_id: str) -> OllamaMessage | None:
+        """Get a message"""
+        for message in self.messages:
+            if message["id"] == message_id:
+                return message
+        return None
+
     def push_message(self, message: OllamaMessage) -> None:
         """Push a message"""
         self.messages.append(message)
 
-    async def send_chat(self, msg: str, widget: Widget | None = None) -> bool:
+    async def send_chat(self, from_user: str, widget: Widget) -> bool:
         """Send a chat message to LLM"""
-        self.messages.append(OllamaMessage(content=msg, role="user"))
+        msg_id = uuid.uuid4().hex
+        self.messages.append(OllamaMessage(id=msg_id, content=from_user, role="user"))
+        widget.post_message(ChatMessage(session_id=self.id, message_id=msg_id))
         stream: Iterator[Mapping[str, Any]] = ollama.chat(  # type: ignore
             model=self.llm_model_name,
             messages=self.messages,
             options=self.options,
             stream=True,
         )
-        res_msg: str = ""
+        msg_id = uuid.uuid4().hex
+        msg: OllamaMessage = OllamaMessage(id=msg_id, content="", role="assistant")
+        self.messages.append(msg)
         for chunk in stream:
-            res_msg += chunk["message"]["content"]
-            if widget:
-                widget.post_message(ChatMessage(session_id=self.id, content=res_msg))
-        self.messages.append(OllamaMessage(content=res_msg, role="assistant"))
+            msg["content"] += chunk["message"]["content"]
+            widget.post_message(ChatMessage(session_id=self.id, message_id=msg_id))
+
         return True

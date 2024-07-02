@@ -65,3 +65,13 @@ ChatView {
     }
   }
 }
+
+
+ChatMessageWidget {
+    background: $primary-background;
+    margin: 0;
+    MarkdownFence {
+        margin: 1 2;
+        max-height: initial;
+    }
+}

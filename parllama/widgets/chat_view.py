@@ -10,8 +10,8 @@ from textual.containers import VerticalScroll
 from textual.widgets import Button
 from textual.widgets import Input
 from textual.widgets import Label
-from textual.widgets import MarkdownViewer
 from textual.widgets import Select
+from textual.widgets import Static
 
 from parllama.chat_manager import chat_manager
 from parllama.data_manager import dm
@@ -19,6 +19,7 @@ from parllama.messages.main import ChatMessage
 from parllama.messages.main import LocalModelListLoaded
 from parllama.messages.main import RegisterForUpdates
 from parllama.models.chat import ChatSession
+from parllama.widgets.chat_message import ChatMessageWidget
 
 
 class ChatView(Container):
@@ -30,7 +31,6 @@ class ChatView(Container):
     model_select: Select[str]
     send_button: Button
     session: ChatSession | None = None
-    md: MarkdownViewer
 
     def __init__(self, **kwargs) -> None:
         """Initialise the view."""
@@ -50,7 +50,7 @@ class ChatView(Container):
         self.model_select = Select(
             id="model_name", options=dm.get_model_select_options()
         )
-        self.md = MarkdownViewer(id="chat_output")
+        self.vs = VerticalScroll(id="messages")
 
     def compose(self) -> ComposeResult:
         """Compose the content of the view."""
@@ -61,8 +61,8 @@ class ChatView(Container):
                 yield self.model_select
                 yield Label("Temperature")
                 yield self.temperature_input
-            with VerticalScroll(id="messages"):
-                yield self.md
+            with self.vs:
+                yield Static("Messages")
             with Horizontal(id="send_bar"):
                 yield self.user_input
                 yield self.send_button
@@ -95,6 +95,7 @@ class ChatView(Container):
         self.user_input.disabled = v == Select.BLANK
 
     @on(Button.Pressed, "#send_button")
+    @on(Input.Submitted, "#user_input")
     async def action_send_message(self) -> None:
         """Send the message."""
         if not self.model_select.value or self.model_select.value == Select.BLANK:
@@ -118,4 +119,16 @@ class ChatView(Container):
     @on(ChatMessage)
     def on_chat_message(self, event: ChatMessage) -> None:
         """Handle a chat message"""
-        self.md.document.update(event.content)
+        ses = chat_manager.get_session(event.session_id)
+        if not ses:
+            self.notify("chat session not found")
+            return
+        msg = ses.get_message(event.message_id)
+        if not msg:
+            self.notify("chat message not found")
+            return
+        for w in self.query(ChatMessageWidget):
+            if w.msg["id"] == msg["id"]:
+                w.update("")
+                return
+        self.vs.mount(ChatMessageWidget(msg=msg))
