@@ -27,6 +27,8 @@ from textual.widgets import Select
 from textual.widgets import TextArea
 
 from parllama import __application_title__
+from parllama.chat_manager import chat_manager
+from parllama.chat_manager import ChatManager
 from parllama.data_manager import dm
 from parllama.dialogs.help_dialog import HelpDialog
 from parllama.messages.main import AppRequest
@@ -52,8 +54,6 @@ from parllama.messages.main import SetModelNameLoading
 from parllama.messages.main import SiteModelsLoaded
 from parllama.messages.main import SiteModelsRefreshRequested
 from parllama.messages.main import StatusMessage
-from parllama.models.chat_manager import chat_manager
-from parllama.models.chat_manager import ChatManager
 from parllama.models.jobs import CopyModelJob
 from parllama.models.jobs import CreateModelJob
 from parllama.models.jobs import PullModelJob

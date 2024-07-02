@@ -2,60 +2,12 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import Iterator
-from collections.abc import Mapping
-from dataclasses import dataclass
 from typing import Any
 
-import ollama
-from ollama import Message as OllamaMessage
 from ollama import Options as OllamaOptions
-from pydantic import BaseModel
-from pydantic import Field
 from textual.app import App
-from textual.message import Message
-from textual.widget import Widget
 
-
-@dataclass
-class ChatMessage(Message):
-    """Chat message class"""
-
-    session_id: uuid.UUID
-    content: str
-
-
-class ChatSession(BaseModel):
-    """Chat session class"""
-
-    id: uuid.UUID = Field(default_factory=uuid.uuid4)
-    manager: ChatManager
-    session_name: str
-    llm_model_name: str
-    messages: list[OllamaMessage] = []
-    options: OllamaOptions = {}
-
-    def push_message(self, message: OllamaMessage) -> None:
-        """Push a message"""
-        self.messages.append(message)
-
-    async def send_chat(self, msg: str, widget: Widget | None = None) -> bool:
-        """Send a chat message to LLM"""
-        self.messages.append(OllamaMessage(content=msg, role="user"))
-        stream: Iterator[Mapping[str, Any]] = ollama.chat(  # type: ignore
-            model=self.llm_model_name,
-            messages=self.messages,
-            options=self.options,
-            stream=True,
-        )
-        res_msg: str = ""
-        for chunk in stream:
-            res_msg += chunk["message"]["content"]
-            (widget or self.manager.app).post_message(
-                ChatMessage(session_id=self.id, content=res_msg)
-            )
-        self.messages.append(OllamaMessage(content=res_msg, role="assistant"))
-        return True
+from parllama.models.chat import ChatSession
 
 
 class ChatManager:
@@ -81,7 +33,6 @@ class ChatManager:
     ) -> ChatSession:
         """Create a new chat session"""
         session = ChatSession(
-            manager=self,
             session_name=session_name,
             llm_model_name=model_name,
             options=options or self.options,

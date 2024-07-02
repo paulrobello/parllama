@@ -13,12 +13,12 @@ from textual.widgets import Label
 from textual.widgets import MarkdownViewer
 from textual.widgets import Select
 
+from parllama.chat_manager import chat_manager
 from parllama.data_manager import dm
+from parllama.messages.main import ChatMessage
 from parllama.messages.main import LocalModelListLoaded
 from parllama.messages.main import RegisterForUpdates
-from parllama.models.chat_manager import chat_manager
-from parllama.models.chat_manager import ChatMessage
-from parllama.models.chat_manager import ChatSession
+from parllama.models.chat import ChatSession
 
 
 class ChatView(Container):
