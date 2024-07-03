@@ -146,7 +146,10 @@ class ParLlamaApp(App[None]):
         """Display the main or locked screen."""
         await self.push_screen(self.main_screen)
         self.main_screen.post_message(
-            StatusMessage(f"Data directory: {settings.data_dir}")
+            StatusMessage(f"Data folder: {settings.data_dir}")
+        )
+        self.main_screen.post_message(
+            StatusMessage(f"Chat folder: {settings.chat_dir}")
         )
         self.main_screen.post_message(
             StatusMessage(f"Using Ollama server url: {settings.ollama_host}")

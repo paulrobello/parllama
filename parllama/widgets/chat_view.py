@@ -178,6 +178,10 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
     @on(Button.Pressed, "#clear_button")
     def on_clear_button_pressed(self) -> None:
         """Clear button pressed"""
+        self.action_clear_messages()
+
+    def action_clear_messages(self) -> None:
+        """Clear messages."""
         if self.session:
             self.session.new_session()
             self.vs.remove_children("*")
@@ -211,16 +215,39 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
                 self.session.options["temperature"] = float(
                     self.temperature_input.value
                 )
-            self.do_send_message(self.user_input.value)
-        finally:
+            msg = self.user_input.value
             self.user_input.value = ""
+            if msg.startswith("/"):
+                return self.handle_command(msg)
+            self.do_send_message(msg)
+        finally:
             self.busy = False
-            self.update_control_states()
+        self.update_control_states()
+
+    def handle_command(self, cmd: str) -> None:
+        """Handle a command"""
+        if self.session is None:
+            return
+        if cmd.startswith("/clear"):
+            self.action_clear_messages()
+        elif cmd.startswith("/model"):
+            self.set_timer(0.1, self.model_select.focus)
+        elif cmd.startswith("/temperature"):
+            self.set_timer(0.1, self.temperature_input.focus)
+        elif cmd.startswith("/save"):
+            filename: str = "chat_test.md"
+            if self.session.save(filename):
+                self.notify(f"Saved: {filename}")
+            else:
+                self.notify(f"Failed to save: {filename}", severity="error")
+        else:
+            self.notify(f"Unknown command: {cmd}", severity="error")
 
     @work(thread=True)
     async def do_send_message(self, msg: str) -> None:
         """Send the message."""
-        if not self.session:
+
+        if self.session is None:
             return
         await self.session.send_chat(msg, self)
         self.post_message(ChatMessageSent())
@@ -246,11 +273,17 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
 
         msg_widget: ChatMessageWidget | None = None
         for w in self.query(ChatMessageWidget):
-            if w.msg["id"] == msg["id"]:
+            if w.msg.id == msg.id:
                 await w.update("")
                 msg_widget = w
                 break
         if not msg_widget:
             msg_widget = ChatMessageWidget.mk_msg_widget(msg=msg)
             await self.vs.mount(msg_widget)
-        self.vs.scroll_to_widget(msg_widget)
+        msg_widget.loading = len(msg_widget.msg.content) == 0
+        if self.user_input.has_focus:
+            self.set_timer(0.05, self.scroll_to_bottom)
+
+    def scroll_to_bottom(self) -> None:
+        """Scroll to the bottom of the chat window."""
+        self.vs.scroll_to(y=self.vs.scroll_y + self.vs.size.height)

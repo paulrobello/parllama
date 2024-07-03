@@ -21,6 +21,7 @@ class Settings(BaseModel):
     no_save: bool = False
     data_dir: str = os.path.expanduser("~/.parllama")
     cache_dir: str = ""
+    chat_dir: str = ""
     settings_file: str = "settings.json"
     theme_name: str = "par"
     starting_screen: ScreenType = "Local"
@@ -47,7 +48,10 @@ class Settings(BaseModel):
             or os.path.expanduser("~/.parllama")
         )
         self.cache_dir = os.path.join(self.data_dir, "cache")
-        os.makedirs(self.data_dir, exist_ok=True)
+        self.chat_dir = os.path.join(self.data_dir, "chats")
+
+        os.makedirs(self.cache_dir, exist_ok=True)
+        os.makedirs(self.chat_dir, exist_ok=True)
 
         if not os.path.exists(self.data_dir):
             raise FileNotFoundError(

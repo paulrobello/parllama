@@ -29,18 +29,18 @@ class ChatMessageWidget(Markdown, can_focus=True):
 
     def update(self, markdown: str) -> AwaitComplete:
         """Update the document with new Markdown."""
-        self.msg["content"] += markdown
-        return super().update("## " + self.msg["role"] + "\n\n" + self.msg["content"])
+        self.msg.content += markdown
+        return super().update("## " + self.msg.role + "\n\n" + self.msg.content)
 
     @property
     def raw_text(self) -> str:
         """The raw text."""
-        return self.msg["content"] or ""
+        return self.msg.content or ""
 
     @staticmethod
     def mk_msg_widget(msg: OllamaMessage) -> ChatMessageWidget:
         """Create a chat message widget."""
-        if msg["role"] == "user":
+        if msg.role == "user":
             return UserChatMessage(msg=msg)
         return AgentChatMessage(msg=msg)
 
