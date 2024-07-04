@@ -538,11 +538,9 @@ class ParLlamaApp(App[None]):
         self.refresh_site_models(msg)
 
     @on(SiteModelsLoaded)
-    def on_site_models_loaded(self, msg: SiteModelsLoaded) -> None:
+    def on_site_models_loaded(self) -> None:
         """Site model refresh completed"""
-        self.status_notify(
-            f"Site models refreshed for {msg.ollama_namespace or 'models'}"
-        )
+        self.status_notify("Site models refreshed")
 
     @work(group="refresh_site_model", thread=True)
     async def refresh_site_models(self, msg: SiteModelsRefreshRequested):

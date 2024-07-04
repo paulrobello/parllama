@@ -8,7 +8,9 @@ from textual.containers import Container
 from textual.containers import Horizontal
 from textual.containers import Vertical
 from textual.containers import VerticalScroll
+from textual.events import Show
 from textual.reactive import Reactive
+from textual.suggester import SuggestFromList
 from textual.widgets import Button
 from textual.widgets import Input
 from textual.widgets import Label
@@ -24,7 +26,11 @@ from parllama.messages.main import RegisterForUpdates
 from parllama.models.chat import ChatSession
 from parllama.models.chat import OllamaMessage
 from parllama.models.settings_data import settings
+from parllama.screens.save_session import SaveSession
 from parllama.widgets.chat_message import ChatMessageWidget
+from parllama.widgets.input_tab_complete import InputTabComplete
+
+valid_commands: list[str] = ["/clear", "/save", "/model", "/temp"]
 
 
 class ChatView(Container, can_focus=False, can_focus_children=True):
@@ -90,7 +96,7 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
     def __init__(self, **kwargs) -> None:
         """Initialise the view."""
         super().__init__(**kwargs)
-        self.sub_title = "Application Logs"
+        self.sub_title = "Chat"
 
         self.model_select: Select[str] = Select(
             id="model_name", options=[], prompt="Select Model"
@@ -102,15 +108,28 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
             restrict=r"^\d(?:\.\d+)?$",
         )
         self.session_name_input: Input = Input(id="session_name_input", value="My Chat")
-        self.user_input: Input = Input(id="user_input", placeholder="Type a message...")
+        self.user_input: InputTabComplete = InputTabComplete(
+            id="user_input",
+            placeholder="Type a message...",
+            suggester=SuggestFromList(
+                valid_commands,
+                case_sensitive=False,
+            ),
+            submit_on_tab=False,
+            submit_on_complete=True,
+        )
         self.send_button: Button = Button("Send", id="send_button", disabled=True)
         self.vs: VerticalScroll = VerticalScroll(id="messages")
         self.vs.can_focus = False
         self.busy = False
 
-    def _watch_busy(self) -> None:
+    def _watch_busy(self, value: bool) -> None:
         """Update controls when busy changes"""
         self.update_control_states()
+        if value:
+            self.screen.sub_title = "Chat - Thinking..."
+        else:
+            self.screen.sub_title = "Chat"
 
     def compose(self) -> ComposeResult:
         """Compose the content of the view."""
@@ -133,6 +152,10 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
         self.app.post_message(RegisterForUpdates(widget=self))
         with self.screen.prevent(TabbedContent.TabActivated):
             self.model_select.focus()
+
+    def _on_show(self, event: Show) -> None:
+        """Handle show event"""
+        self.screen.sub_title = "Chat"
 
     @on(Input.Changed, "#user_input")
     def on_user_input_changed(self) -> None:
@@ -230,7 +253,6 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
             self.notify("LLM Busy...", severity="error")
             return
 
-        self.busy = True
         self.update_control_states()
         if not self.session:
             self.session = chat_manager.get_or_create_session(
@@ -244,25 +266,27 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
         msg = self.user_input.value
         self.user_input.value = ""
         if msg.startswith("/"):
-            return self.handle_command(msg)
+            return self.handle_command(msg[1:].lower().strip())
+        self.busy = True
         self.do_send_message(msg)
 
     def handle_command(self, cmd: str) -> None:
         """Handle a command"""
         if self.session is None:
             return
-        if cmd.startswith("/clear"):
+        if cmd == "clear":
             self.action_clear_messages()
-        elif cmd.startswith("/model"):
+        elif cmd == "model":
             self.set_timer(0.1, self.model_select.focus)
-        elif cmd.startswith("/temperature"):
+        elif cmd.startswith("temp"):
             self.set_timer(0.1, self.temperature_input.focus)
-        elif cmd.startswith("/save"):
-            filename: str = "chat_test.md"
-            if self.session.save(filename):
-                self.notify(f"Saved: {filename}")
-            else:
-                self.notify(f"Failed to save: {filename}", severity="error")
+        elif cmd.startswith("save"):
+            self._save_conversation_text()
+            # filename: str = "chat_test.md"
+            # if self.session.save(filename):
+            #     self.notify(f"Saved: {filename}")
+            # else:
+            #     self.notify(f"Failed to save: {filename}", severity="error")
         else:
             self.notify(f"Unknown command: {cmd}", severity="error")
 
@@ -309,3 +333,21 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
     def scroll_to_bottom(self) -> None:
         """Scroll to the bottom of the chat window."""
         self.vs.scroll_to(y=self.vs.scroll_y + self.vs.size.height)
+
+    @work
+    async def _save_conversation_text(self) -> None:
+        """Save the conversation as a Markdown document."""
+        # Prompt the user with a save dialog, to get the name of a file to
+        # save to.
+        if (target := await SaveSession.get_filename(self.app)) is None:
+            return
+
+        # If the user didn't give an extension, add a default.
+        if not target.suffix:
+            target = target.with_suffix(".md")
+
+        # Save the Markdown to the target file.
+        target.write_text(str(self.session), encoding="utf-8")
+
+        # Let the user know the save happened.
+        self.notify(str(target), title="Saved")

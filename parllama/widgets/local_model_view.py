@@ -100,6 +100,8 @@ class LocalModelView(Container):
 
     def _on_show(self, event: Show) -> None:
         """Focus the search on show"""
+        self.screen.sub_title = "Local Models"
+
         with self.screen.prevent(TabbedContent.TabActivated):
             self.search_input.focus()
 

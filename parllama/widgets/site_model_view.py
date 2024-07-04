@@ -89,8 +89,7 @@ class SiteModelView(Container):
     def __init__(self, **kwargs) -> None:
         """Initialise the screen."""
         super().__init__(**kwargs)
-        self.sub_title = "Site Models"
-
+        self.screen.sub_title = "Site Models"
         self.namespace_input = InputTabComplete(
             id="namespace",
             placeholder="Namespace",
@@ -130,6 +129,7 @@ class SiteModelView(Container):
 
     def _on_show(self, event: Show) -> None:
         """Focus the search on show"""
+        self.screen.sub_title = "Site Models"
         with self.screen.prevent(TabbedContent.TabActivated):
             self.search_input.focus()
 

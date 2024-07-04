@@ -9,6 +9,7 @@ from textual.app import ComposeResult
 from textual.containers import Container
 from textual.containers import Vertical
 from textual.containers import VerticalScroll
+from textual.events import Show
 from textual.widgets import Button
 from textual.widgets import ContentSwitcher
 from textual.widgets import Static
@@ -39,7 +40,7 @@ class ModelToolsView(Container):
     def __init__(self, **kwargs) -> None:
         """Initialise the screen."""
         super().__init__(**kwargs)
-        self.sub_title = "Model tools"
+        self.screen.sub_title = "Model tools"
 
     def compose(self) -> ComposeResult:
         """Compose the content of the view."""
@@ -63,6 +64,10 @@ class ModelToolsView(Container):
                         "[@click=screen.open_keys_page]Open https://ollama.com/settings/keys[/]",
                         id="open_keys_page",
                     )
+
+    def _on_show(self, event: Show) -> None:
+        """Handle show event"""
+        self.screen.sub_title = "Model tools"
 
     @on(Button.Pressed, "#new_model")
     def action_new_model(self) -> None:
