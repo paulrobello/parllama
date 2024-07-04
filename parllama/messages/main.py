@@ -218,6 +218,6 @@ class ChatMessageSent(Message):
 
 @dataclass
 class NewChatSession(Message):
-    """Chat message sent class"""
+    """New chat session class"""
 
     id: str

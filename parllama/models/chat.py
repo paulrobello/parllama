@@ -51,6 +51,7 @@ class ChatSession:
     llm_model_name: str
     id: str
     messages: list[OllamaMessage]
+    id_to_msg: dict[str, OllamaMessage]
     options: OllamaOptions
 
     def __init__(
@@ -63,26 +64,29 @@ class ChatSession:
         """Initialize the chat session"""
         self.id = uuid.uuid4().hex
         self.messages = []
+        self.id_to_msg = {}
         self.session_name = session_name
         self.llm_model_name = llm_model_name
         self.options = options or {}
 
     def get_message(self, message_id: str) -> OllamaMessage | None:
         """Get a message"""
-        for message in self.messages:
-            if message.id == message_id:
-                return message
+        if message_id in self.id_to_msg:
+            return self.id_to_msg[message_id]
         return None
 
     async def send_chat(self, from_user: str, widget: Widget) -> bool:
         """Send a chat message to LLM"""
         msg_id = uuid.uuid4().hex
-        self.messages.append(OllamaMessage(id=msg_id, content=from_user, role="user"))
+        msg: OllamaMessage = OllamaMessage(id=msg_id, content=from_user, role="user")
+        self.messages.append(msg)
+        self.id_to_msg[msg.id] = msg
         widget.post_message(ChatMessage(session_id=self.id, message_id=msg_id))
 
         msg_id = uuid.uuid4().hex
-        msg: OllamaMessage = OllamaMessage(id=msg_id, content="", role="assistant")
+        msg = OllamaMessage(id=msg_id, content="", role="assistant")
         self.messages.append(msg)
+        self.id_to_msg[msg.id] = msg
         widget.post_message(ChatMessage(session_id=self.id, message_id=msg_id))
 
         stream: Iterator[Mapping[str, Any]] = settings.ollama_client.chat(  # type: ignore
@@ -98,10 +102,12 @@ class ChatSession:
 
         return True
 
-    def new_session(self):
+    def new_session(self, session_name: str = "My Chat"):
         """Start new session"""
         self.id = uuid.uuid4().hex
+        self.session_name = session_name
         self.messages.clear()
+        self.id_to_msg.clear()
 
     def __iter__(self):
         """Iterate over messages"""
@@ -113,13 +119,11 @@ class ChatSession:
 
     def __getitem__(self, msg_id: str) -> OllamaMessage:
         """Get a message"""
-        for msg in self.messages:
-            if msg.id == msg_id:
-                return msg
-        raise KeyError(f"Message {msg_id} not found")
+        return self.id_to_msg[msg_id]
 
     def __setitem__(self, msg_id: str, value: OllamaMessage) -> None:
         """Set a message"""
+        self.id_to_msg[msg_id] = value
         for i, msg in enumerate(self.messages):
             if msg.id == msg_id:
                 self.messages[i] = value
@@ -128,14 +132,15 @@ class ChatSession:
 
     def __delitem__(self, key: str) -> None:
         """Delete a message"""
+        del self.id_to_msg[key]
         for msg in self.messages:
             if msg.id == key:
                 self.messages.remove(msg)
-                break
+                return
 
     def __contains__(self, item: OllamaMessage) -> bool:
         """Check if a message exists"""
-        return item in self.messages
+        return item.id in self.id_to_msg
 
     def __eq__(self, other: object) -> bool:
         """Check if two sessions are equal"""
@@ -151,7 +156,8 @@ class ChatSession:
 
     def __str__(self) -> str:
         """Get a string representation of the chat session"""
-        ret = StringIO(f"# {self.session_name}\n\n")
+        ret = StringIO()
+        ret.write(f"# {self.session_name}\n\n")
         for msg in self.messages:
             ret.write(str(msg))
         return ret.getvalue()

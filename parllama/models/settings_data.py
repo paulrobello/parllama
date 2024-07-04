@@ -28,6 +28,7 @@ class Settings(BaseModel):
     last_screen: ScreenType = "Local"
     last_chat_model: str = ""
     last_chat_temperature: float = 0.5
+    last_chat_session_name: str = "My Chat"
     theme_mode: str = "dark"
     site_models_namespace: str = ""
     max_log_lines: int = 1000
@@ -114,11 +115,14 @@ class Settings(BaseModel):
                     self.starting_screen = "Local"
 
                 self.last_screen = data.get("last_screen", "Local")
-                # if self.last_screen not in valid_screens:
-                #     self.last_screen = self.starting_screen
+                if self.last_screen not in valid_screens:
+                    self.last_screen = self.starting_screen
                 self.last_chat_model = data.get("last_chat_model", self.last_chat_model)
                 self.last_chat_temperature = data.get(
                     "last_chat_temperature", self.last_chat_temperature
+                )
+                self.last_chat_session_name = data.get(
+                    "last_chat_session_name", self.last_chat_session_name
                 )
                 self.max_log_lines = max(0, data.get("max_log_lines", 1000))
         except FileNotFoundError:

@@ -1,5 +1,5 @@
 default_stages: [pre-commit, pre-push]
-fail_fast: false
+fail_fast: true
 repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v2.3.0

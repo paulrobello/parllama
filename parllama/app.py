@@ -569,7 +569,7 @@ class ParLlamaApp(App[None]):
 
     @work(group="update_ps", thread=True)
     async def update_ps(self) -> None:
-        """Update ps msg"""
+        """Update ps status bar msg"""
         was_blank = False
         while self.is_running:
             await asyncio.sleep(2)
@@ -580,7 +580,7 @@ class ParLlamaApp(App[None]):
                 was_blank = True
                 continue
             was_blank = False
-            info = ret[0]
+            info = ret[0]  # only take first one since ps status bar is a single line
             self.main_screen.post_message(
                 PsMessage(
                     msg=Text.assemble(
@@ -595,7 +595,6 @@ class ParLlamaApp(App[None]):
                     )
                 )
             )
-        self.main_screen.post_message(StatusMessage(msg="exited..."))
 
     def status_notify(self, msg: str, severity: SeverityLevel = "information") -> None:
         """Show notification and update status bar"""

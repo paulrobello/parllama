@@ -40,6 +40,7 @@ docker pull ollama/quantize
 If you don't have pipx installed you can run the following:  
 ```bash
 pip install pipx
+pipx ensurepath
 ```
 Once pipx is installed, run the following:  
 ```bash
@@ -126,6 +127,10 @@ Now that the server is listening on all interfaces you must instruct PAR_LLAMA t
 The command will look something like this:  
 ```bash
 parllama -u "http://$(hostname).local:11434"
+```
+Depending on your DNS setup if the above does not work, try this:  
+```bash
+ parllama -u "http://$(grep -m 1 nameserver /etc/resolv.conf | awk '{print $2}'):11434"
 ```
 
 PAR_LLAMA will remember the -u flag so subsequent runs will not require that you specify it.

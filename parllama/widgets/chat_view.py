@@ -8,6 +8,7 @@ from textual.containers import Container
 from textual.containers import Horizontal
 from textual.containers import Vertical
 from textual.containers import VerticalScroll
+from textual.reactive import Reactive
 from textual.widgets import Button
 from textual.widgets import Input
 from textual.widgets import Label
@@ -40,8 +41,14 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
         #temperature_input {
           width: 11;
         }
+        #session_name_input {
+            width: 20;
+        }
         #clear_button {
           margin-left: 2;
+          min-width: 9;
+          background: $warning-darken-2;
+          border-top: tall $warning-lighten-1;
         }
         Label {
           margin: 1;
@@ -77,40 +84,44 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
     }
     """
 
-    model_select: Select[str]
-    send_button: Button
     session: ChatSession | None = None
-    busy: bool = False
+    busy: Reactive[bool] = Reactive(False)
 
     def __init__(self, **kwargs) -> None:
         """Initialise the view."""
         super().__init__(**kwargs)
         self.sub_title = "Application Logs"
-        self.user_input = Input(
-            id="user_input", placeholder="Type a message...", disabled=True
+
+        self.model_select: Select[str] = Select(
+            id="model_name", options=[], prompt="Select Model"
         )
-        self.temperature_input = Input(
+        self.temperature_input: Input = Input(
             id="temperature_input",
             value=f"{settings.last_chat_temperature:.2f}",
             max_length=4,
             restrict=r"^\d(?:\.\d+)?$",
         )
-
-        self.send_button = Button("Send", id="send_button", disabled=True)
-        self.model_select = Select(id="model_name", options=[])
-        self.vs = VerticalScroll(id="messages")
+        self.session_name_input: Input = Input(id="session_name_input", value="My Chat")
+        self.user_input: Input = Input(id="user_input", placeholder="Type a message...")
+        self.send_button: Button = Button("Send", id="send_button", disabled=True)
+        self.vs: VerticalScroll = VerticalScroll(id="messages")
         self.vs.can_focus = False
         self.busy = False
+
+    def _watch_busy(self) -> None:
+        """Update controls when busy changes"""
+        self.update_control_states()
 
     def compose(self) -> ComposeResult:
         """Compose the content of the view."""
 
         with Vertical(id="main"):
             with Horizontal(id="tool_bar"):
-                yield Label("Model")
                 yield self.model_select
-                yield Label("Temperature")
+                yield Label("Temp")
                 yield self.temperature_input
+                yield Label("Session")
+                yield self.session_name_input
                 yield Button("Clear", id="clear_button", variant="warning")
             yield self.vs
             with Horizontal(id="send_bar"):
@@ -137,24 +148,29 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
             return
         settings.save_settings_to_file()
 
+    @on(Input.Changed, "#session_name_input")
+    def on_session_name_input_changed(self) -> None:
+        """Handle session name input change"""
+        if not self.session_name_input.value:
+            return
+        if self.session is not None:
+            self.session.session_name = self.session_name_input.value
+
+        settings.last_chat_session_name = self.session_name_input.value
+
     def update_control_states(self):
         """Update disabled state of controls based on model and user input values"""
-        self.user_input.disabled = self.busy or self.model_select.value == Select.BLANK
         self.send_button.disabled = (
-            self.user_input.disabled or len(self.user_input.value) == 0
+            self.busy
+            or self.model_select.value == Select.BLANK
+            or len(self.user_input.value) == 0
         )
-        if self.model_select.value != Select.BLANK:
-            with self.screen.prevent(TabbedContent.TabActivated):
-                self.user_input.focus()
 
     @on(Select.Changed)
     def on_model_select_changed(self) -> None:
         """Model select changed, update control states and save model name"""
         self.update_control_states()
-        if (
-            not self.user_input.disabled
-            and settings.last_chat_model != self.model_select.value
-        ):
+        if self.model_select.value not in (Select.BLANK, settings.last_chat_model):
             settings.last_chat_model = str(self.model_select.value)
             settings.save_settings_to_file()
 
@@ -174,6 +190,9 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
             if v == old_v:
                 self.model_select.value = old_v
         self.update_control_states()
+        if self.model_select.value != Select.BLANK:
+            with self.screen.prevent(TabbedContent.TabActivated):
+                self.user_input.focus()
 
     @on(Button.Pressed, "#clear_button")
     def on_clear_button_pressed(self) -> None:
@@ -183,16 +202,24 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
     def action_clear_messages(self) -> None:
         """Clear messages."""
         if self.session:
-            self.session.new_session()
+            self.session.new_session(self.session_name_input.value or "My Chat")
             self.vs.remove_children("*")
             self.update_control_states()
+        self.user_input.focus()
 
     @on(Button.Pressed, "#send_button")
     @on(Input.Submitted, "#user_input")
     async def action_send_message(self) -> None:
         """Send the message."""
         if not self.model_select.value or self.model_select.value == Select.BLANK:
+            self.model_select.focus()
             return
+
+        self.user_input.focus()
+
+        if self.send_button.disabled:
+            return
+
         if not self.user_input.value:
             return
 
@@ -200,29 +227,25 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
             self.temperature_input.value = "0.5"
 
         if self.busy:
+            self.notify("LLM Busy...", severity="error")
             return
+
         self.busy = True
         self.update_control_states()
-        try:
-            if not self.session:
-                self.session = chat_manager.get_or_create_session(
-                    "Default",
-                    str(self.model_select.value),
-                    {"temperature": float(self.temperature_input.value)},
-                )
-            else:
-                self.session.llm_model_name = str(self.model_select.value)
-                self.session.options["temperature"] = float(
-                    self.temperature_input.value
-                )
-            msg = self.user_input.value
-            self.user_input.value = ""
-            if msg.startswith("/"):
-                return self.handle_command(msg)
-            self.do_send_message(msg)
-        finally:
-            self.busy = False
-        self.update_control_states()
+        if not self.session:
+            self.session = chat_manager.get_or_create_session(
+                self.session_name_input.value or "My Chat",
+                str(self.model_select.value),
+                {"temperature": float(self.temperature_input.value)},
+            )
+        else:
+            self.session.llm_model_name = str(self.model_select.value)
+            self.session.options["temperature"] = float(self.temperature_input.value)
+        msg = self.user_input.value
+        self.user_input.value = ""
+        if msg.startswith("/"):
+            return self.handle_command(msg)
+        self.do_send_message(msg)
 
     def handle_command(self, cmd: str) -> None:
         """Handle a command"""
@@ -256,8 +279,7 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
     def on_chat_message_sent(self, msg: ChatMessageSent) -> None:
         """Handle a chat message sent"""
         msg.stop()
-        if not self.user_input.disabled:
-            self.user_input.focus()
+        self.busy = False
 
     @on(ChatMessage)
     async def on_chat_message(self, event: ChatMessage) -> None:
