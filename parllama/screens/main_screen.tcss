@@ -31,3 +31,56 @@ ListView:focus > SiteModelListItem.--highlight {
     background: $surface;
   }
 }
+
+ChatView {
+  #tool_bar {
+    height: 3;
+    background: $surface-darken-1;
+    #model_name {
+      max-width: 40;
+    }
+    #temperature_input {
+      width: 11;
+    }
+    #session_name_input {
+      min-width: 15;
+      max-width: 40;
+      width: auto;
+    }
+    #clear_button {
+      margin-left: 2;
+      min-width: 9;
+      background: $warning-darken-2;
+      border-top: tall $warning-lighten-1;
+    }
+    Label {
+      margin: 1;
+      background: transparent;
+    }
+  }
+  #send_bar {
+    height: 3;
+    background: $surface-darken-1;
+    #user_input {
+      width: 1fr;
+    }
+    #send_button {
+      width: 6;
+    }
+  }
+  #messages {
+    background: $primary-background;
+    ChatMessageWidget{
+        padding: 1;
+        border: none;
+        border-left: blank;
+        &:focus {
+            border-left: thick $primary;
+        }
+    }
+    MarkdownH2 {
+      margin: 0;
+      padding: 0;
+    }
+  }
+}

@@ -19,6 +19,7 @@ from textual.widgets import TabbedContent
 
 from parllama.chat_manager import chat_manager
 from parllama.data_manager import dm
+from parllama.dialogs.information import InformationDialog
 from parllama.messages.main import ChatMessage
 from parllama.messages.main import ChatMessageSent
 from parllama.messages.main import LocalModelListLoaded
@@ -30,64 +31,21 @@ from parllama.screens.save_session import SaveSession
 from parllama.widgets.chat_message import ChatMessageWidget
 from parllama.widgets.input_tab_complete import InputTabComplete
 
-valid_commands: list[str] = ["/clear", "/save", "/model", "/temp"]
+valid_commands: list[str] = [
+    "/clear",
+    "/save",
+    "/model",
+    "/temp",
+    "/session",
+    "/help",
+    "/?",
+]
 
 
 class ChatView(Container, can_focus=False, can_focus_children=True):
     """Widget for viewing application logs."""
 
     DEFAULT_CSS = """
-    ChatView {
-      #tool_bar {
-        height: 3;
-        background: $surface-darken-1;
-        #model_name {
-          width: 40;
-        }
-        #temperature_input {
-          width: 11;
-        }
-        #session_name_input {
-            width: 20;
-        }
-        #clear_button {
-          margin-left: 2;
-          min-width: 9;
-          background: $warning-darken-2;
-          border-top: tall $warning-lighten-1;
-        }
-        Label {
-          margin: 1;
-          background: transparent;
-        }
-      }
-      #send_bar {
-        height: 3;
-        background: $surface-darken-1;
-        #user_input {
-          width: 1fr;
-        }
-
-        #send_button {
-          width: 6;
-        }
-      }
-      #messages {
-        background: $primary-background;
-        ChatMessageWidget{
-            padding: 1;
-            border: none;
-            border-left: blank;
-            &:focus {
-                border-left: thick $primary;
-            }
-        }
-        MarkdownH2 {
-          margin: 0;
-          padding: 0;
-        }
-      }
-    }
     """
 
     session: ChatSession | None = None
@@ -96,7 +54,6 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
     def __init__(self, **kwargs) -> None:
         """Initialise the view."""
         super().__init__(**kwargs)
-        self.sub_title = "Chat"
 
         self.model_select: Select[str] = Select(
             id="model_name", options=[], prompt="Select Model"
@@ -118,6 +75,7 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
             submit_on_tab=False,
             submit_on_complete=True,
         )
+
         self.send_button: Button = Button("Send", id="send_button", disabled=True)
         self.vs: VerticalScroll = VerticalScroll(id="messages")
         self.vs.can_focus = False
@@ -127,9 +85,13 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
         """Update controls when busy changes"""
         self.update_control_states()
         if value:
-            self.screen.sub_title = "Chat - Thinking..."
+            self.screen.sub_title = (  # pylint: disable=attribute-defined-outside-init
+                "Chat - Thinking..."
+            )
         else:
-            self.screen.sub_title = "Chat"
+            self.screen.sub_title = (  # pylint: disable=attribute-defined-outside-init
+                "Chat"
+            )
 
     def compose(self) -> ComposeResult:
         """Compose the content of the view."""
@@ -155,7 +117,7 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
 
     def _on_show(self, event: Show) -> None:
         """Handle show event"""
-        self.screen.sub_title = "Chat"
+        self._watch_busy(self.busy)
 
     @on(Input.Changed, "#user_input")
     def on_user_input_changed(self) -> None:
@@ -186,7 +148,9 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
         self.send_button.disabled = (
             self.busy
             or self.model_select.value == Select.BLANK
-            or len(self.user_input.value) == 0
+            or self.temperature_input.value.strip() == ""
+            or self.session_name_input.value.strip() == ""
+            or len(self.user_input.value.strip()) == 0
         )
 
     @on(Select.Changed)
@@ -216,6 +180,11 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
         if self.model_select.value != Select.BLANK:
             with self.screen.prevent(TabbedContent.TabActivated):
                 self.user_input.focus()
+
+        self.user_input.suggester = SuggestFromList(
+            valid_commands + [f"/model {m.model.name}" for m in dm.models],
+            case_sensitive=False,
+        )
 
     @on(Button.Pressed, "#clear_button")
     def on_clear_button_pressed(self) -> None:
@@ -272,14 +241,48 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
 
     def handle_command(self, cmd: str) -> None:
         """Handle a command"""
+        if cmd in ("?", "help"):
+            self.app.push_screen(
+                InformationDialog(
+                    title="Chat Commands",
+                    message="""
+            Chat Commands:
+            /clear - Clear the chat
+            /model [model_name] - Select a model
+            /temp [temperature] - Set the temperature
+            /session [session_name] - Set the session name
+            /save - Save the conversation to a file
+            """,
+                )
+            )
+            return
+
         if self.session is None:
             return
         if cmd == "clear":
             self.action_clear_messages()
         elif cmd == "model":
             self.set_timer(0.1, self.model_select.focus)
-        elif cmd.startswith("temp"):
+            return
+        elif cmd.startswith("model "):
+            (_, v) = cmd.split(" ", 1)
+            if v not in [m.model.name for m in dm.models]:
+                self.notify(f"Model {v} not found", severity="error")
+                return
+            self.model_select.value = v
+            self.set_timer(0.1, self.user_input.focus)
+        elif cmd == "temp":
             self.set_timer(0.1, self.temperature_input.focus)
+        elif cmd.startswith("temp "):
+            (_, v) = cmd.split(" ", 1)
+            self.temperature_input.value = v
+            self.set_timer(0.1, self.user_input.focus)
+        elif cmd == "session":
+            self.set_timer(0.1, self.session_name_input.focus)
+        elif cmd.startswith("session "):
+            (_, v) = cmd.split(" ", 1)
+            self.session_name_input.value = v
+            self.set_timer(0.1, self.user_input.focus)
         elif cmd.startswith("save"):
             self._save_conversation_text()
             # filename: str = "chat_test.md"
