@@ -221,3 +221,10 @@ class NewChatSession(Message):
     """New chat session class"""
 
     id: str
+
+
+@dataclass
+class ModelInteractRequested(Message):
+    """Message to notify that a model interact has been requested."""
+
+    model_name: str

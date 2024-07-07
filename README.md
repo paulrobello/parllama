@@ -201,6 +201,10 @@ After running the above all future commits will auto run pre-commit. pre-commit 
 if anything remains to be fixed before the commit is allowed.
 
 
+## What's new
+* Added slash commands to chat input
+* Added ability to export chat to markdown file
+
 ## Roadmap
 
 **Where we are**  

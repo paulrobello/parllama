@@ -46,6 +46,58 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
     """Widget for viewing application logs."""
 
     DEFAULT_CSS = """
+    ChatView {
+      #tool_bar {
+        height: 3;
+        background: $surface-darken-1;
+        #model_name {
+          max-width: 40;
+        }
+        #temperature_input {
+          width: 11;
+        }
+        #session_name_input {
+          min-width: 15;
+          max-width: 40;
+          width: auto;
+        }
+        #clear_button {
+          margin-left: 2;
+          min-width: 9;
+          background: $warning-darken-2;
+          border-top: tall $warning-lighten-1;
+        }
+        Label {
+          margin: 1;
+          background: transparent;
+        }
+      }
+      #send_bar {
+        height: 3;
+        background: $surface-darken-1;
+        #user_input {
+          width: 1fr;
+        }
+        #send_button {
+          width: 6;
+        }
+      }
+      #messages {
+        background: $primary-background;
+        ChatMessageWidget{
+            padding: 1;
+            border: none;
+            border-left: blank;
+            &:focus {
+                border-left: thick $primary;
+            }
+        }
+        MarkdownH2 {
+          margin: 0;
+          padding: 0;
+        }
+      }
+    }
     """
 
     session: ChatSession | None = None
@@ -73,7 +125,7 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
                 case_sensitive=False,
             ),
             submit_on_tab=False,
-            submit_on_complete=True,
+            submit_on_complete=False,
         )
 
         self.send_button: Button = Button("Send", id="send_button", disabled=True)
@@ -246,13 +298,13 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
                 InformationDialog(
                     title="Chat Commands",
                     message="""
-            Chat Commands:
-            /clear - Clear the chat
-            /model [model_name] - Select a model
-            /temp [temperature] - Set the temperature
-            /session [session_name] - Set the session name
-            /save - Save the conversation to a file
-            """,
+Chat Commands:
+/clear - Clear the chat
+/model [model_name] - Select a model
+/temp [temperature] - Set the temperature
+/session [session_name] - Set the session name
+/save - Save the conversation to a file
+                    """,
                 )
             )
             return

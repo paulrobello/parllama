@@ -1,4 +1,4 @@
-"""Grid list of models."""
+"""Grid list of local models."""
 from __future__ import annotations
 
 import webbrowser
@@ -13,8 +13,8 @@ from parllama.messages.main import ShowLocalModel
 from parllama.widgets.local_model_list_item import LocalModelListItem
 
 
-class GridList(Grid, can_focus=False):
-    """Grid list of models."""
+class LocalModelGridList(Grid, can_focus=False):
+    """Grid list of local models."""
 
     BINDINGS = [
         Binding(
@@ -57,7 +57,7 @@ class GridList(Grid, can_focus=False):
         ),
     ]
     DEFAULT_CSS = """
-    GridList{
+    LocalModelGridList{
         width: 1fr;
         height: auto;
         grid-size: 2;

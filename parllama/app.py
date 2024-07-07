@@ -42,6 +42,7 @@ from parllama.messages.main import LocalModelListLoaded
 from parllama.messages.main import LocalModelListRefreshRequested
 from parllama.messages.main import ModelCreated
 from parllama.messages.main import ModelCreateRequested
+from parllama.messages.main import ModelInteractRequested
 from parllama.messages.main import ModelPulled
 from parllama.messages.main import ModelPullRequested
 from parllama.messages.main import ModelPushed
@@ -628,3 +629,10 @@ class ParLlamaApp(App[None]):
         self.main_screen.create_view.quantize_input.value = msg.quantization_level or ""
         self.main_screen.change_tab("Create")
         self.main_screen.create_view.name_input.focus()
+
+    @on(ModelInteractRequested)
+    def on_model_interact_requested(self, msg: ModelInteractRequested) -> None:
+        """Model interact requested event"""
+        msg.stop()
+        self.main_screen.change_tab("Chat")
+        self.main_screen.chat_view.model_select.value = msg.model_name

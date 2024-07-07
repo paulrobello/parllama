@@ -13,6 +13,7 @@ from textual.widgets import Static
 from textual.widgets import TabbedContent
 from textual.widgets import TabPane
 
+from parllama.messages.main import ModelInteractRequested
 from parllama.messages.main import PsMessage
 from parllama.messages.main import StatusMessage
 from parllama.models.settings_data import ScreenType
@@ -126,3 +127,8 @@ class MainScreen(Screen[None]):
     def action_site_tag_clicked(self, model_tag: str) -> None:
         """Update search box with tag"""
         self.query_one("#site_models", SiteModelView).search_input.value = model_tag
+
+    @on(ModelInteractRequested)
+    def on_model_interact_requested(self, msg: ModelInteractRequested) -> None:
+        """Model interact requested event"""
+        msg.stop()

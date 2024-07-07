@@ -73,6 +73,17 @@ You can use `ctrl+b` to open the model card in a web browser
 ## Model Tools Screen
 This screen allows you to access tools to create, modify, and publish models  
 
+## Chat Screen
+Chat with local LLM's  
+
+### Chat Slash Commands:
+* /? or /help - Show slash command help dialog
+* /clear - Clear the chat
+* /model [model_name] - Select a model
+* /temp [temperature] - Set the temperature
+* /session [session_name] - Set the session name
+* /save - Save the conversation to a file
+
 ## Logs Screen
 This screen allows viewing any messages that have passed through the status bar.
 
