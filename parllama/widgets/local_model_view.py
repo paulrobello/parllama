@@ -24,13 +24,14 @@ from parllama.messages.main import LocalModelDeleted
 from parllama.messages.main import LocalModelDeleteRequested
 from parllama.messages.main import LocalModelListLoaded
 from parllama.messages.main import LocalModelListRefreshRequested
+from parllama.messages.main import ModelInteractRequested
 from parllama.messages.main import ModelPulled
 from parllama.messages.main import ModelPullRequested
 from parllama.messages.main import ModelPushRequested
 from parllama.messages.main import SetModelNameLoading
 from parllama.messages.main import ShowLocalModel
 from parllama.widgets.filter_input import FilterInput
-from parllama.widgets.grid_list import GridList
+from parllama.widgets.local_model_grid_list import LocalModelGridList
 from parllama.widgets.local_model_list_item import LocalModelListItem
 
 
@@ -71,9 +72,15 @@ class LocalModelView(Container):
             show=True,
         ),
         Binding(
-            key="ctrl+c",
+            key="ctrl+d",
             action="copy_model",
             description="Copy",
+            show=True,
+        ),
+        Binding(
+            key="ctrl+c",
+            action="chat_model",
+            description="Chat",
             show=True,
         ),
     ]
@@ -96,10 +103,12 @@ class LocalModelView(Container):
         super().__init__(**kwargs)
         self.sub_title = "Local Models"
         self.search_input = FilterInput(id="search", placeholder="Filter local models")
-        self.grid = GridList(id="grid_view")
+        self.grid = LocalModelGridList(id="grid_view")
 
     def _on_show(self, event: Show) -> None:
         """Focus the search on show"""
+        self.screen.sub_title = "Local Models"
+
         with self.screen.prevent(TabbedContent.TabActivated):
             self.search_input.focus()
 
@@ -257,3 +266,11 @@ class LocalModelView(Container):
         """Set model name loading"""
         msg.stop()
         self.grid.set_item_loading(msg.model_name, msg.loading)
+
+    def action_chat_model(self) -> None:
+        """Chat with model"""
+        if not self.grid.selected:
+            return
+        self.app.post_message(
+            ModelInteractRequested(model_name=self.grid.selected.model.name)
+        )

@@ -8,6 +8,9 @@ from textual.containers import Container
 from textual.containers import Horizontal
 from textual.containers import Vertical
 from textual.containers import VerticalScroll
+from textual.events import Show
+from textual.reactive import Reactive
+from textual.suggester import SuggestFromList
 from textual.widgets import Button
 from textual.widgets import Input
 from textual.widgets import Label
@@ -16,6 +19,7 @@ from textual.widgets import TabbedContent
 
 from parllama.chat_manager import chat_manager
 from parllama.data_manager import dm
+from parllama.dialogs.information import InformationDialog
 from parllama.messages.main import ChatMessage
 from parllama.messages.main import ChatMessageSent
 from parllama.messages.main import LocalModelListLoaded
@@ -23,7 +27,19 @@ from parllama.messages.main import RegisterForUpdates
 from parllama.models.chat import ChatSession
 from parllama.models.chat import OllamaMessage
 from parllama.models.settings_data import settings
+from parllama.screens.save_session import SaveSession
 from parllama.widgets.chat_message import ChatMessageWidget
+from parllama.widgets.input_tab_complete import InputTabComplete
+
+valid_commands: list[str] = [
+    "/clear",
+    "/save",
+    "/model",
+    "/temp",
+    "/session",
+    "/help",
+    "/?",
+]
 
 
 class ChatView(Container, can_focus=False, can_focus_children=True):
@@ -35,13 +51,21 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
         height: 3;
         background: $surface-darken-1;
         #model_name {
-          width: 40;
+          max-width: 40;
         }
         #temperature_input {
           width: 11;
         }
+        #session_name_input {
+          min-width: 15;
+          max-width: 40;
+          width: auto;
+        }
         #clear_button {
           margin-left: 2;
+          min-width: 9;
+          background: $warning-darken-2;
+          border-top: tall $warning-lighten-1;
         }
         Label {
           margin: 1;
@@ -54,7 +78,6 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
         #user_input {
           width: 1fr;
         }
-
         #send_button {
           width: 6;
         }
@@ -77,40 +100,63 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
     }
     """
 
-    model_select: Select[str]
-    send_button: Button
     session: ChatSession | None = None
-    busy: bool = False
+    busy: Reactive[bool] = Reactive(False)
 
     def __init__(self, **kwargs) -> None:
         """Initialise the view."""
         super().__init__(**kwargs)
-        self.sub_title = "Application Logs"
-        self.user_input = Input(
-            id="user_input", placeholder="Type a message...", disabled=True
+
+        self.model_select: Select[str] = Select(
+            id="model_name", options=[], prompt="Select Model"
         )
-        self.temperature_input = Input(
+        self.temperature_input: Input = Input(
             id="temperature_input",
-            value=f"{settings.last_chat_temperature:.2f}",
+            value=f"{settings.last_chat_temperature:.2f}"
+            if settings.last_chat_temperature
+            else "",
             max_length=4,
             restrict=r"^\d(?:\.\d+)?$",
         )
+        self.session_name_input: Input = Input(id="session_name_input", value="My Chat")
+        self.user_input: InputTabComplete = InputTabComplete(
+            id="user_input",
+            placeholder="Type a message...",
+            suggester=SuggestFromList(
+                valid_commands,
+                case_sensitive=False,
+            ),
+            submit_on_tab=False,
+            submit_on_complete=False,
+        )
 
-        self.send_button = Button("Send", id="send_button", disabled=True)
-        self.model_select = Select(id="model_name", options=[])
-        self.vs = VerticalScroll(id="messages")
+        self.send_button: Button = Button("Send", id="send_button", disabled=True)
+        self.vs: VerticalScroll = VerticalScroll(id="messages")
         self.vs.can_focus = False
         self.busy = False
+
+    def _watch_busy(self, value: bool) -> None:
+        """Update controls when busy changes"""
+        self.update_control_states()
+        if value:
+            self.screen.sub_title = (  # pylint: disable=attribute-defined-outside-init
+                "Chat - Thinking..."
+            )
+        else:
+            self.screen.sub_title = (  # pylint: disable=attribute-defined-outside-init
+                "Chat"
+            )
 
     def compose(self) -> ComposeResult:
         """Compose the content of the view."""
 
         with Vertical(id="main"):
             with Horizontal(id="tool_bar"):
-                yield Label("Model")
                 yield self.model_select
-                yield Label("Temperature")
+                yield Label("Temp")
                 yield self.temperature_input
+                yield Label("Session")
+                yield self.session_name_input
                 yield Button("Clear", id="clear_button", variant="warning")
             yield self.vs
             with Horizontal(id="send_bar"):
@@ -123,6 +169,10 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
         with self.screen.prevent(TabbedContent.TabActivated):
             self.model_select.focus()
 
+    def _on_show(self, event: Show) -> None:
+        """Handle show event"""
+        self._watch_busy(self.busy)
+
     @on(Input.Changed, "#user_input")
     def on_user_input_changed(self) -> None:
         """Handle max lines input change"""
@@ -132,29 +182,38 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
     def on_temperature_input_changed(self) -> None:
         """Handle temperature input change"""
         try:
-            settings.last_chat_temperature = float(self.temperature_input.value)
+            if self.temperature_input.value:
+                settings.last_chat_temperature = float(self.temperature_input.value)
+            else:
+                settings.last_chat_temperature = None
         except ValueError:
             return
         settings.save_settings_to_file()
 
+    @on(Input.Changed, "#session_name_input")
+    def on_session_name_input_changed(self) -> None:
+        """Handle session name input change"""
+        if not self.session_name_input.value:
+            return
+        if self.session is not None:
+            self.session.session_name = self.session_name_input.value
+
+        settings.last_chat_session_name = self.session_name_input.value
+
     def update_control_states(self):
         """Update disabled state of controls based on model and user input values"""
-        self.user_input.disabled = self.busy or self.model_select.value == Select.BLANK
         self.send_button.disabled = (
-            self.user_input.disabled or len(self.user_input.value) == 0
+            self.busy
+            or self.model_select.value == Select.BLANK
+            or self.session_name_input.value.strip() == ""
+            or len(self.user_input.value.strip()) == 0
         )
-        if self.model_select.value != Select.BLANK:
-            with self.screen.prevent(TabbedContent.TabActivated):
-                self.user_input.focus()
 
     @on(Select.Changed)
     def on_model_select_changed(self) -> None:
         """Model select changed, update control states and save model name"""
         self.update_control_states()
-        if (
-            not self.user_input.disabled
-            and settings.last_chat_model != self.model_select.value
-        ):
+        if self.model_select.value not in (Select.BLANK, settings.last_chat_model):
             settings.last_chat_model = str(self.model_select.value)
             settings.save_settings_to_file()
 
@@ -174,53 +233,133 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
             if v == old_v:
                 self.model_select.value = old_v
         self.update_control_states()
+        if self.model_select.value != Select.BLANK:
+            with self.screen.prevent(TabbedContent.TabActivated):
+                self.user_input.focus()
+
+        self.user_input.suggester = SuggestFromList(
+            valid_commands + [f"/model {m.model.name}" for m in dm.models],
+            case_sensitive=False,
+        )
 
     @on(Button.Pressed, "#clear_button")
     def on_clear_button_pressed(self) -> None:
         """Clear button pressed"""
+        self.action_clear_messages()
+
+    def action_clear_messages(self) -> None:
+        """Clear messages."""
         if self.session:
-            self.session.new_session()
+            self.session.new_session(self.session_name_input.value or "My Chat")
             self.vs.remove_children("*")
             self.update_control_states()
+        self.user_input.focus()
 
     @on(Button.Pressed, "#send_button")
     @on(Input.Submitted, "#user_input")
     async def action_send_message(self) -> None:
         """Send the message."""
         if not self.model_select.value or self.model_select.value == Select.BLANK:
+            self.model_select.focus()
             return
+
+        self.user_input.focus()
+
+        if self.send_button.disabled:
+            return
+
         if not self.user_input.value:
             return
 
-        if not self.temperature_input.value:
-            self.temperature_input.value = "0.5"
-
         if self.busy:
+            self.notify("LLM Busy...", severity="error")
             return
-        self.busy = True
+
         self.update_control_states()
-        try:
-            if not self.session:
-                self.session = chat_manager.get_or_create_session(
-                    "Default",
-                    str(self.model_select.value),
-                    {"temperature": float(self.temperature_input.value)},
-                )
-            else:
-                self.session.llm_model_name = str(self.model_select.value)
+        if not self.session:
+            self.session = chat_manager.get_or_create_session(
+                self.session_name_input.value or "My Chat",
+                str(self.model_select.value),
+                {
+                    "temperature": float(self.temperature_input.value)
+                    if self.temperature_input.value
+                    else None
+                },
+            )
+        else:
+            self.session.llm_model_name = str(self.model_select.value)
+            if self.temperature_input.value:
                 self.session.options["temperature"] = float(
                     self.temperature_input.value
                 )
-            self.do_send_message(self.user_input.value)
-        finally:
-            self.user_input.value = ""
-            self.busy = False
-            self.update_control_states()
+            else:
+                del self.session.options["temperature"]
+        msg = self.user_input.value
+        self.user_input.value = ""
+        if msg.startswith("/"):
+            return self.handle_command(msg[1:].lower().strip())
+        self.busy = True
+        self.do_send_message(msg)
+
+    def handle_command(self, cmd: str) -> None:
+        """Handle a command"""
+        if cmd in ("?", "help"):
+            self.app.push_screen(
+                InformationDialog(
+                    title="Chat Commands",
+                    message="""
+Chat Commands:
+/clear - Clear the chat
+/model [model_name] - Select a model
+/temp [temperature] - Set the temperature
+/session [session_name] - Set the session name
+/save - Save the conversation to a file
+                    """,
+                )
+            )
+            return
+
+        if self.session is None:
+            return
+        if cmd == "clear":
+            self.action_clear_messages()
+        elif cmd == "model":
+            self.set_timer(0.1, self.model_select.focus)
+            return
+        elif cmd.startswith("model "):
+            (_, v) = cmd.split(" ", 1)
+            if v not in [m.model.name for m in dm.models]:
+                self.notify(f"Model {v} not found", severity="error")
+                return
+            self.model_select.value = v
+            self.set_timer(0.1, self.user_input.focus)
+        elif cmd == "temp":
+            self.set_timer(0.1, self.temperature_input.focus)
+        elif cmd.startswith("temp "):
+            (_, v) = cmd.split(" ", 1)
+            self.temperature_input.value = v
+            self.set_timer(0.1, self.user_input.focus)
+        elif cmd == "session":
+            self.set_timer(0.1, self.session_name_input.focus)
+        elif cmd.startswith("session "):
+            (_, v) = cmd.split(" ", 1)
+            self.session_name_input.value = v
+            self.set_timer(0.1, self.user_input.focus)
+        elif cmd.startswith("save"):
+            self._save_conversation_text()
+            # filename: str = "chat_test.md"
+            # if self.session.save(filename):
+            #     self.notify(f"Saved: {filename}")
+            # else:
+            #     self.notify(f"Failed to save: {filename}", severity="error")
+        else:
+            self.notify(f"Unknown command: {cmd}", severity="error")
 
     @work(thread=True)
     async def do_send_message(self, msg: str) -> None:
         """Send the message."""
-        if not self.session:
+
+        if self.session is None:
             return
         await self.session.send_chat(msg, self)
         self.post_message(ChatMessageSent())
@@ -229,8 +368,7 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
     def on_chat_message_sent(self, msg: ChatMessageSent) -> None:
         """Handle a chat message sent"""
         msg.stop()
-        if not self.user_input.disabled:
-            self.user_input.focus()
+        self.busy = False
 
     @on(ChatMessage)
     async def on_chat_message(self, event: ChatMessage) -> None:
@@ -246,11 +384,35 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
 
         msg_widget: ChatMessageWidget | None = None
         for w in self.query(ChatMessageWidget):
-            if w.msg["id"] == msg["id"]:
+            if w.msg.id == msg.id:
                 await w.update("")
                 msg_widget = w
                 break
         if not msg_widget:
             msg_widget = ChatMessageWidget.mk_msg_widget(msg=msg)
             await self.vs.mount(msg_widget)
-        self.vs.scroll_to_widget(msg_widget)
+        msg_widget.loading = len(msg_widget.msg.content) == 0
+        if self.user_input.has_focus:
+            self.set_timer(0.05, self.scroll_to_bottom)
+
+    def scroll_to_bottom(self) -> None:
+        """Scroll to the bottom of the chat window."""
+        self.vs.scroll_to(y=self.vs.scroll_y + self.vs.size.height)
+
+    @work
+    async def _save_conversation_text(self) -> None:
+        """Save the conversation as a Markdown document."""
+        # Prompt the user with a save dialog, to get the name of a file to
+        # save to.
+        if (target := await SaveSession.get_filename(self.app)) is None:
+            return
+
+        # If the user didn't give an extension, add a default.
+        if not target.suffix:
+            target = target.with_suffix(".md")
+
+        # Save the Markdown to the target file.
+        target.write_text(str(self.session), encoding="utf-8")
+
+        # Let the user know the save happened.
+        self.notify(str(target), title="Saved")

@@ -42,6 +42,7 @@ from parllama.messages.main import LocalModelListLoaded
 from parllama.messages.main import LocalModelListRefreshRequested
 from parllama.messages.main import ModelCreated
 from parllama.messages.main import ModelCreateRequested
+from parllama.messages.main import ModelInteractRequested
 from parllama.messages.main import ModelPulled
 from parllama.messages.main import ModelPullRequested
 from parllama.messages.main import ModelPushed
@@ -146,7 +147,10 @@ class ParLlamaApp(App[None]):
         """Display the main or locked screen."""
         await self.push_screen(self.main_screen)
         self.main_screen.post_message(
-            StatusMessage(f"Data directory: {settings.data_dir}")
+            StatusMessage(f"Data folder: {settings.data_dir}")
+        )
+        self.main_screen.post_message(
+            StatusMessage(f"Chat folder: {settings.chat_dir}")
         )
         self.main_screen.post_message(
             StatusMessage(f"Using Ollama server url: {settings.ollama_host}")
@@ -535,11 +539,9 @@ class ParLlamaApp(App[None]):
         self.refresh_site_models(msg)
 
     @on(SiteModelsLoaded)
-    def on_site_models_loaded(self, msg: SiteModelsLoaded) -> None:
+    def on_site_models_loaded(self) -> None:
         """Site model refresh completed"""
-        self.status_notify(
-            f"Site models refreshed for {msg.ollama_namespace or 'models'}"
-        )
+        self.status_notify("Site models refreshed")
 
     @work(group="refresh_site_model", thread=True)
     async def refresh_site_models(self, msg: SiteModelsRefreshRequested):
@@ -566,7 +568,7 @@ class ParLlamaApp(App[None]):
 
     @work(group="update_ps", thread=True)
     async def update_ps(self) -> None:
-        """Update ps msg"""
+        """Update ps status bar msg"""
         was_blank = False
         while self.is_running:
             await asyncio.sleep(2)
@@ -577,7 +579,7 @@ class ParLlamaApp(App[None]):
                 was_blank = True
                 continue
             was_blank = False
-            info = ret[0]
+            info = ret[0]  # only take first one since ps status bar is a single line
             self.main_screen.post_message(
                 PsMessage(
                     msg=Text.assemble(
@@ -592,7 +594,6 @@ class ParLlamaApp(App[None]):
                     )
                 )
             )
-        self.main_screen.post_message(StatusMessage(msg="exited..."))
 
     def status_notify(self, msg: str, severity: SeverityLevel = "information") -> None:
         """Show notification and update status bar"""
@@ -628,3 +629,11 @@ class ParLlamaApp(App[None]):
         self.main_screen.create_view.quantize_input.value = msg.quantization_level or ""
         self.main_screen.change_tab("Create")
         self.main_screen.create_view.name_input.focus()
+
+    @on(ModelInteractRequested)
+    def on_model_interact_requested(self, msg: ModelInteractRequested) -> None:
+        """Model interact requested event"""
+        msg.stop()
+        self.main_screen.change_tab("Chat")
+        self.main_screen.chat_view.model_select.value = msg.model_name
+        self.main_screen.chat_view.user_input.focus()

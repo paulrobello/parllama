@@ -64,7 +64,6 @@ class ModelCreateView(Container):
         Initialise the screen.
         """
         super().__init__(**kwargs)
-        self.sub_title = "Create Model"
         self.name_input = Input(id="model_name", placeholder="Model Name")
         self.quantize_input = Input(
             id="quantize_level",
@@ -88,6 +87,9 @@ class ModelCreateView(Container):
 
     def _on_show(self, event: Show) -> None:
         """Focus the name on show"""
+        self.screen.sub_title = (  # pylint: disable=attribute-defined-outside-init
+            "Create Model"
+        )
         self.name_input.focus()
 
     @on(Button.Pressed, "#create_button")

@@ -21,12 +21,14 @@ class Settings(BaseModel):
     no_save: bool = False
     data_dir: str = os.path.expanduser("~/.parllama")
     cache_dir: str = ""
+    chat_dir: str = ""
     settings_file: str = "settings.json"
     theme_name: str = "par"
     starting_screen: ScreenType = "Local"
     last_screen: ScreenType = "Local"
     last_chat_model: str = ""
-    last_chat_temperature: float = 0.5
+    last_chat_temperature: float | None = None
+    last_chat_session_name: str = "My Chat"
     theme_mode: str = "dark"
     site_models_namespace: str = ""
     max_log_lines: int = 1000
@@ -47,7 +49,10 @@ class Settings(BaseModel):
             or os.path.expanduser("~/.parllama")
         )
         self.cache_dir = os.path.join(self.data_dir, "cache")
-        os.makedirs(self.data_dir, exist_ok=True)
+        self.chat_dir = os.path.join(self.data_dir, "chats")
+
+        os.makedirs(self.cache_dir, exist_ok=True)
+        os.makedirs(self.chat_dir, exist_ok=True)
 
         if not os.path.exists(self.data_dir):
             raise FileNotFoundError(
@@ -110,11 +115,14 @@ class Settings(BaseModel):
                     self.starting_screen = "Local"
 
                 self.last_screen = data.get("last_screen", "Local")
-                # if self.last_screen not in valid_screens:
-                #     self.last_screen = self.starting_screen
+                if self.last_screen not in valid_screens:
+                    self.last_screen = self.starting_screen
                 self.last_chat_model = data.get("last_chat_model", self.last_chat_model)
                 self.last_chat_temperature = data.get(
                     "last_chat_temperature", self.last_chat_temperature
+                )
+                self.last_chat_session_name = data.get(
+                    "last_chat_session_name", self.last_chat_session_name
                 )
                 self.max_log_lines = max(0, data.get("max_log_lines", 1000))
         except FileNotFoundError:

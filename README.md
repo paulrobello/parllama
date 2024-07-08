@@ -40,6 +40,7 @@ docker pull ollama/quantize
 If you don't have pipx installed you can run the following:  
 ```bash
 pip install pipx
+pipx ensurepath
 ```
 Once pipx is installed, run the following:  
 ```bash
@@ -127,6 +128,10 @@ The command will look something like this:
 ```bash
 parllama -u "http://$(hostname).local:11434"
 ```
+Depending on your DNS setup if the above does not work, try this:  
+```bash
+ parllama -u "http://$(grep -m 1 nameserver /etc/resolv.conf | awk '{print $2}'):11434"
+```
 
 PAR_LLAMA will remember the -u flag so subsequent runs will not require that you specify it.
 
@@ -206,3 +211,11 @@ if anything remains to be fixed before the commit is allowed.
 * Chat history / conversation management
 * Chat with multiple models at same time to compare outputs
 * LLM tool use
+
+
+## What's new
+### v0.2.5
+* Added slash commands to chat input
+* Added ability to export chat to markdown file
+* ctrl+c on local model list will jump to chat tab and select currently selected local model
+* ctrl+c on chat tab will copy selected chat message

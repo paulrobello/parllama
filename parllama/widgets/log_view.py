@@ -6,6 +6,7 @@ from textual.app import ComposeResult
 from textual.containers import Container
 from textual.containers import Horizontal
 from textual.containers import Vertical
+from textual.events import Show
 from textual.widgets import Button
 from textual.widgets import Checkbox
 from textual.widgets import Input
@@ -43,7 +44,6 @@ class LogView(Container):
     def __init__(self, **kwargs) -> None:
         """Initialise the screen."""
         super().__init__(**kwargs)
-        self.sub_title = "Application Logs"
         self.richlog = RichLog(id="logs", wrap=True, highlight=True, auto_scroll=True)
         self.auto_scroll = Checkbox(label="Auto Scroll", value=True, id="auto_scroll")
         self.max_lines_input = Input(
@@ -66,6 +66,10 @@ class LogView(Container):
             yield self.richlog
 
         self.richlog.write("Starting...")
+
+    def _on_show(self, event: Show) -> None:
+        """Handle show event"""
+        self.screen.sub_title = "Logs"  # pylint: disable=attribute-defined-outside-init
 
     @on(Checkbox.Changed, "#auto_scroll")
     def on_auto_scroll_changed(self, event: Checkbox.Changed) -> None:
