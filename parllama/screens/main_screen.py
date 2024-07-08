@@ -97,6 +97,8 @@ class MainScreen(Screen[None]):
         settings.last_screen = cast(ScreenType, msg.tab.label.plain)
         settings.save_settings_to_file()
 
+        self.log_view.richlog.write(f"Tab activated: {msg.tab.label.plain}")
+
     @on(StatusMessage)
     def on_status_message(self, msg: StatusMessage) -> None:
         """Status message event"""

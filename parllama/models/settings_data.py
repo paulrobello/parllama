@@ -33,6 +33,8 @@ class Settings(BaseModel):
     site_models_namespace: str = ""
     max_log_lines: int = 1000
     ollama_host: str = "http://localhost:11434"
+    ollama_ps_poll_interval: int = 3
+    auto_name_chat: bool = True
 
     # pylint: disable=too-many-branches
     def __init__(self) -> None:
@@ -89,11 +91,14 @@ class Settings(BaseModel):
             self.theme_name = args.theme_name
         if args.theme_mode:
             self.theme_mode = args.theme_mode
+
         if args.starting_screen:
             self.starting_screen = args.starting_screen.capitalize()
             if self.starting_screen not in valid_screens:
                 self.starting_screen = "Local"
 
+        if args.ps_poll:
+            self.ollama_ps_poll_interval = args.ps_poll
         self.save_settings_to_file()
 
     def load_from_file(self) -> None:
@@ -118,13 +123,15 @@ class Settings(BaseModel):
                 if self.last_screen not in valid_screens:
                     self.last_screen = self.starting_screen
                 self.last_chat_model = data.get("last_chat_model", self.last_chat_model)
-                self.last_chat_temperature = data.get(
-                    "last_chat_temperature", self.last_chat_temperature
-                )
+                self.last_chat_temperature = data.get("last_chat_temperature")
                 self.last_chat_session_name = data.get(
                     "last_chat_session_name", self.last_chat_session_name
                 )
                 self.max_log_lines = max(0, data.get("max_log_lines", 1000))
+                self.ollama_ps_poll_interval = data.get(
+                    "ollama_ps_poll_interval", self.ollama_ps_poll_interval
+                )
+                self.auto_name_chat = data.get("auto_name_chat", self.auto_name_chat)
         except FileNotFoundError:
             pass  # If file does not exist, continue with default settings
 

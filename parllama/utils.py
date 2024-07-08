@@ -533,6 +533,13 @@ def get_args() -> Namespace:
     )
 
     parser.add_argument(
+        "-p",
+        "--ps-poll",
+        type=int,
+        help="Interval in seconds to poll ollama ps command. 0 = disable. Defaults to 3",
+    )
+
+    parser.add_argument(
         "--restore-defaults",
         help="Restore default settings and theme",
         default=False,

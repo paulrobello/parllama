@@ -207,7 +207,7 @@ class SiteModelView(Container):
         settings.save_settings_to_file()
 
     @on(SiteModelsLoaded)
-    def on_site_models_loaded(self, event: Input.Submitted) -> None:
+    def on_site_models_loaded(self, event: SiteModelsLoaded) -> None:
         """Update list, turn off loading indicator and update namespace suggester"""
         event.stop()
         self.lv.remove_children()

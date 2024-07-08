@@ -112,7 +112,7 @@ If you have Ollama running on multiple machines you must import each machines ke
 
 ## Command line arguments
 ```
-usage: parllama [-h] [-v] [-d DATA_DIR] [-u OLLAMA_URL] [-t THEME_NAME] [-m {dark,light}] [-s {local,site,tools,create,logs}]
+usage: parllama [-h] [-v] [-d DATA_DIR] [-u OLLAMA_URL] [-t THEME_NAME] [-m {dark,light}] [-s {local,site,tools,create,chat,logs}] [-p PS_POLL]
                 [--restore-defaults] [--clear-cache] [--no-save]
 
 PAR LLAMA -- Ollama TUI.
@@ -128,8 +128,10 @@ options:
                         Theme name. Defaults to par
   -m {dark,light}, --theme-mode {dark,light}
                         Dark / Light mode. Defaults to dark
-  -s {local,site,tools,create,logs}, --starting-screen {local,site,tools,create,logs}
+  -s {local,site,tools,create,chat,logs}, --starting-screen {local,site,tools,create,chat,logs}
                         Starting screen. Defaults to local
+  -p PS_POLL, --ps-poll PS_POLL
+                        Interval in seconds to poll ollama ps command. 0 = disable. Defaults to 3
   --restore-defaults    Restore default settings and theme
   --clear-cache         Clear cached data
   --no-save             Prevent saving settings for this session.

@@ -9,6 +9,7 @@ from textual.containers import Horizontal
 from textual.containers import Vertical
 from textual.containers import VerticalScroll
 from textual.events import Show
+from textual.message import Message
 from textual.reactive import Reactive
 from textual.suggester import SuggestFromList
 from textual.widgets import Button
@@ -112,9 +113,11 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
         )
         self.temperature_input: Input = Input(
             id="temperature_input",
-            value=f"{settings.last_chat_temperature:.2f}"
-            if settings.last_chat_temperature
-            else "",
+            value=(
+                f"{settings.last_chat_temperature:.2f}"
+                if settings.last_chat_temperature
+                else ""
+            ),
             max_length=4,
             restrict=r"^\d(?:\.\d+)?$",
         )
@@ -166,12 +169,15 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
     def on_mount(self) -> None:
         """Set up the dialog once the DOM is ready."""
         self.app.post_message(RegisterForUpdates(widget=self))
-        with self.screen.prevent(TabbedContent.TabActivated):
-            self.model_select.focus()
 
     def _on_show(self, event: Show) -> None:
         """Handle show event"""
-        self._watch_busy(self.busy)
+        # self._watch_busy(self.busy)
+        with self.screen.prevent(TabbedContent.TabActivated):
+            if self.model_select.value == Select.BLANK:
+                self.model_select.focus()
+            else:
+                self.user_input.focus()
 
     @on(Input.Changed, "#user_input")
     def on_user_input_changed(self) -> None:
@@ -193,19 +199,19 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
     @on(Input.Changed, "#session_name_input")
     def on_session_name_input_changed(self) -> None:
         """Handle session name input change"""
-        if not self.session_name_input.value:
+        session_name: str = self.session_name_input.value.strip()
+        if not session_name:
             return
         if self.session is not None:
-            self.session.session_name = self.session_name_input.value
+            self.session.session_name = session_name
 
-        settings.last_chat_session_name = self.session_name_input.value
+        settings.last_chat_session_name = session_name
 
     def update_control_states(self):
         """Update disabled state of controls based on model and user input values"""
         self.send_button.disabled = (
             self.busy
             or self.model_select.value == Select.BLANK
-            or self.session_name_input.value.strip() == ""
             or len(self.user_input.value.strip()) == 0
         )
 
@@ -218,9 +224,9 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
             settings.save_settings_to_file()
 
     @on(LocalModelListLoaded)
-    def on_local_model_list_loaded(self) -> None:
+    def on_local_model_list_loaded(self, evt: LocalModelListLoaded) -> None:
         """Model list changed"""
-
+        evt.stop()
         if self.model_select.value != Select.BLANK:
             old_v = self.model_select.value
         elif settings.last_chat_model:
@@ -234,7 +240,7 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
                 self.model_select.value = old_v
         self.update_control_states()
         if self.model_select.value != Select.BLANK:
-            with self.screen.prevent(TabbedContent.TabActivated):
+            with self.prevent(TabbedContent.TabActivated):
                 self.user_input.focus()
 
         self.user_input.suggester = SuggestFromList(
@@ -250,16 +256,17 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
     def action_clear_messages(self) -> None:
         """Clear messages."""
         if self.session:
-            self.session.new_session(self.session_name_input.value or "My Chat")
+            self.session.new_session(self.session_name_input.value.strip() or "My Chat")
             self.vs.remove_children("*")
             self.update_control_states()
         self.user_input.focus()
 
     @on(Button.Pressed, "#send_button")
     @on(Input.Submitted, "#user_input")
-    async def action_send_message(self) -> None:
+    async def action_send_message(self, event: Message) -> None:
         """Send the message."""
-        if not self.model_select.value or self.model_select.value == Select.BLANK:
+        event.stop()
+        if self.model_select.value == Select.BLANK:
             self.model_select.focus()
             return
 
@@ -268,7 +275,8 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
         if self.send_button.disabled:
             return
 
-        if not self.user_input.value:
+        user_msg: str = self.user_input.value.strip()
+        if not user_msg:
             return
 
         if self.busy:
@@ -281,9 +289,11 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
                 self.session_name_input.value or "My Chat",
                 str(self.model_select.value),
                 {
-                    "temperature": float(self.temperature_input.value)
-                    if self.temperature_input.value
-                    else None
+                    "temperature": (
+                        float(self.temperature_input.value)
+                        if self.temperature_input.value
+                        else None
+                    )
                 },
             )
         else:
@@ -294,12 +304,11 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
                 )
             else:
                 del self.session.options["temperature"]
-        msg = self.user_input.value
         self.user_input.value = ""
-        if msg.startswith("/"):
-            return self.handle_command(msg[1:].lower().strip())
+        if user_msg.startswith("/"):
+            return self.handle_command(user_msg[1:].lower().strip())
         self.busy = True
-        self.do_send_message(msg)
+        self.do_send_message(user_msg)
 
     def handle_command(self, cmd: str) -> None:
         """Handle a command"""

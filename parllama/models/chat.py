@@ -133,9 +133,9 @@ class ChatSession:
     def __delitem__(self, key: str) -> None:
         """Delete a message"""
         del self.id_to_msg[key]
-        for msg in self.messages:
+        for i, msg in enumerate(self.messages):
             if msg.id == key:
-                self.messages.remove(msg)
+                self.messages.pop(i)
                 return
 
     def __contains__(self, item: OllamaMessage) -> bool:
