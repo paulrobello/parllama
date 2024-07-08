@@ -204,6 +204,8 @@ if anything remains to be fixed before the commit is allowed.
 ## What's new
 * Added slash commands to chat input
 * Added ability to export chat to markdown file
+* ctrl+c on local model list will jump to chat tab and select currently selected local model
+* ctrl+c on chat tab will copy selected chat message
 
 ## Roadmap
 

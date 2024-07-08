@@ -26,7 +26,8 @@ This screen displays all local models currently available to your local Ollama.
 `ctrl+f` can be used to quickly focus the filter input box.  
 `ctrl+p` will pull the highlighted model.  
 `ctrl+u` will push the highlighted model to Ollama.com. Ensure you have your Ollama access key setup. See the **Publishing** section for details on how to do this.
-`ctrl+c` will bring up the copy model dialog which will prompt you for the name to copy the model to.  
+`ctrl+d` will bring up the copy model dialog which will prompt you for the name to copy the model to.  
+`ctrl+c` will jump to chat tab and select the model highlighted model.  
 
 ### Local Model Screen keys
 
@@ -75,6 +76,13 @@ This screen allows you to access tools to create, modify, and publish models
 
 ## Chat Screen
 Chat with local LLM's  
+
+### Chat Screen keys
+
+| Key      | Command                         |
+|----------|---------------------------------|
+| `enter`  | Send chat to LLM                |
+| `ctrl+c` | Copy selected chat to clipboard |
 
 ### Chat Slash Commands:
 * /? or /help - Show slash command help dialog
