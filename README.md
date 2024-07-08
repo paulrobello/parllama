@@ -201,12 +201,6 @@ After running the above all future commits will auto run pre-commit. pre-commit 
 if anything remains to be fixed before the commit is allowed.
 
 
-## What's new
-* Added slash commands to chat input
-* Added ability to export chat to markdown file
-* ctrl+c on local model list will jump to chat tab and select currently selected local model
-* ctrl+c on chat tab will copy selected chat message
-
 ## Roadmap
 
 **Where we are**  
@@ -217,3 +211,11 @@ if anything remains to be fixed before the commit is allowed.
 * Chat history / conversation management
 * Chat with multiple models at same time to compare outputs
 * LLM tool use
+
+
+## What's new
+### v0.2.5
+* Added slash commands to chat input
+* Added ability to export chat to markdown file
+* ctrl+c on local model list will jump to chat tab and select currently selected local model
+* ctrl+c on chat tab will copy selected chat message

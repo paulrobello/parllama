@@ -215,12 +215,12 @@
     },
     "humanize": {
       "hashes": [
-        "sha256:582a265c931c683a7e9b8ed9559089dea7edcf6cc95be39a3cbc2c5d5ac2bcfa",
-        "sha256:ce284a76d5b1377fd8836733b983bfb0b76f1aa1c090de2566fcf008d7f6ab16"
+        "sha256:06b6eb0293e4b85e8d385397c5868926820db32b9b654b932f57fa41c23c9978",
+        "sha256:39e7ccb96923e732b5c2e27aeaa3b10a8dfeeba3eb965ba7b74a3eb0e30040a6"
       ],
       "index": "pypi",
       "markers": "python_version >= '3.8'",
-      "version": "==4.9.0"
+      "version": "==4.10.0"
     },
     "idna": {
       "hashes": [
@@ -1039,7 +1039,7 @@
         "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44",
         "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"
       ],
-      "markers": "sys_platform == 'win32'",
+      "markers": "os_name == 'nt'",
       "version": "==0.4.6"
     },
     "dill": {
@@ -1542,10 +1542,10 @@
     },
     "pydevd-pycharm": {
       "hashes": [
-        "sha256:03a7b97c59390a42fccab15fef2c5b8bdc2eac9fd319f6f2d4ac078a7399f84c"
+        "sha256:1c3dc311f24a188e29da5fc20a12776a0e06e5dbdcb1ec8b7aa11f9ebb90a8ab"
       ],
       "index": "pypi",
-      "version": "==242.18071.12"
+      "version": "==242.19890.32"
     },
     "pygments": {
       "hashes": [
@@ -1639,11 +1639,11 @@
     },
     "readme-renderer": {
       "hashes": [
-        "sha256:1818dd28140813509eeed8d62687f7cd4f7bad90d4db586001c5dc09d4fde311",
-        "sha256:19db308d86ecd60e5affa3b2a98f017af384678c63c88e5d4556a380e674f3f9"
+        "sha256:2fbca89b81a08526aadf1357a8c2ae889ec05fb03f5da67f9769c9a592166151",
+        "sha256:8712034eabbfa6805cacf1402b4eeb2a73028f72d1166d6f5cb7f9c047c5d1e1"
       ],
-      "markers": "python_version >= '3.8'",
-      "version": "==43.0"
+      "markers": "python_version >= '3.9'",
+      "version": "==44.0"
     },
     "requests": {
       "hashes": [
