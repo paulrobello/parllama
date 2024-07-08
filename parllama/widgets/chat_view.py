@@ -112,7 +112,9 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
         )
         self.temperature_input: Input = Input(
             id="temperature_input",
-            value=f"{settings.last_chat_temperature:.2f}",
+            value=f"{settings.last_chat_temperature:.2f}"
+            if settings.last_chat_temperature
+            else "",
             max_length=4,
             restrict=r"^\d(?:\.\d+)?$",
         )
@@ -180,7 +182,10 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
     def on_temperature_input_changed(self) -> None:
         """Handle temperature input change"""
         try:
-            settings.last_chat_temperature = float(self.temperature_input.value)
+            if self.temperature_input.value:
+                settings.last_chat_temperature = float(self.temperature_input.value)
+            else:
+                settings.last_chat_temperature = None
         except ValueError:
             return
         settings.save_settings_to_file()
@@ -200,7 +205,6 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
         self.send_button.disabled = (
             self.busy
             or self.model_select.value == Select.BLANK
-            or self.temperature_input.value.strip() == ""
             or self.session_name_input.value.strip() == ""
             or len(self.user_input.value.strip()) == 0
         )
@@ -267,9 +271,6 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
         if not self.user_input.value:
             return
 
-        if not self.temperature_input.value:
-            self.temperature_input.value = "0.5"
-
         if self.busy:
             self.notify("LLM Busy...", severity="error")
             return
@@ -279,11 +280,20 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
             self.session = chat_manager.get_or_create_session(
                 self.session_name_input.value or "My Chat",
                 str(self.model_select.value),
-                {"temperature": float(self.temperature_input.value)},
+                {
+                    "temperature": float(self.temperature_input.value)
+                    if self.temperature_input.value
+                    else None
+                },
             )
         else:
             self.session.llm_model_name = str(self.model_select.value)
-            self.session.options["temperature"] = float(self.temperature_input.value)
+            if self.temperature_input.value:
+                self.session.options["temperature"] = float(
+                    self.temperature_input.value
+                )
+            else:
+                del self.session.options["temperature"]
         msg = self.user_input.value
         self.user_input.value = ""
         if msg.startswith("/"):

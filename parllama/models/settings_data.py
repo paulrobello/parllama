@@ -27,7 +27,7 @@ class Settings(BaseModel):
     starting_screen: ScreenType = "Local"
     last_screen: ScreenType = "Local"
     last_chat_model: str = ""
-    last_chat_temperature: float = 0.5
+    last_chat_temperature: float | None = None
     last_chat_session_name: str = "My Chat"
     theme_mode: str = "dark"
     site_models_namespace: str = ""

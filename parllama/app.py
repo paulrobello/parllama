@@ -636,3 +636,4 @@ class ParLlamaApp(App[None]):
         msg.stop()
         self.main_screen.change_tab("Chat")
         self.main_screen.chat_view.model_select.value = msg.model_name
+        self.main_screen.chat_view.user_input.focus()

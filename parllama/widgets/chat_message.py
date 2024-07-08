@@ -2,13 +2,19 @@
 from __future__ import annotations
 
 from textual.await_complete import AwaitComplete
+from textual.binding import Binding
 from textual.widgets import Markdown
 
+from parllama.messages.main import SendToClipboard
 from parllama.models.chat import OllamaMessage
 
 
 class ChatMessageWidget(Markdown, can_focus=True):
     """Chat message widget base"""
+
+    BINDINGS = [
+        Binding("ctrl+c", "copy_to_clipboard", "", show=True),
+    ]
 
     DEFAULT_CSS = """
     ChatMessageWidget {
@@ -43,6 +49,10 @@ class ChatMessageWidget(Markdown, can_focus=True):
         if msg.role == "user":
             return UserChatMessage(msg=msg)
         return AgentChatMessage(msg=msg)
+
+    def action_copy_to_clipboard(self) -> None:
+        """Copy focused widget value to clipboard"""
+        self.app.post_message(SendToClipboard(self.raw_text))
 
 
 class AgentChatMessage(ChatMessageWidget):
