@@ -110,8 +110,9 @@ stricttypecheck:	        # Perform a strict static type checks with mypy
 .PHONY: checkall
 checkall: typecheck lint 	        # Check all the things
 
-.PHONY: do-before-commit
-do-before-commit: ugly checkall	        # Format then check
+.PHONY: pre-commit	        # run pre-commit checks on all files
+pre-commit:
+	pre-commit run --all-files
 
 ##############################################################################
 # Package/publish.
