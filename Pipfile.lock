@@ -573,11 +573,11 @@
         "syntax"
       ],
       "hashes": [
-        "sha256:60500cc63ffd98a4aff8679976a1530d5e99a881e13bb040d26558a2c45f49d8",
-        "sha256:a38a3bd7e450ed173b59ab1c93a3aa8174d95bc5c79647f220a50243236ce70a"
+        "sha256:14174ce8d49016a85aa6c0669d0881b5419e98cf46d429f263314295409ed262",
+        "sha256:a9886eb96bd6391b8795244d2b8fe592204556c42264ea7513a1211584e17366"
       ],
       "markers": "python_version >= '3.8' and python_version < '4.0'",
-      "version": "==0.71.0"
+      "version": "==0.72.0"
     },
     "textual-fspicker": {
       "hashes": [
@@ -738,7 +738,7 @@
         "sha256:04e5ca0351e0f3f85c6853954072df659d0d13fac324d0072316b67d7794700d",
         "sha256:1a7ead55c7e559dd4dee8856e3a88b41225abfe1ce8df57b7c13915fe121ffb8"
       ],
-      "markers": "python_version >= '3.8'",
+      "markers": "python_version < '3.13'",
       "version": "==4.12.2"
     },
     "uc-micro-py": {
@@ -1039,7 +1039,7 @@
         "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44",
         "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"
       ],
-      "markers": "os_name == 'nt'",
+      "markers": "sys_platform == 'win32'",
       "version": "==0.4.6"
     },
     "dill": {
@@ -1684,11 +1684,11 @@
         "syntax"
       ],
       "hashes": [
-        "sha256:60500cc63ffd98a4aff8679976a1530d5e99a881e13bb040d26558a2c45f49d8",
-        "sha256:a38a3bd7e450ed173b59ab1c93a3aa8174d95bc5c79647f220a50243236ce70a"
+        "sha256:14174ce8d49016a85aa6c0669d0881b5419e98cf46d429f263314295409ed262",
+        "sha256:a9886eb96bd6391b8795244d2b8fe592204556c42264ea7513a1211584e17366"
       ],
       "markers": "python_version >= '3.8' and python_version < '4.0'",
-      "version": "==0.71.0"
+      "version": "==0.72.0"
     },
     "textual-dev": {
       "hashes": [
@@ -1765,7 +1765,7 @@
         "sha256:04e5ca0351e0f3f85c6853954072df659d0d13fac324d0072316b67d7794700d",
         "sha256:1a7ead55c7e559dd4dee8856e3a88b41225abfe1ce8df57b7c13915fe121ffb8"
       ],
-      "markers": "python_version >= '3.8'",
+      "markers": "python_version < '3.13'",
       "version": "==4.12.2"
     },
     "uc-micro-py": {
