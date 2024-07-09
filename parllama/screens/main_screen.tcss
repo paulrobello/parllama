@@ -31,3 +31,11 @@ ListView:focus > SiteModelListItem.--highlight {
     background: $surface;
   }
 }
+
+SessionList {
+  layer: left;
+  width: 40;
+  height: 1fr;
+  dock: left;
+  padding: 1;
+}

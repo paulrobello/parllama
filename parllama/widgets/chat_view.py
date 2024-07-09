@@ -4,10 +4,12 @@ from __future__ import annotations
 from textual import on
 from textual import work
 from textual.app import ComposeResult
+from textual.binding import Binding
 from textual.containers import Container
 from textual.containers import Horizontal
 from textual.containers import Vertical
 from textual.containers import VerticalScroll
+from textual.events import Focus
 from textual.events import Show
 from textual.message import Message
 from textual.reactive import Reactive
@@ -31,6 +33,7 @@ from parllama.models.settings_data import settings
 from parllama.screens.save_session import SaveSession
 from parllama.widgets.chat_message import ChatMessageWidget
 from parllama.widgets.input_tab_complete import InputTabComplete
+from parllama.widgets.session_list import SessionList
 
 valid_commands: list[str] = [
     "/clear",
@@ -48,6 +51,7 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
 
     DEFAULT_CSS = """
     ChatView {
+      layers: left;
       #tool_bar {
         height: 3;
         background: $surface-darken-1;
@@ -101,6 +105,14 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
     }
     """
 
+    BINDINGS = [
+        Binding(
+            key="ctrl+s",
+            action="toggle_session_list",
+            description="Sessions",
+            show=True,
+        ),
+    ]
     session: ChatSession | None = None
     busy: Reactive[bool] = Reactive(False)
 
@@ -137,6 +149,8 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
         self.vs: VerticalScroll = VerticalScroll(id="messages")
         self.vs.can_focus = False
         self.busy = False
+        self.session_list = SessionList()
+        self.session_list.display = False
 
     def _watch_busy(self, value: bool) -> None:
         """Update controls when busy changes"""
@@ -152,7 +166,7 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
 
     def compose(self) -> ComposeResult:
         """Compose the content of the view."""
-
+        yield self.session_list
         with Vertical(id="main"):
             with Horizontal(id="tool_bar"):
                 yield self.model_select
@@ -172,7 +186,7 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
 
     def _on_show(self, event: Show) -> None:
         """Handle show event"""
-        # self._watch_busy(self.busy)
+        self._watch_busy(self.busy)
         with self.screen.prevent(TabbedContent.TabActivated):
             if self.model_select.value == Select.BLANK:
                 self.model_select.focus()
@@ -240,7 +254,7 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
                 self.model_select.value = old_v
         self.update_control_states()
         if self.model_select.value != Select.BLANK:
-            with self.prevent(TabbedContent.TabActivated):
+            with self.screen.prevent(Focus):
                 self.user_input.focus()
 
         self.user_input.suggester = SuggestFromList(
@@ -382,6 +396,8 @@ Chat Commands:
     @on(ChatMessage)
     async def on_chat_message(self, event: ChatMessage) -> None:
         """Handle a chat message"""
+        event.stop()
+
         ses = chat_manager.get_session(event.session_id)
         if not ses:
             self.notify("Chat session not found", severity="error")
@@ -425,3 +441,7 @@ Chat Commands:
 
         # Let the user know the save happened.
         self.notify(str(target), title="Saved")
+
+    def action_toggle_session_list(self) -> None:
+        """Toggle the session list."""
+        self.session_list.display = not self.session_list.display

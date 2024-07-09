@@ -10,6 +10,7 @@ from io import StringIO
 from typing import Any
 from typing import Literal
 
+import simplejson as json
 from ollama import Message as OMessage
 from ollama import Options as OllamaOptions
 from pydantic import BaseModel
@@ -59,10 +60,11 @@ class ChatSession:
         *,
         session_name: str,
         llm_model_name: str,
+        session_id: str | None = None,
         options: OllamaOptions | None = None,
     ):
         """Initialize the chat session"""
-        self.id = uuid.uuid4().hex
+        self.id = session_id or uuid.uuid4().hex
         self.messages = []
         self.id_to_msg = {}
         self.session_name = session_name
@@ -162,8 +164,45 @@ class ChatSession:
             ret.write(str(msg))
         return ret.getvalue()
 
-    def save(self, filename: str) -> bool:
+    def to_json(self) -> str:
+        """Convert the chat session to JSON"""
+        return json.dumps(self.__dict__, default=str)
+
+    @staticmethod
+    def from_json(json_data: str) -> ChatSession:
+        """Convert JSON to chat session"""
+        data: dict = json.loads(json_data)
+        return ChatSession(
+            session_name=data["session_name"],
+            llm_model_name=data["llm_model_name"],
+            session_id=data["id"],
+            options=data.get("options"),
+        )
+
+    @staticmethod
+    def load_from_file(filename: str) -> ChatSession | None:
+        """Load a chat session from a file"""
+        try:
+            with open(
+                os.path.join(settings.chat_dir, filename), "rt", encoding="utf-8"
+            ) as f:
+                return ChatSession.from_json(f.read())
+        except (OSError, IOError):
+            return None
+
+    def save_to_file(self, filename: str) -> bool:
         """Save the chat session to a file"""
+        try:
+            with open(
+                os.path.join(settings.chat_dir, filename), "wt", encoding="utf-8"
+            ) as f:
+                f.write(self.to_json())
+            return True
+        except (OSError, IOError):
+            return False
+
+    def export_as_markdown(self, filename: str) -> bool:
+        """Save the chat session to markdown file"""
         try:
             with open(
                 os.path.join(settings.chat_dir, filename), "w", encoding="utf-8"
@@ -172,3 +211,30 @@ class ChatSession:
             return True
         except (OSError, IOError):
             return False
+
+
+class SessionManager:
+    """Session manager class"""
+
+    session: list[ChatSession]
+
+    def __init__(self) -> None:
+        """Initialize the session manager"""
+        self.session = []
+
+        for f in os.listdir(settings.chat_dir):
+            f = f.lower()
+            if not f.endswith(".json"):
+                continue
+            with open(
+                os.path.join(settings.chat_dir, f), mode="rt", encoding="utf-8"
+            ) as fh:
+                data: dict = json.load(fh)
+
+                self.session.append(
+                    ChatSession(
+                        session_name=data["session_name"],
+                        llm_model_name=data["llm_model_name"],
+                        session_id=data["id"],
+                    )
+                )
