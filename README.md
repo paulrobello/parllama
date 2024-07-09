@@ -216,6 +216,10 @@ if anything remains to be fixed before the commit is allowed.
 
 
 ## What's new
+
+### v0.2.6
+* Fix missing dependency in package
+
 ### v0.2.5
 * Added slash commands to chat input
 * Added ability to export chat to markdown file
