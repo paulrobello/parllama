@@ -13,20 +13,19 @@ from typing import Literal
 import simplejson as json
 from ollama import Message as OMessage
 from ollama import Options as OllamaOptions
-from pydantic import BaseModel
-from pydantic import Field
 from textual.widget import Widget
 
 from parllama.messages.main import ChatMessage
 from parllama.models.settings_data import settings
 
 
-class OllamaMessage(BaseModel):
+@dataclass
+class OllamaMessage:
     """
     Chat message.
     """
 
-    id: str = Field(default_factory=lambda: uuid.uuid4().hex)
+    id: str
     "Unique identifier of the message."
 
     role: Literal["user", "assistant", "system"]
@@ -34,6 +33,23 @@ class OllamaMessage(BaseModel):
 
     content: str = ""
     "Content of the message. Response messages contains message fragments when streaming."
+
+    session: ChatSession | None = None
+
+    def __init__(
+        self,
+        *,
+        role: Literal["user", "assistant", "system"],
+        content: str,
+        message_id: str | None = None,
+        session: ChatSession | None = None,
+    ) -> None:
+        """Initialize the chat message"""
+        self.id = message_id or uuid.uuid4().hex
+        self.role = role
+        self.content = content
+        self.session = session
+        self.id_to_msg = {self.id: self}
 
     def __str__(self) -> str:
         """Ollama message representation"""
@@ -43,9 +59,13 @@ class OllamaMessage(BaseModel):
         """Convert a message to Ollama native format"""
         return OMessage(role=self.role, content=self.content)
 
+    def save(self) -> None:
+        """Save the chat session to a file"""
+        if self.session:
+            self.session.save()
+
     def to_json(self) -> str:
         """Convert the chat session to JSON"""
-
         return json.dumps(
             {"id": self.id, "role": self.role, "content": self.content},
             default=str,
@@ -56,7 +76,9 @@ class OllamaMessage(BaseModel):
     def from_json(json_data: str) -> OllamaMessage:
         """Convert JSON to chat session"""
         data: dict = json.loads(json_data)
-        return OllamaMessage(id=data["id"], role=data["role"], content=data["content"])
+        return OllamaMessage(
+            message_id=data["id"], role=data["role"], content=data["content"]
+        )
 
 
 @dataclass
@@ -89,6 +111,7 @@ class ChatSession:
         self.id_to_msg = {}
 
         for m in self.messages:
+            m.session = self
             self.id_to_msg[m.id] = m
 
     def get_message(self, message_id: str) -> OllamaMessage | None:
@@ -97,8 +120,10 @@ class ChatSession:
 
     def add_message(self, msg: OllamaMessage) -> None:
         """Add a message"""
+        msg.session = self
         self.messages.append(msg)
         self.id_to_msg[msg.id] = msg
+        self.save()
 
     async def send_chat(self, from_user: str, widget: Widget) -> bool:
         """Send a chat message to LLM"""
@@ -120,7 +145,7 @@ class ChatSession:
         for chunk in stream:
             msg.content += chunk["message"]["content"]
             widget.post_message(ChatMessage(session_id=self.id, message_id=msg.id))
-
+        msg.save()
         return True
 
     def new_session(self, session_name: str = "My Chat"):
@@ -185,7 +210,6 @@ class ChatSession:
 
     def to_json(self) -> str:
         """Convert the chat session to JSON"""
-
         return json.dumps(
             {
                 "id": self.id,
@@ -221,11 +245,12 @@ class ChatSession:
         except (OSError, IOError):
             return None
 
-    def save_to_file(self, filename: str) -> bool:
+    def save(self) -> bool:
         """Save the chat session to a file"""
+        file_name = f"{self.id}.json"  # Use session ID as filename to avoid over
         try:
             with open(
-                os.path.join(settings.chat_dir, filename), "wt", encoding="utf-8"
+                os.path.join(settings.chat_dir, file_name), "wt", encoding="utf-8"
             ) as f:
                 f.write(self.to_json())
             return True

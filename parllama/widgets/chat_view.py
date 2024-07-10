@@ -131,7 +131,7 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
                 else ""
             ),
             max_length=4,
-            restrict=r"^\d(?:\.\d+)?$",
+            restrict=r"^\d?\.?\d?$",
         )
         self.session_name_input: Input = Input(id="session_name_input", value="My Chat")
         self.user_input: InputTabComplete = InputTabComplete(

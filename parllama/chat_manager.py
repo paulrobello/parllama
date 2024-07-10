@@ -23,6 +23,7 @@ class ChatManager:
 
     def __init__(self) -> None:
         """Initialize the chat manager"""
+        self.load_sessions()
 
     def set_app(self, app: App[Any]) -> None:
         """Set the app"""
