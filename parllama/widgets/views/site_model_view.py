@@ -24,7 +24,7 @@ from parllama.messages.main import SiteModelsRefreshRequested
 from parllama.models.settings_data import settings
 from parllama.widgets.input_tab_complete import InputTabComplete
 from parllama.widgets.site_model_list_item import SiteModelListItem
-from parllama.widgets.site_model_list_view import SiteModelListView
+from parllama.widgets.views.site_model_list_view import SiteModelListView
 
 
 class SiteModelView(Container):

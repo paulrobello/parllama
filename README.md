@@ -92,7 +92,7 @@ make first-setup
 ## Command line arguments
 ```
 usage: parllama [-h] [-v] [-d DATA_DIR] [-u OLLAMA_URL] [-t THEME_NAME] [-m {dark,light}] [-s {local,site,tools,create,chat,logs}] [-p PS_POLL]
-                [--restore-defaults] [--clear-cache] [--no-save]
+                [--restore-defaults] [--clear-cache] [--purge-chats] [--no-save]
 
 PAR LLAMA -- Ollama TUI.
 
@@ -113,6 +113,7 @@ options:
                         Interval in seconds to poll ollama ps command. 0 = disable. Defaults to 3
   --restore-defaults    Restore default settings and theme
   --clear-cache         Clear cached data
+  --purge-chats         Purge all chat history
   --no-save             Prevent saving settings for this session.
 ```
 
@@ -248,9 +249,9 @@ if anything remains to be fixed before the commit is allowed.
 **Where we are**  
 * Initial release - Find, maintain and create new models
 * Basic chat with LLM
+* Chat history / conversation management
 
 **Where we're going**
-* Chat history / conversation management
 * Chat with multiple models at same time to compare outputs
 * LLM tool use
 
@@ -258,7 +259,7 @@ if anything remains to be fixed before the commit is allowed.
 ## What's new
 
 ### v0.2.6
-* Added chat history panel to chat page
+* Added chat history panel and management to chat page
 
 ### v0.2.51
 * Fix missing dependency in package

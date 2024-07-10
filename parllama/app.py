@@ -34,6 +34,7 @@ from parllama.dialogs.help_dialog import HelpDialog
 from parllama.messages.main import AppRequest
 from parllama.messages.main import ChangeTab
 from parllama.messages.main import CreateModelFromExistingRequested
+from parllama.messages.main import DeleteSession
 from parllama.messages.main import LocalModelCopied
 from parllama.messages.main import LocalModelCopyRequested
 from parllama.messages.main import LocalModelDelete
@@ -51,6 +52,8 @@ from parllama.messages.main import NotifyErrorMessage
 from parllama.messages.main import NotifyInfoMessage
 from parllama.messages.main import PsMessage
 from parllama.messages.main import SendToClipboard
+from parllama.messages.main import SessionListChanged
+from parllama.messages.main import SessionSelected
 from parllama.messages.main import SetModelNameLoading
 from parllama.messages.main import SiteModelsLoaded
 from parllama.messages.main import SiteModelsRefreshRequested
@@ -105,6 +108,7 @@ class ParLlamaApp(App[None]):
         """Initialize the application."""
         super().__init__()
         self.notify_subs = {"*": set[Widget]()}
+        chat_manager.set_app(self)
 
         self.title = __application_title__
         self.dark = settings.theme_mode != "light"
@@ -114,7 +118,6 @@ class ParLlamaApp(App[None]):
         self.is_refreshing = False
         self.last_status = ""
         self.main_screen = MainScreen()
-        chat_manager.set_app(self)
 
     def _watch_dark(self, value: bool) -> None:
         """Watch the dark property."""
@@ -649,3 +652,22 @@ class ParLlamaApp(App[None]):
         self.main_screen.change_tab("Chat")
         self.main_screen.chat_view.model_select.value = msg.model_name
         self.main_screen.chat_view.user_input.focus()
+
+    @on(SessionListChanged)
+    def on_session_list_changed(self) -> None:
+        """Session list changed event"""
+        self.main_screen.chat_view.session_list.post_message(SessionListChanged())
+
+    @on(SessionSelected)
+    def on_session_selected(self, msg: SessionSelected) -> None:
+        """Session selected event"""
+        self.main_screen.chat_view.session_list.post_message(
+            SessionSelected(session_id=msg.session_id)
+        )
+
+    @on(DeleteSession)
+    def on_delete_session(self, msg: DeleteSession) -> None:
+        """Delete session event"""
+        self.main_screen.chat_view.post_message(
+            DeleteSession(session_id=msg.session_id)
+        )

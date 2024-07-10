@@ -1039,7 +1039,7 @@
         "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44",
         "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"
       ],
-      "markers": "os_name == 'nt'",
+      "markers": "sys_platform == 'win32'",
       "version": "==0.4.6"
     },
     "dill": {
@@ -1701,11 +1701,11 @@
     },
     "tomlkit": {
       "hashes": [
-        "sha256:af914f5a9c59ed9d0762c7b64d3b5d5df007448eb9cd2edc8a46b1eafead172f",
-        "sha256:eef34fba39834d4d6b73c9ba7f3e4d1c417a4e56f89a7e96e090dd0d24b8fb3c"
+        "sha256:08ad192699734149f5b97b45f1f18dad7eb1b6d16bc72ad0c2335772650d7b72",
+        "sha256:7075d3042d03b80f603482d69bf0c8f345c2b30e41699fd8883227f89972b264"
       ],
-      "markers": "python_version >= '3.7'",
-      "version": "==0.12.5"
+      "markers": "python_version >= '3.8'",
+      "version": "==0.13.0"
     },
     "twine": {
       "hashes": [

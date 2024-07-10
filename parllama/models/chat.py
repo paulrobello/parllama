@@ -1,6 +1,7 @@
 """Chat manager class"""
 from __future__ import annotations
 
+import datetime
 import os
 import uuid
 from collections.abc import Iterator
@@ -25,7 +26,7 @@ class OllamaMessage:
     Chat message.
     """
 
-    id: str
+    message_id: str
     "Unique identifier of the message."
 
     role: Literal["user", "assistant", "system"]
@@ -45,11 +46,11 @@ class OllamaMessage:
         session: ChatSession | None = None,
     ) -> None:
         """Initialize the chat message"""
-        self.id = message_id or uuid.uuid4().hex
+        self.message_id = message_id or uuid.uuid4().hex
         self.role = role
         self.content = content
         self.session = session
-        self.id_to_msg = {self.id: self}
+        self.id_to_msg = {self.message_id: self}
 
     def __str__(self) -> str:
         """Ollama message representation"""
@@ -67,17 +68,27 @@ class OllamaMessage:
     def to_json(self) -> str:
         """Convert the chat session to JSON"""
         return json.dumps(
-            {"id": self.id, "role": self.role, "content": self.content},
+            {"message_id": self.message_id, "role": self.role, "content": self.content},
             default=str,
             indent=4,
         )
+
+    def __dict__(
+        self,
+    ):
+        """Convert the chat message to a dictionary"""
+        return {
+            "message_id": self.message_id,
+            "role": self.role,
+            "content": self.content,
+        }
 
     @staticmethod
     def from_json(json_data: str) -> OllamaMessage:
         """Convert JSON to chat session"""
         data: dict = json.loads(json_data)
         return OllamaMessage(
-            message_id=data["id"], role=data["role"], content=data["content"]
+            message_id=data["message_id"], role=data["role"], content=data["content"]
         )
 
 
@@ -85,12 +96,13 @@ class OllamaMessage:
 class ChatSession:
     """Chat session class"""
 
-    id: str
+    session_id: str
     llm_model_name: str
     options: OllamaOptions
     session_name: str
     messages: list[OllamaMessage]
     id_to_msg: dict[str, OllamaMessage]
+    last_updated: datetime.datetime
 
     # pylint: disable=too-many-arguments
     def __init__(
@@ -100,19 +112,28 @@ class ChatSession:
         llm_model_name: str,
         options: OllamaOptions | None = None,
         session_name: str,
-        messages: list[OllamaMessage] | None = None,
+        messages: list[OllamaMessage] | list[dict] | None = None,
+        last_updated: datetime.datetime | None = None,
     ):
         """Initialize the chat session"""
-        self.id = session_id or uuid.uuid4().hex
+        self.session_id = session_id or uuid.uuid4().hex
         self.llm_model_name = llm_model_name
         self.options = options or {}
         self.session_name = session_name
-        self.messages = messages or []
+        self.messages = []
+        msgs = messages or []
+        for m in msgs:
+            if isinstance(m, OllamaMessage):
+                self.messages.append(m)
+            else:
+                self.messages.append(OllamaMessage(session=self, **m))
+
         self.id_to_msg = {}
+        self.last_updated = last_updated or datetime.datetime.now()
 
         for m in self.messages:
             m.session = self
-            self.id_to_msg[m.id] = m
+            self.id_to_msg[m.message_id] = m
 
     def get_message(self, message_id: str) -> OllamaMessage | None:
         """Get a message"""
@@ -122,18 +143,44 @@ class ChatSession:
         """Add a message"""
         msg.session = self
         self.messages.append(msg)
-        self.id_to_msg[msg.id] = msg
+        self.id_to_msg[msg.message_id] = msg
+        self.last_updated = datetime.datetime.now()
+        self.save()
+
+    def set_name(self, name: str) -> None:
+        """Set the name of the chat session"""
+        self.session_name = name
+        self.last_updated = datetime.datetime.now()
+        self.save()
+
+    def set_llm_model(self, llm_model_name: str) -> None:
+        """Set the LLM model name"""
+        self.llm_model_name = llm_model_name
+        self.last_updated = datetime.datetime.now()
+        self.save()
+
+    def set_temperature(self, temperature: float | None) -> None:
+        """Set the temperature"""
+        if temperature:
+            self.options["temperature"] = temperature
+        else:
+            del self.options["temperature"]
+        self.last_updated = datetime.datetime.now()
         self.save()
 
     async def send_chat(self, from_user: str, widget: Widget) -> bool:
         """Send a chat message to LLM"""
         msg: OllamaMessage = OllamaMessage(content=from_user, role="user")
         self.add_message(msg)
-        widget.post_message(ChatMessage(session_id=self.id, message_id=msg.id))
+        widget.post_message(
+            ChatMessage(session_id=self.session_id, message_id=msg.message_id)
+        )
 
         msg = OllamaMessage(content="", role="assistant")
         self.add_message(msg)
-        widget.post_message(ChatMessage(session_id=self.id, message_id=msg.id))
+        widget.post_message(
+            ChatMessage(session_id=self.session_id, message_id=msg.message_id)
+        )
 
         stream: Iterator[Mapping[str, Any]] = settings.ollama_client.chat(  # type: ignore
             model=self.llm_model_name,
@@ -144,13 +191,15 @@ class ChatSession:
 
         for chunk in stream:
             msg.content += chunk["message"]["content"]
-            widget.post_message(ChatMessage(session_id=self.id, message_id=msg.id))
+            widget.post_message(
+                ChatMessage(session_id=self.session_id, message_id=msg.message_id)
+            )
         msg.save()
         return True
 
     def new_session(self, session_name: str = "My Chat"):
         """Start new session"""
-        self.id = uuid.uuid4().hex
+        self.session_id = uuid.uuid4().hex
         self.session_name = session_name
         self.messages.clear()
         self.id_to_msg.clear()
@@ -171,7 +220,7 @@ class ChatSession:
         """Set a message"""
         self.id_to_msg[msg_id] = value
         for i, msg in enumerate(self.messages):
-            if msg.id == msg_id:
+            if msg.message_id == msg_id:
                 self.messages[i] = value
                 return
         self.messages.append(value)
@@ -180,25 +229,25 @@ class ChatSession:
         """Delete a message"""
         del self.id_to_msg[key]
         for i, msg in enumerate(self.messages):
-            if msg.id == key:
+            if msg.message_id == key:
                 self.messages.pop(i)
                 return
 
     def __contains__(self, item: OllamaMessage) -> bool:
         """Check if a message exists"""
-        return item.id in self.id_to_msg
+        return item.message_id in self.id_to_msg
 
     def __eq__(self, other: object) -> bool:
         """Check if two sessions are equal"""
         if not isinstance(other, ChatSession):
             return NotImplemented
-        return self.id == other.id
+        return self.session_id == other.session_id
 
     def __ne__(self, other: object) -> bool:
         """Check if two sessions are not equal"""
         if not isinstance(other, ChatSession):
             return NotImplemented
-        return self.id != other.id
+        return self.session_id != other.session_id
 
     def __str__(self) -> str:
         """Get a string representation of the chat session"""
@@ -212,11 +261,12 @@ class ChatSession:
         """Convert the chat session to JSON"""
         return json.dumps(
             {
-                "id": self.id,
+                "session_id": self.session_id,
+                "last_updated": self.last_updated.isoformat(),
                 "llm_model_name": self.llm_model_name,
                 "options": self.options,
                 "session_name": self.session_name,
-                "messages": [m.to_json() for m in self.messages],
+                "messages": [m.__dict__() for m in self.messages],
             },
             default=str,
             indent=4,
@@ -227,11 +277,12 @@ class ChatSession:
         """Convert JSON to chat session"""
         data: dict = json.loads(json_data)
         return ChatSession(
-            session_id=data["id"],
+            session_id=data["session_id"],
+            last_updated=datetime.datetime.fromisoformat(data["last_updated"]),
             llm_model_name=data["llm_model_name"],
             options=data.get("options"),
             session_name=data["session_name"],
-            messages=[OllamaMessage.from_json(m) for m in data["messages"]],
+            messages=[OllamaMessage(**m) for m in data["messages"]],
         )
 
     @staticmethod
@@ -245,9 +296,23 @@ class ChatSession:
         except (OSError, IOError):
             return None
 
+    def is_valid(self) -> bool:
+        """return true if session is valid"""
+        return (
+            len(self.session_name) > 0
+            and len(self.llm_model_name) > 0
+            and self.llm_model_name not in ["Select.BLANK", "None", ""]
+            and len(self.messages) > 0
+        )
+
     def save(self) -> bool:
         """Save the chat session to a file"""
-        file_name = f"{self.id}.json"  # Use session ID as filename to avoid over
+        if not self.is_valid():
+            return False  # Cannot save without session name, LLM model name and at least one message
+
+        file_name = (
+            f"{self.session_id}.json"  # Use session ID as filename to avoid over
+        )
         try:
             with open(
                 os.path.join(settings.chat_dir, file_name), "wt", encoding="utf-8"

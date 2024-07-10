@@ -71,6 +71,12 @@ class Settings(BaseModel):
         if args.clear_cache:
             if os.path.exists(self.cache_dir):
                 shutil.rmtree(self.cache_dir, ignore_errors=True)
+                os.makedirs(self.cache_dir, exist_ok=True)
+
+        if args.purge_chats:
+            if os.path.exists(self.chat_dir):
+                shutil.rmtree(self.chat_dir, ignore_errors=True)
+                os.makedirs(self.chat_dir, exist_ok=True)
 
         self.load_from_file()
         url = os.environ.get("OLLAMA_URL")

@@ -228,3 +228,22 @@ class ModelInteractRequested(Message):
     """Message to notify that a model interact has been requested."""
 
     model_name: str
+
+
+@dataclass
+class SessionListChanged(Message):
+    """Notify that session list has changed."""
+
+
+@dataclass
+class SessionSelected(Message):
+    """Notify that session has been selected."""
+
+    session_id: str
+
+
+@dataclass
+class DeleteSession(Message):
+    """Request session be deleted."""
+
+    session_id: str

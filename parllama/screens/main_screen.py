@@ -18,12 +18,12 @@ from parllama.messages.main import PsMessage
 from parllama.messages.main import StatusMessage
 from parllama.models.settings_data import ScreenType
 from parllama.models.settings_data import settings
-from parllama.widgets.chat_view import ChatView
-from parllama.widgets.create_model_view import ModelCreateView
-from parllama.widgets.local_model_view import LocalModelView
-from parllama.widgets.log_view import LogView
-from parllama.widgets.model_tools_view import ModelToolsView
-from parllama.widgets.site_model_view import SiteModelView
+from parllama.widgets.views.chat_view import ChatView
+from parllama.widgets.views.create_model_view import ModelCreateView
+from parllama.widgets.views.local_model_view import LocalModelView
+from parllama.widgets.views.log_view import LogView
+from parllama.widgets.views.model_tools_view import ModelToolsView
+from parllama.widgets.views.site_model_view import SiteModelView
 
 
 class MainScreen(Screen[None]):
