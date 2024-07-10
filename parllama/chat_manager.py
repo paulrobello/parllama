@@ -1,13 +1,16 @@
 """Chat manager class"""
 from __future__ import annotations
 
+import os
 import uuid
 from typing import Any
 
+import simplejson as json
 from ollama import Options as OllamaOptions
 from textual.app import App
 
 from parllama.models.chat import ChatSession
+from parllama.models.settings_data import settings
 
 
 class ChatManager:
@@ -68,7 +71,7 @@ class ChatManager:
         """Get the current chat session"""
         return self.current_session
 
-    def get_or_create_session(
+    def get_or_create_session_name(
         self, session_name: str, model_name: str, options
     ) -> ChatSession:
         """Get or create a chat session"""
@@ -81,6 +84,25 @@ class ChatManager:
         """Set the current chat session"""
         self.current_session = self.get_session(session_id)
         return self.current_session
+
+    def load_sessions(self) -> None:
+        """Load chat sessions from files"""
+        for f in os.listdir(settings.chat_dir):
+            f = f.lower()
+            if not f.endswith(".json"):
+                continue
+            with open(
+                os.path.join(settings.chat_dir, f), mode="rt", encoding="utf-8"
+            ) as fh:
+                data: dict = json.load(fh)
+
+                self.sessions.append(
+                    ChatSession(
+                        session_name=data["session_name"],
+                        llm_model_name=data["llm_model_name"],
+                        session_id=data["id"],
+                    )
+                )
 
 
 chat_manager = ChatManager()

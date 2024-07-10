@@ -75,14 +75,14 @@ You can use `ctrl+b` to open the model card in a web browser
 This screen allows you to access tools to create, modify, and publish models  
 
 ## Chat Screen
-Chat with local LLM's  
+Chat with local LLMs  
 
 ### Chat Screen keys
 
-| Key      | Command                         |
-|----------|---------------------------------|
-| `enter`  | Send chat to LLM                |
-| `ctrl+c` | Copy selected chat to clipboard |
+| Key      | Command                                 |
+|----------|-----------------------------------------|
+| `enter`  | Send chat to LLM                        |
+| `ctrl+c` | Copy selected chat message to clipboard |
 
 ### Chat Slash Commands:
 * /? or /help - Show slash command help dialog
@@ -90,7 +90,7 @@ Chat with local LLM's
 * /model [model_name] - Select a model
 * /temp [temperature] - Set the temperature
 * /session [session_name] - Set the session name
-* /save - Save the conversation to a file
+* /export - Save the conversation to a Markdown file
 
 ## Logs Screen
 This screen allows viewing any messages that have passed through the status bar.

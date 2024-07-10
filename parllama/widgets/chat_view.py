@@ -37,7 +37,7 @@ from parllama.widgets.session_list import SessionList
 
 valid_commands: list[str] = [
     "/clear",
-    "/save",
+    "/export",
     "/model",
     "/temp",
     "/session",
@@ -299,7 +299,7 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
 
         self.update_control_states()
         if not self.session:
-            self.session = chat_manager.get_or_create_session(
+            self.session = chat_manager.get_or_create_session_name(
                 self.session_name_input.value or "My Chat",
                 str(self.model_select.value),
                 {
@@ -336,7 +336,7 @@ Chat Commands:
 /model [model_name] - Select a model
 /temp [temperature] - Set the temperature
 /session [session_name] - Set the session name
-/save - Save the conversation to a file
+/export - Export the conversation to a Markdown file
                     """,
                 )
             )
@@ -368,7 +368,7 @@ Chat Commands:
             (_, v) = cmd.split(" ", 1)
             self.session_name_input.value = v
             self.set_timer(0.1, self.user_input.focus)
-        elif cmd.startswith("save"):
+        elif cmd.startswith("export"):
             self._save_conversation_text()
             # filename: str = "chat_test.md"
             # if self.session.save(filename):

@@ -14,6 +14,7 @@ import simplejson as json
 from ollama import Message as OMessage
 from ollama import Options as OllamaOptions
 from pydantic import BaseModel
+from pydantic import Field
 from textual.widget import Widget
 
 from parllama.messages.main import ChatMessage
@@ -25,7 +26,7 @@ class OllamaMessage(BaseModel):
     Chat message.
     """
 
-    id: str
+    id: str = Field(default_factory=lambda: uuid.uuid4().hex)
     "Unique identifier of the message."
 
     role: Literal["user", "assistant", "system"]
@@ -38,69 +39,87 @@ class OllamaMessage(BaseModel):
         """Ollama message representation"""
         return f"## {self.role}\n\n{self.content}\n\n"
 
+    def to_ollama_native(self) -> OMessage:
+        """Convert a message to Ollama native format"""
+        return OMessage(role=self.role, content=self.content)
 
-def to_ollama_msg_native(data: OllamaMessage) -> OMessage:
-    """Convert a message to Ollama native format"""
-    return OMessage(role=data.role, content=data.content)
+    def to_json(self) -> str:
+        """Convert the chat session to JSON"""
+
+        return json.dumps(
+            {"id": self.id, "role": self.role, "content": self.content},
+            default=str,
+            indent=4,
+        )
+
+    @staticmethod
+    def from_json(json_data: str) -> OllamaMessage:
+        """Convert JSON to chat session"""
+        data: dict = json.loads(json_data)
+        return OllamaMessage(id=data["id"], role=data["role"], content=data["content"])
 
 
 @dataclass
 class ChatSession:
     """Chat session class"""
 
-    session_name: str
-    llm_model_name: str
     id: str
+    llm_model_name: str
+    options: OllamaOptions
+    session_name: str
     messages: list[OllamaMessage]
     id_to_msg: dict[str, OllamaMessage]
-    options: OllamaOptions
 
+    # pylint: disable=too-many-arguments
     def __init__(
         self,
         *,
-        session_name: str,
-        llm_model_name: str,
         session_id: str | None = None,
+        llm_model_name: str,
         options: OllamaOptions | None = None,
+        session_name: str,
+        messages: list[OllamaMessage] | None = None,
     ):
         """Initialize the chat session"""
         self.id = session_id or uuid.uuid4().hex
-        self.messages = []
-        self.id_to_msg = {}
-        self.session_name = session_name
         self.llm_model_name = llm_model_name
         self.options = options or {}
+        self.session_name = session_name
+        self.messages = messages or []
+        self.id_to_msg = {}
+
+        for m in self.messages:
+            self.id_to_msg[m.id] = m
 
     def get_message(self, message_id: str) -> OllamaMessage | None:
         """Get a message"""
-        if message_id in self.id_to_msg:
-            return self.id_to_msg[message_id]
-        return None
+        return self.id_to_msg.get(message_id)
+
+    def add_message(self, msg: OllamaMessage) -> None:
+        """Add a message"""
+        self.messages.append(msg)
+        self.id_to_msg[msg.id] = msg
 
     async def send_chat(self, from_user: str, widget: Widget) -> bool:
         """Send a chat message to LLM"""
-        msg_id = uuid.uuid4().hex
-        msg: OllamaMessage = OllamaMessage(id=msg_id, content=from_user, role="user")
-        self.messages.append(msg)
-        self.id_to_msg[msg.id] = msg
-        widget.post_message(ChatMessage(session_id=self.id, message_id=msg_id))
+        msg: OllamaMessage = OllamaMessage(content=from_user, role="user")
+        self.add_message(msg)
+        widget.post_message(ChatMessage(session_id=self.id, message_id=msg.id))
 
-        msg_id = uuid.uuid4().hex
-        msg = OllamaMessage(id=msg_id, content="", role="assistant")
-        self.messages.append(msg)
-        self.id_to_msg[msg.id] = msg
-        widget.post_message(ChatMessage(session_id=self.id, message_id=msg_id))
+        msg = OllamaMessage(content="", role="assistant")
+        self.add_message(msg)
+        widget.post_message(ChatMessage(session_id=self.id, message_id=msg.id))
 
         stream: Iterator[Mapping[str, Any]] = settings.ollama_client.chat(  # type: ignore
             model=self.llm_model_name,
-            messages=[to_ollama_msg_native(m) for m in self.messages],
+            messages=[m.to_ollama_native() for m in self.messages],
             options=self.options,
             stream=True,
         )
 
         for chunk in stream:
             msg.content += chunk["message"]["content"]
-            widget.post_message(ChatMessage(session_id=self.id, message_id=msg_id))
+            widget.post_message(ChatMessage(session_id=self.id, message_id=msg.id))
 
         return True
 
@@ -166,17 +185,29 @@ class ChatSession:
 
     def to_json(self) -> str:
         """Convert the chat session to JSON"""
-        return json.dumps(self.__dict__, default=str)
+
+        return json.dumps(
+            {
+                "id": self.id,
+                "llm_model_name": self.llm_model_name,
+                "options": self.options,
+                "session_name": self.session_name,
+                "messages": [m.to_json() for m in self.messages],
+            },
+            default=str,
+            indent=4,
+        )
 
     @staticmethod
     def from_json(json_data: str) -> ChatSession:
         """Convert JSON to chat session"""
         data: dict = json.loads(json_data)
         return ChatSession(
-            session_name=data["session_name"],
-            llm_model_name=data["llm_model_name"],
             session_id=data["id"],
+            llm_model_name=data["llm_model_name"],
             options=data.get("options"),
+            session_name=data["session_name"],
+            messages=[OllamaMessage.from_json(m) for m in data["messages"]],
         )
 
     @staticmethod
@@ -211,30 +242,3 @@ class ChatSession:
             return True
         except (OSError, IOError):
             return False
-
-
-class SessionManager:
-    """Session manager class"""
-
-    session: list[ChatSession]
-
-    def __init__(self) -> None:
-        """Initialize the session manager"""
-        self.session = []
-
-        for f in os.listdir(settings.chat_dir):
-            f = f.lower()
-            if not f.endswith(".json"):
-                continue
-            with open(
-                os.path.join(settings.chat_dir, f), mode="rt", encoding="utf-8"
-            ) as fh:
-                data: dict = json.load(fh)
-
-                self.session.append(
-                    ChatSession(
-                        session_name=data["session_name"],
-                        llm_model_name=data["llm_model_name"],
-                        session_id=data["id"],
-                    )
-                )
