@@ -68,7 +68,7 @@ class ModelDetailsDialog(ModalScreen[None]):
         with VerticalScroll() as vs:
             vs.border_title = f"[ {self.model.name} ]"
             yield Button("Copy to create", id="copy_to_create")
-            # yield FieldSet("Name", Static(self.model.name, id="name"))
+            # yield FieldSet("Name", Static(self.model.name, message_id="name"))
             yield FieldSet(
                 "Modified", Static(str(self.model.modified_at), id="modified_at")
             )

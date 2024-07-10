@@ -450,7 +450,7 @@ def mk_edit_button(
     )
 
 
-def hash_list_by_key(data: list[dict], id_key: str = "id") -> dict:
+def hash_list_by_key(data: list[dict], id_key: str = "message_id") -> dict:
     """Hash a list of dictionaries by a key."""
     return {item[id_key]: item for item in data}
 
@@ -533,6 +533,13 @@ def get_args() -> Namespace:
     )
 
     parser.add_argument(
+        "-p",
+        "--ps-poll",
+        type=int,
+        help="Interval in seconds to poll ollama ps command. 0 = disable. Defaults to 3",
+    )
+
+    parser.add_argument(
         "--restore-defaults",
         help="Restore default settings and theme",
         default=False,
@@ -542,6 +549,13 @@ def get_args() -> Namespace:
     parser.add_argument(
         "--clear-cache",
         help="Clear cached data",
+        default=False,
+        action="store_true",
+    )
+
+    parser.add_argument(
+        "--purge-chats",
+        help="Purge all chat history",
         default=False,
         action="store_true",
     )

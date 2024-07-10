@@ -20,7 +20,7 @@ repos:
 #-   repo: https://github.com/asottile/pyupgrade
 #    rev: v3.16.0
 #    hooks:
-#    -   id: pyupgrade
+#    -   message_id: pyupgrade
 
 -   repo: https://github.com/psf/black
     rev: 22.10.0
@@ -38,7 +38,7 @@ repos:
 #-   repo: https://github.com/pre-commit/mirrors-mypy
 #    rev: v1.10.1
 #    hooks:
-#    -   id: mypy
+#    -   message_id: mypy
 #        additional_dependencies: [textual, rich, pydantic, ollama, docker, types-beautifulsoup4, types-requests, types-pytz, types-simplejson, typing-extensions, asyncio, humanize, argparse, python-dotenv]
 #        exclude: tests(/\w*)*/functional/|tests/input|tests(/.*)+/conftest.py|doc/data/messages|tests(/\w*)*data/
 

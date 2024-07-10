@@ -153,10 +153,10 @@ class LocalModelView(Container):
         self.post_message(ModelPushRequested(widget=self, model_name=model_name))
 
     @on(LocalModelListLoaded)
-    def on_model_data_loaded(self, msg: LocalModelListLoaded) -> None:
+    def on_model_data_loaded(self, event: LocalModelListLoaded) -> None:
         """Rebuild model grid."""
 
-        msg.stop()
+        event.stop()
 
         # model_name: str = ""
         # if self.grid.selected:
@@ -180,16 +180,16 @@ class LocalModelView(Container):
         #         self.grid.select_first_item()
 
     @on(LocalModelDeleteRequested)
-    def on_model_delete_requested(self, msg: LocalModelDeleteRequested) -> None:
+    def on_model_delete_requested(self, event: LocalModelDeleteRequested) -> None:
         """Delete model requested."""
-        msg.stop()
+        event.stop()
         self.app.push_screen(
             YesNoDialog(
                 "Delete Model", "Delete model from local filesystem?", yes_first=False
             ),
-            partial(self.confirm_delete_response, msg.model_name),
+            partial(self.confirm_delete_response, event.model_name),
         )
-        self.grid.set_item_loading(msg.model_name, True)
+        self.grid.set_item_loading(event.model_name, True)
 
     def confirm_delete_response(self, model_name: str, res: bool) -> None:
         """Confirm the deletion of a model."""
@@ -199,29 +199,29 @@ class LocalModelView(Container):
         self.post_message(LocalModelDelete(model_name=model_name))
 
     @on(LocalModelDeleted)
-    def on_model_deleted(self, msg: LocalModelDeleted) -> None:
+    def on_model_deleted(self, event: LocalModelDeleted) -> None:
         """Model deleted remove item from grid."""
-        msg.stop()
-        self.grid.remove_item(msg.model_name)
+        event.stop()
+        self.grid.remove_item(event.model_name)
         self.grid.action_select_left()
 
     @on(ShowLocalModel)
-    def on_show_model(self, msg: ShowLocalModel) -> None:
+    def on_show_model(self, event: ShowLocalModel) -> None:
         """Show model details"""
-        msg.stop()
-        self.app.push_screen(ModelDetailsDialog(msg.model))
+        event.stop()
+        self.app.push_screen(ModelDetailsDialog(event.model))
 
     @on(ModelPulled)
-    def on_model_pulled(self, msg: ModelPulled) -> None:
+    def on_model_pulled(self, event: ModelPulled) -> None:
         """Model pulled turn off loading indicator."""
-        msg.stop()
-        self.grid.set_item_loading(msg.model_name, False)
+        event.stop()
+        self.grid.set_item_loading(event.model_name, False)
 
     @on(Input.Changed, "#search")
-    def on_search_input_changed(self, msg: Input.Changed) -> None:
+    def on_search_input_changed(self, event: Input.Changed) -> None:
         """Handle search input change"""
-        msg.stop()
-        self.grid.filter(msg.value)
+        event.stop()
+        self.grid.filter(event.value)
 
     def action_search_input_focus(self) -> None:
         """Focus the search input."""
@@ -258,14 +258,15 @@ class LocalModelView(Container):
         self.notify(f"copy {src_model_name} to {dst_model_name}")
 
     @on(LocalModelCopied)
-    def on_local_model_copied(self, msg: LocalModelCopied) -> None:
+    def on_local_model_copied(self, event: LocalModelCopied) -> None:
         """Model copied event"""
+        event.stop()
 
     @on(SetModelNameLoading)
-    def on_set_model_name_loading(self, msg: SetModelNameLoading) -> None:
+    def on_set_model_name_loading(self, event: SetModelNameLoading) -> None:
         """Set model name loading"""
-        msg.stop()
-        self.grid.set_item_loading(msg.model_name, msg.loading)
+        event.stop()
+        self.grid.set_item_loading(event.model_name, event.loading)
 
     def action_chat_model(self) -> None:
         """Chat with model"""

@@ -75,22 +75,32 @@ You can use `ctrl+b` to open the model card in a web browser
 This screen allows you to access tools to create, modify, and publish models  
 
 ## Chat Screen
-Chat with local LLM's  
+Chat with local LLMs  
 
 ### Chat Screen keys
 
-| Key      | Command                         |
-|----------|---------------------------------|
-| `enter`  | Send chat to LLM                |
-| `ctrl+c` | Copy selected chat to clipboard |
+| Key      | Command                                 |
+|----------|-----------------------------------------|
+| `enter`  | Send chat to LLM                        |
+| `ctrl+c` | Copy selected chat message to clipboard |
+| `ctrl+s` | Toggle session list                     |
+| `ctrl+n` | New session                             |
+
+### Chat Screen Session Panel keys
+
+| Key      | Command                 |
+|----------|-------------------------|
+| `enter`  | Load selected session   |
+| `delete` | Delete selected session |
 
 ### Chat Slash Commands:
 * /? or /help - Show slash command help dialog
-* /clear - Clear the chat
+* /new - Start a new chat session
+* /delete - Delete current session and create new one
 * /model [model_name] - Select a model
 * /temp [temperature] - Set the temperature
 * /session [session_name] - Set the session name
-* /save - Save the conversation to a file
+* /export - Save the conversation to a Markdown file
 
 ## Logs Screen
 This screen allows viewing any messages that have passed through the status bar.
@@ -112,8 +122,8 @@ If you have Ollama running on multiple machines you must import each machines ke
 
 ## Command line arguments
 ```
-usage: parllama [-h] [-v] [-d DATA_DIR] [-u OLLAMA_URL] [-t THEME_NAME] [-m {dark,light}] [-s {local,site,tools,create,logs}]
-                [--restore-defaults] [--clear-cache] [--no-save]
+usage: parllama [-h] [-v] [-d DATA_DIR] [-u OLLAMA_URL] [-t THEME_NAME] [-m {dark,light}] [-s {local,site,tools,create,chat,logs}] [-p PS_POLL]
+                [--restore-defaults] [--clear-cache] [--purge-chats] [--no-save]
 
 PAR LLAMA -- Ollama TUI.
 
@@ -128,9 +138,12 @@ options:
                         Theme name. Defaults to par
   -m {dark,light}, --theme-mode {dark,light}
                         Dark / Light mode. Defaults to dark
-  -s {local,site,tools,create,logs}, --starting-screen {local,site,tools,create,logs}
+  -s {local,site,tools,create,chat,logs}, --starting-screen {local,site,tools,create,chat,logs}
                         Starting screen. Defaults to local
+  -p PS_POLL, --ps-poll PS_POLL
+                        Interval in seconds to poll ollama ps command. 0 = disable. Defaults to 3
   --restore-defaults    Restore default settings and theme
   --clear-cache         Clear cached data
+  --purge-chats         Purge all chat history
   --no-save             Prevent saving settings for this session.
 ```

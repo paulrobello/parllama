@@ -1,5 +1,30 @@
 # PAR LLAMA
 
+## Table of Contents
+
+- [About](#about)
+- [Screenshots](#screenshots)
+- [Prerequisites](#prerequisites-for-running)
+  - [For Running](#prerequisites-for-running)
+  - [For Development](#prerequisites-for-dev)
+  - [For Model Quantization](#prerequisites-for-model-quantization)
+- [Installation](#installing-from-mypi-using-pipx)
+  - [Using pipx](#installing-from-mypi-using-pipx)
+  - [Using pip](#installing-from-mypi-using-pip)
+  - [For Development](#installing-for-dev-mode)
+- [Command Line Arguments](#command-line-arguments)
+- [Environment Variables](#environment-variables)
+- [Running PAR_LLAMA](#running-par_llama)
+  - [With pipx installation](#with-pipx-installation)
+  - [With pip installation](#with-pip-installation)
+  - [Under Windows WSL](#running-under-windows-wsl)
+  - [In Development Mode](#dev-mode)
+- [Example Workflow](#example-workflow)
+- [Themes](#themes)
+- [Contributing](#contributing)
+- [Roadmap](#roadmap)
+- [What's New](#whats-new)
+
 ## About
 PAR LLAMA is a TUI application designed for easy management and use of Ollama based LLMs.
 The application was built with [Textual](https://textual.textualize.io/) and [Rich](https://github.com/Textualize/rich?tab=readme-ov-file)
@@ -20,6 +45,7 @@ Supports Dark and Light mode as well as custom themes.
 ## Prerequisites for running
 * Install and run [Ollama](https://ollama.com/download)
 * Install Python 3.11 or newer
+  * On Windows the [Scoop](https://scoop.sh/) tool makes it easy to install and manage things like python.
 
 ## Prerequisites for dev
 * Install pipenv
@@ -66,8 +92,8 @@ make first-setup
 
 ## Command line arguments
 ```
-usage: parllama [-h] [-v] [-d DATA_DIR] [-u OLLAMA_URL] [-t THEME_NAME] [-m {dark,light}] [-s {local,site,tools,create,logs}]
-                [--restore-defaults] [--clear-cache] [--no-save]
+usage: parllama [-h] [-v] [-d DATA_DIR] [-u OLLAMA_URL] [-t THEME_NAME] [-m {dark,light}] [-s {local,site,tools,create,chat,logs}] [-p PS_POLL]
+                [--restore-defaults] [--clear-cache] [--purge-chats] [--no-save]
 
 PAR LLAMA -- Ollama TUI.
 
@@ -82,10 +108,13 @@ options:
                         Theme name. Defaults to par
   -m {dark,light}, --theme-mode {dark,light}
                         Dark / Light mode. Defaults to dark
-  -s {local,site,tools,create,logs}, --starting-screen {local,site,tools,create,logs}
+  -s {local,site,tools,create,chat,logs}, --starting-screen {local,site,tools,create,chat,logs}
                         Starting screen. Defaults to local
+  -p PS_POLL, --ps-poll PS_POLL
+                        Interval in seconds to poll ollama ps command. 0 = disable. Defaults to 3
   --restore-defaults    Restore default settings and theme
   --clear-cache         Clear cached data
+  --purge-chats         Purge all chat history
   --no-save             Prevent saving settings for this session.
 ```
 
@@ -140,6 +169,21 @@ From repo root:
 ```bash
 make dev
 ```
+
+## Example workflow
+* Start parllama.
+* Click the "Site" tab.
+* Use ^R to fetch the latest models from Ollama.com.
+* User the "Filter Site models" text box and type "llama3".
+* Find the entry with title of "llama3".
+* Click the blue tag "8B" to update the search box to read "llama3:8b".
+* Press ^P to pull the model from Ollama to your local machine. Depending on the size of the model and your internet connection this can take a few min.
+* Click the "Local" tab to see models that have been locally downloaded
+* Select the "llama3:8b" entry and press ^C to jump to the "Chat" tab and auto select the model
+* Type a message to the model such as "Why is the sky blue?". It will take a few seconds for Ollama to load the model. After which the LLMs answer will stream in.
+* Towards the very top of the app you will see what model is loaded and what percent of it is loaded into the GPU / CPU. If a model cant be loaded 100% on the GPU it will run slower.
+* To export your conversation as a Markdown file type "/export" in the message input box. This will open a export dialog.
+* Type "/help" to see what other slash commands are available.
 
 ## Themes
 Themes are json files stored in the themes folder in the data directory which defaults to **~/.parllama/themes**  
@@ -206,9 +250,9 @@ if anything remains to be fixed before the commit is allowed.
 **Where we are**  
 * Initial release - Find, maintain and create new models
 * Basic chat with LLM
+* Chat history / conversation management
 
 **Where we're going**
-* Chat history / conversation management
 * Chat with multiple models at same time to compare outputs
 * LLM tool use
 
@@ -216,6 +260,9 @@ if anything remains to be fixed before the commit is allowed.
 ## What's new
 
 ### v0.2.6
+* Added chat history panel and management to chat page
+
+### v0.2.51
 * Fix missing dependency in package
 
 ### v0.2.5

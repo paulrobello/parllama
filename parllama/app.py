@@ -34,6 +34,7 @@ from parllama.dialogs.help_dialog import HelpDialog
 from parllama.messages.main import AppRequest
 from parllama.messages.main import ChangeTab
 from parllama.messages.main import CreateModelFromExistingRequested
+from parllama.messages.main import DeleteSession
 from parllama.messages.main import LocalModelCopied
 from parllama.messages.main import LocalModelCopyRequested
 from parllama.messages.main import LocalModelDelete
@@ -51,6 +52,8 @@ from parllama.messages.main import NotifyErrorMessage
 from parllama.messages.main import NotifyInfoMessage
 from parllama.messages.main import PsMessage
 from parllama.messages.main import SendToClipboard
+from parllama.messages.main import SessionListChanged
+from parllama.messages.main import SessionSelected
 from parllama.messages.main import SetModelNameLoading
 from parllama.messages.main import SiteModelsLoaded
 from parllama.messages.main import SiteModelsRefreshRequested
@@ -105,6 +108,7 @@ class ParLlamaApp(App[None]):
         """Initialize the application."""
         super().__init__()
         self.notify_subs = {"*": set[Widget]()}
+        chat_manager.set_app(self)
 
         self.title = __application_title__
         self.dark = settings.theme_mode != "light"
@@ -114,7 +118,6 @@ class ParLlamaApp(App[None]):
         self.is_refreshing = False
         self.last_status = ""
         self.main_screen = MainScreen()
-        chat_manager.set_app(self)
 
     def _watch_dark(self, value: bool) -> None:
         """Watch the dark property."""
@@ -157,6 +160,12 @@ class ParLlamaApp(App[None]):
         )
         self.main_screen.post_message(
             StatusMessage(
+                f"Polling Ollama ps every: {settings.ollama_ps_poll_interval} seconds"
+            )
+        )
+
+        self.main_screen.post_message(
+            StatusMessage(
                 f"""Theme: "{settings.theme_name}" in {settings.theme_mode} mode"""
             )
         )
@@ -168,7 +177,8 @@ class ParLlamaApp(App[None]):
         )
 
         self.set_timer(1, self.do_jobs)
-        self.set_timer(1, self.update_ps)
+        if settings.ollama_ps_poll_interval > 0:
+            self.set_timer(1, self.update_ps)
 
     def action_noop(self) -> None:
         """Do nothing"""
@@ -220,7 +230,7 @@ class ParLlamaApp(App[None]):
         # works for local sessions
         pyperclip.copy(msg.message)
         if msg.notify:
-            self.post_message(NotifyInfoMessage("Value copied to clipboard"))
+            self.post_message(NotifyInfoMessage("Copied to clipboard"))
 
     @on(ModelPushRequested)
     def on_model_push_requested(self, msg: ModelPushRequested) -> None:
@@ -501,6 +511,9 @@ class ParLlamaApp(App[None]):
         """Add any widget that requests an action to notify_subs"""
         if msg.widget:
             self.notify_subs["*"].add(msg.widget)
+            if msg.__class__.__name__ not in self.notify_subs:
+                self.notify_subs[msg.__class__.__name__] = set()
+            self.notify_subs[msg.__class__.__name__].add(msg.widget)
 
     @on(LocalModelListRefreshRequested)
     def on_model_list_refresh_requested(self) -> None:
@@ -520,7 +533,9 @@ class ParLlamaApp(App[None]):
             )
             dm.refresh_models()
             self.main_screen.post_message(StatusMessage("Local model list refreshed"))
-            self.post_message_all(LocalModelListLoaded())
+            # self.post_message_all(LocalModelListLoaded())
+            self.main_screen.local_view.post_message(LocalModelListLoaded())
+            self.main_screen.chat_view.post_message(LocalModelListLoaded())
         finally:
             self.is_refreshing = False
 
@@ -554,7 +569,7 @@ class ParLlamaApp(App[None]):
                 )
             )
             dm.refresh_site_models(msg.ollama_namespace, None, msg.force)
-            self.post_message_all(
+            self.main_screen.site_view.post_message(
                 SiteModelsLoaded(ollama_namespace=msg.ollama_namespace)
             )
             self.main_screen.post_message(
@@ -571,7 +586,10 @@ class ParLlamaApp(App[None]):
         """Update ps status bar msg"""
         was_blank = False
         while self.is_running:
-            await asyncio.sleep(2)
+            if settings.ollama_ps_poll_interval < 1:
+                self.main_screen.post_message(PsMessage(msg=""))
+                break
+            await asyncio.sleep(settings.ollama_ps_poll_interval)
             ret = dm.model_ps()
             if not ret:
                 if not was_blank:
@@ -600,14 +618,14 @@ class ParLlamaApp(App[None]):
         self.notify(msg, severity=severity)
         self.main_screen.post_message(StatusMessage(msg))
 
-    def post_message_all(self, msg: Message) -> None:
+    def post_message_all(self, msg: Message, sub_name: str = "*") -> None:
         """Post a message to all screens"""
         if isinstance(msg, StatusMessage):
             self.log(msg.msg)
             self.last_status = msg.msg
-
-        for w in list(self.notify_subs["*"]):
-            w.post_message(msg)
+        if sub_name in self.notify_subs:
+            for w in list(self.notify_subs[sub_name]):
+                w.post_message(msg)
         if self.main_screen:
             self.main_screen.post_message(msg)
 
@@ -622,8 +640,6 @@ class ParLlamaApp(App[None]):
         self, msg: CreateModelFromExistingRequested
     ) -> None:
         """Create model from existing event"""
-        msg.stop()
-
         self.main_screen.create_view.name_input.value = f"my-{msg.model_name}:latest"
         self.main_screen.create_view.text_area.text = msg.model_code
         self.main_screen.create_view.quantize_input.value = msg.quantization_level or ""
@@ -633,7 +649,25 @@ class ParLlamaApp(App[None]):
     @on(ModelInteractRequested)
     def on_model_interact_requested(self, msg: ModelInteractRequested) -> None:
         """Model interact requested event"""
-        msg.stop()
         self.main_screen.change_tab("Chat")
         self.main_screen.chat_view.model_select.value = msg.model_name
         self.main_screen.chat_view.user_input.focus()
+
+    @on(SessionListChanged)
+    def on_session_list_changed(self) -> None:
+        """Session list changed event"""
+        self.main_screen.chat_view.session_list.post_message(SessionListChanged())
+
+    @on(SessionSelected)
+    def on_session_selected(self, msg: SessionSelected) -> None:
+        """Session selected event"""
+        self.main_screen.chat_view.session_list.post_message(
+            SessionSelected(session_id=msg.session_id)
+        )
+
+    @on(DeleteSession)
+    def on_delete_session(self, msg: DeleteSession) -> None:
+        """Delete session event"""
+        self.main_screen.chat_view.post_message(
+            DeleteSession(session_id=msg.session_id)
+        )

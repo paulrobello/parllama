@@ -53,7 +53,7 @@ class LocalModelListItem(Widget, can_focus=True):
         """Compose the list item."""
         self.border_title = self.model.name
         with Vertical():
-            # yield FieldSet("Name", Static(self.model.name, id="name"))
+            # yield FieldSet("Name", Static(self.model.name, message_id="name"))
             yield FieldSet(
                 "Modified", Static(str(self.model.modified_at), id="modified_at")
             )
