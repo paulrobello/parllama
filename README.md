@@ -45,6 +45,7 @@ Supports Dark and Light mode as well as custom themes.
 ## Prerequisites for running
 * Install and run [Ollama](https://ollama.com/download)
 * Install Python 3.11 or newer
+  * On Windows the [Scoop](https://scoop.sh/) tool makes it easy to install and manage things like python.
 
 ## Prerequisites for dev
 * Install pipenv
