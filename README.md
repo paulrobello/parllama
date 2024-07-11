@@ -255,6 +255,7 @@ if anything remains to be fixed before the commit is allowed.
 **Where we're going**
 * Chat with multiple models at same time to compare outputs
 * LLM tool use
+* Chat using embeddings for local documents
 
 
 ## What's new

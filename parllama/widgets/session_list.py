@@ -53,7 +53,6 @@ class SessionList(VerticalScroll, can_focus=False, can_focus_children=True):
     def on_show(self) -> None:
         """Initialise the view."""
         if not chat_manager.current_session:
-            self.notify("no session")
             return
         for item in self.list_view.query(SessionListItem):
             if item.session.session_id == chat_manager.current_session.session_id:
