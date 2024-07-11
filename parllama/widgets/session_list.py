@@ -12,6 +12,7 @@ from textual.widgets import ListView
 from parllama.chat_manager import chat_manager
 from parllama.messages.main import DeleteSession
 from parllama.messages.main import SessionListChanged
+from parllama.messages.main import SessionSelected
 from parllama.widgets.session_list_item import SessionListItem
 
 
@@ -50,15 +51,6 @@ class SessionList(VerticalScroll, can_focus=False, can_focus_children=True):
                     continue
                 yield SessionListItem(s)
 
-    def on_show(self) -> None:
-        """Initialise the view."""
-        if not chat_manager.current_session:
-            return
-        for item in self.list_view.query(SessionListItem):
-            if item.session.session_id == chat_manager.current_session.session_id:
-                self.list_view.index = self.list_view.children.index(item)
-                break
-
     def action_delete_item(self) -> None:
         """Handle delete item action."""
         selected_item: SessionListItem = cast(
@@ -75,7 +67,16 @@ class SessionList(VerticalScroll, can_focus=False, can_focus_children=True):
     async def on_session_list_changed(self, event: SessionListChanged) -> None:
         """Handle session list changed event."""
         event.stop()
+        selected_item: SessionListItem = cast(
+            SessionListItem, self.list_view.highlighted_child
+        )
         await self.recompose()
+        if not selected_item:
+            return
+        for item in self.list_view.query(SessionListItem):
+            if item.session.session_id == selected_item.session.session_id:
+                self.list_view.index = self.list_view.children.index(item)
+                break
 
     def action_load_item(self) -> None:
         """Handle list view selected event."""
@@ -84,5 +85,16 @@ class SessionList(VerticalScroll, can_focus=False, can_focus_children=True):
         )
         if not selected_item:
             return
-        chat_manager.set_current_session(selected_item.session.session_id)
+        self.app.post_message(SessionSelected(selected_item.session.session_id))
         self.display = False
+
+    @on(SessionSelected)
+    def on_session_selected(self, event: SessionSelected) -> None:
+        """Handle session selected event."""
+        event.stop()
+        for item in self.list_view.query(SessionListItem):
+            if item.session.session_id == event.session_id:
+                self.notify(f"Session selected {event.session_id}")
+
+                self.list_view.index = self.list_view.children.index(item)
+                break

@@ -661,7 +661,7 @@ class ParLlamaApp(App[None]):
     @on(SessionSelected)
     def on_session_selected(self, msg: SessionSelected) -> None:
         """Session selected event"""
-        self.main_screen.chat_view.session_list.post_message(
+        self.main_screen.chat_view.post_message(
             SessionSelected(session_id=msg.session_id)
         )
 

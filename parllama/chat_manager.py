@@ -21,15 +21,14 @@ class ChatManager:
     app: App[Any]
     sessions: list[ChatSession] = []
     options: OllamaOptions = {}
-    current_session: ChatSession | None = None
 
     def __init__(self) -> None:
         """Initialize the chat manager"""
-        self.load_sessions()
 
     def set_app(self, app: App[Any]) -> None:
         """Set the app"""
         self.app = app
+        self.load_sessions()
 
     def mk_session_name(self, base_name: str) -> str:
         """Generate a unique session name"""
@@ -58,7 +57,6 @@ class ChatManager:
             options=options or self.options,
         )
         self.sessions.append(session)
-        self.current_session = session
         self.sort_sessions()
         self.notify_changed()
         return session
@@ -82,8 +80,6 @@ class ChatManager:
         for session in self.sessions:
             if session.session_id == session_id:
                 self.sessions.remove(session)
-                if self.current_session == session:
-                    self.current_session = None
                 p = os.path.join(settings.chat_dir, f"{session_id}.json")
                 if os.path.exists(p):
                     os.remove(p)
@@ -94,10 +90,6 @@ class ChatManager:
         """Notify changed"""
         self.app.post_message(SessionListChanged())
 
-    def get_current_session(self) -> ChatSession | None:
-        """Get the current chat session"""
-        return self.current_session
-
     def get_or_create_session_name(
         self, *, session_name: str, model_name: str, options
     ) -> ChatSession:
@@ -107,14 +99,11 @@ class ChatManager:
             session = self.new_session(
                 session_name=session_name, model_name=model_name, options=options
             )
-        self.current_session = session
         return session
 
-    def set_current_session(self, session_id: str) -> ChatSession | None:
+    def set_current_session(self, session_id: str) -> None:
         """Set the current chat session"""
-        self.current_session = self.get_session(session_id)
         self.app.post_message(SessionSelected(session_id))
-        return self.current_session
 
     def load_sessions(self) -> None:
         """Load chat sessions from files"""

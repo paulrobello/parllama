@@ -216,6 +216,13 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
                 self.model_select.focus()
             else:
                 self.user_input.focus()
+        self.set_timer(0.1, self.update_session_select)
+
+    def update_session_select(self) -> None:
+        """Update session select on show"""
+        self.session_list.post_message(
+            SessionSelected(session_id=self.session.session_id)
+        )
 
     @on(Input.Changed, "#user_input")
     def on_user_input_changed(self) -> None:
