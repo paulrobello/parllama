@@ -37,7 +37,7 @@ class DataManager:
     ollama_site_categories: list[str] = ["popular", "featured", "newest"]
     models: list[LocalModelListItem]
     site_models: list[SiteModelListItem]
-    ollama_bin: str
+    ollama_bin: str | None
 
     def __init__(self):
         """ "Initialize the data manager."""
@@ -45,10 +45,10 @@ class DataManager:
         self.site_models = []
         # get location of ollama binary in path
         ollama_bin = shutil.which("ollama") or shutil.which("ollama.exe")
-        if not ollama_bin:
-            raise FileNotFoundError("Could not find ollama binary in path")
+        # if not ollama_bin:
+        #     raise FileNotFoundError("Could not find ollama binary in path")
 
-        self.ollama_bin = str(ollama_bin)
+        self.ollama_bin = str(ollama_bin) if ollama_bin is not None else None
 
     @staticmethod
     def _get_all_model_data() -> list[LocalModelListItem]:
@@ -78,6 +78,8 @@ class DataManager:
 
     def model_ps(self) -> list[dict[str, Any]]:
         """Get model ps."""
+        if not self.ollama_bin:
+            return []
         ret = run_cmd([self.ollama_bin, "ps"])
 
         if not ret:

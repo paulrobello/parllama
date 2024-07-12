@@ -584,6 +584,13 @@ class ParLlamaApp(App[None]):
     @work(group="update_ps", thread=True)
     async def update_ps(self) -> None:
         """Update ps status bar msg"""
+        if not dm.ollama_bin:
+            self.notify(
+                "Ollama binary not found. PS output not available.",
+                severity="error",
+                timeout=6,
+            )
+            return
         was_blank = False
         while self.is_running:
             if settings.ollama_ps_poll_interval < 1:
