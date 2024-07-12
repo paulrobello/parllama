@@ -26,7 +26,7 @@ class ChatManager:
         """Initialize the chat manager"""
 
     def set_app(self, app: App[Any]) -> None:
-        """Set the app"""
+        """Set the app and load existing sessions from storage"""
         self.app = app
         self.load_sessions()
 

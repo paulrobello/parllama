@@ -654,10 +654,11 @@ class ParLlamaApp(App[None]):
         self.main_screen.create_view.name_input.focus()
 
     @on(ModelInteractRequested)
-    def on_model_interact_requested(self, msg: ModelInteractRequested) -> None:
+    def on_model_interact_requested(self, event: ModelInteractRequested) -> None:
         """Model interact requested event"""
         self.main_screen.change_tab("Chat")
-        self.main_screen.chat_view.model_select.value = msg.model_name
+        self.main_screen.chat_view.model_select.value = event.model_name
+        self.main_screen.chat_view.action_new_session()
         self.main_screen.chat_view.user_input.focus()
 
     @on(SessionListChanged)

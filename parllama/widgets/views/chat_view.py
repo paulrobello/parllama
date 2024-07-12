@@ -339,6 +339,13 @@ class ChatView(Container, can_focus=False, can_focus_children=True):
 
         self.vs.remove_children("*")
         self.update_control_states()
+        model = dm.get_model_by_name(str(self.model_select.value))
+        if model:
+            msgs = model.get_messages()
+            for msg in msgs:
+                self.session.add_message(
+                    OllamaMessage(role=msg["role"], content=msg["content"])
+                )
         self.user_input.focus()
 
     @on(Button.Pressed, "#send_button")

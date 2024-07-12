@@ -50,6 +50,13 @@ class DataManager:
 
         self.ollama_bin = str(ollama_bin) if ollama_bin is not None else None
 
+    def get_model_by_name(self, name: str) -> FullModel | None:
+        """Get a model by name."""
+        for model in self.models:
+            if model.model.name == name:
+                return model.model
+        return None
+
     @staticmethod
     def _get_all_model_data() -> list[LocalModelListItem]:
         """Get all model data."""
@@ -111,7 +118,8 @@ class DataManager:
 
         return False
 
-    def list_cache_files(self) -> list[str]:
+    @staticmethod
+    def list_cache_files() -> list[str]:
         """List cache files."""
         if not os.path.exists(settings.cache_dir):
             return []

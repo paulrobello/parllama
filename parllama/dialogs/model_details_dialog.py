@@ -1,9 +1,6 @@
 """Provides model details dialog."""
 from __future__ import annotations
 
-import re
-from typing import cast
-
 import humanize
 import ollama
 from textual import on
@@ -17,10 +14,9 @@ from textual.widgets import MarkdownViewer
 from textual.widgets import Static
 from textual.widgets import TextArea
 
-from ..messages.main import CreateModelFromExistingRequested
-from ..models.ollama_data import FullModel
-from ..models.ollama_data import MessageRoles
-from ..widgets.field_set import FieldSet
+from parllama.messages.main import CreateModelFromExistingRequested
+from parllama.models.ollama_data import FullModel
+from parllama.widgets.field_set import FieldSet
 
 
 class ModelDetailsDialog(ModalScreen[None]):
@@ -111,26 +107,12 @@ class ModelDetailsDialog(ModalScreen[None]):
             ta.read_only = True
             yield ta
 
-            system_regex = re.compile(r"^system (.*)", re.I)
-            message_regex = re.compile(r"^message (user|assistant|system) (.*)", re.I)
-            messages: list[ollama.Message] = []
-            system_msg: str = ""
-            for line in self.model.modelfile.splitlines():
-                match = message_regex.match(line)
-                if match:
-                    messages.append(
-                        ollama.Message(
-                            role=cast(MessageRoles, match.group(1)),
-                            content=match.group(2),
-                        )
-                    )
-                match = system_regex.match(line)
-                if match:
-                    system_msg = match.group(1)
+            messages: list[ollama.Message] = self.model.get_messages()
+            system_msg: list[str] = self.model.get_system_messages()
 
             msgs = [f"* MESSAGE {m['role']} {m['content']}" for m in messages]
-            if system_msg:
-                msgs.insert(0, f"* SYSTEM {system_msg}")
+            for sys_msg in system_msg:
+                msgs.insert(0, f"* SYSTEM {sys_msg}")
             md = MarkdownViewer(
                 "\n".join(msgs),
                 id="messages",

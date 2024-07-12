@@ -1,10 +1,13 @@
 """Ollama API Models"""
 from __future__ import annotations
 
+import re
 from datetime import datetime
+from typing import cast
 from typing import Literal
 from typing import TypeAlias
 
+import ollama
 from pydantic import BaseModel
 
 MessageRoles: TypeAlias = Literal["user", "assistant", "system"]
@@ -75,3 +78,30 @@ class FullModel(Model):
     modelfile: str
     parameters: str | None = None
     template: str | None = None
+
+    def get_messages(self) -> list[ollama.Message]:
+        """Get messages from the model."""
+        message_regex = re.compile(r"^message (user|assistant|system) (.*)", re.I)
+        messages: list[ollama.Message] = []
+        for line in self.modelfile.splitlines():
+            match = message_regex.match(line)
+            if match:
+                messages.append(
+                    ollama.Message(
+                        role=cast(MessageRoles, match.group(1)),
+                        content=match.group(2),
+                    )
+                )
+
+        return messages
+
+    def get_system_messages(self) -> list[str]:
+        """Get system messages from the model."""
+        system_regex = re.compile(r"^system (.*)", re.I)
+        messages: list[str] = []
+        for line in self.modelfile.splitlines():
+            match = system_regex.match(line)
+            if match:
+                messages.append(match.group(1))
+
+        return messages

@@ -94,7 +94,6 @@ class SessionList(VerticalScroll, can_focus=False, can_focus_children=True):
         event.stop()
         for item in self.list_view.query(SessionListItem):
             if item.session.session_id == event.session_id:
-                self.notify(f"Session selected {event.session_id}")
-
+                # self.notify(f"Session selected {event.session_id}")
                 self.list_view.index = self.list_view.children.index(item)
                 break
