@@ -260,6 +260,9 @@ if anything remains to be fixed before the commit is allowed.
 
 ## What's new
 
+### v0.3.1
+* Fixed application crash when ollama binary not found
+
 ### v0.3.0
 * Added chat history panel and management to chat page
 

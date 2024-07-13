@@ -94,13 +94,17 @@ Chat with local LLMs
 | `delete` | Delete selected session |
 
 ### Chat Slash Commands:
+Chat Commands:
 * /? or /help - Show slash command help dialog
-* /new - Start a new chat session
-* /delete - Delete current session and create new one
-* /model [model_name] - Select a model
-* /temp [temperature] - Set the temperature
-* /session [session_name] - Set the session name
-* /export - Save the conversation to a Markdown file
+* /tab_new - Create new tab and switch to it
+* /tab_remove - Remove the active tab
+* /tabs_clear - Clear / remove all tabs
+* /session_model [model_name] - Select model dropdown or set model name in current tab
+* /session_temp [temperature] - Select temperature input or set temperature in current tab
+* /session_new [session_name] - Start new chat session in current tab with optional name
+* /session_name [session_name] - Select session name input or set the session name in current tab
+* /session_delete - Delete the chat session for current tab
+* /session_export - Export the conversation in current tab to a Markdown file
 
 ## Logs Screen
 This screen allows viewing any messages that have passed through the status bar.

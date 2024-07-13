@@ -29,7 +29,7 @@ from parllama.widgets.views.site_model_view import SiteModelView
 class MainScreen(Screen[None]):
     """Main screen."""
 
-    BINDINGS = []
+    # BINDINGS = []
 
     CSS_PATH = "main_screen.tcss"
 

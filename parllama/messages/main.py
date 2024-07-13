@@ -167,17 +167,23 @@ class ShowLocalModel(Message):
 
 
 @dataclass
-class NotifyInfoMessage(Message):
+class NotifyMessage(Message):
     """Message to toast info message."""
 
     message: str
+    timeout: int = 3
 
 
 @dataclass
-class NotifyErrorMessage(Message):
+class NotifyInfoMessage(NotifyMessage):
+    """Message to toast info message."""
+
+
+@dataclass
+class NotifyErrorMessage(NotifyMessage):
     """Message to toast error message."""
 
-    message: str
+    timeout: int = 6
 
 
 @dataclass
@@ -247,3 +253,16 @@ class DeleteSession(Message):
     """Request session be deleted."""
 
     session_id: str
+
+
+@dataclass
+class UpdateChatControlStates(Message):
+    """Notify that chat control states need to be updated."""
+
+
+@dataclass
+class UpdateTabLabel(Message):
+    """Update tab label."""
+
+    tab_id: str
+    tab_label: str
