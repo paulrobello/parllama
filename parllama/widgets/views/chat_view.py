@@ -1,6 +1,7 @@
 """Widget for chatting with LLM."""
 from __future__ import annotations
 
+import re
 from typing import cast
 
 from textual import on
@@ -35,15 +36,15 @@ from parllama.widgets.views.chat_tab import ChatTab
 valid_commands: list[str] = [
     "/help",
     "/?",
-    "/tab_new",
-    "/tab_remove",
-    "/tabs_clear",
-    "/session_model",
-    "/session_temp",
-    "/session_new",
-    "/session_name",
-    "/session_delete",
-    "/session_export",
+    "/tab.",
+    "/tab.remove",
+    "/tabs.clear",
+    "/session.model",
+    "/session.temp",
+    "/session.new",
+    "/session.name",
+    "/session.delete",
+    "/session.export",
 ]
 
 
@@ -80,7 +81,7 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         Binding(
             key="ctrl+b",
             action="new_session",
-            description="New Chat",
+            description="New Session",
             show=True,
             priority=True,
         ),
@@ -89,6 +90,19 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
             action="new_tab",
             description="New Tab",
             show=True,
+        ),
+        Binding(
+            key="ctrl+delete",
+            action="remove_tab",
+            description="Remove Tab",
+            show=True,
+        ),
+        Binding(
+            key="ctrl+e",
+            action="export",
+            description="Export",
+            show=True,
+            priority=True,
         ),
     ]
     chat_tabs: TabbedContent
@@ -120,7 +134,6 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         yield self.session_list
         with self.chat_tabs:
             yield ChatTab(user_input=self.user_input, session_list=self.session_list)
-            yield ChatTab(user_input=self.user_input, session_list=self.session_list)
         with Horizontal(id="send_bar"):
             yield self.user_input
             yield self.send_button
@@ -150,7 +163,7 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
             tab.on_local_model_list_loaded(evt)
 
         self.user_input.suggester = SuggestFromList(
-            valid_commands + [f"/session_model {m.model.name}" for m in dm.models],
+            valid_commands + [f"/session.model {m.model.name}" for m in dm.models],
             case_sensitive=False,
         )
 
@@ -195,15 +208,15 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
                     title="Chat Commands",
                     message="""
 Chat Commands:
-/tab_new - Create new tab and switch to it
-/tab_remove - Remove the active tab
-/tabs_clear - Clear / remove all tabs
-/session_model [model_name] - Select model dropdown or set model name in current tab
-/session_temp [temperature] - Select temperature input or set temperature in current tab
-/session_new [session_name] - Start new chat session in current tab with optional name
-/session_name [session_name] - Select session name input or set the session name in current tab
-/session_delete - Delete the chat session for current tab
-/session_export - Export the conversation in current tab to a Markdown file
+/tab.new - Create new tab and switch to it
+/tab.remove - Remove the active tab
+/tabs.clear - Clear / remove all tabs
+/session.model [model_name] - Select model dropdown or set model name in current tab
+/session.temp [temperature] - Select temperature input or set temperature in current tab
+/session.new [session_name] - Start new chat session in current tab with optional name
+/session.name [session_name] - Select session name input or set the session name in current tab
+/session.delete - Delete the chat session for current tab
+/session.export - Export the conversation in current tab to a Markdown file
                     """,
                 )
             )
@@ -211,42 +224,53 @@ Chat Commands:
 
         if self.session is None:
             return
-        if cmd == "tab_new":
+        # use re to check if cmd is tab. and a valid number then call focus_tab with requested number
+        tab_number_re = re.compile(r"^tab\.(\d+)$")
+        if match := tab_number_re.match(cmd):
+            (tab_number,) = match.groups()
+            tab_number = int(tab_number)
+            if tab_number <= len(self.chat_tabs.children):
+                self.focus_tab(tab_number)
+            else:
+                self.notify(f"Tab {tab_number} does not exist", severity="error")
+            return
+
+        if cmd == "tab.new":
             await self.action_new_tab()
-        elif cmd == "tab_remove":
+        elif cmd == "tab.remove":
             await self.remove_active_tab()
-        elif cmd == "tabs_clear":
+        elif cmd == "tabs.clear":
             await self.remove_all_tabs()
-        elif cmd == "session_delete":
+        elif cmd == "session.delete":
             self.app.post_message(DeleteSession(session_id=self.session.session_id))
-        elif cmd == "session_new":
+        elif cmd == "session.new":
             await self.active_tab.action_new_session()
-        elif cmd.startswith("session_new "):
+        elif cmd.startswith("session.new "):
             (_, v) = cmd.split(" ", 1)
             await self.active_tab.action_new_session(v)
-        elif cmd == "session_model":
+        elif cmd == "session.model":
             self.set_timer(0.1, self.active_tab.model_select.focus)
             return
-        elif cmd.startswith("session_model "):
+        elif cmd.startswith("session.model "):
             (_, v) = cmd.split(" ", 1)
             if v not in [m.model.name for m in dm.models]:
                 self.notify(f"Model {v} not found", severity="error")
                 return
             self.active_tab.model_select.value = v
             self.set_timer(0.1, self.user_input.focus)
-        elif cmd == "session_temp":
+        elif cmd == "session.temp":
             self.set_timer(0.1, self.active_tab.temperature_input.focus)
-        elif cmd.startswith("session_temp "):
+        elif cmd.startswith("session.temp "):
             (_, v) = cmd.split(" ", 1)
             self.active_tab.temperature_input.value = v
             self.set_timer(0.1, self.user_input.focus)
-        elif cmd == "session_name":
+        elif cmd == "session.name":
             self.set_timer(0.1, self.active_tab.session_name_input.focus)
-        elif cmd.startswith("session_name "):
+        elif cmd.startswith("session.name "):
             (_, v) = cmd.split(" ", 1)
             self.active_tab.session_name_input.value = v
             self.set_timer(0.1, self.user_input.focus)
-        elif cmd.startswith("session_export"):
+        elif cmd.startswith("session.export"):
             self.active_tab.save_conversation_text()
             # filename: str = "chat_test.md"
             # if self.session.save(filename):
@@ -259,17 +283,16 @@ Chat Commands:
     @work(thread=True)
     async def do_send_message(self, msg: str) -> None:
         """Send the message."""
-
-        if self.session is None:
-            return
         await self.session.send_chat(msg, self)
-        self.post_message(ChatMessageSent())
+        self.post_message(ChatMessageSent(self.session.session_id))
 
     @on(ChatMessageSent)
     def on_chat_message_sent(self, event: ChatMessageSent) -> None:
         """Handle a chat message sent"""
         event.stop()
-        self.active_tab.busy = False
+        for tab in self.chat_tabs.query(ChatTab):
+            if tab.session.session_id == event.session_id:
+                tab.busy = False
 
     def action_toggle_session_list(self) -> None:
         """Toggle the session list."""
@@ -280,10 +303,10 @@ Chat Commands:
             self.set_timer(0.1, self.user_input.focus)
 
     @on(SessionSelected)
-    def on_session_selected(self, event: SessionSelected) -> None:
+    async def on_session_selected(self, event: SessionSelected) -> None:
         """Session selected event"""
         event.stop()
-        self.active_tab.load_session(event.session_id)
+        await self.active_tab.load_session(event.session_id)
 
     @on(UpdateChatControlStates)
     def on_update_chat_control_states(self, event: UpdateChatControlStates) -> None:
@@ -308,7 +331,6 @@ Chat Commands:
         for tab in self.chat_tabs.query(ChatTab):
             if tab.session.session_id == event.session_id:
                 await tab.on_chat_message(event)
-                break
 
     @on(UpdateTabLabel)
     def on_update_tab_label(self, event: UpdateTabLabel) -> None:
@@ -346,3 +368,21 @@ Chat Commands:
         for tab in self.chat_tabs.query(ChatTab):
             await self.chat_tabs.remove_pane(str(tab.id))
         await self.action_new_tab()
+
+    def action_export(self) -> None:
+        """Export chat to Markdown file"""
+        self.active_tab.save_conversation_text()
+
+    async def action_new_session(self) -> None:
+        """Start a new chat session"""
+        await self.active_tab.action_new_session()
+
+    async def action_remove_tab(self) -> None:
+        """Remove the active tab"""
+        await self.remove_active_tab()
+
+    def focus_tab(self, tab_num: int) -> None:
+        """Focus requested tab"""
+        tabs = self.chat_tabs.query(ChatTab)
+        if len(tabs) > tab_num:
+            self.chat_tabs.active = str(tabs[tab_num].id)

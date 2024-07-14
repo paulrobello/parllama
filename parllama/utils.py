@@ -567,6 +567,13 @@ def get_args() -> Namespace:
         action="store_true",
     )
 
+    parser.add_argument(
+        "--no-chat-save",
+        help="Prevent saving chats for this session.",
+        default=False,
+        action="store_true",
+    )
+
     # Finally, parse the command line.
     return parser.parse_args()
 

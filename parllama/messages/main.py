@@ -24,6 +24,11 @@ class RegisterForUpdates(AppRequest):
 
 
 @dataclass
+class UnRegisterForUpdates(AppRequest):
+    """Unregister widget for updates."""
+
+
+@dataclass
 class LocalModelCopied(Message):
     """Message to notify screen that local model has been copied."""
 
@@ -220,6 +225,8 @@ class ChatMessage(Message):
 @dataclass
 class ChatMessageSent(Message):
     """Chat message sent class"""
+
+    session_id: str
 
 
 @dataclass

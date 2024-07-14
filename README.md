@@ -93,7 +93,7 @@ make first-setup
 ## Command line arguments
 ```
 usage: parllama [-h] [-v] [-d DATA_DIR] [-u OLLAMA_URL] [-t THEME_NAME] [-m {dark,light}] [-s {local,site,tools,create,chat,logs}] [-p PS_POLL]
-                [--restore-defaults] [--clear-cache] [--purge-chats] [--no-save]
+                [--restore-defaults] [--clear-cache] [--purge-chats] [--no-save] [--no-chat-save]
 
 PAR LLAMA -- Ollama TUI.
 
@@ -116,6 +116,7 @@ options:
   --clear-cache         Clear cached data
   --purge-chats         Purge all chat history
   --no-save             Prevent saving settings for this session.
+  --no-chat-save        Prevent saving chats for this session.
 ```
 
 Unless you specify "--no-save" most flags such as -u, -t, -m, -s are sticky and will be used next time you start PAR_LLAMA.
@@ -182,8 +183,8 @@ make dev
 * Select the "llama3:8b" entry and press ^C to jump to the "Chat" tab and auto select the model
 * Type a message to the model such as "Why is the sky blue?". It will take a few seconds for Ollama to load the model. After which the LLMs answer will stream in.
 * Towards the very top of the app you will see what model is loaded and what percent of it is loaded into the GPU / CPU. If a model cant be loaded 100% on the GPU it will run slower.
-* To export your conversation as a Markdown file type "/export" in the message input box. This will open a export dialog.
-* Type "/help" to see what other slash commands are available.
+* To export your conversation as a Markdown file type "/session.export" in the message input box. This will open a export dialog.
+* Type "/help" or "/?" to see what other slash commands are available.
 
 ## Themes
 Themes are json files stored in the themes folder in the data directory which defaults to **~/.parllama/themes**  
@@ -251,16 +252,18 @@ if anything remains to be fixed before the commit is allowed.
 * Initial release - Find, maintain and create new models
 * Basic chat with LLM
 * Chat history / conversation management
+* Chat tabs allow chat with multiple models at same time
 
 **Where we're going**
-* Chat with multiple models at same time to compare outputs
-* LLM tool use
 * Chat using embeddings for local documents
-
+* LLM tool use
 
 ## What's new
 
 ### v0.3.1
+* Add chat tabs to support multiple sessions
+* Added cli option to prevent saving chat history to disk
+* Renamed / namespaced chat slash commands for better consistency and grouping
 * Fixed application crash when ollama binary not found
 
 ### v0.3.0

@@ -1,6 +1,8 @@
 """Chat tab"""
 from __future__ import annotations
 
+import uuid
+
 from ollama import Options
 from textual import on
 from textual import work
@@ -24,8 +26,8 @@ from parllama.data_manager import dm
 from parllama.messages.main import ChatMessage
 from parllama.messages.main import DeleteSession
 from parllama.messages.main import LocalModelListLoaded
-from parllama.messages.main import RegisterForUpdates
 from parllama.messages.main import SessionSelected
+from parllama.messages.main import UnRegisterForUpdates
 from parllama.messages.main import UpdateChatControlStates
 from parllama.messages.main import UpdateTabLabel
 from parllama.models.chat import ChatSession
@@ -101,6 +103,7 @@ class ChatTab(TabPane):
         """Initialise the view."""
         session_name = chat_manager.mk_session_name("New Chat")
         super().__init__(
+            id=f"tp_{uuid.uuid4().hex}",
             title=str_ellipsis(session_name, MAX_TAB_TITLE_LENGTH),
             **kwargs,
         )
@@ -164,7 +167,11 @@ class ChatTab(TabPane):
 
     async def on_mount(self) -> None:
         """Set up the dialog once the DOM is ready."""
-        self.app.post_message(RegisterForUpdates(widget=self))
+        # self.app.post_message(RegisterForUpdates(widget=self))
+
+    async def on_unmount(self) -> None:
+        """Remove dialog from updates when unmounted."""
+        self.app.post_message(UnRegisterForUpdates(widget=self))
 
     def _on_show(self, event: Show) -> None:
         """Handle show event"""
@@ -273,11 +280,14 @@ class ChatTab(TabPane):
         """Start new session"""
         self.notify("new session")
         with self.prevent(Input.Changed):
+            old_session = self.session
             self.session = chat_manager.new_session(
                 session_name=session_name,
                 model_name=str(self.model_select.value),
                 options=self.get_session_options(),
             )
+            if not old_session.is_valid():
+                chat_manager.delete_session(old_session.session_id)
             self.session_name_input.value = self.session.session_name
         self.notify_tab_label_changed()
         await self.vs.remove_children("*")
@@ -325,12 +335,14 @@ class ChatTab(TabPane):
             await self.vs.mount(msg_widget)
         msg_widget.loading = len(msg_widget.msg.content) == 0
         if self.user_input.has_focus:
-            self.set_timer(0.05, self.scroll_to_bottom)
+            self.set_timer(0.1, self.scroll_to_bottom)
+
         chat_manager.notify_changed()
 
     def scroll_to_bottom(self) -> None:
         """Scroll to the bottom of the chat window."""
-        self.vs.scroll_to(y=self.vs.scroll_y + self.vs.size.height)
+        self.vs.scroll_to(y=self.vs.max_scroll_y)
+        # self.vs.scroll_end(force=True)
 
     @work
     async def save_conversation_text(self) -> None:
@@ -350,15 +362,18 @@ class ChatTab(TabPane):
         # Let the user know the save happened.
         self.notify(str(target), title="Saved")
 
-    def load_session(self, session_id: str) -> None:
+    async def load_session(self, session_id: str) -> None:
         """Load a session"""
+        old_session = self.session
         session = chat_manager.get_session(session_id)
         if not session:
             self.notify("Chat session not found", severity="error")
             return
         self.session = session
-        self.vs.remove_children("*")
-        self.vs.mount(
+        if not old_session.is_valid():
+            chat_manager.delete_session(old_session.session_id)
+        await self.vs.remove_children("*")
+        await self.vs.mount(
             *[ChatMessageWidget.mk_msg_widget(msg=m) for m in self.session.messages]
         )
         with self.prevent(Focus, Input.Changed, Select.Changed):
@@ -369,14 +384,14 @@ class ChatTab(TabPane):
             self.session_name_input.value = self.session.session_name
         self.update_control_states()
         self.notify_tab_label_changed()
-        self.set_timer(0.05, self.scroll_to_bottom)
+        self.set_timer(0.1, self.scroll_to_bottom)
         self.user_input.focus()
 
     @on(SessionSelected)
-    def on_session_selected(self, event: SessionSelected) -> None:
+    async def on_session_selected(self, event: SessionSelected) -> None:
         """Session selected event"""
         event.stop()
-        self.load_session(event.session_id)
+        await self.load_session(event.session_id)
 
     @on(DeleteSession)
     async def on_delete_session(self, event: DeleteSession) -> None:

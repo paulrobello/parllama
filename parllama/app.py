@@ -59,6 +59,7 @@ from parllama.messages.main import SetModelNameLoading
 from parllama.messages.main import SiteModelsLoaded
 from parllama.messages.main import SiteModelsRefreshRequested
 from parllama.messages.main import StatusMessage
+from parllama.messages.main import UnRegisterForUpdates
 from parllama.models.jobs import CopyModelJob
 from parllama.models.jobs import CreateModelJob
 from parllama.models.jobs import PullModelJob
@@ -261,7 +262,9 @@ class ParLlamaApp(App[None]):
     def on_model_push_requested(self, msg: ModelPushRequested) -> None:
         """Push requested model event"""
         self.job_queue.put(PushModelJob(modelName=msg.model_name))
-        self.post_message_all(SetModelNameLoading(msg.model_name, True))
+        self.main_screen.local_view.post_message(
+            SetModelNameLoading(msg.model_name, True)
+        )
         # self.notify(f"Model push {msg.model_name} requested")
 
     @on(ModelCreateRequested)
@@ -279,7 +282,9 @@ class ParLlamaApp(App[None]):
     def on_local_model_delete(self, msg: LocalModelDelete) -> None:
         """Delete local model event"""
         if not dm.delete_model(msg.model_name):
-            self.post_message_all(SetModelNameLoading(msg.model_name, False))
+            self.main_screen.local_view.post_message(
+                SetModelNameLoading(msg.model_name, False)
+            )
             self.status_notify(
                 f"Error deleting model {msg.model_name}.", severity="error"
             )
@@ -307,7 +312,7 @@ class ParLlamaApp(App[None]):
     async def do_copy_local_model(self, msg: CopyModelJob) -> None:
         """Copy local model"""
         ret = dm.copy_model(msg.modelName, msg.dstModelName)
-        self.post_message_all(
+        self.main_screen.local_view.post_message(
             LocalModelCopied(
                 src_model_name=msg.modelName,
                 dst_model_name=msg.dstModelName,
@@ -499,14 +504,23 @@ class ParLlamaApp(App[None]):
         """Refresh models action."""
         self.refresh_models()
 
+    @on(UnRegisterForUpdates)
+    def on_unregister_for_updates(self, event: UnRegisterForUpdates) -> None:
+        """Unregister for updates event"""
+        if not event.widget:
+            return
+        for _, s in self.notify_subs.items():
+            s.discard(event.widget)
+
     @on(AppRequest)
-    def on_app_request(self, msg: AppRequest) -> None:
+    def on_app_request(self, event: AppRequest) -> None:
         """Add any widget that requests an action to notify_subs"""
-        if msg.widget:
-            self.notify_subs["*"].add(msg.widget)
-            if msg.__class__.__name__ not in self.notify_subs:
-                self.notify_subs[msg.__class__.__name__] = set()
-            self.notify_subs[msg.__class__.__name__].add(msg.widget)
+        if not event.widget:
+            return
+        self.notify_subs["*"].add(event.widget)
+        if event.__class__.__name__ not in self.notify_subs:
+            self.notify_subs[event.__class__.__name__] = set()
+        self.notify_subs[event.__class__.__name__].add(event.widget)
 
     @on(LocalModelListRefreshRequested)
     def on_model_list_refresh_requested(self) -> None:
