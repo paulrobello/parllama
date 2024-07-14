@@ -10,15 +10,16 @@ import ollama
 import simplejson as json
 from pydantic import BaseModel
 
-from ..utils import get_args
-from ..utils import ScreenType
-from ..utils import valid_screens
+from parllama.utils import get_args
+from parllama.utils import ScreenType
+from parllama.utils import valid_screens
 
 
 class Settings(BaseModel):
     """Model for application settings."""
 
     no_save: bool = False
+    no_save_chat: bool = False
     data_dir: str = os.path.expanduser("~/.parllama")
     cache_dir: str = ""
     chat_dir: str = ""
@@ -36,7 +37,7 @@ class Settings(BaseModel):
     ollama_ps_poll_interval: int = 3
     auto_name_chat: bool = True
 
-    # pylint: disable=too-many-branches
+    # pylint: disable=too-many-branches, too-many-statements
     def __init__(self) -> None:
         """Initialize BwItemData."""
         super().__init__()
@@ -44,6 +45,9 @@ class Settings(BaseModel):
 
         if args.no_save:
             self.no_save = True
+
+        if args.no_chat_save:
+            self.no_chat_save = True
 
         self.data_dir = (
             args.data_dir

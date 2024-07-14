@@ -79,28 +79,38 @@ Chat with local LLMs
 
 ### Chat Screen keys
 
-| Key      | Command                                 |
-|----------|-----------------------------------------|
-| `enter`  | Send chat to LLM                        |
-| `ctrl+c` | Copy selected chat message to clipboard |
-| `ctrl+s` | Toggle session list                     |
-| `ctrl+n` | New session                             |
+| Key        | Command                                 |
+|------------|-----------------------------------------|
+| `enter`    | Send chat to LLM                        |
+| `ctrl+c`   | Copy selected chat message to clipboard |
+| `ctrl+s`   | Toggle session list                     |
+| `ctrl+b`   | New session in current tab              |
+| `ctrl+n`   | New chat tab                            |
+| `ctrl+del` | Remove current chat tab                 |
+| `ctrl+e`   | Export selected tab as Markdown         |
 
 ### Chat Screen Session Panel keys
 
-| Key      | Command                 |
-|----------|-------------------------|
-| `enter`  | Load selected session   |
-| `delete` | Delete selected session |
+| Key      | Command                                  |
+|----------|------------------------------------------|
+| `enter`  | Load selected session into current tab   |
+| `ctrl+n` | Load selected session into new tab       |
+| `delete` | Delete selected session and related tabs |
+
 
 ### Chat Slash Commands:
+Chat Commands:
 * /? or /help - Show slash command help dialog
-* /new - Start a new chat session
-* /delete - Delete current session and create new one
-* /model [model_name] - Select a model
-* /temp [temperature] - Set the temperature
-* /session [session_name] - Set the session name
-* /export - Save the conversation to a Markdown file
+* /tab.# - Switch to the tab with the given number
+* /tab.new - Create new tab and switch to it
+* /tab.remove - Remove the active tab
+* /tabs.clear - Clear / remove all tabs
+* /session.new [session_name] - Start new chat session in current tab with optional name
+* /session.name [session_name] - Select session name input or set the session name in current tab
+* /session.model [model_name] - Select model dropdown or set model name in current tab
+* /session.temp [temperature] - Select temperature input or set temperature in current tab
+* /session.delete - Delete the chat session for current tab
+* /session.export - Export the conversation in current tab to a Markdown file
 
 ## Logs Screen
 This screen allows viewing any messages that have passed through the status bar.
@@ -123,7 +133,7 @@ If you have Ollama running on multiple machines you must import each machines ke
 ## Command line arguments
 ```
 usage: parllama [-h] [-v] [-d DATA_DIR] [-u OLLAMA_URL] [-t THEME_NAME] [-m {dark,light}] [-s {local,site,tools,create,chat,logs}] [-p PS_POLL]
-                [--restore-defaults] [--clear-cache] [--purge-chats] [--no-save]
+                [--restore-defaults] [--clear-cache] [--purge-chats] [--no-save] [--no-chat-save]
 
 PAR LLAMA -- Ollama TUI.
 
@@ -146,4 +156,5 @@ options:
   --clear-cache         Clear cached data
   --purge-chats         Purge all chat history
   --no-save             Prevent saving settings for this session.
+  --no-chat-save        Prevent saving chats for this session.
 ```

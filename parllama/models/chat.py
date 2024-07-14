@@ -307,6 +307,8 @@ class ChatSession:
 
     def save(self) -> bool:
         """Save the chat session to a file"""
+        if settings.no_save_chat:
+            return False  # Do not save if no_save_chat is set in settings
         if not self.is_valid():
             return False  # Cannot save without session name, LLM model name and at least one message
 

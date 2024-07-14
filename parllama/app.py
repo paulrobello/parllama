@@ -21,6 +21,7 @@ from textual.binding import Binding
 from textual.color import Color
 from textual.message import Message
 from textual.notifications import SeverityLevel
+from textual.timer import Timer
 from textual.widget import Widget
 from textual.widgets import Input
 from textual.widgets import Select
@@ -58,6 +59,7 @@ from parllama.messages.main import SetModelNameLoading
 from parllama.messages.main import SiteModelsLoaded
 from parllama.messages.main import SiteModelsRefreshRequested
 from parllama.messages.main import StatusMessage
+from parllama.messages.main import UnRegisterForUpdates
 from parllama.models.jobs import CopyModelJob
 from parllama.models.jobs import CreateModelJob
 from parllama.models.jobs import PullModelJob
@@ -94,8 +96,8 @@ class ParLlamaApp(App[None]):
     ]
     CSS_PATH = "app.tcss"
 
-    DEFAULT_CSS = """
-    """
+    # DEFAULT_CSS = """
+    # """
 
     notify_subs: dict[str, set[Widget]]
     main_screen: MainScreen
@@ -103,6 +105,8 @@ class ParLlamaApp(App[None]):
     is_busy: bool = False
     last_status: RenderableType = ""
     chat_manager: ChatManager
+    job_timer: Timer | None
+    ps_timer: Timer | None
 
     def __init__(self) -> None:
         """Initialize the application."""
@@ -110,6 +114,8 @@ class ParLlamaApp(App[None]):
         self.notify_subs = {"*": set[Widget]()}
         chat_manager.set_app(self)
 
+        self.job_timer = None
+        self.ps_timer = None
         self.title = __application_title__
         self.dark = settings.theme_mode != "light"
         self.design = theme_manager.get_theme(settings.theme_name)  # type: ignore
@@ -120,7 +126,7 @@ class ParLlamaApp(App[None]):
         self.main_screen = MainScreen()
 
     def _watch_dark(self, value: bool) -> None:
-        """Watch the dark property."""
+        """Watch the dark property and save pref to file."""
         settings.theme_mode = "dark" if value else "light"
         settings.save_settings_to_file()
 
@@ -137,14 +143,14 @@ class ParLlamaApp(App[None]):
         ).generate()
 
     @on(NotifyInfoMessage)
-    def notify_info(self, msg: NotifyInfoMessage) -> None:
+    def notify_info(self, event: NotifyInfoMessage) -> None:
         """Show info toast message for 3 seconds"""
-        self.notify(msg.message, timeout=3)
+        self.notify(event.message, timeout=event.timeout)
 
     @on(NotifyErrorMessage)
-    def notify_error(self, msg: NotifyErrorMessage) -> None:
+    def notify_error(self, event: NotifyErrorMessage) -> None:
         """Show error toast message for 6 seconds"""
-        self.notify(msg.message, severity="error", timeout=6)
+        self.notify(event.message, severity="error", timeout=event.timeout)
 
     async def on_mount(self) -> None:
         """Display the main or locked screen."""
@@ -158,11 +164,14 @@ class ParLlamaApp(App[None]):
         self.main_screen.post_message(
             StatusMessage(f"Using Ollama server url: {settings.ollama_host}")
         )
-        self.main_screen.post_message(
-            StatusMessage(
-                f"Polling Ollama ps every: {settings.ollama_ps_poll_interval} seconds"
+        if settings.ollama_ps_poll_interval:
+            self.main_screen.post_message(
+                StatusMessage(
+                    f"Polling Ollama ps every: {settings.ollama_ps_poll_interval} seconds"
+                )
             )
-        )
+        else:
+            self.main_screen.post_message(StatusMessage("Polling Ollama ps disabled"))
 
         self.main_screen.post_message(
             StatusMessage(
@@ -175,10 +184,16 @@ class ParLlamaApp(App[None]):
         self.main_screen.post_message(
             StatusMessage(f"Last chat model: {settings.last_chat_model}")
         )
+        self.main_screen.post_message(
+            StatusMessage(f"Last model temp: {settings.last_chat_temperature}")
+        )
+        self.main_screen.post_message(
+            StatusMessage(f"Last session name: {settings.last_chat_session_name}")
+        )
 
-        self.set_timer(1, self.do_jobs)
+        self.job_timer = self.set_timer(1, self.do_jobs)
         if settings.ollama_ps_poll_interval > 0:
-            self.set_timer(1, self.update_ps)
+            self.ps_timer = self.set_timer(1, self.update_ps)
 
     def action_noop(self) -> None:
         """Do nothing"""
@@ -194,9 +209,10 @@ class ParLlamaApp(App[None]):
             return
         if isinstance(f, Input):
             f.value = ""
-
         if isinstance(f, TextArea):
             f.text = ""
+        if isinstance(f, Select):
+            f.value = Select.BLANK
 
     def action_copy_to_clipboard(self) -> None:
         """Copy focused widget value to clipboard"""
@@ -205,7 +221,11 @@ class ParLlamaApp(App[None]):
             return
 
         if isinstance(f, (Input, Select)):
-            self.app.post_message(SendToClipboard(str(f.value) if f.value else ""))
+            self.app.post_message(
+                SendToClipboard(
+                    str(f.value) if f.value and f.value != Select.BLANK else ""
+                )
+            )
 
         if isinstance(f, TextArea):
             self.app.post_message(SendToClipboard(f.selected_text or f.text))
@@ -218,125 +238,105 @@ class ParLlamaApp(App[None]):
         if isinstance(f, Input):
             pyperclip.copy(f.value)
             f.value = ""
+        if isinstance(f, Select):
+            self.app.post_message(
+                SendToClipboard(
+                    str(f.value) if f.value and f.value != Select.BLANK else ""
+                )
+            )
         if isinstance(f, TextArea):
             pyperclip.copy(f.selected_text or f.text)
             f.text = ""
 
     @on(SendToClipboard)
-    def send_to_clipboard(self, msg: SendToClipboard) -> None:
+    def send_to_clipboard(self, event: SendToClipboard) -> None:
         """Send string to clipboard"""
         # works for remote ssh sessions
-        self.copy_to_clipboard(msg.message)
+        self.copy_to_clipboard(event.message)
         # works for local sessions
-        pyperclip.copy(msg.message)
-        if msg.notify:
+        pyperclip.copy(event.message)
+        if event.notify:
             self.post_message(NotifyInfoMessage("Copied to clipboard"))
 
     @on(ModelPushRequested)
-    def on_model_push_requested(self, msg: ModelPushRequested) -> None:
+    def on_model_push_requested(self, event: ModelPushRequested) -> None:
         """Push requested model event"""
-        self.job_queue.put(PushModelJob(modelName=msg.model_name))
-        self.post_message_all(SetModelNameLoading(msg.model_name, True))
+        self.job_queue.put(PushModelJob(modelName=event.model_name))
+        self.main_screen.local_view.post_message(
+            SetModelNameLoading(event.model_name, True)
+        )
         # self.notify(f"Model push {msg.model_name} requested")
 
     @on(ModelCreateRequested)
-    def on_model_create_requested(self, msg: ModelCreateRequested) -> None:
+    def on_model_create_requested(self, event: ModelCreateRequested) -> None:
         """Create model requested event"""
         self.job_queue.put(
             CreateModelJob(
-                modelName=msg.model_name,
-                modelCode=msg.model_code,
-                quantizationLevel=msg.quantization_level,
+                modelName=event.model_name,
+                modelCode=event.model_code,
+                quantizationLevel=event.quantization_level,
             )
         )
 
     @on(LocalModelDelete)
-    def on_local_model_delete(self, msg: LocalModelDelete) -> None:
-        """Delete model event"""
-        if not dm.delete_model(msg.model_name):
-            self.post_message_all(SetModelNameLoading(msg.model_name, False))
+    def on_local_model_delete(self, event: LocalModelDelete) -> None:
+        """Delete local model event"""
+        if not dm.delete_model(event.model_name):
+            self.main_screen.local_view.post_message(
+                SetModelNameLoading(event.model_name, False)
+            )
             self.status_notify(
-                f"Error deleting model {msg.model_name}.", severity="error"
+                f"Error deleting model {event.model_name}.", severity="error"
             )
             return
-        self.post_message_all(LocalModelDeleted(msg.model_name))
+        self.post_message_all(LocalModelDeleted(event.model_name))
 
     @on(LocalModelDeleted)
-    def on_model_deleted(self, msg: LocalModelDeleted) -> None:
-        """Model deleted event"""
-        self.status_notify(f"Model {msg.model_name} deleted.")
+    def on_model_deleted(self, event: LocalModelDeleted) -> None:
+        """Local model deleted event"""
+        self.status_notify(f"Model {event.model_name} deleted.")
 
     @on(ModelPullRequested)
-    def on_model_pull_requested(self, msg: ModelPullRequested) -> None:
+    def on_model_pull_requested(self, event: ModelPullRequested) -> None:
         """Pull requested model event"""
-        self.job_queue.put(PullModelJob(modelName=msg.model_name))
-        self.post_message_all(SetModelNameLoading(msg.model_name, True))
-        # self.notify(f"Model pull {msg.model_name} requested")
-
-        # primary_style = Style(
-        #     color=theme_manager.get_color_system_for_theme_mode(
-        #         self.theme, self.dark
-        #     ).primary.rich_color
-        # )
-        # background_style = Style(
-        #     color=(
-        #             theme_manager.get_color_system_for_theme_mode(
-        #                 self.theme, self.dark
-        #             ).surface
-        #             or Color.parse("#111")
-        #     ).rich_color
-        # )
-        # self.screen.post_message(
-        #     StatusMessage(
-        #         Columns(
-        #             [
-        #                 Text.assemble("status", " "),
-        #                 ProgressBar(
-        #                     total=100,
-        #                     completed=50,
-        #                     width=40,
-        #                     style=background_style,
-        #                     complete_style=primary_style,
-        #                     finished_style=primary_style,
-        #                 ),
-        #             ]
-        #         )
-        #     )
-        # )
+        self.job_queue.put(PullModelJob(modelName=event.model_name))
+        self.post_message_all(SetModelNameLoading(event.model_name, True))
 
     @on(LocalModelCopyRequested)
-    def on_local_model_copy_requested(self, msg: LocalModelCopyRequested) -> None:
+    def on_local_model_copy_requested(self, event: LocalModelCopyRequested) -> None:
         """Local model copy request event"""
         self.job_queue.put(
-            CopyModelJob(modelName=msg.src_model_name, dstModelName=msg.dst_model_name)
+            CopyModelJob(
+                modelName=event.src_model_name, dstModelName=event.dst_model_name
+            )
         )
 
-    async def do_copy_local_model(self, msg: CopyModelJob) -> None:
+    async def do_copy_local_model(self, event: CopyModelJob) -> None:
         """Copy local model"""
-        ret = dm.copy_model(msg.modelName, msg.dstModelName)
-        self.post_message_all(
+        ret = dm.copy_model(event.modelName, event.dstModelName)
+        self.main_screen.local_view.post_message(
             LocalModelCopied(
-                src_model_name=msg.modelName,
-                dst_model_name=msg.dstModelName,
+                src_model_name=event.modelName,
+                dst_model_name=event.dstModelName,
                 success=ret["status"] == "success",
             )
         )
 
     @on(LocalModelCopied)
-    def on_local_model_copied(self, msg: LocalModelCopied) -> None:
+    def on_local_model_copied(self, event: LocalModelCopied) -> None:
         """Local model copied event"""
-        if msg.success:
+        if event.success:
             self.status_notify(
-                f"Model {msg.src_model_name} copied to {msg.dst_model_name}"
+                f"Model {event.src_model_name} copied to {event.dst_model_name}"
             )
         else:
             self.status_notify(
-                f"Copying model {msg.src_model_name} to {msg.dst_model_name} failed",
+                f"Copying model {event.src_model_name} to {event.dst_model_name} failed",
                 severity="error",
             )
 
     async def do_progress(self, job: QueueJob, res: Iterator[dict[str, Any]]) -> str:
-        """Update progress bar"""
+        """Update progress bar embedded in status bar"""
         try:
             last_status = ""
             for msg in res:
@@ -395,7 +395,7 @@ class ParLlamaApp(App[None]):
             raise e
 
     async def do_pull(self, job: PullModelJob) -> None:
-        """Pull a model"""
+        """Pull a model from ollama.com"""
         try:
             res = dm.pull_model(job.modelName)
             last_status = await self.do_progress(job, res)
@@ -407,7 +407,7 @@ class ParLlamaApp(App[None]):
             self.post_message_all(ModelPulled(model_name=job.modelName, success=False))
 
     async def do_push(self, job: PushModelJob) -> None:
-        """Push a model"""
+        """Push a model to ollama.com"""
         try:
             res = dm.push_model(job.modelName)
             last_status = await self.do_progress(job, res)
@@ -419,7 +419,7 @@ class ParLlamaApp(App[None]):
             self.post_message_all(ModelPushed(model_name=job.modelName, success=False))
 
     async def do_create_model(self, job: CreateModelJob) -> None:
-        """Create a model"""
+        """Create a new local model"""
         try:
             self.main_screen.log_view.richlog.write(job.modelCode)
             res = dm.create_model(job.modelName, job.modelCode, job.quantizationLevel)
@@ -445,7 +445,7 @@ class ParLlamaApp(App[None]):
 
     @work(group="do_jobs", thread=True)
     async def do_jobs(self) -> None:
-        """Pull all requested models in queue"""
+        """poll for queued jobs"""
         while True:
             try:
                 job: QueueJob = self.job_queue.get(block=True, timeout=1)
@@ -476,29 +476,29 @@ class ParLlamaApp(App[None]):
                 continue
 
     @on(ModelPulled)
-    def on_model_pulled(self, msg: ModelPulled) -> None:
+    def on_model_pulled(self, event: ModelPulled) -> None:
         """Model pulled event"""
-        if msg.success:
+        if event.success:
             self.status_notify(
-                f"Model {msg.model_name} pulled.",
+                f"Model {event.model_name} pulled.",
             )
         else:
             self.status_notify(
-                f"Model {msg.model_name} failed to pull.",
+                f"Model {event.model_name} failed to pull.",
                 severity="error",
             )
 
     @on(ModelCreated)
-    def on_model_created(self, msg: ModelCreated) -> None:
+    def on_model_created(self, event: ModelCreated) -> None:
         """Model created event"""
-        if msg.success:
+        if event.success:
             self.status_notify(
-                f"Model {msg.model_name} created.",
+                f"Model {event.model_name} created.",
             )
             self.set_timer(1, self.action_refresh_models)
         else:
             self.status_notify(
-                f"Model {msg.model_name} failed to create.",
+                f"Model {event.model_name} failed to create.",
                 severity="error",
             )
 
@@ -506,14 +506,23 @@ class ParLlamaApp(App[None]):
         """Refresh models action."""
         self.refresh_models()
 
+    @on(UnRegisterForUpdates)
+    def on_unregister_for_updates(self, event: UnRegisterForUpdates) -> None:
+        """Unregister for updates event"""
+        if not event.widget:
+            return
+        for _, s in self.notify_subs.items():
+            s.discard(event.widget)
+
     @on(AppRequest)
-    def on_app_request(self, msg: AppRequest) -> None:
+    def on_app_request(self, event: AppRequest) -> None:
         """Add any widget that requests an action to notify_subs"""
-        if msg.widget:
-            self.notify_subs["*"].add(msg.widget)
-            if msg.__class__.__name__ not in self.notify_subs:
-                self.notify_subs[msg.__class__.__name__] = set()
-            self.notify_subs[msg.__class__.__name__].add(msg.widget)
+        if not event.widget:
+            return
+        self.notify_subs["*"].add(event.widget)
+        if event.__class__.__name__ not in self.notify_subs:
+            self.notify_subs[event.__class__.__name__] = set()
+        self.notify_subs[event.__class__.__name__].add(event.widget)
 
     @on(LocalModelListRefreshRequested)
     def on_model_list_refresh_requested(self) -> None:
@@ -533,7 +542,6 @@ class ParLlamaApp(App[None]):
             )
             dm.refresh_models()
             self.main_screen.post_message(StatusMessage("Local model list refreshed"))
-            # self.post_message_all(LocalModelListLoaded())
             self.main_screen.local_view.post_message(LocalModelListLoaded())
             self.main_screen.chat_view.post_message(LocalModelListLoaded())
         finally:
@@ -584,6 +592,13 @@ class ParLlamaApp(App[None]):
     @work(group="update_ps", thread=True)
     async def update_ps(self) -> None:
         """Update ps status bar msg"""
+        if not dm.ollama_bin:
+            self.notify(
+                "Ollama binary not found. PS output not available.",
+                severity="error",
+                timeout=6,
+            )
+            return
         was_blank = False
         while self.is_running:
             if settings.ollama_ps_poll_interval < 1:
@@ -630,10 +645,10 @@ class ParLlamaApp(App[None]):
             self.main_screen.post_message(msg)
 
     @on(ChangeTab)
-    def on_change_tab(self, msg: ChangeTab) -> None:
+    def on_change_tab(self, event: ChangeTab) -> None:
         """Change tab event"""
-        msg.stop()
-        self.main_screen.change_tab(msg.tab)
+        event.stop()
+        self.main_screen.change_tab(event.tab)
 
     @on(CreateModelFromExistingRequested)
     def on_create_model_from_existing_requested(
@@ -647,10 +662,11 @@ class ParLlamaApp(App[None]):
         self.main_screen.create_view.name_input.focus()
 
     @on(ModelInteractRequested)
-    def on_model_interact_requested(self, msg: ModelInteractRequested) -> None:
+    async def on_model_interact_requested(self, event: ModelInteractRequested) -> None:
         """Model interact requested event"""
         self.main_screen.change_tab("Chat")
-        self.main_screen.chat_view.model_select.value = msg.model_name
+        self.main_screen.chat_view.active_tab.model_select.value = event.model_name
+        await self.main_screen.chat_view.active_tab.action_new_session()
         self.main_screen.chat_view.user_input.focus()
 
     @on(SessionListChanged)
@@ -659,15 +675,15 @@ class ParLlamaApp(App[None]):
         self.main_screen.chat_view.session_list.post_message(SessionListChanged())
 
     @on(SessionSelected)
-    def on_session_selected(self, msg: SessionSelected) -> None:
+    def on_session_selected(self, event: SessionSelected) -> None:
         """Session selected event"""
-        self.main_screen.chat_view.session_list.post_message(
-            SessionSelected(session_id=msg.session_id)
+        self.main_screen.chat_view.post_message(
+            SessionSelected(session_id=event.session_id, new_tab=event.new_tab)
         )
 
     @on(DeleteSession)
-    def on_delete_session(self, msg: DeleteSession) -> None:
+    def on_delete_session(self, event: DeleteSession) -> None:
         """Delete session event"""
         self.main_screen.chat_view.post_message(
-            DeleteSession(session_id=msg.session_id)
+            DeleteSession(session_id=event.session_id)
         )
