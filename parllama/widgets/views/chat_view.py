@@ -13,6 +13,7 @@ from textual.containers import Vertical
 from textual.message import Message
 from textual.suggester import SuggestFromList
 from textual.widgets import Button
+from textual.widgets import ContentSwitcher
 from textual.widgets import Input
 from textual.widgets import Select
 from textual.widgets import TabbedContent
@@ -208,13 +209,14 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
                     title="Chat Commands",
                     message="""
 Chat Commands:
+/tab.# - Switch to the tab with the given number
 /tab.new - Create new tab and switch to it
 /tab.remove - Remove the active tab
 /tabs.clear - Clear / remove all tabs
-/session.model [model_name] - Select model dropdown or set model name in current tab
-/session.temp [temperature] - Select temperature input or set temperature in current tab
 /session.new [session_name] - Start new chat session in current tab with optional name
 /session.name [session_name] - Select session name input or set the session name in current tab
+/session.model [model_name] - Select model dropdown or set model name in current tab
+/session.temp [temperature] - Select temperature input or set temperature in current tab
 /session.delete - Delete the chat session for current tab
 /session.export - Export the conversation in current tab to a Markdown file
                     """,
@@ -222,32 +224,28 @@ Chat Commands:
             )
             return
 
-        if self.session is None:
-            return
-        # use re to check if cmd is tab. and a valid number then call focus_tab with requested number
-        tab_number_re = re.compile(r"^tab\.(\d+)$")
+        tab_number_re = re.compile(r"^t(?:ab)?\.(\d+)$")
         if match := tab_number_re.match(cmd):
             (tab_number,) = match.groups()
-            tab_number = int(tab_number)
-            if tab_number <= len(self.chat_tabs.children):
+            tab_number = int(tab_number) - 1
+            if 0 <= tab_number <= len(self.chat_tabs.children):
                 self.focus_tab(tab_number)
             else:
-                self.notify(f"Tab {tab_number} does not exist", severity="error")
+                self.notify(f"Tab {tab_number + 1} does not exist", severity="error")
             return
-
         if cmd == "tab.new":
             await self.action_new_tab()
         elif cmd == "tab.remove":
             await self.remove_active_tab()
         elif cmd == "tabs.clear":
             await self.remove_all_tabs()
-        elif cmd == "session.delete":
-            self.app.post_message(DeleteSession(session_id=self.session.session_id))
         elif cmd == "session.new":
             await self.active_tab.action_new_session()
         elif cmd.startswith("session.new "):
             (_, v) = cmd.split(" ", 1)
             await self.active_tab.action_new_session(v)
+        elif cmd == "session.delete":
+            self.app.post_message(DeleteSession(session_id=self.session.session_id))
         elif cmd == "session.model":
             self.set_timer(0.1, self.active_tab.model_select.focus)
             return
@@ -272,11 +270,6 @@ Chat Commands:
             self.set_timer(0.1, self.user_input.focus)
         elif cmd.startswith("session.export"):
             self.active_tab.save_conversation_text()
-            # filename: str = "chat_test.md"
-            # if self.session.save(filename):
-            #     self.notify(f"Saved: {filename}")
-            # else:
-            #     self.notify(f"Failed to save: {filename}", severity="error")
         else:
             self.notify(f"Unknown command: {cmd}", severity="error")
 
@@ -336,18 +329,34 @@ Chat Commands:
     def on_update_tab_label(self, event: UpdateTabLabel) -> None:
         """Update tab label event"""
         event.stop()
-        self.chat_tabs.get_tab(event.tab_id).label = event.tab_label  # type: ignore
+        tab = self.chat_tabs.get_tab(event.tab_id)
+        tab_num = self.chat_tabs.get_child_by_type(ContentSwitcher).children.index(
+            self.chat_tabs.get_pane(event.tab_id)
+        )
+        tab.label = f"[{tab_num + 1}] " + event.tab_label  # type: ignore
+
+    def re_index_labels(self) -> None:
+        """Re-index tab labels"""
+        for ctab in self.chat_tabs.query(ChatTab):
+            tab = self.chat_tabs.get_tab(str(ctab.id))
+            tab_num = self.chat_tabs.get_child_by_type(ContentSwitcher).children.index(
+                self.chat_tabs.get_pane(str(ctab.id))
+            )
+            tab.label = f"[{tab_num + 1}] " + tab.label.plain.split(" ", 1)[1]  # type: ignore
 
     @on(DeleteSession)
     async def on_delete_session(self, event: DeleteSession) -> None:
         """Delete session event"""
         event.stop()
-        chat_manager.delete_session(event.session_id)
-        self.notify("Chat session deleted")
         for tab in self.chat_tabs.query(ChatTab):
             if tab.session.session_id == event.session_id:
                 await self.chat_tabs.remove_pane(str(tab.id))
+                self.re_index_labels()
                 break
+        chat_manager.delete_session(event.session_id)
+        if len(self.chat_tabs.query(ChatTab)) == 0:
+            await self.action_new_tab()
+        self.notify("Chat session deleted")
         self.user_input.focus()
 
     async def action_new_tab(self) -> None:
@@ -362,6 +371,8 @@ Chat Commands:
         await self.chat_tabs.remove_pane(self.chat_tabs.active)
         if len(self.chat_tabs.query(ChatTab)) == 0:
             await self.action_new_tab()
+        else:
+            self.re_index_labels()
 
     async def remove_all_tabs(self) -> None:
         """Remove all tabs"""

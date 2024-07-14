@@ -93,7 +93,6 @@ class ChatTab(TabPane):
     }
     """
 
-    # BINDINGS = []
     session: ChatSession
     busy: Reactive[bool] = Reactive(False)
 
