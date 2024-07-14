@@ -6,8 +6,10 @@ from typing import cast
 from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import VerticalScroll
+from textual.containers import Vertical
 from textual.widgets import ListView
+from textual.widgets import Rule
+from textual.widgets import Static
 
 from parllama.chat_manager import chat_manager
 from parllama.messages.main import DeleteSession
@@ -16,7 +18,7 @@ from parllama.messages.main import SessionSelected
 from parllama.widgets.session_list_item import SessionListItem
 
 
-class SessionList(VerticalScroll, can_focus=False, can_focus_children=True):
+class SessionList(Vertical, can_focus=False, can_focus_children=True):
     """Session list side panel"""
 
     DEFAULT_CSS = """
@@ -26,6 +28,13 @@ class SessionList(VerticalScroll, can_focus=False, can_focus_children=True):
             key="enter",
             action="load_item",
             description="Load",
+            show=True,
+            priority=True,
+        ),
+        Binding(
+            key="ctrl+n",
+            action="load_item_new",
+            description="Load New Tab",
             show=True,
             priority=True,
         ),
@@ -45,6 +54,8 @@ class SessionList(VerticalScroll, can_focus=False, can_focus_children=True):
 
     def compose(self) -> ComposeResult:
         """Compose the content of the view."""
+        yield Static("Sessions")
+        yield Rule()
         with self.list_view:
             for s in chat_manager.sessions:
                 if not s.is_valid():
@@ -61,7 +72,7 @@ class SessionList(VerticalScroll, can_focus=False, can_focus_children=True):
         self.app.post_message(
             DeleteSession(session_id=selected_item.session.session_id)
         )
-        self.display = False
+        # self.display = False
 
     @on(SessionListChanged)
     async def on_session_list_changed(self, event: SessionListChanged) -> None:
@@ -85,7 +96,21 @@ class SessionList(VerticalScroll, can_focus=False, can_focus_children=True):
         )
         if not selected_item:
             return
-        self.app.post_message(SessionSelected(selected_item.session.session_id))
+        self.app.post_message(
+            SessionSelected(selected_item.session.session_id, new_tab=False)
+        )
+        self.display = False
+
+    def action_load_item_new(self) -> None:
+        """Handle list view selected event."""
+        selected_item: SessionListItem = cast(
+            SessionListItem, self.list_view.highlighted_child
+        )
+        if not selected_item:
+            return
+        self.app.post_message(
+            SessionSelected(selected_item.session.session_id, new_tab=True)
+        )
         self.display = False
 
     @on(SessionSelected)

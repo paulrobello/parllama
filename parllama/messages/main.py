@@ -253,6 +253,7 @@ class SessionSelected(Message):
     """Notify that session has been selected."""
 
     session_id: str
+    new_tab: bool = False
 
 
 @dataclass

@@ -228,17 +228,23 @@ Theme can be changed via command line with the ```--theme-name``` option.
 Start by following the instructions in the section **Installing for dev mode**.  
 
 Please ensure that all pull requests are formatted with black, pass mypy and pylint with 10/10 checks.  
-You can run the make target **do-before-commit** to ensure the pipeline will pass with your changes.  
+You can run the make target **pre-commit** to ensure the pipeline will pass with your changes.  
 There is also a pre-commit config to that will assist with formatting and checks.  
 The easiest way to setup your environment to ensure smooth pull requests is:  
 
 If you don't have pipx installed you can run the following:  
 ```bash
 pip install pipx
+pipx ensurepath
 ```
 
+With pipx installed:
 ```bash
 pipx install pre-commit
+```
+
+From repo root run the following:
+```bash
 pre-commit install
 pre-commit run --all-files
 ```

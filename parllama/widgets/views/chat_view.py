@@ -299,7 +299,11 @@ Chat Commands:
     async def on_session_selected(self, event: SessionSelected) -> None:
         """Session selected event"""
         event.stop()
-        await self.active_tab.load_session(event.session_id)
+        if event.new_tab:
+            await self.action_new_tab()
+            await self.active_tab.load_session(event.session_id)
+        else:
+            await self.active_tab.load_session(event.session_id)
 
     @on(UpdateChatControlStates)
     def on_update_chat_control_states(self, event: UpdateChatControlStates) -> None:

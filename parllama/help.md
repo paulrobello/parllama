@@ -87,13 +87,16 @@ Chat with local LLMs
 | `ctrl+b`   | New session in current tab              |
 | `ctrl+n`   | New chat tab                            |
 | `ctrl+del` | Remove current chat tab                 |
+| `ctrl+e`   | Export selected tab as Markdown         |
 
 ### Chat Screen Session Panel keys
 
-| Key      | Command                 |
-|----------|-------------------------|
-| `enter`  | Load selected session   |
-| `delete` | Delete selected session |
+| Key      | Command                                  |
+|----------|------------------------------------------|
+| `enter`  | Load selected session into current tab   |
+| `ctrl+n` | Load selected session into new tab       |
+| `delete` | Delete selected session and related tabs |
+
 
 ### Chat Slash Commands:
 Chat Commands:

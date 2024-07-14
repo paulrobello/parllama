@@ -7,7 +7,6 @@ from ollama import Options
 from textual import on
 from textual import work
 from textual.app import ComposeResult
-from textual.binding import Binding
 from textual.containers import Horizontal
 from textual.containers import Vertical
 from textual.containers import VerticalScroll
@@ -45,9 +44,6 @@ MAX_TAB_TITLE_LENGTH = 12
 class ChatTab(TabPane):
     """Chat tab"""
 
-    BINDINGS = [
-        Binding(key="ctrl+b", action="new_session", description="New Chat", show=True),
-    ]
     DEFAULT_CSS = """
     ChatTab {
       #tool_bar {
@@ -119,7 +115,7 @@ class ChatTab(TabPane):
                 else ""
             ),
             max_length=4,
-            restrict=r"^\d?\.?\d?$",
+            restrict=r"^\d?\.?\d?\d?$",
         )
         self.session_name_input: Input = Input(
             id="session_name_input",

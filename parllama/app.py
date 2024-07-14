@@ -143,14 +143,14 @@ class ParLlamaApp(App[None]):
         ).generate()
 
     @on(NotifyInfoMessage)
-    def notify_info(self, msg: NotifyInfoMessage) -> None:
+    def notify_info(self, event: NotifyInfoMessage) -> None:
         """Show info toast message for 3 seconds"""
-        self.notify(msg.message, timeout=msg.timeout)
+        self.notify(event.message, timeout=event.timeout)
 
     @on(NotifyErrorMessage)
-    def notify_error(self, msg: NotifyErrorMessage) -> None:
+    def notify_error(self, event: NotifyErrorMessage) -> None:
         """Show error toast message for 6 seconds"""
-        self.notify(msg.message, severity="error", timeout=msg.timeout)
+        self.notify(event.message, severity="error", timeout=event.timeout)
 
     async def on_mount(self) -> None:
         """Display the main or locked screen."""
@@ -249,87 +249,89 @@ class ParLlamaApp(App[None]):
             f.text = ""
 
     @on(SendToClipboard)
-    def send_to_clipboard(self, msg: SendToClipboard) -> None:
+    def send_to_clipboard(self, event: SendToClipboard) -> None:
         """Send string to clipboard"""
         # works for remote ssh sessions
-        self.copy_to_clipboard(msg.message)
+        self.copy_to_clipboard(event.message)
         # works for local sessions
-        pyperclip.copy(msg.message)
-        if msg.notify:
+        pyperclip.copy(event.message)
+        if event.notify:
             self.post_message(NotifyInfoMessage("Copied to clipboard"))
 
     @on(ModelPushRequested)
-    def on_model_push_requested(self, msg: ModelPushRequested) -> None:
+    def on_model_push_requested(self, event: ModelPushRequested) -> None:
         """Push requested model event"""
-        self.job_queue.put(PushModelJob(modelName=msg.model_name))
+        self.job_queue.put(PushModelJob(modelName=event.model_name))
         self.main_screen.local_view.post_message(
-            SetModelNameLoading(msg.model_name, True)
+            SetModelNameLoading(event.model_name, True)
         )
         # self.notify(f"Model push {msg.model_name} requested")
 
     @on(ModelCreateRequested)
-    def on_model_create_requested(self, msg: ModelCreateRequested) -> None:
+    def on_model_create_requested(self, event: ModelCreateRequested) -> None:
         """Create model requested event"""
         self.job_queue.put(
             CreateModelJob(
-                modelName=msg.model_name,
-                modelCode=msg.model_code,
-                quantizationLevel=msg.quantization_level,
+                modelName=event.model_name,
+                modelCode=event.model_code,
+                quantizationLevel=event.quantization_level,
             )
         )
 
     @on(LocalModelDelete)
-    def on_local_model_delete(self, msg: LocalModelDelete) -> None:
+    def on_local_model_delete(self, event: LocalModelDelete) -> None:
         """Delete local model event"""
-        if not dm.delete_model(msg.model_name):
+        if not dm.delete_model(event.model_name):
             self.main_screen.local_view.post_message(
-                SetModelNameLoading(msg.model_name, False)
+                SetModelNameLoading(event.model_name, False)
             )
             self.status_notify(
-                f"Error deleting model {msg.model_name}.", severity="error"
+                f"Error deleting model {event.model_name}.", severity="error"
             )
             return
-        self.post_message_all(LocalModelDeleted(msg.model_name))
+        self.post_message_all(LocalModelDeleted(event.model_name))
 
     @on(LocalModelDeleted)
-    def on_model_deleted(self, msg: LocalModelDeleted) -> None:
+    def on_model_deleted(self, event: LocalModelDeleted) -> None:
         """Local model deleted event"""
-        self.status_notify(f"Model {msg.model_name} deleted.")
+        self.status_notify(f"Model {event.model_name} deleted.")
 
     @on(ModelPullRequested)
-    def on_model_pull_requested(self, msg: ModelPullRequested) -> None:
+    def on_model_pull_requested(self, event: ModelPullRequested) -> None:
         """Pull requested model event"""
-        self.job_queue.put(PullModelJob(modelName=msg.model_name))
-        self.post_message_all(SetModelNameLoading(msg.model_name, True))
+        self.job_queue.put(PullModelJob(modelName=event.model_name))
+        self.post_message_all(SetModelNameLoading(event.model_name, True))
 
     @on(LocalModelCopyRequested)
-    def on_local_model_copy_requested(self, msg: LocalModelCopyRequested) -> None:
+    def on_local_model_copy_requested(self, event: LocalModelCopyRequested) -> None:
         """Local model copy request event"""
         self.job_queue.put(
-            CopyModelJob(modelName=msg.src_model_name, dstModelName=msg.dst_model_name)
+            CopyModelJob(
+                modelName=event.src_model_name, dstModelName=event.dst_model_name
+            )
         )
 
-    async def do_copy_local_model(self, msg: CopyModelJob) -> None:
+    async def do_copy_local_model(self, event: CopyModelJob) -> None:
         """Copy local model"""
-        ret = dm.copy_model(msg.modelName, msg.dstModelName)
+        ret = dm.copy_model(event.modelName, event.dstModelName)
         self.main_screen.local_view.post_message(
             LocalModelCopied(
-                src_model_name=msg.modelName,
-                dst_model_name=msg.dstModelName,
+                src_model_name=event.modelName,
+                dst_model_name=event.dstModelName,
                 success=ret["status"] == "success",
             )
         )
 
     @on(LocalModelCopied)
-    def on_local_model_copied(self, msg: LocalModelCopied) -> None:
+    def on_local_model_copied(self, event: LocalModelCopied) -> None:
         """Local model copied event"""
-        if msg.success:
+        if event.success:
             self.status_notify(
-                f"Model {msg.src_model_name} copied to {msg.dst_model_name}"
+                f"Model {event.src_model_name} copied to {event.dst_model_name}"
             )
         else:
             self.status_notify(
-                f"Copying model {msg.src_model_name} to {msg.dst_model_name} failed",
+                f"Copying model {event.src_model_name} to {event.dst_model_name} failed",
                 severity="error",
             )
 
@@ -474,29 +476,29 @@ class ParLlamaApp(App[None]):
                 continue
 
     @on(ModelPulled)
-    def on_model_pulled(self, msg: ModelPulled) -> None:
+    def on_model_pulled(self, event: ModelPulled) -> None:
         """Model pulled event"""
-        if msg.success:
+        if event.success:
             self.status_notify(
-                f"Model {msg.model_name} pulled.",
+                f"Model {event.model_name} pulled.",
             )
         else:
             self.status_notify(
-                f"Model {msg.model_name} failed to pull.",
+                f"Model {event.model_name} failed to pull.",
                 severity="error",
             )
 
     @on(ModelCreated)
-    def on_model_created(self, msg: ModelCreated) -> None:
+    def on_model_created(self, event: ModelCreated) -> None:
         """Model created event"""
-        if msg.success:
+        if event.success:
             self.status_notify(
-                f"Model {msg.model_name} created.",
+                f"Model {event.model_name} created.",
             )
             self.set_timer(1, self.action_refresh_models)
         else:
             self.status_notify(
-                f"Model {msg.model_name} failed to create.",
+                f"Model {event.model_name} failed to create.",
                 severity="error",
             )
 
@@ -643,10 +645,10 @@ class ParLlamaApp(App[None]):
             self.main_screen.post_message(msg)
 
     @on(ChangeTab)
-    def on_change_tab(self, msg: ChangeTab) -> None:
+    def on_change_tab(self, event: ChangeTab) -> None:
         """Change tab event"""
-        msg.stop()
-        self.main_screen.change_tab(msg.tab)
+        event.stop()
+        self.main_screen.change_tab(event.tab)
 
     @on(CreateModelFromExistingRequested)
     def on_create_model_from_existing_requested(
@@ -673,15 +675,15 @@ class ParLlamaApp(App[None]):
         self.main_screen.chat_view.session_list.post_message(SessionListChanged())
 
     @on(SessionSelected)
-    def on_session_selected(self, msg: SessionSelected) -> None:
+    def on_session_selected(self, event: SessionSelected) -> None:
         """Session selected event"""
         self.main_screen.chat_view.post_message(
-            SessionSelected(session_id=msg.session_id)
+            SessionSelected(session_id=event.session_id, new_tab=event.new_tab)
         )
 
     @on(DeleteSession)
-    def on_delete_session(self, msg: DeleteSession) -> None:
+    def on_delete_session(self, event: DeleteSession) -> None:
         """Delete session event"""
         self.main_screen.chat_view.post_message(
-            DeleteSession(session_id=msg.session_id)
+            DeleteSession(session_id=event.session_id)
         )
