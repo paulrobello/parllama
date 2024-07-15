@@ -16,6 +16,7 @@ from ollama import Message as OMessage
 from ollama import Options as OllamaOptions
 from textual.widget import Widget
 
+from parllama.messages.main import ChatGenerationAborted
 from parllama.messages.main import ChatMessage
 from parllama.messages.main import SessionUpdated
 from parllama.models.settings_data import settings
@@ -105,6 +106,8 @@ class ChatSession:
     id_to_msg: dict[str, OllamaMessage]
     last_updated: datetime.datetime
     _name_generated: bool = False
+    _abort: bool = False
+    _generating: bool = False
 
     # pylint: disable=too-many-arguments
     def __init__(
@@ -172,36 +175,58 @@ class ChatSession:
 
     async def send_chat(self, from_user: str, widget: Widget) -> bool:
         """Send a chat message to LLM"""
-        msg: OllamaMessage = OllamaMessage(content=from_user, role="user")
-        self.add_message(msg)
-        if settings.auto_name_session and not self._name_generated:
-            self._name_generated = True
-            self.set_name(self.gen_session_name(self.messages[0].content))
-            widget.post_message(SessionUpdated(session_id=self.session_id))
-        widget.post_message(
-            ChatMessage(session_id=self.session_id, message_id=msg.message_id)
-        )
-
-        msg = OllamaMessage(content="", role="assistant")
-        self.add_message(msg)
-        widget.post_message(
-            ChatMessage(session_id=self.session_id, message_id=msg.message_id)
-        )
-
-        stream: Iterator[Mapping[str, Any]] = settings.ollama_client.chat(  # type: ignore
-            model=self.llm_model_name,
-            messages=[m.to_ollama_native() for m in self.messages],
-            options=self.options,
-            stream=True,
-        )
-
-        for chunk in stream:
-            msg.content += chunk["message"]["content"]
+        self._generating = True
+        try:
+            msg: OllamaMessage = OllamaMessage(content=from_user, role="user")
+            self.add_message(msg)
             widget.post_message(
                 ChatMessage(session_id=self.session_id, message_id=msg.message_id)
             )
-        msg.save()
-        return True
+
+            msg = OllamaMessage(content="", role="assistant")
+            self.add_message(msg)
+            widget.post_message(
+                ChatMessage(session_id=self.session_id, message_id=msg.message_id)
+            )
+
+            stream: Iterator[Mapping[str, Any]] = settings.ollama_client.chat(  # type: ignore
+                model=self.llm_model_name,
+                messages=[m.to_ollama_native() for m in self.messages],
+                options=self.options,
+                stream=True,
+            )
+            is_aborted = False
+            for chunk in stream:
+                msg.content += chunk["message"]["content"]
+                if self._abort:
+                    is_aborted = True
+                    try:
+                        msg.content += "\n\nAborted..."
+                        widget.post_message(ChatGenerationAborted(self.session_id))
+                        stream.close()  # type: ignore
+                    except Exception:  # pylint:disable=broad-except
+                        pass
+                    finally:
+                        self._abort = False
+                    break
+                widget.post_message(
+                    ChatMessage(session_id=self.session_id, message_id=msg.message_id)
+                )
+
+            msg.save()
+
+            if (
+                not is_aborted
+                and settings.auto_name_session
+                and not self._name_generated
+            ):
+                self._name_generated = True
+                self.set_name(self.gen_session_name(self.messages[0].content))
+                widget.post_message(SessionUpdated(session_id=self.session_id))
+        finally:
+            self._generating = False
+
+        return not is_aborted
 
     def new_session(self, session_name: str = "My Chat"):
         """Start new session"""
@@ -362,3 +387,25 @@ class ChatSession:
             return True
         except (OSError, IOError):
             return False
+
+    def stop_generation(self) -> None:
+        """Stop LLM model generation"""
+        self._abort = True
+
+    @property
+    def abort_pending(self) -> bool:
+        """Check if LLM model generation is pending"""
+        return self._abort
+
+    @property
+    def is_generating(self) -> bool:
+        """Check if LLM model generation is in progress"""
+        return self._generating
+
+    @property
+    def context_length(self) -> int:
+        """Return current message context length"""
+        total: int = 0
+        for msg in self.messages:
+            total += len(msg.content)
+        return total

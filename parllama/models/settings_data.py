@@ -36,7 +36,7 @@ class Settings(BaseModel):
     max_log_lines: int = 1000
     ollama_host: str = "http://localhost:11434"
     ollama_ps_poll_interval: int = 3
-    auto_name_session: bool = True
+    auto_name_session: bool = False
     auto_name_session_llm: str = ""
 
     # pylint: disable=too-many-branches, too-many-statements

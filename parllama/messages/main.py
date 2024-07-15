@@ -271,6 +271,20 @@ class DeleteSession(Message):
 
 
 @dataclass
+class StopChatGeneration(Message):
+    """Request chat generation to be stopped."""
+
+    session_id: str
+
+
+@dataclass
+class ChatGenerationAborted(Message):
+    """Chat generation has been aborted."""
+
+    session_id: str
+
+
+@dataclass
 class UpdateChatControlStates(Message):
     """Notify that chat control states need to be updated."""
 

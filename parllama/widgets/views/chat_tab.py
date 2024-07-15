@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import uuid
 
+import humanize
 from ollama import Options
+from rich.text import Text
 from textual import on
 from textual import work
 from textual.app import ComposeResult
@@ -17,6 +19,7 @@ from textual.widgets import Button
 from textual.widgets import Input
 from textual.widgets import Label
 from textual.widgets import Select
+from textual.widgets import Static
 from textual.widgets import TabbedContent
 from textual.widgets import TabPane
 
@@ -130,6 +133,8 @@ class ChatTab(TabPane):
             options=self.get_session_options(),
         )
 
+        self.session_status_bar = Static("", id="SessionStatusBar")
+
     def _watch_busy(self, value: bool) -> None:
         """Update controls when busy changes"""
         self.update_control_states()
@@ -145,6 +150,7 @@ class ChatTab(TabPane):
     def compose(self) -> ComposeResult:
         """Compose the content of the view."""
         with Vertical(id="main"):
+            yield self.session_status_bar
             with Horizontal(id="tool_bar"):
                 yield self.model_select
                 yield Label("Temp")
@@ -292,6 +298,7 @@ class ChatTab(TabPane):
                 self.session.add_message(
                     OllamaMessage(role=msg["role"], content=msg["content"])
                 )
+        self.update_session_status_bar()
         self.user_input.focus()
 
     def notify_tab_label_changed(self) -> None:
@@ -331,6 +338,7 @@ class ChatTab(TabPane):
             self.set_timer(0.1, self.scroll_to_bottom)
 
         chat_manager.notify_changed()
+        self.update_session_status_bar()
 
     def scroll_to_bottom(self) -> None:
         """Scroll to the bottom of the chat window."""
@@ -378,6 +386,7 @@ class ChatTab(TabPane):
         self.update_control_states()
         self.notify_tab_label_changed()
         self.set_timer(0.1, self.scroll_to_bottom)
+        self.update_session_status_bar()
         self.user_input.focus()
 
     @on(SessionSelected)
@@ -399,3 +408,13 @@ class ChatTab(TabPane):
         """Session updated event"""
         self.session_name_input.value = self.session.session_name
         self.notify_tab_label_changed()
+        self.update_session_status_bar()
+
+    def update_session_status_bar(self) -> None:
+        """Update session status bar"""
+        self.session_status_bar.update(
+            Text.assemble(
+                "Context Length: ",
+                humanize.intcomma(self.session.context_length),
+            )
+        )

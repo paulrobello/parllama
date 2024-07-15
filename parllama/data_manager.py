@@ -13,6 +13,7 @@ from typing import Literal
 
 import docker.errors  # type: ignore
 import docker.types  # type: ignore
+import httpx
 import requests
 import simplejson as json
 from bs4 import BeautifulSoup
@@ -24,11 +25,27 @@ from parllama.models.ollama_data import ModelListPayload
 from parllama.models.ollama_data import ModelShowPayload
 from parllama.models.ollama_data import SiteModel
 from parllama.models.ollama_data import SiteModelData
+from parllama.models.ollama_ps import OllamaPsResponse
 from parllama.models.settings_data import settings
 from parllama.utils import output_to_dicts
 from parllama.utils import run_cmd
 from parllama.widgets.local_model_list_item import LocalModelListItem
 from parllama.widgets.site_model_list_item import SiteModelListItem
+
+
+def api_model_ps() -> OllamaPsResponse:
+    """Get model ps."""
+    # fetch data from self.ollama_host as json
+    res = httpx.get(f"{settings.ollama_host}/api/ps")
+    if res.status_code != 200:
+        return OllamaPsResponse()
+    try:
+        ret = OllamaPsResponse(**res.json())
+        return ret
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        print(f"Error: {e}")
+        print(res.text)
+        return OllamaPsResponse()
 
 
 class DataManager:
@@ -49,6 +66,20 @@ class DataManager:
         #     raise FileNotFoundError("Could not find ollama binary in path")
 
         self.ollama_bin = str(ollama_bin) if ollama_bin is not None else None
+
+    def model_ps(self) -> OllamaPsResponse:
+        """Get model ps."""
+        api_ret = api_model_ps()
+        if not self.ollama_bin:
+            return api_ret
+        ret = run_cmd([self.ollama_bin, "ps"])
+
+        if not ret:
+            return api_ret
+        local_ret = output_to_dicts(ret)
+        if len(local_ret) > 0:
+            api_ret.processor = local_ret[0]["processor"]
+        return api_ret
 
     def get_model_by_name(self, name: str) -> FullModel | None:
         """Get a model by name."""
@@ -82,16 +113,6 @@ class DataManager:
     def get_model_select_options(self) -> list[tuple[str, str]]:
         """Get select options."""
         return [(model.model.name, model.model.name) for model in self.models]
-
-    def model_ps(self) -> list[dict[str, Any]]:
-        """Get model ps."""
-        if not self.ollama_bin:
-            return []
-        ret = run_cmd([self.ollama_bin, "ps"])
-
-        if not ret:
-            return []
-        return output_to_dicts(ret)
 
     @staticmethod
     def pull_model(model_name: str) -> Iterator[dict[str, Any]]:

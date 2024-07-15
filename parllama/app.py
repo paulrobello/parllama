@@ -7,6 +7,7 @@ from queue import Empty
 from queue import Queue
 from typing import Any
 
+import humanize
 import ollama
 import pyperclip  # type: ignore
 from rich.columns import Columns
@@ -592,13 +593,6 @@ class ParLlamaApp(App[None]):
     @work(group="update_ps", thread=True)
     async def update_ps(self) -> None:
         """Update ps status bar msg"""
-        if not dm.ollama_bin:
-            self.notify(
-                "Ollama binary not found. PS output not available.",
-                severity="error",
-                timeout=6,
-            )
-            return
         was_blank = False
         while self.is_running:
             if settings.ollama_ps_poll_interval < 1:
@@ -606,24 +600,26 @@ class ParLlamaApp(App[None]):
                 break
             await asyncio.sleep(settings.ollama_ps_poll_interval)
             ret = dm.model_ps()
-            if not ret:
+            if len(ret.models) < 1:
                 if not was_blank:
                     self.main_screen.post_message(PsMessage(msg=""))
                 was_blank = True
                 continue
             was_blank = False
-            info = ret[0]  # only take first one since ps status bar is a single line
+            info = ret.models[
+                0
+            ]  # only take first one since ps status bar is a single line
             self.main_screen.post_message(
                 PsMessage(
                     msg=Text.assemble(
                         "Name: ",
-                        info["name"],
+                        info.name,
                         " Size: ",
-                        info["size"],
+                        humanize.naturalsize(info.size_vram),
                         " Processor: ",
-                        info["processor"],
+                        ret.processor,
                         " Until: ",
-                        info["until"],
+                        humanize.naturaltime(info.expires_at),
                     )
                 )
             )

@@ -81,6 +81,11 @@ Once pipx is installed, run the following:
 ```bash
 pipx install parllama
 ```
+To upgrade an existing installation use the --force flag:
+```bash
+pipx install parllama --force
+```
+
 
 ## Installing from mypi using pip
 Create a virtual environment and install using pip
@@ -151,9 +156,8 @@ source venv/Scripts/activate
 parllama
 ```
 ## Running against a remote instance
-When running against a remote host you should disable ps polling with the -p flag  
 ```bash
-parllama -u "http://REMOTE_HOST:11434" -p 0
+parllama -u "http://REMOTE_HOST:11434"
 ```
 
 ## Running under Windows WSL
@@ -283,6 +287,10 @@ if anything remains to be fixed before the commit is allowed.
 * LLM tool use
 
 ## What's new
+
+### v0.3.2
+* Ollama ps stats bar now works with remote connections except for CPU / GPU %'s which ollama's api does not provide
+* Chat tabs now have a session info bar with info like context length
 
 ### v0.3.1
 * Add chat tabs to support multiple sessions

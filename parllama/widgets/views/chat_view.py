@@ -21,6 +21,7 @@ from textual.widgets import TabbedContent
 from parllama.chat_manager import chat_manager
 from parllama.data_manager import dm
 from parllama.dialogs.information import InformationDialog
+from parllama.messages.main import ChatGenerationAborted
 from parllama.messages.main import ChatMessage
 from parllama.messages.main import ChatMessageSent
 from parllama.messages.main import DeleteSession
@@ -72,6 +73,12 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
           width: 1fr;
         }
         #send_button {
+          min-width: 7;
+          width: 7;
+          margin-right: 1;
+        }
+        #stop_button {
+          min-width: 6;
           width: 6;
         }
       }
@@ -134,7 +141,12 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
             submit_on_complete=False,
         )
 
-        self.send_button: Button = Button("Send", id="send_button", disabled=True)
+        self.send_button: Button = Button(
+            "Send", id="send_button", disabled=True, variant="success"
+        )
+        self.stop_button: Button = Button(
+            "Stop", id="stop_button", disabled=True, variant="error"
+        )
 
     def compose(self) -> ComposeResult:
         """Compose the content of the view."""
@@ -145,6 +157,7 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         with Horizontal(id="send_bar"):
             yield self.user_input
             yield self.send_button
+            # yield self.stop_button
 
     async def on_mount(self) -> None:
         """Set up the dialog once the DOM is ready."""
@@ -161,6 +174,9 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
             self.active_tab.busy
             or self.active_tab.model_select.value == Select.BLANK
             or len(self.user_input.value.strip()) == 0
+        )
+        self.stop_button.disabled = (
+            not self.active_tab.busy or self.session.abort_pending
         )
 
     @on(LocalModelListLoaded)
@@ -180,6 +196,13 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         """New button pressed"""
         event.stop()
         # TODO Add new tab
+
+    @on(Button.Pressed, "#stop_button")
+    def on_stop_button_pressed(self, event: Button.Pressed) -> None:
+        """Stop button pressed"""
+        event.stop()
+        self.stop_button.disabled = True
+        self.active_tab.session.stop_generation()
 
     @on(Button.Pressed, "#send_button")
     @on(Input.Submitted, "#user_input")
@@ -293,6 +316,8 @@ Chat Commands:
         for tab in self.chat_tabs.query(ChatTab):
             if tab.session.session_id == event.session_id:
                 tab.busy = False
+        if self.session.session_id == event.session_id:
+            self.stop_button.disabled = True
 
     @on(SessionUpdated)
     async def on_session_updated(self, event: SessionUpdated) -> None:
@@ -421,3 +446,9 @@ Chat Commands:
         tabs = self.chat_tabs.query(ChatTab)
         if len(tabs) > tab_num:
             self.chat_tabs.active = str(tabs[tab_num].id)
+
+    @on(ChatGenerationAborted)
+    def on_chat_generation_aborted(self, event: ChatGenerationAborted) -> None:
+        """Chat generation aborted event"""
+        event.stop()
+        self.notify("Chat Aborted", severity="warning")
