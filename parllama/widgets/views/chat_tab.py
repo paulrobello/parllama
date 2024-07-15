@@ -38,8 +38,6 @@ from parllama.widgets.chat_message import ChatMessageWidget
 from parllama.widgets.input_tab_complete import InputTabComplete
 from parllama.widgets.session_list import SessionList
 
-MAX_TAB_TITLE_LENGTH = 12
-
 
 class ChatTab(TabPane):
     """Chat tab"""
@@ -99,7 +97,7 @@ class ChatTab(TabPane):
         session_name = chat_manager.mk_session_name("New Chat")
         super().__init__(
             id=f"tp_{uuid.uuid4().hex}",
-            title=str_ellipsis(session_name, MAX_TAB_TITLE_LENGTH),
+            title=str_ellipsis(session_name, settings.chat_tab_max_length),
             **kwargs,
         )
         self.session_list = session_list
@@ -301,7 +299,7 @@ class ChatTab(TabPane):
         self.post_message(
             UpdateTabLabel(
                 str(self.id),
-                str_ellipsis(self.session.session_name, MAX_TAB_TITLE_LENGTH),
+                str_ellipsis(self.session.session_name, settings.chat_tab_max_length),
             )
         )
 
@@ -396,3 +394,8 @@ class ChatTab(TabPane):
         self.notify("Chat session deleted")
         if self.session.session_id == event.session_id:
             await self.action_new_session()
+
+    async def on_session_updated(self) -> None:
+        """Session updated event"""
+        self.session_name_input.value = self.session.session_name
+        self.notify_tab_label_changed()

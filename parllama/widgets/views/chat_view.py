@@ -27,6 +27,7 @@ from parllama.messages.main import DeleteSession
 from parllama.messages.main import LocalModelListLoaded
 from parllama.messages.main import RegisterForUpdates
 from parllama.messages.main import SessionSelected
+from parllama.messages.main import SessionUpdated
 from parllama.messages.main import UpdateChatControlStates
 from parllama.messages.main import UpdateTabLabel
 from parllama.models.chat import ChatSession
@@ -55,6 +56,12 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
     DEFAULT_CSS = """
     ChatView {
       layers: left;
+      SessionList {
+        width: 40;
+        height: 1fr;
+        dock: left;
+        padding: 1;
+      }
       #chat_tabs {
         height: 1fr;
       }
@@ -286,6 +293,19 @@ Chat Commands:
         for tab in self.chat_tabs.query(ChatTab):
             if tab.session.session_id == event.session_id:
                 tab.busy = False
+
+    @on(SessionUpdated)
+    async def on_session_updated(self, event: SessionUpdated) -> None:
+        """Session updated event"""
+
+        event.stop()
+        session = chat_manager.get_session(event.session_id)
+        if not session:
+            return
+        session.set_name(chat_manager.mk_session_name(session.session_name))
+        for tab in self.chat_tabs.query(ChatTab):
+            if tab.session.session_id == event.session_id:
+                await tab.on_session_updated()
 
     def action_toggle_session_list(self) -> None:
         """Toggle the session list."""

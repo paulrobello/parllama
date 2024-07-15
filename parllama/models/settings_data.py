@@ -23,6 +23,7 @@ class Settings(BaseModel):
     data_dir: str = os.path.expanduser("~/.parllama")
     cache_dir: str = ""
     chat_dir: str = ""
+    chat_tab_max_length: int = 15
     settings_file: str = "settings.json"
     theme_name: str = "par"
     starting_screen: ScreenType = "Local"
@@ -35,7 +36,8 @@ class Settings(BaseModel):
     max_log_lines: int = 1000
     ollama_host: str = "http://localhost:11434"
     ollama_ps_poll_interval: int = 3
-    auto_name_chat: bool = True
+    auto_name_session: bool = True
+    auto_name_session_llm: str = ""
 
     # pylint: disable=too-many-branches, too-many-statements
     def __init__(self) -> None:
@@ -141,7 +143,15 @@ class Settings(BaseModel):
                 self.ollama_ps_poll_interval = data.get(
                     "ollama_ps_poll_interval", self.ollama_ps_poll_interval
                 )
-                self.auto_name_chat = data.get("auto_name_chat", self.auto_name_chat)
+                self.auto_name_session = data.get(
+                    "auto_name_chat", self.auto_name_session
+                )
+                self.auto_name_session_llm = data.get(
+                    "auto_name_session_llm", self.auto_name_session_llm
+                )
+                self.chat_tab_max_length = max(
+                    8, data.get("chat_tab_max_length", self.chat_tab_max_length)
+                )
         except FileNotFoundError:
             pass  # If file does not exist, continue with default settings
 

@@ -17,6 +17,7 @@ from ollama import Options as OllamaOptions
 from textual.widget import Widget
 
 from parllama.messages.main import ChatMessage
+from parllama.messages.main import SessionUpdated
 from parllama.models.settings_data import settings
 
 
@@ -103,6 +104,7 @@ class ChatSession:
     messages: list[OllamaMessage]
     id_to_msg: dict[str, OllamaMessage]
     last_updated: datetime.datetime
+    _name_generated: bool = False
 
     # pylint: disable=too-many-arguments
     def __init__(
@@ -172,6 +174,10 @@ class ChatSession:
         """Send a chat message to LLM"""
         msg: OllamaMessage = OllamaMessage(content=from_user, role="user")
         self.add_message(msg)
+        if settings.auto_name_session and not self._name_generated:
+            self._name_generated = True
+            self.set_name(self.gen_session_name(self.messages[0].content))
+            widget.post_message(SessionUpdated(session_id=self.session_id))
         widget.post_message(
             ChatMessage(session_id=self.session_id, message_id=msg.message_id)
         )
@@ -203,6 +209,28 @@ class ChatSession:
         self.session_name = session_name
         self.messages.clear()
         self.id_to_msg.clear()
+
+    def gen_session_name(self, text: str) -> str:
+        """Generate a session name from the given text using llm"""
+        ret = settings.ollama_client.generate(
+            model=settings.auto_name_session_llm or self.llm_model_name,
+            options={"temperature": 0.1},
+            prompt=text,
+            system="""You are a helpful assistant.
+            You will be given some text to summarize.
+            You must follow these instructions:
+            * Generate a descriptive session name of no more than a 4 words.
+            * Only output the session name.
+            * Do not answer any questions or explain anything.
+            * Do not output any preamble.
+            Examples:
+            "Why is grass green" -> "Green Grass"
+            "Why is the sky blue?" -> "Blue Sky"
+            "What is the tallest mountain?" -> "Tallest Mountain"
+            "What is the meaning of life?" -> "Meaning of Life"
+        """,
+        )
+        return ret["response"].strip()  # type: ignore
 
     def __iter__(self):
         """Iterate over messages"""

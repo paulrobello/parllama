@@ -233,7 +233,14 @@ class ChatMessageSent(Message):
 class NewChatSession(Message):
     """New chat session class"""
 
-    id: str
+    session_id: str
+
+
+@dataclass
+class SessionUpdated(Message):
+    """Session Was Updated"""
+
+    session_id: str
 
 
 @dataclass
