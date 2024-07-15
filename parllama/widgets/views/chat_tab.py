@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import uuid
+from typing import cast
 
 import humanize
 from ollama import Options
@@ -9,9 +10,9 @@ from rich.text import Text
 from textual import on
 from textual import work
 from textual.app import ComposeResult
+from textual.binding import Binding
 from textual.containers import Horizontal
 from textual.containers import Vertical
-from textual.containers import VerticalScroll
 from textual.events import Focus
 from textual.events import Show
 from textual.reactive import Reactive
@@ -26,6 +27,7 @@ from textual.widgets import TabPane
 from parllama.chat_manager import chat_manager
 from parllama.data_manager import dm
 from parllama.messages.main import ChatMessage
+from parllama.messages.main import ChatMessageSent
 from parllama.messages.main import DeleteSession
 from parllama.messages.main import LocalModelListLoaded
 from parllama.messages.main import SessionSelected
@@ -38,6 +40,7 @@ from parllama.models.settings_data import settings
 from parllama.screens.save_session import SaveSession
 from parllama.utils import str_ellipsis
 from parllama.widgets.chat_message import ChatMessageWidget
+from parllama.widgets.chat_message_list import ChatMessageList
 from parllama.widgets.input_tab_complete import InputTabComplete
 from parllama.widgets.session_list import SessionList
 
@@ -45,48 +48,41 @@ from parllama.widgets.session_list import SessionList
 class ChatTab(TabPane):
     """Chat tab"""
 
+    BINDINGS = [
+        Binding(
+            key="delete",
+            action="delete_msg",
+            description="Delete Msg",
+            show=True,
+        ),
+    ]
     DEFAULT_CSS = """
     ChatTab {
-      #tool_bar {
-        height: 3;
-        background: $surface-darken-1;
-        #model_name {
-          max-width: 40;
-        }
-        #temperature_input {
-          width: 11;
-        }
-        #session_name_input {
-          min-width: 15;
-          max-width: 40;
-          width: auto;
-        }
-        #new_button {
-          margin-left: 2;
-          min-width: 9;
-          background: $warning-darken-2;
-          border-top: tall $warning-lighten-1;
-        }
-        Label {
-          margin: 1;
-          background: transparent;
-        }
-      }
-      #messages {
-        background: $primary-background;
-        ChatMessageWidget{
-            padding: 1;
-            border: none;
-            border-left: blank;
-            &:focus {
-                border-left: thick $primary;
+        #tool_bar {
+            height: 3;
+            background: $surface-darken-1;
+            #model_name {
+                max-width: 40;
             }
         }
-        MarkdownH2 {
-          margin: 0;
-          padding: 0;
+        #temperature_input {
+            width: 11;
         }
-      }
+        #session_name_input {
+            min-width: 15;
+            max-width: 40;
+            width: auto;
+        }
+        #new_button {
+            margin-left: 2;
+            min-width: 9;
+            background: $warning-darken-2;
+            border-top: tall $warning-lighten-1;
+        }
+        Label {
+            margin: 1;
+            background: transparent;
+        }
     }
     """
 
@@ -123,8 +119,7 @@ class ChatTab(TabPane):
             value=session_name,
         )
 
-        self.vs: VerticalScroll = VerticalScroll(id="messages")
-        self.vs.can_focus = False
+        self.vs: ChatMessageList = ChatMessageList(id="messages")
         self.busy = False
 
         self.session = chat_manager.get_or_create_session_name(
@@ -313,13 +308,11 @@ class ChatTab(TabPane):
     @on(ChatMessage)
     async def on_chat_message(self, event: ChatMessage) -> None:
         """Handle a chat message"""
-        event.stop()
 
-        ses = chat_manager.get_session(event.session_id)
-        if not ses:
-            self.notify("Chat session not found", severity="error")
+        if self.session.session_id != event.session_id:
+            self.notify("Chat session id missmatch", severity="error")
             return
-        msg: OllamaMessage | None = ses.get_message(event.message_id)
+        msg: OllamaMessage | None = self.session.get_message(event.message_id)
         if not msg:
             self.notify("Chat message not found", severity="error")
             return
@@ -418,3 +411,28 @@ class ChatTab(TabPane):
                 humanize.intcomma(self.session.context_length),
             )
         )
+
+    async def action_delete_msg(self) -> None:
+        """Handle the delete message action."""
+        ret = self.vs.query("ChatMessageWidget:focus")
+        if len(ret) != 1:
+            return
+        msg: ChatMessageWidget = cast(ChatMessageWidget, ret[0])
+        del self.session[msg.msg.message_id]
+        await msg.remove()
+        self.session.save()
+        self.update_session_status_bar()
+        if len(self.session) == 0:
+            self.user_input.focus()
+
+    @work(thread=True, name="msg_send_worker")
+    async def do_send_message(self, msg: str) -> None:
+        """Send the message."""
+        self.busy = True
+        await self.session.send_chat(msg, self)
+        self.post_message(ChatMessageSent(self.session.session_id))
+
+    @on(ChatMessageSent)
+    def on_chat_message_sent(self) -> None:
+        """Handle a chat message sent"""
+        self.busy = False

@@ -285,12 +285,15 @@ if anything remains to be fixed before the commit is allowed.
 ### Where we're going
 * Chat using embeddings for local documents
 * LLM tool use
+* Ability to use other AI providers like Open AI
 
 ## What's new
 
 ### v0.3.2
 * Ollama ps stats bar now works with remote connections except for CPU / GPU %'s which ollama's api does not provide
 * Chat tabs now have a session info bar with info like context length
+* Added conversation stop button to abort llm response
+* Added ability to delete messages from session
 
 ### v0.3.1
 * Add chat tabs to support multiple sessions

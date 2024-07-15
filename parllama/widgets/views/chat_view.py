@@ -5,7 +5,6 @@ import re
 from typing import cast
 
 from textual import on
-from textual import work
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal
@@ -157,7 +156,7 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         with Horizontal(id="send_bar"):
             yield self.user_input
             yield self.send_button
-            # yield self.stop_button
+            yield self.stop_button
 
     async def on_mount(self) -> None:
         """Set up the dialog once the DOM is ready."""
@@ -197,13 +196,6 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         event.stop()
         # TODO Add new tab
 
-    @on(Button.Pressed, "#stop_button")
-    def on_stop_button_pressed(self, event: Button.Pressed) -> None:
-        """Stop button pressed"""
-        event.stop()
-        self.stop_button.disabled = True
-        self.active_tab.session.stop_generation()
-
     @on(Button.Pressed, "#send_button")
     @on(Input.Submitted, "#user_input")
     async def action_send_message(self, event: Message) -> None:
@@ -223,12 +215,13 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
             self.notify("LLM Busy...", severity="error")
             return
 
-        self.update_control_states()
         self.user_input.value = ""
+        self.update_control_states()
+
         if user_msg.startswith("/"):
             return await self.handle_command(user_msg[1:].lower().strip())
-        self.active_tab.busy = True
-        self.do_send_message(user_msg)
+
+        self.active_tab.do_send_message(user_msg)
 
     # pylint: disable=too-many-branches
     async def handle_command(self, cmd: str) -> None:
@@ -303,19 +296,20 @@ Chat Commands:
         else:
             self.notify(f"Unknown command: {cmd}", severity="error")
 
-    @work(thread=True)
-    async def do_send_message(self, msg: str) -> None:
-        """Send the message."""
-        await self.session.send_chat(msg, self)
-        self.post_message(ChatMessageSent(self.session.session_id))
+    @on(Button.Pressed, "#stop_button")
+    def on_stop_button_pressed(self, event: Button.Pressed) -> None:
+        """Stop button pressed"""
+        event.stop()
+        self.stop_button.disabled = True
+        self.active_tab.session.stop_generation()
+        # self.workers.cancel_group(self, "message_send")
+        self.workers.cancel_node(self.active_tab)
+        self.active_tab.busy = False
 
     @on(ChatMessageSent)
     def on_chat_message_sent(self, event: ChatMessageSent) -> None:
         """Handle a chat message sent"""
         event.stop()
-        for tab in self.chat_tabs.query(ChatTab):
-            if tab.session.session_id == event.session_id:
-                tab.busy = False
         if self.session.session_id == event.session_id:
             self.stop_button.disabled = True
 
