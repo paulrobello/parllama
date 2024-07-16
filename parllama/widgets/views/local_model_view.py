@@ -28,6 +28,7 @@ from parllama.messages.main import ModelInteractRequested
 from parllama.messages.main import ModelPulled
 from parllama.messages.main import ModelPullRequested
 from parllama.messages.main import ModelPushRequested
+from parllama.messages.main import RegisterForUpdates
 from parllama.messages.main import SetModelNameLoading
 from parllama.messages.main import ShowLocalModel
 from parllama.widgets.filter_input import FilterInput
@@ -121,6 +122,19 @@ class LocalModelView(Container):
 
     async def on_mount(self) -> None:
         """Mount the view."""
+
+        self.app.post_message(
+            RegisterForUpdates(
+                widget=self,
+                event_names=[
+                    "LocalModelListLoaded",
+                    "LocalModelDeleted",
+                    "SetModelNameLoading",
+                    "ModelPulled",
+                    "ModelPushed",
+                ],
+            )
+        )
         self.action_refresh_models()
 
     def action_refresh_models(self):

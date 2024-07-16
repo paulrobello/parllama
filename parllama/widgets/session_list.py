@@ -13,6 +13,7 @@ from textual.widgets import Static
 
 from parllama.chat_manager import chat_manager
 from parllama.messages.main import DeleteSession
+from parllama.messages.main import RegisterForUpdates
 from parllama.messages.main import SessionListChanged
 from parllama.messages.main import SessionSelected
 from parllama.widgets.session_list_item import SessionListItem
@@ -51,6 +52,14 @@ class SessionList(Vertical, can_focus=False, can_focus_children=True):
         """Initialise the view."""
         super().__init__(**kwargs)
         self.list_view = ListView(initial_index=None)
+
+    async def on_mount(self) -> None:
+        """Set up the dialog once the DOM is ready."""
+        self.app.post_message(
+            RegisterForUpdates(
+                widget=self, event_names=["SessionListChanged", "SessionSelected"]
+            )
+        )
 
     def compose(self) -> ComposeResult:
         """Compose the content of the view."""

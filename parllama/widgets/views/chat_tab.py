@@ -167,7 +167,11 @@ class ChatTab(TabPane):
 
     async def on_mount(self) -> None:
         """Set up the dialog once the DOM is ready."""
-        self.app.post_message(RegisterForUpdates(widget=self))
+        self.app.post_message(
+            RegisterForUpdates(
+                widget=self, event_names=["LocalModelDeleted", "LocalModelListLoaded"]
+            )
+        )
 
     async def on_unmount(self) -> None:
         """Remove dialog from updates when unmounted."""

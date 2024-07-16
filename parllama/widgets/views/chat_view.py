@@ -160,7 +160,17 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
 
     async def on_mount(self) -> None:
         """Set up the dialog once the DOM is ready."""
-        self.app.post_message(RegisterForUpdates(widget=self))
+        self.app.post_message(
+            RegisterForUpdates(
+                widget=self,
+                event_names=[
+                    "LocalModelDeleted",
+                    "LocalModelListLoaded",
+                    "SessionSelected",
+                    "DeleteSession",
+                ],
+            )
+        )
 
     @on(Input.Changed, "#user_input")
     def on_user_input_changed(self) -> None:

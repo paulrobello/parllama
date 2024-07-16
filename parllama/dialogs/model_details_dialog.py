@@ -28,9 +28,10 @@ class ModelDetailsDialog(ModalScreen[None]):
         background: black 75%;
         align: center middle;
         #model_info {
-            background: $surface;
+            background: $panel;
             height: 10;
             width: 1fr;
+            margin-bottom: 1;
             border: solid $primary;
             border-title-color: $primary;
         }

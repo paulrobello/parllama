@@ -19,6 +19,7 @@ from textual.widgets import TabbedContent
 
 from parllama.data_manager import dm
 from parllama.messages.main import ModelPullRequested
+from parllama.messages.main import RegisterForUpdates
 from parllama.messages.main import SiteModelsLoaded
 from parllama.messages.main import SiteModelsRefreshRequested
 from parllama.models.settings_data import settings
@@ -119,6 +120,12 @@ class SiteModelView(Container):
     def on_mount(self) -> None:
         """Configure the dialog once the DOM is ready."""
 
+        self.app.post_message(
+            RegisterForUpdates(
+                widget=self,
+                event_names=["SiteModelsLoaded", "SetModelNameLoading"],
+            )
+        )
         self.lv.loading = True
         self.app.post_message(
             SiteModelsRefreshRequested(
@@ -144,9 +151,10 @@ class SiteModelView(Container):
     def action_pull_model(self):
         """Request model pull"""
         if not self.search_input.value:
+            self.notify("Please enter a model name", severity="warning")
             return
         if self.namespace_input.value:
-            self.screen.post_message(
+            self.app.post_message(
                 ModelPullRequested(
                     widget=self,
                     model_name=self.namespace_input.value
@@ -155,7 +163,7 @@ class SiteModelView(Container):
                 )
             )
         else:
-            self.screen.post_message(
+            self.app.post_message(
                 ModelPullRequested(widget=self, model_name=self.search_input.value)
             )
 
