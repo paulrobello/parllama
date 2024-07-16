@@ -405,10 +405,17 @@ class ChatTab(TabPane):
 
     def update_session_status_bar(self) -> None:
         """Update session status bar"""
+        model = dm.get_model_by_name(self.session.llm_model_name)
+        if model:
+            max_context_length = model.model_info.llama_context_length or 0
+        else:
+            max_context_length = 0
         self.session_status_bar.update(
             Text.assemble(
                 "Context Length: ",
                 humanize.intcomma(self.session.context_length),
+                " / ",
+                humanize.intcomma(max_context_length),
             )
         )
 

@@ -9,7 +9,7 @@ class InputBlurSubmit(Input):
     """Input field that submits when losing focus."""
 
     def __init__(self, **kwargs) -> None:
-        """Initialise the view."""
+        """Initialise the widget."""
         super().__init__(**kwargs)
 
     async def on_blur(self, _: Blur) -> None:

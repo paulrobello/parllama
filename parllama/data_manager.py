@@ -96,13 +96,23 @@ class DataManager:
         pattern = r"^(# Modelfile .*)\n(# To build.*)\n# (FROM .*\n)\n(FROM .*)\n(.*)$"
         replacement = r"\3\5"
         for model in res.models:
-            res2 = ModelShowPayload(**settings.ollama_client.show(model.name))
-
+            model_data = settings.ollama_client.show(model.name)
+            res2 = ModelShowPayload(**model_data)
             res2.modelfile = re.sub(
                 pattern, replacement, res2.modelfile, flags=re.MULTILINE | re.IGNORECASE
             )
-            res3 = FullModel(**model.model_dump(), **res2.model_dump())
+            res3 = FullModel(
+                **model.model_dump(),
+                parameters=res2.parameters,
+                template=res2.template,
+                modelfile=res2.modelfile,
+                model_info=res2.model_info,
+            )
+            # print(json.dumps(model.model_dump(), indent=2, default=str))
+            # print(json.dumps(res2.model_dump(), indent=2, default=str))
+            # print(json.dumps(res3.model_dump(), indent=2, default=str))
             all_models.append(LocalModelListItem(res3))
+            # break
         return all_models
 
     def refresh_models(self) -> list[LocalModelListItem]:
