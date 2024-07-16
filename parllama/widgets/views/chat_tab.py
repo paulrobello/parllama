@@ -208,6 +208,7 @@ class ChatTab(TabPane):
         self.session.set_temperature(settings.last_chat_temperature)
         settings.save_settings_to_file()
         chat_manager.notify_changed()
+        self.user_input.focus()
 
     @on(Input.Submitted, "#session_name_input")
     def on_session_name_input_changed(self, event: Message) -> None:
@@ -221,6 +222,7 @@ class ChatTab(TabPane):
         self.session.set_name(settings.last_chat_session_name)
         self.notify_tab_label_changed()
         chat_manager.notify_changed()
+        self.user_input.focus()
 
     def update_control_states(self):
         """Update disabled state of controls based on model and user input values"""
@@ -237,6 +239,7 @@ class ChatTab(TabPane):
             self.session.set_llm_model(self.model_select.value)  # type: ignore
         else:
             self.session.set_llm_model("")
+        self.update_session_status_bar()
 
     def set_model_name(self, model_name: str) -> None:
         """ "Set model names"""
@@ -376,6 +379,8 @@ class ChatTab(TabPane):
         )
         with self.prevent(Focus, Input.Changed, Select.Changed):
             self.set_model_name(self.session.llm_model_name)
+            if self.model_select.value == Select.BLANK:
+                self.notify("Model defined in session is not installed")
             self.temperature_input.value = str(
                 self.session.options.get("temperature", "")
             )

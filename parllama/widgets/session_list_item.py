@@ -5,12 +5,12 @@ from rich.text import Text
 from textual.app import ComposeResult
 from textual.containers import Vertical
 from textual.widgets import Label
-from textual.widgets import ListItem
 
 from parllama.models.chat import ChatSession
+from parllama.widgets.dbl_click_list_item import DblClickListItem
 
 
-class SessionListItem(ListItem, can_focus=False, can_focus_children=True):
+class SessionListItem(DblClickListItem, can_focus=False, can_focus_children=True):
     """Session list item"""
 
     DEFAULT_CSS = """

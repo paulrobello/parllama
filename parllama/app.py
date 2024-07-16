@@ -669,7 +669,9 @@ class ParLlamaApp(App[None]):
         self, msg: CreateModelFromExistingRequested
     ) -> None:
         """Create model from existing event"""
-        self.main_screen.create_view.name_input.value = f"my-{msg.model_name}:latest"
+        self.main_screen.create_view.name_input.value = f"my-{msg.model_name}"
+        if not self.main_screen.create_view.name_input.value.endswith(":latest"):
+            self.main_screen.create_view.name_input.value += ":latest"
         self.main_screen.create_view.text_area.text = msg.model_code
         self.main_screen.create_view.quantize_input.value = msg.quantization_level or ""
         self.main_screen.change_tab("Create")

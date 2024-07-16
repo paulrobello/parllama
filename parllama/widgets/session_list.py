@@ -16,6 +16,7 @@ from parllama.messages.main import DeleteSession
 from parllama.messages.main import RegisterForUpdates
 from parllama.messages.main import SessionListChanged
 from parllama.messages.main import SessionSelected
+from parllama.widgets.dbl_click_list_item import DblClickListItem
 from parllama.widgets.session_list_item import SessionListItem
 
 
@@ -98,6 +99,7 @@ class SessionList(Vertical, can_focus=False, can_focus_children=True):
                 self.list_view.index = self.list_view.children.index(item)
                 break
 
+    @on(DblClickListItem.DoubleClicked)
     def action_load_item(self) -> None:
         """Handle list view selected event."""
         selected_item: SessionListItem = cast(
