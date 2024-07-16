@@ -91,11 +91,11 @@ Chat with local LLMs
 
 ### Chat Screen Session Panel keys
 
-| Key      | Command                                  |
-|----------|------------------------------------------|
-| `enter`  | Load selected session into current tab   |
-| `ctrl+n` | Load selected session into new tab       |
-| `delete` | Delete selected session and related tabs |
+| Key                     | Command                                  |
+|-------------------------|------------------------------------------|
+| `enter` or `dbl click`  | Load selected session into current tab   |
+| `ctrl+n`                | Load selected session into new tab       |
+| `delete`                | Delete selected session and related tabs |
 
 
 ### Chat Slash Commands:

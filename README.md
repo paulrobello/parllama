@@ -292,9 +292,11 @@ if anything remains to be fixed before the commit is allowed.
 
 ### v0.3.2
 * Ollama ps stats bar now works with remote connections except for CPU / GPU %'s which ollama's api does not provide
-* Chat tabs now have a session info bar with info like context length
+* Chat tabs now have a session info bar with info like current / max context length
 * Added conversation stop button to abort llm response
 * Added ability to delete messages from session
+* More model details displayed on model detail screen
+* Better performance when changing session params on chat tab
 
 ### v0.3.1
 * Add chat tabs to support multiple sessions
