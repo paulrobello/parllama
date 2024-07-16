@@ -6,26 +6,31 @@ from typing import Literal
 
 from rich.console import RenderableType
 from textual.message import Message
-from textual.widget import Widget
+from textual.message_pump import MessagePump
 
-from ..models.ollama_data import FullModel
+from parllama.models.ollama_data import FullModel
 
 
 @dataclass
 class AppRequest(Message):
     """Request to app to perform an action."""
 
-    widget: Widget | None
+    widget: MessagePump | None
 
 
 @dataclass
-class RegisterForUpdates(AppRequest):
+class RegisterForUpdates(Message):
     """Register widget for updates."""
 
+    widget: MessagePump
+    event_names: list[str]
+
 
 @dataclass
-class UnRegisterForUpdates(AppRequest):
+class UnRegisterForUpdates(Message):
     """Unregister widget for updates."""
+
+    widget: MessagePump
 
 
 @dataclass
@@ -233,7 +238,14 @@ class ChatMessageSent(Message):
 class NewChatSession(Message):
     """New chat session class"""
 
-    id: str
+    session_id: str
+
+
+@dataclass
+class SessionUpdated(Message):
+    """Session Was Updated"""
+
+    session_id: str
 
 
 @dataclass
@@ -259,6 +271,20 @@ class SessionSelected(Message):
 @dataclass
 class DeleteSession(Message):
     """Request session be deleted."""
+
+    session_id: str
+
+
+@dataclass
+class StopChatGeneration(Message):
+    """Request chat generation to be stopped."""
+
+    session_id: str
+
+
+@dataclass
+class ChatGenerationAborted(Message):
+    """Chat generation has been aborted."""
 
     session_id: str
 

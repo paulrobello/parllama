@@ -2,32 +2,38 @@
 
 ## Table of Contents
 
-- [About](#about)
-- [Screenshots](#screenshots)
-- [Prerequisites](#prerequisites-for-running)
-  - [For Running](#prerequisites-for-running)
-  - [For Development](#prerequisites-for-dev)
-  - [For Model Quantization](#prerequisites-for-model-quantization)
-- [Installation](#installing-from-mypi-using-pipx)
-  - [Using pipx](#installing-from-mypi-using-pipx)
-  - [Using pip](#installing-from-mypi-using-pip)
-  - [For Development](#installing-for-dev-mode)
-- [Command Line Arguments](#command-line-arguments)
-- [Environment Variables](#environment-variables)
-- [Running PAR_LLAMA](#running-par_llama)
-  - [With pipx installation](#with-pipx-installation)
-  - [With pip installation](#with-pip-installation)
-  - [Under Windows WSL](#running-under-windows-wsl)
-  - [In Development Mode](#dev-mode)
-- [Example Workflow](#example-workflow)
-- [Themes](#themes)
-- [Contributing](#contributing)
-- [Roadmap](#roadmap)
-- [What's New](#whats-new)
+1. [About](#about)
+   1. [Screenshots](#screenshots)
+2. [Prerequisites for running](#prerequisites-for-running)
+3. [Prerequisites for dev](#prerequisites-for-dev)
+4. [Prerequisites for huggingface model quantization](#prerequisites-for-huggingface-model-quantization)
+5. [Installing from mypi using pipx](#installing-from-mypi-using-pipx)
+6. [Installing from mypi using pip](#installing-from-mypi-using-pip)
+7. [Installing for dev mode](#installing-for-dev-mode)
+8. [Command line arguments](#command-line-arguments)
+9. [Environment Variables](#environment-variables)
+10. [Running PAR_LLAMA](#running-par_llama)
+    1. [with pipx installation](#with-pipx-installation)
+    2. [with pip installation](#with-pip-installation)
+11. [Running against a remote instance](#running-against-a-remote-instance)
+12. [Running under Windows WSL](#running-under-windows-wsl)
+    1. [Dev mode](#dev-mode)
+13. [Example workflow](#example-workflow)
+14. [Themes](#themes)
+15. [Contributing](#contributing)
+16. [Roadmap](#roadmap)
+    1. [Where we are](#where-we-are)
+    2. [Where we're going](#where-were-going)
+17. [What's new](#whats-new)
+    1. [v0.3.1](#v031)
+    2. [v0.3.0](#v030)
+    3. [v0.2.51](#v0251)
+    4. [v0.2.5](#v025)
 
 ## About
 PAR LLAMA is a TUI application designed for easy management and use of Ollama based LLMs.
 The application was built with [Textual](https://textual.textualize.io/) and [Rich](https://github.com/Textualize/rich?tab=readme-ov-file)
+and runs on all major OS's including but not limited to Windows, Windows WSL, Mac, and Linux.
 
 ### Screenshots
 Supports Dark and Light mode as well as custom themes.
@@ -45,14 +51,18 @@ Supports Dark and Light mode as well as custom themes.
 ## Prerequisites for running
 * Install and run [Ollama](https://ollama.com/download)
 * Install Python 3.11 or newer
-  * On Windows the [Scoop](https://scoop.sh/) tool makes it easy to install and manage things like python.
+  * [https://www.python.org/downloads/](https://www.python.org/downloads/) has installers for all versions of Python for all os's
+  * On Windows the [Scoop](https://scoop.sh/) tool makes it easy to install and manage things like python
+    * Install Scoop then do `scoop install python`
 
 ## Prerequisites for dev
 * Install pipenv
+  * if you have pip you can install it globally using `pip install pipenv`
 * Install GNU Compatible Make command
+  * On windows if you have scoop installed you can install make with `scoop install make`
 
-## Prerequisites for model quantization
-If you want to be able to quantize custom models, download the following tool from the releases area:
+## Prerequisites for huggingface model quantization
+If you want to be able to quantize custom models from huggingface, download the following tool from the releases area:
 [HuggingFaceModelDownloader](https://github.com/bodaay/HuggingFaceModelDownloader)
 
 Install [Docker Desktop](https://www.docker.com/products/docker-desktop/)
@@ -72,6 +82,11 @@ Once pipx is installed, run the following:
 ```bash
 pipx install parllama
 ```
+To upgrade an existing installation use the --force flag:
+```bash
+pipx install parllama --force
+```
+
 
 ## Installing from mypi using pip
 Create a virtual environment and install using pip
@@ -141,6 +156,10 @@ From parent folder of venv
 source venv/Scripts/activate
 parllama
 ```
+## Running against a remote instance
+```bash
+parllama -u "http://REMOTE_HOST:11434"
+```
 
 ## Running under Windows WSL
 Ollama by default only listens to localhost for connections, so you must set the environment variable OLLAMA_HOST=0.0.0.0:11434
@@ -160,7 +179,7 @@ parllama -u "http://$(hostname).local:11434"
 ```
 Depending on your DNS setup if the above does not work, try this:  
 ```bash
- parllama -u "http://$(grep -m 1 nameserver /etc/resolv.conf | awk '{print $2}'):11434"
+parllama -u "http://$(grep -m 1 nameserver /etc/resolv.conf | awk '{print $2}'):11434"
 ```
 
 PAR_LLAMA will remember the -u flag so subsequent runs will not require that you specify it.
@@ -175,15 +194,19 @@ make dev
 * Start parllama.
 * Click the "Site" tab.
 * Use ^R to fetch the latest models from Ollama.com.
-* User the "Filter Site models" text box and type "llama3".
+* Use the "Filter Site models" text box and type "llama3".
 * Find the entry with title of "llama3".
 * Click the blue tag "8B" to update the search box to read "llama3:8b".
 * Press ^P to pull the model from Ollama to your local machine. Depending on the size of the model and your internet connection this can take a few min.
-* Click the "Local" tab to see models that have been locally downloaded
-* Select the "llama3:8b" entry and press ^C to jump to the "Chat" tab and auto select the model
+* Click the "Local" tab to see models that have been locally downloaded.
+* Select the "llama3:8b" entry and press ^C to jump to the "Chat" tab and auto select the model.
 * Type a message to the model such as "Why is the sky blue?". It will take a few seconds for Ollama to load the model. After which the LLMs answer will stream in.
 * Towards the very top of the app you will see what model is loaded and what percent of it is loaded into the GPU / CPU. If a model cant be loaded 100% on the GPU it will run slower.
 * To export your conversation as a Markdown file type "/session.export" in the message input box. This will open a export dialog.
+* Press ^N to add a new chat tab.
+* Select a different model or change the temperature and ask the same questions.
+* Jump between the tabs to compare responses by click the tabs or using slash commands `/tab.1` and `/tab.2`
+* Press ^S to see all your past and current sessions. You can recall any past session by selecting it and pressing Enter or ^N if you want to load it into a new tab.
 * Type "/help" or "/?" to see what other slash commands are available.
 
 ## Themes
@@ -254,17 +277,26 @@ if anything remains to be fixed before the commit is allowed.
 
 ## Roadmap
 
-**Where we are**  
+### Where we are
 * Initial release - Find, maintain and create new models
-* Basic chat with LLM
-* Chat history / conversation management
+* Connect to remote instances
+* Chat with history / conversation management
 * Chat tabs allow chat with multiple models at same time
 
-**Where we're going**
+### Where we're going
 * Chat using embeddings for local documents
 * LLM tool use
+* Ability to use other AI providers like Open AI
 
 ## What's new
+
+### v0.3.2
+* Ollama ps stats bar now works with remote connections except for CPU / GPU %'s which ollama's api does not provide
+* Chat tabs now have a session info bar with info like current / max context length
+* Added conversation stop button to abort llm response
+* Added ability to delete messages from session
+* More model details displayed on model detail screen
+* Better performance when changing session params on chat tab
 
 ### v0.3.1
 * Add chat tabs to support multiple sessions

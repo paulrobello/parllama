@@ -13,6 +13,7 @@ from typing import Literal
 
 import docker.errors  # type: ignore
 import docker.types  # type: ignore
+import httpx
 import requests
 import simplejson as json
 from bs4 import BeautifulSoup
@@ -24,11 +25,27 @@ from parllama.models.ollama_data import ModelListPayload
 from parllama.models.ollama_data import ModelShowPayload
 from parllama.models.ollama_data import SiteModel
 from parllama.models.ollama_data import SiteModelData
+from parllama.models.ollama_ps import OllamaPsResponse
 from parllama.models.settings_data import settings
 from parllama.utils import output_to_dicts
 from parllama.utils import run_cmd
 from parllama.widgets.local_model_list_item import LocalModelListItem
 from parllama.widgets.site_model_list_item import SiteModelListItem
+
+
+def api_model_ps() -> OllamaPsResponse:
+    """Get model ps."""
+    # fetch data from self.ollama_host as json
+    res = httpx.get(f"{settings.ollama_host}/api/ps")
+    if res.status_code != 200:
+        return OllamaPsResponse()
+    try:
+        ret = OllamaPsResponse(**res.json())
+        return ret
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        print(f"Error: {e}")
+        print(res.text)
+        return OllamaPsResponse()
 
 
 class DataManager:
@@ -50,6 +67,20 @@ class DataManager:
 
         self.ollama_bin = str(ollama_bin) if ollama_bin is not None else None
 
+    def model_ps(self) -> OllamaPsResponse:
+        """Get model ps."""
+        api_ret = api_model_ps()
+        if not self.ollama_bin:
+            return api_ret
+        ret = run_cmd([self.ollama_bin, "ps"])
+
+        if not ret:
+            return api_ret
+        local_ret = output_to_dicts(ret)
+        if len(local_ret) > 0:
+            api_ret.processor = local_ret[0]["processor"]
+        return api_ret
+
     def get_model_by_name(self, name: str) -> FullModel | None:
         """Get a model by name."""
         for model in self.models:
@@ -65,13 +96,23 @@ class DataManager:
         pattern = r"^(# Modelfile .*)\n(# To build.*)\n# (FROM .*\n)\n(FROM .*)\n(.*)$"
         replacement = r"\3\5"
         for model in res.models:
-            res2 = ModelShowPayload(**settings.ollama_client.show(model.name))
-
+            model_data = settings.ollama_client.show(model.name)
+            res2 = ModelShowPayload(**model_data)
             res2.modelfile = re.sub(
                 pattern, replacement, res2.modelfile, flags=re.MULTILINE | re.IGNORECASE
             )
-            res3 = FullModel(**model.model_dump(), **res2.model_dump())
+            res3 = FullModel(
+                **model.model_dump(),
+                parameters=res2.parameters,
+                template=res2.template,
+                modelfile=res2.modelfile,
+                model_info=res2.model_info,
+            )
+            # print(json.dumps(model.model_dump(), indent=2, default=str))
+            # print(json.dumps(res2.model_dump(), indent=2, default=str))
+            # print(json.dumps(res3.model_dump(), indent=2, default=str))
             all_models.append(LocalModelListItem(res3))
+            # break
         return all_models
 
     def refresh_models(self) -> list[LocalModelListItem]:
@@ -82,16 +123,6 @@ class DataManager:
     def get_model_select_options(self) -> list[tuple[str, str]]:
         """Get select options."""
         return [(model.model.name, model.model.name) for model in self.models]
-
-    def model_ps(self) -> list[dict[str, Any]]:
-        """Get model ps."""
-        if not self.ollama_bin:
-            return []
-        ret = run_cmd([self.ollama_bin, "ps"])
-
-        if not ret:
-            return []
-        return output_to_dicts(ret)
 
     @staticmethod
     def pull_model(model_name: str) -> Iterator[dict[str, Any]]:
@@ -143,7 +174,7 @@ class DataManager:
         settings.ensure_cache_folder()
 
         if not namespace:
-            namespace = "models"
+            namespace = "library"
         namespace = os.path.basename(namespace)
 
         file_name = os.path.join(settings.cache_dir, f"site_models-{namespace}.json")

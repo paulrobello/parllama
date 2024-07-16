@@ -11,6 +11,7 @@ from textual.events import Focus
 from textual.screen import ModalScreen
 from textual.widgets import Button
 from textual.widgets import MarkdownViewer
+from textual.widgets import Pretty
 from textual.widgets import Static
 from textual.widgets import TextArea
 
@@ -26,6 +27,14 @@ class ModelDetailsDialog(ModalScreen[None]):
     ModelDetailsDialog {
         background: black 75%;
         align: center middle;
+        #model_info {
+            background: $panel;
+            height: 10;
+            width: 1fr;
+            margin-bottom: 1;
+            border: solid $primary;
+            border-title-color: $primary;
+        }
         &> VerticalScroll {
             background: $surface;
             width: 75%;
@@ -92,6 +101,11 @@ class ModelDetailsDialog(ModalScreen[None]):
             ta.border_title = "Parameters"
             ta.read_only = True
             yield ta
+
+            with VerticalScroll(id="model_info") as vs2:
+                vs2.border_title = "Model Info"
+                info = self.model.model_info.model_dump(mode="json", exclude_unset=True)
+                yield Pretty(info)
 
             ta = TextArea(
                 self.model.modelfile, id="modelfile", classes="editor height-10"

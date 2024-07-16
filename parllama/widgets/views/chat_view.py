@@ -5,7 +5,6 @@ import re
 from typing import cast
 
 from textual import on
-from textual import work
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal
@@ -21,12 +20,14 @@ from textual.widgets import TabbedContent
 from parllama.chat_manager import chat_manager
 from parllama.data_manager import dm
 from parllama.dialogs.information import InformationDialog
+from parllama.messages.main import ChatGenerationAborted
 from parllama.messages.main import ChatMessage
 from parllama.messages.main import ChatMessageSent
 from parllama.messages.main import DeleteSession
 from parllama.messages.main import LocalModelListLoaded
 from parllama.messages.main import RegisterForUpdates
 from parllama.messages.main import SessionSelected
+from parllama.messages.main import SessionUpdated
 from parllama.messages.main import UpdateChatControlStates
 from parllama.messages.main import UpdateTabLabel
 from parllama.models.chat import ChatSession
@@ -55,6 +56,12 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
     DEFAULT_CSS = """
     ChatView {
       layers: left;
+      SessionList {
+        width: 40;
+        height: 1fr;
+        dock: left;
+        padding: 1;
+      }
       #chat_tabs {
         height: 1fr;
       }
@@ -65,6 +72,12 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
           width: 1fr;
         }
         #send_button {
+          min-width: 7;
+          width: 7;
+          margin-right: 1;
+        }
+        #stop_button {
+          min-width: 6;
           width: 6;
         }
       }
@@ -127,7 +140,12 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
             submit_on_complete=False,
         )
 
-        self.send_button: Button = Button("Send", id="send_button", disabled=True)
+        self.send_button: Button = Button(
+            "Send", id="send_button", disabled=True, variant="success"
+        )
+        self.stop_button: Button = Button(
+            "Stop", id="stop_button", disabled=True, variant="error"
+        )
 
     def compose(self) -> ComposeResult:
         """Compose the content of the view."""
@@ -138,10 +156,21 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         with Horizontal(id="send_bar"):
             yield self.user_input
             yield self.send_button
+            yield self.stop_button
 
     async def on_mount(self) -> None:
         """Set up the dialog once the DOM is ready."""
-        self.app.post_message(RegisterForUpdates(widget=self))
+        self.app.post_message(
+            RegisterForUpdates(
+                widget=self,
+                event_names=[
+                    "LocalModelDeleted",
+                    "LocalModelListLoaded",
+                    "SessionSelected",
+                    "DeleteSession",
+                ],
+            )
+        )
 
     @on(Input.Changed, "#user_input")
     def on_user_input_changed(self) -> None:
@@ -154,6 +183,9 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
             self.active_tab.busy
             or self.active_tab.model_select.value == Select.BLANK
             or len(self.user_input.value.strip()) == 0
+        )
+        self.stop_button.disabled = (
+            not self.active_tab.busy or self.session.abort_pending
         )
 
     @on(LocalModelListLoaded)
@@ -193,12 +225,13 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
             self.notify("LLM Busy...", severity="error")
             return
 
-        self.update_control_states()
         self.user_input.value = ""
+        self.update_control_states()
+
         if user_msg.startswith("/"):
             return await self.handle_command(user_msg[1:].lower().strip())
-        self.active_tab.busy = True
-        self.do_send_message(user_msg)
+
+        self.active_tab.do_send_message(user_msg)
 
     # pylint: disable=too-many-branches
     async def handle_command(self, cmd: str) -> None:
@@ -273,19 +306,35 @@ Chat Commands:
         else:
             self.notify(f"Unknown command: {cmd}", severity="error")
 
-    @work(thread=True)
-    async def do_send_message(self, msg: str) -> None:
-        """Send the message."""
-        await self.session.send_chat(msg, self)
-        self.post_message(ChatMessageSent(self.session.session_id))
+    @on(Button.Pressed, "#stop_button")
+    def on_stop_button_pressed(self, event: Button.Pressed) -> None:
+        """Stop button pressed"""
+        event.stop()
+        self.stop_button.disabled = True
+        self.active_tab.session.stop_generation()
+        # self.workers.cancel_group(self, "message_send")
+        self.workers.cancel_node(self.active_tab)
+        self.active_tab.busy = False
 
     @on(ChatMessageSent)
     def on_chat_message_sent(self, event: ChatMessageSent) -> None:
         """Handle a chat message sent"""
         event.stop()
+        if self.session.session_id == event.session_id:
+            self.stop_button.disabled = True
+
+    @on(SessionUpdated)
+    async def on_session_updated(self, event: SessionUpdated) -> None:
+        """Session updated event"""
+
+        event.stop()
+        session = chat_manager.get_session(event.session_id)
+        if not session:
+            return
+        session.set_name(chat_manager.mk_session_name(session.session_name))
         for tab in self.chat_tabs.query(ChatTab):
             if tab.session.session_id == event.session_id:
-                tab.busy = False
+                await tab.on_session_updated()
 
     def action_toggle_session_list(self) -> None:
         """Toggle the session list."""
@@ -352,16 +401,20 @@ Chat Commands:
     async def on_delete_session(self, event: DeleteSession) -> None:
         """Delete session event"""
         event.stop()
+        tab_removed: bool = False
         for tab in self.chat_tabs.query(ChatTab):
             if tab.session.session_id == event.session_id:
                 await self.chat_tabs.remove_pane(str(tab.id))
-                self.re_index_labels()
-                break
+                tab_removed = True
+
         chat_manager.delete_session(event.session_id)
         if len(self.chat_tabs.query(ChatTab)) == 0:
             await self.action_new_tab()
+        elif tab_removed:
+            self.re_index_labels()
+
         self.notify("Chat session deleted")
-        self.user_input.focus()
+        # self.user_input.focus()
 
     async def action_new_tab(self) -> None:
         """New tab action"""
@@ -401,3 +454,9 @@ Chat Commands:
         tabs = self.chat_tabs.query(ChatTab)
         if len(tabs) > tab_num:
             self.chat_tabs.active = str(tabs[tab_num].id)
+
+    @on(ChatGenerationAborted)
+    def on_chat_generation_aborted(self, event: ChatGenerationAborted) -> None:
+        """Chat generation aborted event"""
+        event.stop()
+        self.notify("Chat Aborted", severity="warning")

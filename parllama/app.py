@@ -7,10 +7,13 @@ from queue import Empty
 from queue import Queue
 from typing import Any
 
+import humanize
 import ollama
 import pyperclip  # type: ignore
 from rich.columns import Columns
+from rich.console import ConsoleRenderable
 from rich.console import RenderableType
+from rich.console import RichCast
 from rich.progress_bar import ProgressBar
 from rich.style import Style
 from rich.text import Text
@@ -20,6 +23,7 @@ from textual.app import App
 from textual.binding import Binding
 from textual.color import Color
 from textual.message import Message
+from textual.message_pump import MessagePump
 from textual.notifications import SeverityLevel
 from textual.timer import Timer
 from textual.widget import Widget
@@ -32,7 +36,6 @@ from parllama.chat_manager import chat_manager
 from parllama.chat_manager import ChatManager
 from parllama.data_manager import dm
 from parllama.dialogs.help_dialog import HelpDialog
-from parllama.messages.main import AppRequest
 from parllama.messages.main import ChangeTab
 from parllama.messages.main import CreateModelFromExistingRequested
 from parllama.messages.main import DeleteSession
@@ -52,6 +55,7 @@ from parllama.messages.main import ModelPushRequested
 from parllama.messages.main import NotifyErrorMessage
 from parllama.messages.main import NotifyInfoMessage
 from parllama.messages.main import PsMessage
+from parllama.messages.main import RegisterForUpdates
 from parllama.messages.main import SendToClipboard
 from parllama.messages.main import SessionListChanged
 from parllama.messages.main import SessionSelected
@@ -99,7 +103,7 @@ class ParLlamaApp(App[None]):
     # DEFAULT_CSS = """
     # """
 
-    notify_subs: dict[str, set[Widget]]
+    notify_subs: dict[str, set[MessagePump]]
     main_screen: MainScreen
     job_queue: Queue[QueueJob]
     is_busy: bool = False
@@ -111,7 +115,7 @@ class ParLlamaApp(App[None]):
     def __init__(self) -> None:
         """Initialize the application."""
         super().__init__()
-        self.notify_subs = {"*": set[Widget]()}
+        self.notify_subs = {"*": set[MessagePump]()}
         chat_manager.set_app(self)
 
         self.job_timer = None
@@ -155,42 +159,48 @@ class ParLlamaApp(App[None]):
     async def on_mount(self) -> None:
         """Display the main or locked screen."""
         await self.push_screen(self.main_screen)
-        self.main_screen.post_message(
-            StatusMessage(f"Data folder: {settings.data_dir}")
-        )
-        self.main_screen.post_message(
-            StatusMessage(f"Chat folder: {settings.chat_dir}")
-        )
-        self.main_screen.post_message(
+        self.post_message_all(StatusMessage(f"Data folder: {settings.data_dir}"))
+        self.post_message_all(StatusMessage(f"Chat folder: {settings.chat_dir}"))
+        self.post_message_all(
             StatusMessage(f"Using Ollama server url: {settings.ollama_host}")
         )
         if settings.ollama_ps_poll_interval:
-            self.main_screen.post_message(
+            self.post_message_all(
                 StatusMessage(
                     f"Polling Ollama ps every: {settings.ollama_ps_poll_interval} seconds"
                 )
             )
         else:
-            self.main_screen.post_message(StatusMessage("Polling Ollama ps disabled"))
+            self.post_message_all(StatusMessage("Polling Ollama ps disabled"))
 
-        self.main_screen.post_message(
+        self.post_message_all(
             StatusMessage(
                 f"""Theme: "{settings.theme_name}" in {settings.theme_mode} mode"""
             )
         )
-        self.main_screen.post_message(
-            StatusMessage(f"Last screen: {settings.last_screen}")
-        )
-        self.main_screen.post_message(
+        self.post_message_all(StatusMessage(f"Last screen: {settings.last_screen}"))
+        self.post_message_all(
             StatusMessage(f"Last chat model: {settings.last_chat_model}")
         )
-        self.main_screen.post_message(
+        self.post_message_all(
             StatusMessage(f"Last model temp: {settings.last_chat_temperature}")
         )
-        self.main_screen.post_message(
+        self.post_message_all(
             StatusMessage(f"Last session name: {settings.last_chat_session_name}")
         )
 
+        self.app.post_message(
+            RegisterForUpdates(
+                widget=self,
+                event_names=[
+                    "ModelPulled",
+                    "ModelPushed",
+                    "ModelCreated",
+                    "LocalModelDeleted",
+                    "LocalModelCopied",
+                ],
+            )
+        )
         self.job_timer = self.set_timer(1, self.do_jobs)
         if settings.ollama_ps_poll_interval > 0:
             self.ps_timer = self.set_timer(1, self.update_ps)
@@ -384,12 +394,10 @@ class ParLlamaApp(App[None]):
                 if pb:
                     parts.append(pb)
 
-                self.main_screen.post_message(
-                    StatusMessage(Columns(parts), log_it=False)
-                )
+                self.post_message_all(StatusMessage(Columns(parts), log_it=False))
             return last_status
         except ollama.ResponseError as e:
-            self.main_screen.post_message(
+            self.post_message_all(
                 StatusMessage(Text.assemble(("error:" + str(e), "red")))
             )
             raise e
@@ -403,7 +411,8 @@ class ParLlamaApp(App[None]):
             self.post_message_all(
                 ModelPulled(model_name=job.modelName, success=last_status == "success")
             )
-        except ollama.ResponseError:
+        except ollama.ResponseError as e:
+            self.log_it(e)
             self.post_message_all(ModelPulled(model_name=job.modelName, success=False))
 
     async def do_push(self, job: PushModelJob) -> None:
@@ -508,21 +517,29 @@ class ParLlamaApp(App[None]):
 
     @on(UnRegisterForUpdates)
     def on_unregister_for_updates(self, event: UnRegisterForUpdates) -> None:
-        """Unregister for updates event"""
+        """Unregister widget from all updates"""
         if not event.widget:
             return
         for _, s in self.notify_subs.items():
             s.discard(event.widget)
 
-    @on(AppRequest)
-    def on_app_request(self, event: AppRequest) -> None:
-        """Add any widget that requests an action to notify_subs"""
-        if not event.widget:
-            return
-        self.notify_subs["*"].add(event.widget)
-        if event.__class__.__name__ not in self.notify_subs:
-            self.notify_subs[event.__class__.__name__] = set()
-        self.notify_subs[event.__class__.__name__].add(event.widget)
+    @on(RegisterForUpdates)
+    def on_register_for_updates(self, event: RegisterForUpdates) -> None:
+        """Register for updates event"""
+        for event_name in event.event_names:
+            if event_name not in self.notify_subs:
+                self.notify_subs[event_name] = set()
+            self.notify_subs[event_name].add(event.widget)
+
+    # @on(AppRequest)
+    # def on_app_request(self, event: AppRequest) -> None:
+    #     """Add any widget that requests an action to notify_subs"""
+    #     if not event.widget:
+    #         return
+    #     # self.notify_subs["*"].add(event.widget)
+    #     # if event.__class__.__name__ not in self.notify_subs:
+    #     #     self.notify_subs[event.__class__.__name__] = set()
+    #     # self.notify_subs[event.__class__.__name__].add(event.widget)
 
     @on(LocalModelListRefreshRequested)
     def on_model_list_refresh_requested(self) -> None:
@@ -537,21 +554,18 @@ class ParLlamaApp(App[None]):
         """Refresh the models."""
         self.is_refreshing = True
         try:
-            self.main_screen.post_message(
-                StatusMessage("Local model list refreshing...")
-            )
+            self.post_message_all(StatusMessage("Local model list refreshing..."))
             dm.refresh_models()
-            self.main_screen.post_message(StatusMessage("Local model list refreshed"))
-            self.main_screen.local_view.post_message(LocalModelListLoaded())
-            self.main_screen.chat_view.post_message(LocalModelListLoaded())
+            self.post_message_all(StatusMessage("Local model list refreshed"))
+            self.post_message_all(LocalModelListLoaded())
         finally:
             self.is_refreshing = False
 
-    @on(LocalModelListLoaded)
-    def on_model_data_loaded(self) -> None:
-        """Refresh model completed"""
-        self.main_screen.post_message(StatusMessage("Local model list refreshed"))
-        # self.notify("Local models refreshed.")
+    # @on(LocalModelListLoaded)
+    # def on_model_data_loaded(self) -> None:
+    #     """Refresh model completed"""
+    #     self.post_message_all(StatusMessage("Local model list refreshed"))
+    #     # self.notify("Local models refreshed.")
 
     @on(SiteModelsRefreshRequested)
     def on_site_models_refresh_requested(self, msg: SiteModelsRefreshRequested) -> None:
@@ -571,7 +585,7 @@ class ParLlamaApp(App[None]):
         """Refresh the site model."""
         self.is_refreshing = True
         try:
-            self.main_screen.post_message(
+            self.post_message_all(
                 StatusMessage(
                     f"Site models for {msg.ollama_namespace or 'models'} refreshing... force={msg.force}"
                 )
@@ -580,7 +594,7 @@ class ParLlamaApp(App[None]):
             self.main_screen.site_view.post_message(
                 SiteModelsLoaded(ollama_namespace=msg.ollama_namespace)
             )
-            self.main_screen.post_message(
+            self.post_message_all(
                 StatusMessage(
                     f"Site models for {msg.ollama_namespace or 'models'} loaded. force={msg.force}"
                 )
@@ -592,38 +606,33 @@ class ParLlamaApp(App[None]):
     @work(group="update_ps", thread=True)
     async def update_ps(self) -> None:
         """Update ps status bar msg"""
-        if not dm.ollama_bin:
-            self.notify(
-                "Ollama binary not found. PS output not available.",
-                severity="error",
-                timeout=6,
-            )
-            return
         was_blank = False
         while self.is_running:
             if settings.ollama_ps_poll_interval < 1:
-                self.main_screen.post_message(PsMessage(msg=""))
+                self.post_message_all(PsMessage(msg=""))
                 break
             await asyncio.sleep(settings.ollama_ps_poll_interval)
             ret = dm.model_ps()
-            if not ret:
+            if len(ret.models) < 1:
                 if not was_blank:
-                    self.main_screen.post_message(PsMessage(msg=""))
+                    self.post_message_all(PsMessage(msg=""))
                 was_blank = True
                 continue
             was_blank = False
-            info = ret[0]  # only take first one since ps status bar is a single line
-            self.main_screen.post_message(
+            info = ret.models[
+                0
+            ]  # only take first one since ps status bar is a single line
+            self.post_message_all(
                 PsMessage(
                     msg=Text.assemble(
                         "Name: ",
-                        info["name"],
+                        info.name,
                         " Size: ",
-                        info["size"],
+                        humanize.naturalsize(info.size_vram),
                         " Processor: ",
-                        info["processor"],
+                        ret.processor,
                         " Until: ",
-                        info["until"],
+                        humanize.naturaltime(info.expires_at),
                     )
                 )
             )
@@ -633,16 +642,21 @@ class ParLlamaApp(App[None]):
         self.notify(msg, severity=severity)
         self.main_screen.post_message(StatusMessage(msg))
 
-    def post_message_all(self, msg: Message, sub_name: str = "*") -> None:
+    def post_message_all(self, event: Message) -> None:
         """Post a message to all screens"""
-        if isinstance(msg, StatusMessage):
-            self.log(msg.msg)
-            self.last_status = msg.msg
+        if isinstance(event, StatusMessage):
+            if event.log_it:
+                self.log(event.msg)
+            self.last_status = event.msg
+            self.main_screen.post_message(event)
+            return
+        if isinstance(event, PsMessage):
+            self.main_screen.post_message(event)
+            return
+        sub_name = event.__class__.__name__
         if sub_name in self.notify_subs:
             for w in list(self.notify_subs[sub_name]):
-                w.post_message(msg)
-        if self.main_screen:
-            self.main_screen.post_message(msg)
+                w.post_message(event)
 
     @on(ChangeTab)
     def on_change_tab(self, event: ChangeTab) -> None:
@@ -655,7 +669,9 @@ class ParLlamaApp(App[None]):
         self, msg: CreateModelFromExistingRequested
     ) -> None:
         """Create model from existing event"""
-        self.main_screen.create_view.name_input.value = f"my-{msg.model_name}:latest"
+        self.main_screen.create_view.name_input.value = f"my-{msg.model_name}"
+        if not self.main_screen.create_view.name_input.value.endswith(":latest"):
+            self.main_screen.create_view.name_input.value += ":latest"
         self.main_screen.create_view.text_area.text = msg.model_code
         self.main_screen.create_view.quantize_input.value = msg.quantization_level or ""
         self.main_screen.change_tab("Create")
@@ -670,20 +686,23 @@ class ParLlamaApp(App[None]):
         self.main_screen.chat_view.user_input.focus()
 
     @on(SessionListChanged)
-    def on_session_list_changed(self) -> None:
+    def on_session_list_changed(self, event: SessionListChanged) -> None:
         """Session list changed event"""
-        self.main_screen.chat_view.session_list.post_message(SessionListChanged())
+        event.stop()
+        self.post_message_all(event)
 
     @on(SessionSelected)
     def on_session_selected(self, event: SessionSelected) -> None:
         """Session selected event"""
-        self.main_screen.chat_view.post_message(
-            SessionSelected(session_id=event.session_id, new_tab=event.new_tab)
-        )
+        event.stop()
+        self.post_message_all(event)
 
     @on(DeleteSession)
     def on_delete_session(self, event: DeleteSession) -> None:
         """Delete session event"""
-        self.main_screen.chat_view.post_message(
-            DeleteSession(session_id=event.session_id)
-        )
+        event.stop()
+        self.post_message_all(event)
+
+    def log_it(self, msg: ConsoleRenderable | RichCast | str | object) -> None:
+        """Log a message to the log view"""
+        self.main_screen.log_view.richlog.write(msg)
