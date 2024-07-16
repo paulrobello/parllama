@@ -164,7 +164,7 @@ class DataManager:
         settings.ensure_cache_folder()
 
         if not namespace:
-            namespace = "models"
+            namespace = "library"
         namespace = os.path.basename(namespace)
 
         file_name = os.path.join(settings.cache_dir, f"site_models-{namespace}.json")

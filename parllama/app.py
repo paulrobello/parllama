@@ -11,7 +11,9 @@ import humanize
 import ollama
 import pyperclip  # type: ignore
 from rich.columns import Columns
+from rich.console import ConsoleRenderable
 from rich.console import RenderableType
+from rich.console import RichCast
 from rich.progress_bar import ProgressBar
 from rich.style import Style
 from rich.text import Text
@@ -404,7 +406,8 @@ class ParLlamaApp(App[None]):
             self.post_message_all(
                 ModelPulled(model_name=job.modelName, success=last_status == "success")
             )
-        except ollama.ResponseError:
+        except ollama.ResponseError as e:
+            self.log_it(e)
             self.post_message_all(ModelPulled(model_name=job.modelName, success=False))
 
     async def do_push(self, job: PushModelJob) -> None:
@@ -683,3 +686,7 @@ class ParLlamaApp(App[None]):
         self.main_screen.chat_view.post_message(
             DeleteSession(session_id=event.session_id)
         )
+
+    def log_it(self, msg: ConsoleRenderable | RichCast | str | object) -> None:
+        """Log a message to the log view"""
+        self.main_screen.log_view.richlog.write(msg)

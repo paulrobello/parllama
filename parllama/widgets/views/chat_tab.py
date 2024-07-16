@@ -15,6 +15,7 @@ from textual.containers import Horizontal
 from textual.containers import Vertical
 from textual.events import Focus
 from textual.events import Show
+from textual.message import Message
 from textual.reactive import Reactive
 from textual.widgets import Button
 from textual.widgets import Input
@@ -29,7 +30,9 @@ from parllama.data_manager import dm
 from parllama.messages.main import ChatMessage
 from parllama.messages.main import ChatMessageSent
 from parllama.messages.main import DeleteSession
+from parllama.messages.main import LocalModelDeleted
 from parllama.messages.main import LocalModelListLoaded
+from parllama.messages.main import RegisterForUpdates
 from parllama.messages.main import SessionSelected
 from parllama.messages.main import UnRegisterForUpdates
 from parllama.messages.main import UpdateChatControlStates
@@ -41,6 +44,7 @@ from parllama.screens.save_session import SaveSession
 from parllama.utils import str_ellipsis
 from parllama.widgets.chat_message import ChatMessageWidget
 from parllama.widgets.chat_message_list import ChatMessageList
+from parllama.widgets.input_blur_submit import InputBlurSubmit
 from parllama.widgets.input_tab_complete import InputTabComplete
 from parllama.widgets.session_list import SessionList
 
@@ -104,7 +108,7 @@ class ChatTab(TabPane):
         self.model_select: Select[str] = Select(
             id="model_name", options=[], prompt="Select Model"
         )
-        self.temperature_input: Input = Input(
+        self.temperature_input: InputBlurSubmit = InputBlurSubmit(
             id="temperature_input",
             value=(
                 f"{settings.last_chat_temperature:.2f}"
@@ -113,10 +117,12 @@ class ChatTab(TabPane):
             ),
             max_length=4,
             restrict=r"^\d?\.?\d?\d?$",
+            valid_empty=False,
         )
-        self.session_name_input: Input = Input(
+        self.session_name_input: InputBlurSubmit = InputBlurSubmit(
             id="session_name_input",
             value=session_name,
+            valid_empty=False,
         )
 
         self.vs: ChatMessageList = ChatMessageList(id="messages")
@@ -161,7 +167,7 @@ class ChatTab(TabPane):
 
     async def on_mount(self) -> None:
         """Set up the dialog once the DOM is ready."""
-        # self.app.post_message(RegisterForUpdates(widget=self))
+        self.app.post_message(RegisterForUpdates(widget=self))
 
     async def on_unmount(self) -> None:
         """Remove dialog from updates when unmounted."""
@@ -184,9 +190,10 @@ class ChatTab(TabPane):
             SessionSelected(session_id=self.session.session_id)
         )
 
-    @on(Input.Changed, "#temperature_input")
-    def on_temperature_input_changed(self) -> None:
+    @on(Input.Submitted, "#temperature_input")
+    def on_temperature_input_changed(self, event: Message) -> None:
         """Handle temperature input change"""
+        event.stop()
         try:
             if self.temperature_input.value:
                 settings.last_chat_temperature = float(self.temperature_input.value)
@@ -198,9 +205,10 @@ class ChatTab(TabPane):
         settings.save_settings_to_file()
         chat_manager.notify_changed()
 
-    @on(Input.Changed, "#session_name_input")
-    def on_session_name_input_changed(self) -> None:
+    @on(Input.Submitted, "#session_name_input")
+    def on_session_name_input_changed(self, event: Message) -> None:
         """Handle session name input change"""
+        event.stop()
         session_name: str = self.session_name_input.value.strip()
         if not session_name:
             return
@@ -221,7 +229,10 @@ class ChatTab(TabPane):
         if self.model_select.value not in (Select.BLANK, settings.last_chat_model):
             settings.last_chat_model = str(self.model_select.value)
             settings.save_settings_to_file()
-        self.session.set_llm_model(self.model_select.value)  # type: ignore
+        if self.model_select.value != Select.BLANK:
+            self.session.set_llm_model(self.model_select.value)  # type: ignore
+        else:
+            self.session.set_llm_model("")
 
     def set_model_name(self, model_name: str) -> None:
         """ "Set model names"""
@@ -246,17 +257,6 @@ class ChatTab(TabPane):
         for _, v in opts:
             if v == old_v:
                 self.model_select.value = old_v
-
-        # if self.model_select.value != Select.BLANK:
-        #     self.session.set_llm_model(self.model_select.value)  # type: ignore
-        #     #  TODO fix this smell
-        #     if (
-        #         self.parent
-        #         and self.parent.parent
-        #         and self.parent.parent.parent
-        #         and cast(TabbedContent, self.parent.parent.parent).active == "Chat"
-        #     ):
-        #         self.user_input.focus()
 
     @on(Button.Pressed, "#new_button")
     async def on_new_button_pressed(self, event: Button.Pressed) -> None:
@@ -436,3 +436,13 @@ class ChatTab(TabPane):
     def on_chat_message_sent(self) -> None:
         """Handle a chat message sent"""
         self.busy = False
+
+    @on(LocalModelDeleted)
+    def on_model_deleted(self, event: LocalModelDeleted) -> None:
+        """Model deleted check if the currently selected model."""
+        event.stop()
+
+        if event.model_name == self.model_select.value:
+            self.model_select.value = Select.BLANK
+            self.on_local_model_list_loaded(LocalModelListLoaded())
+            self.update_control_states()

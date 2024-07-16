@@ -391,16 +391,20 @@ Chat Commands:
     async def on_delete_session(self, event: DeleteSession) -> None:
         """Delete session event"""
         event.stop()
+        tab_removed: bool = False
         for tab in self.chat_tabs.query(ChatTab):
             if tab.session.session_id == event.session_id:
                 await self.chat_tabs.remove_pane(str(tab.id))
-                self.re_index_labels()
-                break
+                tab_removed = True
+
         chat_manager.delete_session(event.session_id)
         if len(self.chat_tabs.query(ChatTab)) == 0:
             await self.action_new_tab()
+        elif tab_removed:
+            self.re_index_labels()
+
         self.notify("Chat session deleted")
-        self.user_input.focus()
+        # self.user_input.focus()
 
     async def action_new_tab(self) -> None:
         """New tab action"""
