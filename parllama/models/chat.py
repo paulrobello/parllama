@@ -144,10 +144,13 @@ class ChatSession:
         """Get a message"""
         return self.id_to_msg.get(message_id)
 
-    def add_message(self, msg: OllamaMessage) -> None:
+    def add_message(self, msg: OllamaMessage, prepend: bool = False) -> None:
         """Add a message"""
         msg.session = self
-        self.messages.append(msg)
+        if prepend:
+            self.messages.insert(0, msg)
+        else:
+            self.messages.append(msg)
         self.id_to_msg[msg.message_id] = msg
         self.last_updated = datetime.datetime.now()
         self.save()
@@ -172,6 +175,19 @@ class ChatSession:
             del self.options["temperature"]
         self.last_updated = datetime.datetime.now()
         self.save()
+
+    async def set_system_prompt(self, system_prompt: str, widget: Widget) -> None:
+        """Set system prompt for session"""
+        msg: OllamaMessage
+        if len(self.messages) > 0 and self.messages[0].role == "system":
+            msg = self.messages[0]
+            msg.content = system_prompt
+        else:
+            msg = OllamaMessage(content=system_prompt, role="system")
+            self.add_message(msg, True)
+        widget.post_message(
+            ChatMessage(session_id=self.session_id, message_id=msg.message_id)
+        )
 
     async def send_chat(self, from_user: str, widget: Widget) -> bool:
         """Send a chat message to LLM"""

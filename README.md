@@ -284,11 +284,16 @@ if anything remains to be fixed before the commit is allowed.
 * Chat tabs allow chat with multiple models at same time
 
 ### Where we're going
+* Custom prompt library
 * Chat using embeddings for local documents
 * LLM tool use
 * Ability to use other AI providers like Open AI
 
 ## What's new
+
+### v0.3.3
+* Add chat input history access via up / down arrow
+* Added /session.system_prompt command to set system prompt in current chat tab
 
 ### v0.3.2
 * Ollama ps stats bar now works with remote connections except for CPU / GPU %'s which ollama's api does not provide

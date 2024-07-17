@@ -79,15 +79,16 @@ Chat with local LLMs
 
 ### Chat Screen keys
 
-| Key        | Command                                 |
-|------------|-----------------------------------------|
-| `enter`    | Send chat to LLM                        |
-| `ctrl+c`   | Copy selected chat message to clipboard |
-| `ctrl+s`   | Toggle session list                     |
-| `ctrl+b`   | New session in current tab              |
-| `ctrl+n`   | New chat tab                            |
-| `ctrl+del` | Remove current chat tab                 |
-| `ctrl+e`   | Export selected tab as Markdown         |
+| Key           | Command                                                       |
+|---------------|---------------------------------------------------------------|
+| `enter`       | Send chat to LLM                                              |
+| `up` / `down` | If chat message input is focused scroll through input history |
+| `ctrl+c`      | Copy selected chat message to clipboard                       |
+| `ctrl+s`      | Toggle session list                                           |
+| `ctrl+b`      | New session in current tab                                    |
+| `ctrl+n`      | New chat tab                                                  |
+| `ctrl+del`    | Remove current chat tab                                       |
+| `ctrl+e`      | Export selected tab as Markdown                               |
 
 ### Chat Screen Session Panel keys
 

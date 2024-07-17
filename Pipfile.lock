@@ -1039,7 +1039,7 @@
         "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44",
         "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"
       ],
-      "markers": "sys_platform == 'win32'",
+      "markers": "os_name == 'nt'",
       "version": "==0.4.6"
     },
     "dill": {
@@ -1542,10 +1542,10 @@
     },
     "pydevd-pycharm": {
       "hashes": [
-        "sha256:54f72590b8052e22a30d5360be6aaca036e8007eedbbe91e03ac502a4dbb4606"
+        "sha256:3bde29dde226ded3c5baeda1d47e1150cdc9cab94142fc0a85e178fd35942d81"
       ],
       "index": "pypi",
-      "version": "==242.20224.25"
+      "version": "==242.20224.86"
     },
     "pygments": {
       "hashes": [
