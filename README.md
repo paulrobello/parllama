@@ -292,6 +292,7 @@ if anything remains to be fixed before the commit is allowed.
 ## What's new
 
 ### v0.3.3
+* Added ability to edit existing messages in session
 * Add chat input history access via up / down arrow
 * Added /session.system_prompt command to set system prompt in current chat tab
 

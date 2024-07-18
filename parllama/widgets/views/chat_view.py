@@ -256,7 +256,7 @@ Chat Commands:
 /session.temp [temperature] - Select temperature input or set temperature in current tab
 /session.delete - Delete the chat session for current tab
 /session.export - Export the conversation in current tab to a Markdown file
-/session.system_prompt - Set system prompt in current tab
+/session.system_prompt [system prompt] - Set system prompt in current tab
                     """,
                 )
             )
@@ -310,6 +310,10 @@ Chat Commands:
             self.active_tab.save_conversation_text()
         elif cmd.startswith("session.system_prompt "):
             (_, v) = cmd.split(" ", 1)
+            v = v.strip()
+            if not v:
+                self.notify("System prompt cannot be empty", severity="error")
+                return
             await self.session.set_system_prompt(v, self.active_tab)
         else:
             self.notify(f"Unknown command: {cmd}", severity="error")

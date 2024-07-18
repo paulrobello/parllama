@@ -10,7 +10,6 @@ from rich.text import Text
 from textual import on
 from textual import work
 from textual.app import ComposeResult
-from textual.binding import Binding
 from textual.containers import Horizontal
 from textual.containers import Vertical
 from textual.events import Focus
@@ -52,14 +51,7 @@ from parllama.widgets.session_list import SessionList
 class ChatTab(TabPane):
     """Chat tab"""
 
-    BINDINGS = [
-        Binding(
-            key="delete",
-            action="delete_msg",
-            description="Delete Msg",
-            show=True,
-        ),
-    ]
+    BINDINGS = []
     DEFAULT_CSS = """
     ChatTab {
         #tool_bar {
@@ -161,7 +153,7 @@ class ChatTab(TabPane):
                 yield Button("New", id="new_button", variant="warning")
             with self.vs:
                 yield from [
-                    ChatMessageWidget.mk_msg_widget(msg=m)
+                    ChatMessageWidget.mk_msg_widget(msg=m, session=self.session)
                     for m in self.session.messages
                 ]
 
@@ -331,7 +323,7 @@ class ChatTab(TabPane):
                 msg_widget = w
                 break
         if not msg_widget:
-            msg_widget = ChatMessageWidget.mk_msg_widget(msg=msg)
+            msg_widget = ChatMessageWidget.mk_msg_widget(msg=msg, session=self.session)
             await self.vs.mount(msg_widget)
         msg_widget.loading = len(msg_widget.msg.content) == 0
         if self.user_input.has_focus:
@@ -375,7 +367,10 @@ class ChatTab(TabPane):
             chat_manager.delete_session(old_session.session_id)
         await self.vs.remove_children("*")
         await self.vs.mount(
-            *[ChatMessageWidget.mk_msg_widget(msg=m) for m in self.session.messages]
+            *[
+                ChatMessageWidget.mk_msg_widget(msg=m, session=self.session)
+                for m in self.session.messages
+            ]
         )
         with self.prevent(Focus, Input.Changed, Select.Changed):
             self.set_model_name(self.session.llm_model_name)
