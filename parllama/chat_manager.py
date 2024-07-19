@@ -8,6 +8,7 @@ from typing import Any
 import simplejson as json
 from ollama import Options as OllamaOptions
 from textual.app import App
+from textual.message_pump import MessagePump
 
 from parllama.messages.main import SessionListChanged
 from parllama.messages.main import SessionSelected
@@ -91,7 +92,12 @@ class ChatManager:
         self.app.post_message(SessionListChanged())
 
     def get_or_create_session_name(
-        self, *, session_name: str, model_name: str, options
+        self,
+        *,
+        session_name: str,
+        model_name: str,
+        options: OllamaOptions | None,
+        widget: MessagePump,
     ) -> ChatSession:
         """Get or create a chat session"""
         session = self.get_session_by_name(session_name)
@@ -99,6 +105,7 @@ class ChatManager:
             session = self.new_session(
                 session_name=session_name, model_name=model_name, options=options
             )
+        session.add_subscription(widget)
         return session
 
     def set_current_session(self, session_id: str) -> None:

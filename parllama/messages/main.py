@@ -220,73 +220,10 @@ class ChangeTab(Message):
 
 
 @dataclass
-class ChatMessage(Message):
-    """Chat message class"""
-
-    session_id: str
-    message_id: str
-
-
-@dataclass
-class ChatMessageSent(Message):
-    """Chat message sent class"""
-
-    session_id: str
-
-
-@dataclass
-class NewChatSession(Message):
-    """New chat session class"""
-
-    session_id: str
-
-
-@dataclass
-class SessionUpdated(Message):
-    """Session Was Updated"""
-
-    session_id: str
-
-
-@dataclass
 class ModelInteractRequested(Message):
     """Message to notify that a model interact has been requested."""
 
     model_name: str
-
-
-@dataclass
-class SessionListChanged(Message):
-    """Notify that session list has changed."""
-
-
-@dataclass
-class SessionSelected(Message):
-    """Notify that session has been selected."""
-
-    session_id: str
-    new_tab: bool = False
-
-
-@dataclass
-class DeleteSession(Message):
-    """Request session be deleted."""
-
-    session_id: str
-
-
-@dataclass
-class StopChatGeneration(Message):
-    """Request chat generation to be stopped."""
-
-    session_id: str
-
-
-@dataclass
-class ChatGenerationAborted(Message):
-    """Chat generation has been aborted."""
-
-    session_id: str
 
 
 @dataclass
@@ -300,3 +237,62 @@ class UpdateTabLabel(Message):
 
     tab_id: str
     tab_label: str
+
+
+# ---------- Session Related Messages ---------- #
+
+
+@dataclass
+class SessionListChanged(Message):
+    """Notify that session list has changed."""
+
+
+@dataclass
+class SessionMessage(Message):
+    """Session Was Updated"""
+
+    session_id: str
+
+
+@dataclass
+class StopChatGeneration(SessionMessage):
+    """Request chat generation to be stopped."""
+
+
+@dataclass
+class ChatGenerationAborted(SessionMessage):
+    """Chat generation has been aborted."""
+
+
+@dataclass
+class ChatMessage(SessionMessage):
+    """Chat message class"""
+
+    message_id: str
+
+
+@dataclass
+class ChatMessageSent(SessionMessage):
+    """Chat message sent class"""
+
+
+@dataclass
+class SessionSelected(SessionMessage):
+    """Notify that session has been selected."""
+
+    new_tab: bool = False
+
+
+@dataclass
+class DeleteSession(SessionMessage):
+    """Request session be deleted."""
+
+
+@dataclass
+class NewChatSession(SessionMessage):
+    """New chat session class"""
+
+
+@dataclass
+class SessionUpdated(SessionMessage):
+    """Session Was Updated"""

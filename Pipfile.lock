@@ -266,12 +266,12 @@
     },
     "ollama": {
       "hashes": [
-        "sha256:b6e2414921c94f573a903d1069d682ba2fb2607070ea9e19ca4a7872f2a460ec",
-        "sha256:fa316baa9a81eac3beb4affb0a17deb3008fdd6ed05b123c26306cfbe4c349b6"
+        "sha256:6ff493a2945ba76cdd6b7912a1cd79a45cfd9ba9120d14adeb63b2b5a7f353da",
+        "sha256:cd7010c4e2a37d7f08f36cd35c4592b14f1ec0d1bf3df10342cd47963d81ad7a"
       ],
       "index": "pypi",
       "markers": "python_version >= '3.8' and python_version < '4.0'",
-      "version": "==0.2.1"
+      "version": "==0.3.0"
     },
     "pydantic": {
       "hashes": [
@@ -1039,7 +1039,7 @@
         "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44",
         "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"
       ],
-      "markers": "sys_platform == 'win32'",
+      "markers": "os_name == 'nt'",
       "version": "==0.4.6"
     },
     "dill": {

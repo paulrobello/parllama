@@ -130,10 +130,10 @@ class FullModel(Model):
 
     model_config = ConfigDict(protected_namespaces=())
     license: str | None = None
-    modelfile: str
+    modelfile: str = ""
     parameters: str | None = None
     template: str | None = None
-    model_info: ModelInfo
+    model_info: ModelInfo | None = None
 
     def get_messages(self) -> list[ollama.Message]:
         """Get messages from the model."""

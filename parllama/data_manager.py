@@ -89,28 +89,28 @@ class DataManager:
         return None
 
     @staticmethod
+    def enrich_model_details(model: FullModel) -> None:
+        """Enrich model details."""
+        pattern = r"^(# Modelfile .*)\n(# To build.*)\n# (FROM .*\n)\n(FROM .*)\n(.*)$"
+        replacement = r"\3\5"
+        model_data = settings.ollama_client.show(model.name)
+        msp = ModelShowPayload(**model_data)
+        msp.modelfile = re.sub(
+            pattern, replacement, msp.modelfile, flags=re.MULTILINE | re.IGNORECASE
+        )
+        model.parameters = msp.parameters
+        model.template = msp.template
+        model.modelfile = msp.modelfile
+        model.model_info = msp.model_info
+
+    @staticmethod
     def _get_all_model_data() -> list[LocalModelListItem]:
         """Get all model data."""
         all_models: list[LocalModelListItem] = []
         res = ModelListPayload(**settings.ollama_client.list())
-        pattern = r"^(# Modelfile .*)\n(# To build.*)\n# (FROM .*\n)\n(FROM .*)\n(.*)$"
-        replacement = r"\3\5"
+
         for model in res.models:
-            model_data = settings.ollama_client.show(model.name)
-            res2 = ModelShowPayload(**model_data)
-            res2.modelfile = re.sub(
-                pattern, replacement, res2.modelfile, flags=re.MULTILINE | re.IGNORECASE
-            )
-            res3 = FullModel(
-                **model.model_dump(),
-                parameters=res2.parameters,
-                template=res2.template,
-                modelfile=res2.modelfile,
-                model_info=res2.model_info,
-            )
-            # print(json.dumps(model.model_dump(), indent=2, default=str))
-            # print(json.dumps(res2.model_dump(), indent=2, default=str))
-            # print(json.dumps(res3.model_dump(), indent=2, default=str))
+            res3 = FullModel(**model.model_dump())
             all_models.append(LocalModelListItem(res3))
             # break
         return all_models

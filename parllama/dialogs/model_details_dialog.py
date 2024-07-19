@@ -15,6 +15,7 @@ from textual.widgets import Pretty
 from textual.widgets import Static
 from textual.widgets import TextArea
 
+from parllama.data_manager import dm
 from parllama.messages.main import CreateModelFromExistingRequested
 from parllama.models.ollama_data import FullModel
 from parllama.widgets.field_set import FieldSet
@@ -66,6 +67,8 @@ class ModelDetailsDialog(ModalScreen[None]):
 
     def __init__(self, model: FullModel) -> None:
         super().__init__()
+        if not model.model_info:
+            dm.enrich_model_details(model)
         self.model = model
 
     def compose(self) -> ComposeResult:
@@ -104,7 +107,12 @@ class ModelDetailsDialog(ModalScreen[None]):
 
             with VerticalScroll(id="model_info") as vs2:
                 vs2.border_title = "Model Info"
-                info = self.model.model_info.model_dump(mode="json", exclude_unset=True)
+                if self.model.model_info:
+                    info = self.model.model_info.model_dump(
+                        mode="json", exclude_unset=True
+                    )
+                else:
+                    info = {}
                 yield Pretty(info)
 
             ta = TextArea(

@@ -124,6 +124,7 @@ class ChatTab(TabPane):
             session_name=session_name,
             model_name=str(self.model_select.value),
             options=self.get_session_options(),
+            widget=self,
         )
 
         self.session_status_bar = Static("", id="SessionStatusBar")
@@ -311,7 +312,7 @@ class ChatTab(TabPane):
         if self.session.session_id != event.session_id:
             self.notify("Chat session id missmatch", severity="error")
             return
-        msg: OllamaMessage | None = self.session.get_message(event.message_id)
+        msg: OllamaMessage | None = self.session[event.message_id]
         if not msg:
             self.notify("Chat message not found", severity="error")
             return
@@ -414,7 +415,12 @@ class ChatTab(TabPane):
         """Update session status bar"""
         model = dm.get_model_by_name(self.session.llm_model_name)
         if model:
-            max_context_length = model.model_info.llama_context_length or 0
+            if not model.model_info:
+                dm.enrich_model_details(model)
+            if model.model_info:
+                max_context_length = model.model_info.llama_context_length or 0
+            else:
+                max_context_length = 0
         else:
             max_context_length = 0
         self.session_status_bar.update(
@@ -443,7 +449,7 @@ class ChatTab(TabPane):
     async def do_send_message(self, msg: str) -> None:
         """Send the message."""
         self.busy = True
-        await self.session.send_chat(msg, self)
+        await self.session.send_chat(msg)
         self.post_message(ChatMessageSent(self.session.session_id))
 
     @on(ChatMessageSent)

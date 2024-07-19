@@ -14,10 +14,11 @@ from typing import Literal
 import simplejson as json
 from ollama import Message as OMessage
 from ollama import Options as OllamaOptions
-from textual.widget import Widget
+from textual.message_pump import MessagePump
 
 from parllama.messages.main import ChatGenerationAborted
 from parllama.messages.main import ChatMessage
+from parllama.messages.main import SessionMessage
 from parllama.messages.main import SessionUpdated
 from parllama.models.settings_data import settings
 
@@ -37,7 +38,7 @@ class OllamaMessage:
     content: str = ""
     "Content of the message. Response messages contains message fragments when streaming."
 
-    session: ChatSession | None = None
+    _session: ChatSession | None = None
 
     def __init__(
         self,
@@ -51,8 +52,7 @@ class OllamaMessage:
         self.message_id = message_id or uuid.uuid4().hex
         self.role = role
         self.content = content
-        self.session = session
-        self.id_to_msg = {self.message_id: self}
+        self._session = session
 
     def __str__(self) -> str:
         """Ollama message representation"""
@@ -64,9 +64,19 @@ class OllamaMessage:
 
     def save(self) -> bool:
         """Save the chat session to a file"""
-        if self.session:
-            return self.session.save()
+        if self._session:
+            return self._session.save()
         return False
+
+    @property
+    def session(self) -> ChatSession | None:
+        """Get the chat session"""
+        return self._session
+
+    @session.setter
+    def session(self, value: ChatSession) -> None:
+        """Set the chat session"""
+        self._session = value
 
     def to_json(self) -> str:
         """Convert the chat session to JSON"""
@@ -104,8 +114,9 @@ class ChatSession:
     options: OllamaOptions
     session_name: str
     messages: list[OllamaMessage]
-    id_to_msg: dict[str, OllamaMessage]
     last_updated: datetime.datetime
+    _subs: set[MessagePump]
+    _id_to_msg: dict[str, OllamaMessage]
     _name_generated: bool = False
     _abort: bool = False
     _generating: bool = False
@@ -122,6 +133,8 @@ class ChatSession:
         last_updated: datetime.datetime | None = None,
     ):
         """Initialize the chat session"""
+        self._id_to_msg = {}
+        self._subs = set()
         self.session_id = session_id or uuid.uuid4().hex
         self.llm_model_name = llm_model_name
         self.options = options or {}
@@ -134,16 +147,33 @@ class ChatSession:
             else:
                 self.messages.append(OllamaMessage(session=self, **m))
 
-        self.id_to_msg = {}
         self.last_updated = last_updated or datetime.datetime.now()
 
         for m in self.messages:
-            m.session = self
-            self.id_to_msg[m.message_id] = m
+            m._session = self
+            self._id_to_msg[m.message_id] = m
 
-    def get_message(self, message_id: str) -> OllamaMessage | None:
+    def add_subscription(self, sub: MessagePump) -> None:
+        """Add a subscription"""
+        self._subs.add(sub)
+
+    def remove_subscription(self, sub: MessagePump) -> None:
+        """Remove a subscription"""
+        self._subs.remove(sub)
+
+    def _notify_subscriptions(self, event: SessionMessage) -> None:
+        """Notify all subscriptions"""
+        for sub in self._subs:
+            sub.post_message(event)
+
+    def _notify_changed(self) -> None:
+        """Notify changed"""
+        self.last_updated = datetime.datetime.now()
+        self._notify_subscriptions(SessionUpdated(session_id=self.session_id))
+
+    def get_message_by_id(self, message_id: str) -> OllamaMessage | None:
         """Get a message"""
-        return self.id_to_msg.get(message_id)
+        return self._id_to_msg.get(message_id)
 
     def add_message(self, msg: OllamaMessage, prepend: bool = False) -> None:
         """Add a message"""
@@ -152,59 +182,73 @@ class ChatSession:
             self.messages.insert(0, msg)
         else:
             self.messages.append(msg)
-        self.id_to_msg[msg.message_id] = msg
-        self.last_updated = datetime.datetime.now()
+        self._id_to_msg[msg.message_id] = msg
+        self._notify_changed()
         self.save()
 
     def set_name(self, name: str) -> None:
         """Set the name of the chat session"""
+        name = name.strip()
+        if self.session_name == name:
+            return
         self.session_name = name
-        self.last_updated = datetime.datetime.now()
+        self._notify_changed()
         self.save()
 
     def set_llm_model(self, llm_model_name: str) -> None:
         """Set the LLM model name"""
+        llm_model_name = llm_model_name.strip()
+        if self.llm_model_name == llm_model_name:
+            return
         self.llm_model_name = llm_model_name
-        self.last_updated = datetime.datetime.now()
+        self._notify_changed()
         self.save()
 
     def set_temperature(self, temperature: float | None) -> None:
         """Set the temperature"""
-        if temperature:
+        if temperature is not None:
+            if (
+                "temperature" in self.options
+                and self.options["temperature"] == temperature
+            ):
+                return
             self.options["temperature"] = temperature
         else:
+            if "temperature" not in self.options:
+                return
             del self.options["temperature"]
-        self.last_updated = datetime.datetime.now()
+        self._notify_changed()
         self.save()
 
-    async def set_system_prompt(self, system_prompt: str, widget: Widget) -> None:
+    async def set_system_prompt(self, system_prompt: str, widget: MessagePump) -> None:
         """Set system prompt for session"""
         msg: OllamaMessage
         if len(self.messages) > 0 and self.messages[0].role == "system":
             msg = self.messages[0]
             msg.content = system_prompt
-            self.last_updated = datetime.datetime.now()
-            self.save()
         else:
             msg = OllamaMessage(content=system_prompt, role="system")
             self.add_message(msg, True)
+
+        self._notify_changed()
+        self.save()
         widget.post_message(
             ChatMessage(session_id=self.session_id, message_id=msg.message_id)
         )
 
-    async def send_chat(self, from_user: str, widget: Widget) -> bool:
+    async def send_chat(self, from_user: str) -> bool:
         """Send a chat message to LLM"""
         self._generating = True
         try:
             msg: OllamaMessage = OllamaMessage(content=from_user, role="user")
             self.add_message(msg)
-            widget.post_message(
+            self._notify_subscriptions(
                 ChatMessage(session_id=self.session_id, message_id=msg.message_id)
             )
 
             msg = OllamaMessage(content="", role="assistant")
             self.add_message(msg)
-            widget.post_message(
+            self._notify_subscriptions(
                 ChatMessage(session_id=self.session_id, message_id=msg.message_id)
             )
 
@@ -222,14 +266,16 @@ class ChatSession:
                     is_aborted = True
                     try:
                         msg.content += "\n\nAborted..."
-                        widget.post_message(ChatGenerationAborted(self.session_id))
+                        self._notify_subscriptions(
+                            ChatGenerationAborted(self.session_id)
+                        )
                         stream.close()  # type: ignore
                     except Exception:  # pylint:disable=broad-except
                         pass
                     finally:
                         self._abort = False
                     break
-                widget.post_message(
+                self._notify_subscriptions(
                     ChatMessage(session_id=self.session_id, message_id=msg.message_id)
                 )
 
@@ -246,7 +292,7 @@ class ChatSession:
                     new_name = self.llm_session_name(user_msg.content)
                     if new_name:
                         self.set_name(new_name)
-                widget.post_message(SessionUpdated(session_id=self.session_id))
+                self._notify_subscriptions(SessionUpdated(session_id=self.session_id))
                 self.save()
         finally:
             self._generating = False
@@ -265,7 +311,7 @@ class ChatSession:
         self.session_id = uuid.uuid4().hex
         self.session_name = session_name
         self.messages.clear()
-        self.id_to_msg.clear()
+        self._id_to_msg.clear()
 
     def llm_session_name(self, text: str) -> str | None:
         """Generate a session name from the given text using llm"""
@@ -302,11 +348,11 @@ Examples:
 
     def __getitem__(self, msg_id: str) -> OllamaMessage:
         """Get a message"""
-        return self.id_to_msg[msg_id]
+        return self._id_to_msg[msg_id]
 
     def __setitem__(self, msg_id: str, value: OllamaMessage) -> None:
         """Set a message"""
-        self.id_to_msg[msg_id] = value
+        self._id_to_msg[msg_id] = value
         for i, msg in enumerate(self.messages):
             if msg.message_id == msg_id:
                 self.messages[i] = value
@@ -315,7 +361,7 @@ Examples:
 
     def __delitem__(self, key: str) -> None:
         """Delete a message"""
-        del self.id_to_msg[key]
+        del self._id_to_msg[key]
         for i, msg in enumerate(self.messages):
             if msg.message_id == key:
                 self.messages.pop(i)
@@ -323,7 +369,7 @@ Examples:
 
     def __contains__(self, item: OllamaMessage) -> bool:
         """Check if a message exists"""
-        return item.message_id in self.id_to_msg
+        return item.message_id in self._id_to_msg
 
     def __eq__(self, other: object) -> bool:
         """Check if two sessions are equal"""
