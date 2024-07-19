@@ -41,12 +41,14 @@ valid_commands: list[str] = [
     "/tab.",
     "/tab.remove",
     "/tabs.clear",
+    "/session.",
     "/session.model",
     "/session.temp",
     "/session.new",
     "/session.name",
     "/session.delete",
     "/session.export",
+    "/session.system_prompt",
 ]
 
 
@@ -146,6 +148,7 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         self.stop_button: Button = Button(
             "Stop", id="stop_button", disabled=True, variant="error"
         )
+        self.last_command = ""
 
     def compose(self) -> ComposeResult:
         """Compose the content of the view."""
@@ -224,7 +227,7 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         if self.active_tab.busy:
             self.notify("LLM Busy...", severity="error")
             return
-
+        self.last_command = user_msg
         self.user_input.value = ""
         self.update_control_states()
 
@@ -234,6 +237,7 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         self.active_tab.do_send_message(user_msg)
 
     # pylint: disable=too-many-branches
+    # pylint: disable=too-many-statements
     async def handle_command(self, cmd: str) -> None:
         """Handle a command"""
         if cmd in ("?", "help"):
@@ -252,6 +256,7 @@ Chat Commands:
 /session.temp [temperature] - Select temperature input or set temperature in current tab
 /session.delete - Delete the chat session for current tab
 /session.export - Export the conversation in current tab to a Markdown file
+/session.system_prompt [system prompt] - Set system prompt in current tab
                     """,
                 )
             )
@@ -300,9 +305,16 @@ Chat Commands:
         elif cmd.startswith("session.name "):
             (_, v) = cmd.split(" ", 1)
             self.active_tab.session_name_input.value = v
-            self.set_timer(0.1, self.user_input.focus)
+            await self.active_tab.session_name_input.action_submit()
         elif cmd.startswith("session.export"):
             self.active_tab.save_conversation_text()
+        elif cmd.startswith("session.system_prompt "):
+            (_, v) = cmd.split(" ", 1)
+            v = v.strip()
+            if not v:
+                self.notify("System prompt cannot be empty", severity="error")
+                return
+            await self.session.set_system_prompt(v, self.active_tab)
         else:
             self.notify(f"Unknown command: {cmd}", severity="error")
 

@@ -82,7 +82,6 @@ class SessionList(Vertical, can_focus=False, can_focus_children=True):
         self.app.post_message(
             DeleteSession(session_id=selected_item.session.session_id)
         )
-        # self.display = False
 
     @on(SessionListChanged)
     async def on_session_list_changed(self, event: SessionListChanged) -> None:

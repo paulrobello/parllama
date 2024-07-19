@@ -139,6 +139,11 @@ dist: packagecheck		# Upload to pypi
 
 ##############################################################################
 # Utility.
+
+.PHONY: get-venv-name
+get-venv-name:
+	$(run) which python
+
 .PHONY: ugly
 ugly:				# Reformat the code with black.
 	$(isort) $(lib)
