@@ -106,7 +106,6 @@ jobs:
       contents: write  # Grant write access to the repository
     needs:
       - build
-      - publish-to-testpypi
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     outputs:
