@@ -291,6 +291,8 @@ if anything remains to be fixed before the commit is allowed.
 
 ## What's new
 
+### v0.3.4
+
 ### v0.3.3
 * Added ability to edit existing messages. select message in chat list and press "e" to edit, then "escape" to exit edit mode
 * Add chat input history access via up / down arrow while chat message input has focus

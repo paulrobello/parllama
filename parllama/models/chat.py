@@ -62,10 +62,11 @@ class OllamaMessage:
         """Convert a message to Ollama native format"""
         return OMessage(role=self.role, content=self.content)
 
-    def save(self) -> None:
+    def save(self) -> bool:
         """Save the chat session to a file"""
         if self.session:
-            self.session.save()
+            return self.session.save()
+        return False
 
     def to_json(self) -> str:
         """Convert the chat session to JSON"""
@@ -232,7 +233,7 @@ class ChatSession:
                     ChatMessage(session_id=self.session_id, message_id=msg.message_id)
                 )
 
-            msg.save()
+            self.save()
 
             if (
                 not is_aborted
@@ -240,12 +241,24 @@ class ChatSession:
                 and not self._name_generated
             ):
                 self._name_generated = True
-                self.set_name(self.gen_session_name(self.messages[0].content))
+                user_msg = self.get_first_user_message()
+                if user_msg:
+                    new_name = self.llm_session_name(user_msg.content)
+                    if new_name:
+                        self.set_name(new_name)
                 widget.post_message(SessionUpdated(session_id=self.session_id))
+                self.save()
         finally:
             self._generating = False
 
         return not is_aborted
+
+    def get_first_user_message(self) -> OllamaMessage | None:
+        """Get the first user message"""
+        for msg in self.messages:
+            if msg.role == "user":
+                return msg
+        return None
 
     def new_session(self, session_name: str = "My Chat"):
         """Start new session"""
@@ -254,24 +267,27 @@ class ChatSession:
         self.messages.clear()
         self.id_to_msg.clear()
 
-    def gen_session_name(self, text: str) -> str:
+    def llm_session_name(self, text: str) -> str | None:
         """Generate a session name from the given text using llm"""
+        if not settings.auto_name_session_llm and not self.llm_model_name:
+            return None
         ret = settings.ollama_client.generate(
             model=settings.auto_name_session_llm or self.llm_model_name,
             options={"temperature": 0.1},
             prompt=text,
-            system="""You are a helpful assistant.
-            You will be given some text to summarize.
-            You must follow these instructions:
-            * Generate a descriptive session name of no more than a 4 words.
-            * Only output the session name.
-            * Do not answer any questions or explain anything.
-            * Do not output any preamble.
-            Examples:
-            "Why is grass green" -> "Green Grass"
-            "Why is the sky blue?" -> "Blue Sky"
-            "What is the tallest mountain?" -> "Tallest Mountain"
-            "What is the meaning of life?" -> "Meaning of Life"
+            system="""
+You are a helpful assistant.
+You will be given text to summarize.
+You must follow all the following instructions:
+* Generate a descriptive session name of no more than a 4 words.
+* Only output the session name.
+* Do not answer any questions or explain anything.
+* Do not output any preamble.
+Examples:
+* "Why is grass green" -> "Green Grass"
+* "Why is the sky blue?" -> "Blue Sky"
+* "What is the tallest mountain?" -> "Tallest Mountain"
+* "What is the meaning of life?" -> "Meaning of Life"
         """,
         )
         return ret["response"].strip()  # type: ignore
@@ -373,7 +389,7 @@ class ChatSession:
         return (
             len(self.session_name) > 0
             and len(self.llm_model_name) > 0
-            and self.llm_model_name not in ["Select.BLANK", "None", ""]
+            and self.llm_model_name not in ["Select.BLANK", "None"]
             and len(self.messages) > 0
         )
 
