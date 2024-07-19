@@ -324,7 +324,10 @@ class ChatTab(TabPane):
                 break
         if not msg_widget:
             msg_widget = ChatMessageWidget.mk_msg_widget(msg=msg, session=self.session)
-            await self.vs.mount(msg_widget)
+            if msg.role == "system":
+                await self.vs.mount(msg_widget, before=0)
+            else:
+                await self.vs.mount(msg_widget)
         msg_widget.loading = len(msg_widget.msg.content) == 0
         if self.user_input.has_focus:
             self.set_timer(0.1, self.scroll_to_bottom)

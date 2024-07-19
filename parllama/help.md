@@ -78,13 +78,13 @@ This screen allows you to access tools to create, modify, and publish models
 Chat with local LLMs  
 
 ### Chat Screen keys
-| Key           | Command                                 |
-|---------------|-----------------------------------------|
-| `ctrl+s`      | Toggle session list                     |
-| `ctrl+b`      | New session in current tab              |
-| `ctrl+n`      | New chat tab                            |
-| `ctrl+del`    | Remove current chat tab                 |
-| `ctrl+e`      | Export selected tab as Markdown         |
+| Key             | Command                                 |
+|-----------------|-----------------------------------------|
+| `ctrl+s`        | Toggle session list                     |
+| `ctrl+b`        | New session in current tab              |
+| `ctrl+n`        | New chat tab                            |
+| `ctrl+delete`   | Remove current chat tab                 |
+| `ctrl+e`        | Export selected tab as Markdown         |
 
 ### Message Input keys
 | Key           | Command                                 |
@@ -93,10 +93,11 @@ Chat with local LLMs
 | `up` / `down` | Scroll through input history            |
 
 ### Message List keys
-| Key           | Command                                 |
-|---------------|-----------------------------------------|
-| `ctrl+c`      | Copy selected chat message to clipboard |
-| `e`           | Edit selected message                   |
+| Key      | Command                                 |
+|----------|-----------------------------------------|
+| `ctrl+c` | Copy selected chat message to clipboard |
+| `e`      | Edit selected message                   |
+| `escape` | Exit message edit mode                  |
 
 
 ### Chat Screen Session Panel keys

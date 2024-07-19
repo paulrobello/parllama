@@ -305,7 +305,7 @@ Chat Commands:
         elif cmd.startswith("session.name "):
             (_, v) = cmd.split(" ", 1)
             self.active_tab.session_name_input.value = v
-            self.set_timer(0.1, self.user_input.focus)
+            await self.active_tab.session_name_input.action_submit()
         elif cmd.startswith("session.export"):
             self.active_tab.save_conversation_text()
         elif cmd.startswith("session.system_prompt "):

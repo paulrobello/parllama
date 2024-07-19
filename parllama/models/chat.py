@@ -182,6 +182,8 @@ class ChatSession:
         if len(self.messages) > 0 and self.messages[0].role == "system":
             msg = self.messages[0]
             msg.content = system_prompt
+            self.last_updated = datetime.datetime.now()
+            self.save()
         else:
             msg = OllamaMessage(content=system_prompt, role="system")
             self.add_message(msg, True)
@@ -213,7 +215,8 @@ class ChatSession:
             )
             is_aborted = False
             for chunk in stream:
-                msg.content += chunk["message"]["content"]
+                if "content" in chunk["message"]:
+                    msg.content += chunk["message"]["content"]
                 if self._abort:
                     is_aborted = True
                     try:
