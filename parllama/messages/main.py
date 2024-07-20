@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Literal
+from typing import TypeAlias
 
 from rich.console import RenderableType
 from textual.message import Message
@@ -241,6 +242,10 @@ class UpdateTabLabel(Message):
 
 # ---------- Session Related Messages ---------- #
 
+SessionChanges: TypeAlias = set[
+    Literal["name", "model", "temperature", "options", "messages"]
+]
+
 
 @dataclass
 class SessionListChanged(Message):
@@ -296,3 +301,5 @@ class NewChatSession(SessionMessage):
 @dataclass
 class SessionUpdated(SessionMessage):
     """Session Was Updated"""
+
+    changed: SessionChanges

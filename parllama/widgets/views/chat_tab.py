@@ -25,6 +25,8 @@ from textual.widgets import TabbedContent
 from textual.widgets import TabPane
 
 from parllama.chat_manager import chat_manager
+from parllama.chat_manager import ChatSession
+from parllama.chat_manager import OllamaMessage
 from parllama.data_manager import dm
 from parllama.messages.main import ChatMessage
 from parllama.messages.main import ChatMessageSent
@@ -33,11 +35,10 @@ from parllama.messages.main import LocalModelDeleted
 from parllama.messages.main import LocalModelListLoaded
 from parllama.messages.main import RegisterForUpdates
 from parllama.messages.main import SessionSelected
+from parllama.messages.main import SessionUpdated
 from parllama.messages.main import UnRegisterForUpdates
 from parllama.messages.main import UpdateChatControlStates
 from parllama.messages.main import UpdateTabLabel
-from parllama.models.chat import ChatSession
-from parllama.models.chat import OllamaMessage
 from parllama.models.settings_data import settings
 from parllama.screens.save_session import SaveSession
 from parllama.utils import str_ellipsis
@@ -213,8 +214,6 @@ class ChatTab(TabPane):
         settings.last_chat_session_name = session_name
         settings.save_settings_to_file()
         self.session.set_name(settings.last_chat_session_name)
-        self.notify_tab_label_changed()
-        chat_manager.notify_changed()
         self.user_input.focus()
 
     def update_control_states(self):
@@ -275,15 +274,17 @@ class ChatTab(TabPane):
         self.notify("new session")
         with self.prevent(Input.Changed):
             old_session = self.session
+            old_session.remove_sub(self)
             self.session = chat_manager.new_session(
                 session_name=session_name,
                 model_name=str(self.model_select.value),
                 options=self.get_session_options(),
+                widget=self,
             )
             if not old_session.is_valid():
                 chat_manager.delete_session(old_session.session_id)
             self.session_name_input.value = self.session.session_name
-        self.notify_tab_label_changed()
+
         await self.vs.remove_children("*")
         self.update_control_states()
         model = dm.get_model_by_name(str(self.model_select.value))
@@ -361,11 +362,12 @@ class ChatTab(TabPane):
 
     async def load_session(self, session_id: str) -> None:
         """Load a session"""
-        old_session = self.session
         session = chat_manager.get_session(session_id)
         if not session:
             self.notify("Chat session not found", severity="error")
             return
+        old_session = self.session
+        old_session.remove_sub(self)
         self.session = session
         if not old_session.is_valid():
             chat_manager.delete_session(old_session.session_id)
@@ -384,9 +386,9 @@ class ChatTab(TabPane):
                 self.session.options.get("temperature", "")
             )
             self.session_name_input.value = self.session.session_name
+        self.set_timer(0.1, self.scroll_to_bottom)
         self.update_control_states()
         self.notify_tab_label_changed()
-        self.set_timer(0.1, self.scroll_to_bottom)
         self.update_session_status_bar()
         self.user_input.focus()
 
@@ -405,11 +407,17 @@ class ChatTab(TabPane):
         if self.session.session_id == event.session_id:
             await self.action_new_session()
 
-    async def on_session_updated(self) -> None:
-        """Session updated event"""
-        self.session_name_input.value = self.session.session_name
-        self.notify_tab_label_changed()
-        self.update_session_status_bar()
+    @on(SessionUpdated)
+    def on_session_updated(self, event: SessionUpdated) -> None:
+        """Handle a session updated event"""
+        event.stop()
+        self.notify(f"Tab session updated {','.join([*event.changed])}")
+        if "name" in event.changed:
+            with self.prevent(Input.Changed):
+                self.session_name_input.value = self.session.session_name
+                self.notify_tab_label_changed()
+        if "model_name" in event.changed or "messages" in event.changed:
+            self.update_session_status_bar()
 
     def update_session_status_bar(self) -> None:
         """Update session status bar"""

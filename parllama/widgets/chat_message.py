@@ -8,9 +8,9 @@ from textual.containers import Vertical
 from textual.widgets import Markdown
 from textual.widgets import TextArea
 
+from parllama.chat_manager import ChatSession
+from parllama.chat_manager import OllamaMessage
 from parllama.messages.main import SendToClipboard
-from parllama.models.chat import ChatSession
-from parllama.models.chat import OllamaMessage
 
 
 class ChatMessageWidget(Vertical, can_focus=True):

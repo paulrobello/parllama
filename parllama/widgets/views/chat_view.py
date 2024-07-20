@@ -18,6 +18,7 @@ from textual.widgets import Select
 from textual.widgets import TabbedContent
 
 from parllama.chat_manager import chat_manager
+from parllama.chat_manager import ChatSession
 from parllama.data_manager import dm
 from parllama.dialogs.information import InformationDialog
 from parllama.messages.main import ChatGenerationAborted
@@ -30,7 +31,6 @@ from parllama.messages.main import SessionSelected
 from parllama.messages.main import SessionUpdated
 from parllama.messages.main import UpdateChatControlStates
 from parllama.messages.main import UpdateTabLabel
-from parllama.models.chat import ChatSession
 from parllama.widgets.input_tab_complete import InputTabComplete
 from parllama.widgets.session_list import SessionList
 from parllama.widgets.views.chat_tab import ChatTab
@@ -314,7 +314,7 @@ Chat Commands:
             if not v:
                 self.notify("System prompt cannot be empty", severity="error")
                 return
-            await self.session.set_system_prompt(v, self.active_tab)
+            await self.session.set_system_prompt(v)
         else:
             self.notify(f"Unknown command: {cmd}", severity="error")
 
@@ -338,15 +338,14 @@ Chat Commands:
     @on(SessionUpdated)
     async def on_session_updated(self, event: SessionUpdated) -> None:
         """Session updated event"""
-
         event.stop()
+        self.notify(f"View session updated {','.join([*event.changed])}")
+
         session = chat_manager.get_session(event.session_id)
         if not session:
             return
+
         session.set_name(chat_manager.mk_session_name(session.session_name))
-        for tab in self.chat_tabs.query(ChatTab):
-            if tab.session.session_id == event.session_id:
-                await tab.on_session_updated()
 
     def action_toggle_session_list(self) -> None:
         """Toggle the session list."""

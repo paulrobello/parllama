@@ -6,7 +6,7 @@ from textual.app import ComposeResult
 from textual.containers import Vertical
 from textual.widgets import Label
 
-from parllama.models.chat import ChatSession
+from parllama.chat_manager import ChatSession
 from parllama.widgets.dbl_click_list_item import DblClickListItem
 
 
