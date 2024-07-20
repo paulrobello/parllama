@@ -80,12 +80,12 @@ class MainScreen(Screen[None]):
                 yield self.local_view
             with TabPane("Site", id="Site"):
                 yield self.site_view
+            with TabPane("Chat", id="Chat"):
+                yield self.chat_view
             with TabPane("Tools", id="Tools"):
                 yield self.model_tools_view
             with TabPane("Create", id="Create"):
                 yield self.create_view
-            with TabPane("Chat", id="Chat"):
-                yield self.chat_view
             with TabPane("Logs", id="Logs"):
                 yield self.log_view
 

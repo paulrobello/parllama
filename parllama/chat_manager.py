@@ -181,6 +181,8 @@ class ChatSession:
         """Notify changed"""
         self.last_updated = datetime.datetime.now()
         self._notify_subs(SessionUpdated(session_id=self.session_id, changed=changed))
+        if "name" in changed or "temperature" in changed or "model" in changed:
+            self._manager.notify_changed()
 
     def get_message_by_id(self, message_id: str) -> OllamaMessage | None:
         """Get a message"""
@@ -239,11 +241,11 @@ class ChatSession:
             if msg.content == system_prompt:
                 return
             msg.content = system_prompt
+            self._notify_changed({"messages"})
         else:
             msg = OllamaMessage(content=system_prompt, role="system")
             self.add_message(msg, True)
 
-        self._notify_changed({"messages"})
         self._notify_subs(
             ChatMessage(session_id=self.session_id, message_id=msg.message_id)
         )
@@ -462,11 +464,10 @@ Examples:
 
     def save(self) -> bool:
         """Save the chat session to a file"""
-        if settings.no_save_chat:
-            return False  # Do not save if no_save_chat is set in settings
         if not self.is_valid():
             return False  # Cannot save without session name, LLM model name and at least one message
-
+        if settings.no_save_chat:
+            return False  # Do not save if no_save_chat is set in settings
         file_name = (
             f"{self.session_id}.json"  # Use session ID as filename to avoid over
         )

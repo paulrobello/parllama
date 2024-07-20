@@ -10,6 +10,7 @@ from textual.message import Message
 from textual.message_pump import MessagePump
 
 from parllama.models.ollama_data import FullModel
+from parllama.utils import ScreenType
 
 
 @dataclass
@@ -217,7 +218,7 @@ class SetModelNameLoading(Message):
 class ChangeTab(Message):
     """Change to requested tab."""
 
-    tab: Literal["Local", "Site", "Tools", "Create", "Logs"]
+    tab: ScreenType
 
 
 @dataclass
@@ -238,6 +239,11 @@ class UpdateTabLabel(Message):
 
     tab_id: str
     tab_label: str
+
+
+@dataclass
+class UpdateChatStatus(Message):
+    """Update chat status."""
 
 
 # ---------- Session Related Messages ---------- #

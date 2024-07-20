@@ -393,6 +393,7 @@ Chat Commands:
     def on_update_tab_label(self, event: UpdateTabLabel) -> None:
         """Update tab label event"""
         event.stop()
+        self.notify(f"Updated tab label: {event.tab_label}")
         tab = self.chat_tabs.get_tab(event.tab_id)
         tab_num = self.chat_tabs.get_child_by_type(ContentSwitcher).children.index(
             self.chat_tabs.get_pane(event.tab_id)

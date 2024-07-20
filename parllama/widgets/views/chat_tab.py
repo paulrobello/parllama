@@ -38,7 +38,9 @@ from parllama.messages.main import SessionSelected
 from parllama.messages.main import SessionUpdated
 from parllama.messages.main import UnRegisterForUpdates
 from parllama.messages.main import UpdateChatControlStates
+from parllama.messages.main import UpdateChatStatus
 from parllama.messages.main import UpdateTabLabel
+from parllama.models.ollama_data import FullModel
 from parllama.models.settings_data import settings
 from parllama.screens.save_session import SaveSession
 from parllama.utils import str_ellipsis
@@ -52,7 +54,6 @@ from parllama.widgets.session_list import SessionList
 class ChatTab(TabPane):
     """Chat tab"""
 
-    BINDINGS = []
     DEFAULT_CSS = """
     ChatTab {
         #tool_bar {
@@ -211,10 +212,11 @@ class ChatTab(TabPane):
         session_name: str = self.session_name_input.value.strip()
         if not session_name:
             return
-        settings.last_chat_session_name = session_name
-        settings.save_settings_to_file()
-        self.session.set_name(settings.last_chat_session_name)
+
+        self.session.set_name(session_name)
         self.user_input.focus()
+        settings.last_chat_session_name = self.session.session_name
+        settings.save_settings_to_file()
 
     def update_control_states(self):
         """Update disabled state of controls based on model and user input values"""
@@ -231,7 +233,7 @@ class ChatTab(TabPane):
             self.session.set_llm_model(self.model_select.value)  # type: ignore
         else:
             self.session.set_llm_model("")
-        self.update_session_status_bar()
+        self.on_update_chat_status()
 
     def set_model_name(self, model_name: str) -> None:
         """ "Set model names"""
@@ -294,7 +296,7 @@ class ChatTab(TabPane):
                 self.session.add_message(
                     OllamaMessage(role=msg["role"], content=msg["content"])
                 )
-        self.update_session_status_bar()
+        self.on_update_chat_status()
         self.user_input.focus()
 
     def notify_tab_label_changed(self) -> None:
@@ -335,7 +337,7 @@ class ChatTab(TabPane):
             self.set_timer(0.1, self.scroll_to_bottom)
 
         chat_manager.notify_changed()
-        self.update_session_status_bar()
+        self.on_update_chat_status()
 
     def scroll_to_bottom(self) -> None:
         """Scroll to the bottom of the chat window."""
@@ -389,7 +391,7 @@ class ChatTab(TabPane):
         self.set_timer(0.1, self.scroll_to_bottom)
         self.update_control_states()
         self.notify_tab_label_changed()
-        self.update_session_status_bar()
+        self.on_update_chat_status()
         self.user_input.focus()
 
     @on(SessionSelected)
@@ -417,20 +419,30 @@ class ChatTab(TabPane):
                 self.session_name_input.value = self.session.session_name
                 self.notify_tab_label_changed()
         if "model_name" in event.changed or "messages" in event.changed:
-            self.update_session_status_bar()
+            self.on_update_chat_status()
 
-    def update_session_status_bar(self) -> None:
+    @work(group="get_details", thread=True)
+    async def get_model_details(self, model: FullModel) -> None:
+        """Fetch model details"""
+        dm.enrich_model_details(model)
+        if not model.model_info:
+            return
+        max_context_length = model.model_info.llama_context_length
+        if max_context_length:
+            self.post_message(UpdateChatStatus())
+
+    # @on(UpdateChatStatus)
+    def on_update_chat_status(self, event: Message | None = None) -> None:
         """Update session status bar"""
-        model = dm.get_model_by_name(self.session.llm_model_name)
+        if event:
+            event.stop()
+        model: FullModel | None = dm.get_model_by_name(self.session.llm_model_name)
+        max_context_length = 0
         if model:
             if not model.model_info:
-                dm.enrich_model_details(model)
-            if model.model_info:
+                self.get_model_details(model)
+            elif model.model_info:
                 max_context_length = model.model_info.llama_context_length or 0
-            else:
-                max_context_length = 0
-        else:
-            max_context_length = 0
         self.session_status_bar.update(
             Text.assemble(
                 "Context Length: ",
@@ -449,7 +461,7 @@ class ChatTab(TabPane):
         del self.session[msg.msg.message_id]
         await msg.remove()
         self.session.save()
-        self.update_session_status_bar()
+        self.on_update_chat_status()
         if len(self.session) == 0:
             self.user_input.focus()
 
