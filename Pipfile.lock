@@ -738,7 +738,7 @@
         "sha256:04e5ca0351e0f3f85c6853954072df659d0d13fac324d0072316b67d7794700d",
         "sha256:1a7ead55c7e559dd4dee8856e3a88b41225abfe1ce8df57b7c13915fe121ffb8"
       ],
-      "markers": "python_version >= '3.8'",
+      "markers": "python_version < '3.13'",
       "version": "==4.12.2"
     },
     "uc-micro-py": {
@@ -852,11 +852,11 @@
     },
     "astroid": {
       "hashes": [
-        "sha256:3eae9ea67c11c858cdd2c91337d2e816bd019ac897ca07d7b346ac10105fceb3",
-        "sha256:7099b5a60985529d8d46858befa103b82d0d05a5a5e8b816b5303ed96075e1d9"
+        "sha256:0e14202810b30da1b735827f78f5157be2bbd4a7a59b7707ca0bfc2fb4c0063a",
+        "sha256:413658a61eeca6202a59231abb473f932038fbcbf1666587f66d482083413a25"
       ],
       "markers": "python_full_version >= '3.8.0'",
-      "version": "==3.2.3"
+      "version": "==3.2.4"
     },
     "attrs": {
       "hashes": [
@@ -1765,7 +1765,7 @@
         "sha256:04e5ca0351e0f3f85c6853954072df659d0d13fac324d0072316b67d7794700d",
         "sha256:1a7ead55c7e559dd4dee8856e3a88b41225abfe1ce8df57b7c13915fe121ffb8"
       ],
-      "markers": "python_version >= '3.8'",
+      "markers": "python_version < '3.13'",
       "version": "==4.12.2"
     },
     "uc-micro-py": {

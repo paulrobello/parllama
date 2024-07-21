@@ -413,7 +413,7 @@ class ChatTab(TabPane):
     def on_session_updated(self, event: SessionUpdated) -> None:
         """Handle a session updated event"""
         event.stop()
-        self.notify(f"Tab session updated {','.join([*event.changed])}")
+        # self.notify(f"Tab session updated {','.join([*event.changed])}")
         if "name" in event.changed:
             with self.prevent(Input.Changed):
                 self.session_name_input.value = self.session.session_name

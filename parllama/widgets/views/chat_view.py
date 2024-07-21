@@ -339,7 +339,7 @@ Chat Commands:
     async def on_session_updated(self, event: SessionUpdated) -> None:
         """Session updated event"""
         event.stop()
-        self.notify(f"View session updated {','.join([*event.changed])}")
+        # self.notify(f"View session updated {','.join([*event.changed])}")
 
         session = chat_manager.get_session(event.session_id)
         if not session:

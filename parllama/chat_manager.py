@@ -9,10 +9,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from io import StringIO
 from typing import Any
-from typing import Literal
 
 import simplejson as json
-from ollama import Message as OMessage
 from ollama import Options as OllamaOptions
 from textual.app import App
 from textual.message_pump import MessagePump
@@ -22,92 +20,9 @@ from parllama.messages.main import ChatMessage
 from parllama.messages.main import SessionChanges
 from parllama.messages.main import SessionListChanged
 from parllama.messages.main import SessionMessage
-from parllama.messages.main import SessionSelected
 from parllama.messages.main import SessionUpdated
+from parllama.models.chat_message import OllamaMessage
 from parllama.models.settings_data import settings
-
-
-# ---------------------- OllamaMessage ---------------------------- #
-@dataclass
-class OllamaMessage:
-    """
-    Chat message.
-    """
-
-    message_id: str
-    "Unique identifier of the message."
-
-    role: Literal["user", "assistant", "system"]
-    "Assumed role of the message. Response messages always has role 'assistant'."
-
-    content: str = ""
-    "Content of the message. Response messages contains message fragments when streaming."
-
-    _session: ChatSession | None = None
-
-    def __init__(
-        self,
-        *,
-        role: Literal["user", "assistant", "system"],
-        content: str = "",
-        message_id: str | None = None,
-        session: ChatSession | None = None,
-    ) -> None:
-        """Initialize the chat message"""
-        self.message_id = message_id or uuid.uuid4().hex
-        self.role = role
-        self.content = content
-        self._session = session
-
-    def __str__(self) -> str:
-        """Ollama message representation"""
-        return f"## {self.role}\n\n{self.content}\n\n"
-
-    def to_ollama_native(self) -> OMessage:
-        """Convert a message to Ollama native format"""
-        return OMessage(role=self.role, content=self.content)
-
-    def save(self) -> bool:
-        """Save the chat session to a file"""
-        if self._session:
-            return self._session.save()
-        return False
-
-    @property
-    def session(self) -> ChatSession | None:
-        """Get the chat session"""
-        return self._session
-
-    @session.setter
-    def session(self, value: ChatSession) -> None:
-        """Set the chat session"""
-        self._session = value
-
-    def to_json(self, indent: int = 4) -> str:
-        """Convert the chat session to JSON"""
-        return json.dumps(
-            {"message_id": self.message_id, "role": self.role, "content": self.content},
-            default=str,
-            indent=indent,
-        )
-
-    def __dict__(
-        self,
-    ):
-        """Convert the chat message to a dictionary"""
-        return {
-            "message_id": self.message_id,
-            "role": self.role,
-            "content": self.content,
-        }
-
-    @staticmethod
-    def from_json(json_data: str) -> OllamaMessage:
-        """Convert JSON to chat session"""
-        data: dict = json.loads(json_data)
-        return OllamaMessage(
-            message_id=data["message_id"], role=data["role"], content=data["content"]
-        )
 
 
 # ---------------------- ChatSession ---------------------------- #
@@ -156,13 +71,12 @@ class ChatSession:
             if isinstance(m, OllamaMessage):
                 self.messages.append(m)
             else:
-                self.messages.append(OllamaMessage(session=self, **m))
-
-        self.last_updated = last_updated or datetime.datetime.now()
+                self.messages.append(OllamaMessage(**m))
 
         for m in self.messages:
-            m._session = self
             self._id_to_msg[m.message_id] = m
+
+        self.last_updated = last_updated or datetime.datetime.now()
 
     def add_sub(self, sub: MessagePump) -> None:
         """Add a subscription"""
@@ -184,13 +98,8 @@ class ChatSession:
         if "name" in changed or "temperature" in changed or "model" in changed:
             self._manager.notify_changed()
 
-    def get_message_by_id(self, message_id: str) -> OllamaMessage | None:
-        """Get a message"""
-        return self._id_to_msg.get(message_id)
-
     def add_message(self, msg: OllamaMessage, prepend: bool = False) -> None:
         """Add a message"""
-        msg.session = self
         if prepend:
             self.messages.insert(0, msg)
         else:
@@ -378,8 +287,10 @@ Examples:
         for i, msg in enumerate(self.messages):
             if msg.message_id == msg_id:
                 self.messages[i] = value
+                self._notify_changed({"messages"})
                 return
         self.messages.append(value)
+        self._notify_changed({"messages"})
 
     def __delitem__(self, key: str) -> None:
         """Delete a message"""
@@ -387,6 +298,7 @@ Examples:
         for i, msg in enumerate(self.messages):
             if msg.message_id == key:
                 self.messages.pop(i)
+                self._notify_changed({"messages"})
                 return
 
     def __contains__(self, item: OllamaMessage) -> bool:
@@ -484,7 +396,7 @@ Examples:
         """Save the chat session to markdown file"""
         try:
             with open(
-                os.path.join(settings.chat_dir, filename), "w", encoding="utf-8"
+                os.path.join(settings.chat_dir, filename), "wt", encoding="utf-8"
             ) as f:
                 f.write(str(self))
             return True
@@ -520,6 +432,7 @@ Examples:
 class ChatManager:
     """Chat manager class"""
 
+    _id_to_session: dict[str, ChatSession] = {}
     app: App[Any]
     sessions: list[ChatSession] = []
     options: OllamaOptions = {}
@@ -561,6 +474,7 @@ class ChatManager:
             options=options or self.options,
         )
         session.add_sub(widget)
+        self._id_to_session[session.session_id] = session
         self.sessions.append(session)
         self.sort_sessions()
         self.notify_changed()
@@ -568,10 +482,7 @@ class ChatManager:
 
     def get_session(self, session_id: str) -> ChatSession | None:
         """Get a chat session"""
-        for session in self.sessions:
-            if session.session_id == session_id:
-                return session
-        return None
+        return self._id_to_session.get(session_id)
 
     def get_session_by_name(self, session_name: str) -> ChatSession | None:
         """Get a chat session by name"""
@@ -582,6 +493,7 @@ class ChatManager:
 
     def delete_session(self, session_id: str) -> None:
         """Delete a chat session"""
+        del self._id_to_session[session_id]
         for session in self.sessions:
             if session.session_id == session_id:
                 self.sessions.remove(session)
@@ -615,10 +527,6 @@ class ChatManager:
         session.add_sub(widget)
         return session
 
-    def set_current_session(self, session_id: str) -> None:
-        """Set the current chat session"""
-        self.app.post_message(SessionSelected(session_id))
-
     def load_sessions(self) -> None:
         """Load chat sessions from files"""
         for f in os.listdir(settings.chat_dir):
@@ -642,6 +550,7 @@ class ChatManager:
                         ),
                     )
                     self.sessions.append(session)
+                    self._id_to_session[session.session_id] = session
             except:  # pylint: disable=bare-except
                 self.app.notify(f"Error loading session {f}", severity="error")
         self.sort_sessions()
