@@ -1,4 +1,5 @@
 """Grid list of local models."""
+
 from __future__ import annotations
 
 import webbrowser

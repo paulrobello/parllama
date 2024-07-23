@@ -1,4 +1,5 @@
 """PAR LLAMA TUI - A terminal user interface for Ollama."""
+
 from __future__ import annotations
 
 __author__ = "Paul Robello"

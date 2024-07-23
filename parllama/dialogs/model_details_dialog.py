@@ -1,4 +1,5 @@
 """Provides model details dialog."""
+
 from __future__ import annotations
 
 import humanize

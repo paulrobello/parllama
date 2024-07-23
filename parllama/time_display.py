@@ -1,4 +1,5 @@
 """Functions for formatting timestamps and converting datetimes to the local timezone."""
+
 from __future__ import annotations
 
 from datetime import datetime

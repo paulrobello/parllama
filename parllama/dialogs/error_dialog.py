@@ -1,4 +1,5 @@
 """Provides an error dialog."""
+
 from __future__ import annotations
 
 from textual.widgets.button import ButtonVariant

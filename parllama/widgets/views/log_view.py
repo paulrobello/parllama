@@ -1,4 +1,5 @@
 """Widget for viewing application logs."""
+
 from __future__ import annotations
 
 from textual import on

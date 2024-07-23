@@ -1,4 +1,5 @@
 """Site Model View"""
+
 from __future__ import annotations
 
 import webbrowser

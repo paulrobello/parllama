@@ -1,4 +1,5 @@
 """Widget for chatting with LLM."""
+
 from __future__ import annotations
 
 import re

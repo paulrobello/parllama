@@ -1,4 +1,5 @@
 """Toggleable hidden text input field."""
+
 from __future__ import annotations
 
 from textual import on

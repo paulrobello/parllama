@@ -1,4 +1,5 @@
 """Various icons which can be used in the application."""
+
 from __future__ import annotations
 
 FAVORITE_EMOJI = "🌟"

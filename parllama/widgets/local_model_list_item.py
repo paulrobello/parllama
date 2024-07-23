@@ -1,4 +1,5 @@
 """Local Model List Item."""
+
 from __future__ import annotations
 
 import humanize

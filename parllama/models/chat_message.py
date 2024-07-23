@@ -1,4 +1,5 @@
 """Chat message class"""
+
 from __future__ import annotations
 
 import uuid

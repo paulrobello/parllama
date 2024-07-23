@@ -1,4 +1,5 @@
 """Provides a base modal dialog for showing text to the user."""
+
 from __future__ import annotations
 
 from rich.text import TextType

@@ -1,4 +1,5 @@
 """Input field that submits when losing focus."""
+
 from __future__ import annotations
 
 from textual.events import Blur

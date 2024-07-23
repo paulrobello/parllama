@@ -1,4 +1,5 @@
 """A label that can be clicked."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

@@ -1,4 +1,5 @@
 """Provides a modal dialog for getting a masked value from the user."""
+
 from __future__ import annotations
 
 from textual import on

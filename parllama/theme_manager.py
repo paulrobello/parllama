@@ -1,4 +1,5 @@
 """Theme manager for Textual"""
+
 from __future__ import annotations
 
 import os

@@ -1,4 +1,5 @@
 """Various utility functions and decorators."""
+
 from __future__ import annotations
 
 import csv

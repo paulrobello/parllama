@@ -1,4 +1,5 @@
 """Field set consisting of Label and Input for editing items."""
+
 from __future__ import annotations
 
 from textual import on

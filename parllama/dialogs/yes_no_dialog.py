@@ -1,4 +1,5 @@
 """Provides a dialog for getting a yes/no response from the user."""
+
 from __future__ import annotations
 
 from textual.app import ComposeResult
