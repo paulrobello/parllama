@@ -15,7 +15,7 @@ from textual.widgets import Button
 from textual.widgets import ContentSwitcher
 from textual.widgets import Static
 
-from parllama.messages.main import ChangeTab
+from parllama.messages.messages import ChangeTab
 from parllama.widgets.clickable_label import CopyToClipboardLabel
 
 

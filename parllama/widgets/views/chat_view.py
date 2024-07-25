@@ -22,16 +22,16 @@ from parllama.chat_manager import chat_manager
 from parllama.chat_manager import ChatSession
 from parllama.data_manager import dm
 from parllama.dialogs.information import InformationDialog
-from parllama.messages.main import ChatGenerationAborted
-from parllama.messages.main import ChatMessage
-from parllama.messages.main import ChatMessageSent
-from parllama.messages.main import DeleteSession
-from parllama.messages.main import LocalModelListLoaded
-from parllama.messages.main import RegisterForUpdates
-from parllama.messages.main import SessionSelected
-from parllama.messages.main import SessionUpdated
-from parllama.messages.main import UpdateChatControlStates
-from parllama.messages.main import UpdateTabLabel
+from parllama.messages.messages import ChatGenerationAborted
+from parllama.messages.messages import ChatMessage
+from parllama.messages.messages import ChatMessageSent
+from parllama.messages.messages import DeleteSession
+from parllama.messages.messages import LocalModelListLoaded
+from parllama.messages.messages import RegisterForUpdates
+from parllama.messages.messages import SessionSelected
+from parllama.messages.messages import SessionUpdated
+from parllama.messages.messages import UpdateChatControlStates
+from parllama.messages.messages import UpdateTabLabel
 from parllama.widgets.input_tab_complete import InputTabComplete
 from parllama.widgets.session_list import SessionList
 from parllama.widgets.views.chat_tab import ChatTab
@@ -315,7 +315,7 @@ Chat Commands:
             if not v:
                 self.notify("System prompt cannot be empty", severity="error")
                 return
-            await self.session.set_system_prompt(v)
+            self.session.set_system_prompt(v)
         else:
             self.notify(f"Unknown command: {cmd}", severity="error")
 
@@ -394,7 +394,7 @@ Chat Commands:
     def on_update_tab_label(self, event: UpdateTabLabel) -> None:
         """Update tab label event"""
         event.stop()
-        self.notify(f"Updated tab label: {event.tab_label}")
+        # self.notify(f"Updated tab label: {event.tab_label}")
         tab = self.chat_tabs.get_tab(event.tab_id)
         tab_num = self.chat_tabs.get_child_by_type(ContentSwitcher).children.index(
             self.chat_tabs.get_pane(event.tab_id)

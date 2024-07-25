@@ -13,7 +13,7 @@ from textual.widgets import Select
 from textual.widgets import TextArea
 
 from parllama.icons import COPY_EMOJI
-from parllama.messages.main import SendToClipboard
+from parllama.messages.messages import SendToClipboard
 from parllama.utils import to_class_case
 from parllama.widgets.hidden_input import HiddenInputField
 

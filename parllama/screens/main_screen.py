@@ -14,9 +14,9 @@ from textual.widgets import Static
 from textual.widgets import TabbedContent
 from textual.widgets import TabPane
 
-from parllama.messages.main import ModelInteractRequested
-from parllama.messages.main import PsMessage
-from parllama.messages.main import StatusMessage
+from parllama.messages.messages import ModelInteractRequested
+from parllama.messages.messages import PsMessage
+from parllama.messages.messages import StatusMessage
 from parllama.models.settings_data import ScreenType
 from parllama.models.settings_data import settings
 from parllama.widgets.views.chat_view import ChatView

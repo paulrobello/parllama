@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal
-from typing import TypeAlias
 
-from rich.console import RenderableType
+from rich.console import RenderableType, ConsoleRenderable, RichCast
 from textual.message import Message
 from textual.message_pump import MessagePump
 
+from parllama.messages.shared import SessionChanges
 from parllama.models.ollama_data import FullModel
 from parllama.utils import ScreenType
 
@@ -249,10 +248,6 @@ class UpdateChatStatus(Message):
 
 # ---------- Session Related Messages ---------- #
 
-SessionChanges: TypeAlias = set[
-    Literal["name", "model", "temperature", "options", "messages"]
-]
-
 
 @dataclass
 class SessionListChanged(Message):
@@ -310,3 +305,10 @@ class SessionUpdated(SessionMessage):
     """Session Was Updated"""
 
     changed: SessionChanges
+
+
+@dataclass
+class LogIt(Message):
+    """Log message."""
+
+    msg: ConsoleRenderable | RichCast | str | object

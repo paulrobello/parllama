@@ -15,8 +15,8 @@ from textual.widgets import Label
 from textual.widgets import TextArea
 
 from parllama.dialogs.error_dialog import ErrorDialog
-from parllama.messages.main import ChangeTab
-from parllama.messages.main import ModelCreateRequested
+from parllama.messages.messages import ChangeTab
+from parllama.messages.messages import ModelCreateRequested
 
 
 class ModelCreateView(Container):

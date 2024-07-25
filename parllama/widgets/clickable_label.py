@@ -9,7 +9,7 @@ from rich.text import Text
 from textual.message import Message
 from textual.widgets import Label
 
-from parllama.messages.main import SendToClipboard
+from parllama.messages.messages import SendToClipboard
 
 
 class ClickableLabel(Label):

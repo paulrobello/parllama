@@ -13,10 +13,10 @@ from textual.widgets import Rule
 from textual.widgets import Static
 
 from parllama.chat_manager import chat_manager
-from parllama.messages.main import DeleteSession
-from parllama.messages.main import RegisterForUpdates
-from parllama.messages.main import SessionListChanged
-from parllama.messages.main import SessionSelected
+from parllama.messages.messages import DeleteSession
+from parllama.messages.messages import RegisterForUpdates
+from parllama.messages.messages import SessionListChanged
+from parllama.messages.messages import SessionSelected
 from parllama.widgets.dbl_click_list_item import DblClickListItem
 from parllama.widgets.session_list_item import SessionListItem
 
@@ -88,6 +88,7 @@ class SessionList(Vertical, can_focus=False, can_focus_children=True):
     async def on_session_list_changed(self, event: SessionListChanged) -> None:
         """Handle session list changed event."""
         event.stop()
+        # self.notify("SL session list changed")
         selected_item: SessionListItem = cast(
             SessionListItem, self.list_view.highlighted_child
         )

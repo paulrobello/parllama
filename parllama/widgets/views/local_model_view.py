@@ -18,20 +18,20 @@ from parllama.data_manager import dm
 from parllama.dialogs.input_dialog import InputDialog
 from parllama.dialogs.model_details_dialog import ModelDetailsDialog
 from parllama.dialogs.yes_no_dialog import YesNoDialog
-from parllama.messages.main import LocalModelCopied
-from parllama.messages.main import LocalModelCopyRequested
-from parllama.messages.main import LocalModelDelete
-from parllama.messages.main import LocalModelDeleted
-from parllama.messages.main import LocalModelDeleteRequested
-from parllama.messages.main import LocalModelListLoaded
-from parllama.messages.main import LocalModelListRefreshRequested
-from parllama.messages.main import ModelInteractRequested
-from parllama.messages.main import ModelPulled
-from parllama.messages.main import ModelPullRequested
-from parllama.messages.main import ModelPushRequested
-from parllama.messages.main import RegisterForUpdates
-from parllama.messages.main import SetModelNameLoading
-from parllama.messages.main import ShowLocalModel
+from parllama.messages.messages import LocalModelCopied
+from parllama.messages.messages import LocalModelCopyRequested
+from parllama.messages.messages import LocalModelDelete
+from parllama.messages.messages import LocalModelDeleted
+from parllama.messages.messages import LocalModelDeleteRequested
+from parllama.messages.messages import LocalModelListLoaded
+from parllama.messages.messages import LocalModelListRefreshRequested
+from parllama.messages.messages import ModelInteractRequested
+from parllama.messages.messages import ModelPulled
+from parllama.messages.messages import ModelPullRequested
+from parllama.messages.messages import ModelPushRequested
+from parllama.messages.messages import RegisterForUpdates
+from parllama.messages.messages import SetModelNameLoading
+from parllama.messages.messages import ShowLocalModel
 from parllama.widgets.filter_input import FilterInput
 from parllama.widgets.local_model_grid_list import LocalModelGridList
 from parllama.widgets.local_model_list_item import LocalModelListItem
@@ -270,7 +270,7 @@ class LocalModelView(Container):
                 dst_model_name=dst_model_name,
             )
         )
-        self.notify(f"copy {src_model_name} to {dst_model_name}")
+        self.notify(f"Copy {src_model_name} to {dst_model_name}")
 
     @on(LocalModelCopied)
     def on_local_model_copied(self, event: LocalModelCopied) -> None:

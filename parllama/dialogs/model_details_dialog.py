@@ -17,7 +17,7 @@ from textual.widgets import Static
 from textual.widgets import TextArea
 
 from parllama.data_manager import dm
-from parllama.messages.main import CreateModelFromExistingRequested
+from parllama.messages.messages import CreateModelFromExistingRequested
 from parllama.models.ollama_data import FullModel
 from parllama.widgets.field_set import FieldSet
 

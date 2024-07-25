@@ -27,20 +27,20 @@ from textual.widgets import TabPane
 
 from parllama.chat_manager import chat_manager
 from parllama.chat_manager import ChatSession
-from parllama.chat_manager import OllamaMessage
 from parllama.data_manager import dm
-from parllama.messages.main import ChatMessage
-from parllama.messages.main import ChatMessageSent
-from parllama.messages.main import DeleteSession
-from parllama.messages.main import LocalModelDeleted
-from parllama.messages.main import LocalModelListLoaded
-from parllama.messages.main import RegisterForUpdates
-from parllama.messages.main import SessionSelected
-from parllama.messages.main import SessionUpdated
-from parllama.messages.main import UnRegisterForUpdates
-from parllama.messages.main import UpdateChatControlStates
-from parllama.messages.main import UpdateChatStatus
-from parllama.messages.main import UpdateTabLabel
+from parllama.messages.messages import ChatMessage, LogIt
+from parllama.messages.messages import ChatMessageSent
+from parllama.messages.messages import DeleteSession
+from parllama.messages.messages import LocalModelDeleted
+from parllama.messages.messages import LocalModelListLoaded
+from parllama.messages.messages import RegisterForUpdates
+from parllama.messages.messages import SessionSelected
+from parllama.messages.messages import SessionUpdated
+from parllama.messages.messages import UnRegisterForUpdates
+from parllama.messages.messages import UpdateChatControlStates
+from parllama.messages.messages import UpdateChatStatus
+from parllama.messages.messages import UpdateTabLabel
+from parllama.models.chat_message import OllamaMessage
 from parllama.models.ollama_data import FullModel
 from parllama.models.settings_data import settings
 from parllama.screens.save_session import SaveSession
@@ -123,7 +123,8 @@ class ChatTab(TabPane):
         self.vs: ChatMessageList = ChatMessageList(id="messages")
         self.busy = False
 
-        self.session = chat_manager.get_or_create_session_name(
+        self.session = chat_manager.get_or_create_session(
+            session_id=None,
             session_name=session_name,
             model_name=str(self.model_select.value),
             options=self.get_session_options(),
@@ -165,7 +166,12 @@ class ChatTab(TabPane):
         """Set up the dialog once the DOM is ready."""
         self.app.post_message(
             RegisterForUpdates(
-                widget=self, event_names=["LocalModelDeleted", "LocalModelListLoaded"]
+                widget=self,
+                event_names=[
+                    "LocalModelDeleted",
+                    "LocalModelListLoaded",
+                    "SessionUpdated",
+                ],
             )
         )
 
@@ -214,7 +220,7 @@ class ChatTab(TabPane):
         if not session_name:
             return
 
-        self.session.set_name(session_name)
+        self.session.set_name(chat_manager.mk_session_name(session_name))
         self.user_input.focus()
         settings.last_chat_session_name = self.session.session_name
         settings.save_settings_to_file()
@@ -274,7 +280,7 @@ class ChatTab(TabPane):
 
     async def action_new_session(self, session_name: str = "New Chat") -> None:
         """Start new session"""
-        self.notify("new session")
+        # self.notify("New session")
         with self.prevent(Input.Changed):
             old_session = self.session
             old_session.remove_sub(self)
@@ -302,6 +308,7 @@ class ChatTab(TabPane):
 
     def notify_tab_label_changed(self) -> None:
         """Notify tab label changed"""
+        # self.notify("notify tab label changed")
         self.post_message(
             UpdateTabLabel(
                 str(self.id),
@@ -365,7 +372,7 @@ class ChatTab(TabPane):
 
     async def load_session(self, session_id: str) -> None:
         """Load a session"""
-        session = chat_manager.get_session(session_id)
+        session = chat_manager.get_session(session_id, self)
         if not session:
             self.notify("Chat session not found", severity="error")
             return
@@ -414,7 +421,8 @@ class ChatTab(TabPane):
     def on_session_updated(self, event: SessionUpdated) -> None:
         """Handle a session updated event"""
         event.stop()
-        # self.notify(f"Tab session updated {','.join([*event.changed])}")
+        self.app.post_message(LogIt(f"CT session updated {','.join([*event.changed])}"))
+        # self.notify(f"CT session updated {','.join([*event.changed])}")
         if "name" in event.changed:
             with self.prevent(Input.Changed):
                 self.session_name_input.value = self.session.session_name

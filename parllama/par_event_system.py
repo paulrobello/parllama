@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import asyncio
 from collections.abc import Awaitable
 from collections.abc import Iterable
-from inspect import isawaitable
 from typing import Callable
 from typing import ClassVar
 
@@ -18,8 +16,8 @@ from parllama.utils import camel_to_snake
 class ParEventBase:
     """Base class for chat events"""
 
-    sender: ParEventSystemBase | None = None
     _stop_propagation: bool = False
+    sender: ParEventSystemBase | None = None
     bubble: ClassVar[bool] = True  # Message will bubble to parent
     handler_name: ClassVar[str]
     namespace: ClassVar[str] = ""  # Namespace to disambiguate messages
@@ -66,10 +64,6 @@ class ParEventSystemBase:
         """Initialize the chat base"""
         self.parent = None
 
-    def post_message(self, event: ParEventBase) -> None:
-        """Send a chat event"""
-        asyncio.create_task(self._post_message(event))
-
     def _get_dispatch_methods(
         self, method_name: str
     ) -> Iterable[tuple[type, Callable[[ParEventBase], Awaitable]]]:
@@ -87,26 +81,24 @@ class ParEventSystemBase:
                     self, cls
                 )
 
-    async def _post_message(self, event: ParEventBase) -> None:
-        """Send a chat event"""
+    def post_message(self, event: ParEventBase) -> None:
+        """Send an event to self and possibly to its parents"""
         event.sender = self
         handler_name = event.handler_name
         for _, method in self._get_dispatch_methods(handler_name):
-            result = method(event)
-            if isawaitable(result):
-                await result
+            method(event)
 
-        await self.on_message(event)
+        self.on_message(event)
         if event.bubble and not event.is_stopped and self.parent:
             self.parent.post_message(event)
 
-    async def on_message(self, event: ParEventBase) -> None:
+    def on_message(self, event: ParEventBase) -> None:
         """Handle chat events"""
 
-    async def on_mount(self) -> None:
+    def on_mount(self) -> None:
         """Mount child chat"""
 
-    async def mount(self, child: ParEventSystemBase) -> None:
+    def mount(self, child: ParEventSystemBase) -> None:
         """Mount a child node"""
         child.parent = self
-        await child.on_mount()
+        child.on_mount()

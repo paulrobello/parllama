@@ -37,34 +37,34 @@ from parllama.chat_manager import chat_manager
 from parllama.chat_manager import ChatManager
 from parllama.data_manager import dm
 from parllama.dialogs.help_dialog import HelpDialog
-from parllama.messages.main import ChangeTab
-from parllama.messages.main import CreateModelFromExistingRequested
-from parllama.messages.main import DeleteSession
-from parllama.messages.main import LocalModelCopied
-from parllama.messages.main import LocalModelCopyRequested
-from parllama.messages.main import LocalModelDelete
-from parllama.messages.main import LocalModelDeleted
-from parllama.messages.main import LocalModelListLoaded
-from parllama.messages.main import LocalModelListRefreshRequested
-from parllama.messages.main import ModelCreated
-from parllama.messages.main import ModelCreateRequested
-from parllama.messages.main import ModelInteractRequested
-from parllama.messages.main import ModelPulled
-from parllama.messages.main import ModelPullRequested
-from parllama.messages.main import ModelPushed
-from parllama.messages.main import ModelPushRequested
-from parllama.messages.main import NotifyErrorMessage
-from parllama.messages.main import NotifyInfoMessage
-from parllama.messages.main import PsMessage
-from parllama.messages.main import RegisterForUpdates
-from parllama.messages.main import SendToClipboard
-from parllama.messages.main import SessionListChanged
-from parllama.messages.main import SessionSelected
-from parllama.messages.main import SetModelNameLoading
-from parllama.messages.main import SiteModelsLoaded
-from parllama.messages.main import SiteModelsRefreshRequested
-from parllama.messages.main import StatusMessage
-from parllama.messages.main import UnRegisterForUpdates
+from parllama.messages.messages import ChangeTab, LogIt
+from parllama.messages.messages import CreateModelFromExistingRequested
+from parllama.messages.messages import DeleteSession
+from parllama.messages.messages import LocalModelCopied
+from parllama.messages.messages import LocalModelCopyRequested
+from parllama.messages.messages import LocalModelDelete
+from parllama.messages.messages import LocalModelDeleted
+from parllama.messages.messages import LocalModelListLoaded
+from parllama.messages.messages import LocalModelListRefreshRequested
+from parllama.messages.messages import ModelCreated
+from parllama.messages.messages import ModelCreateRequested
+from parllama.messages.messages import ModelInteractRequested
+from parllama.messages.messages import ModelPulled
+from parllama.messages.messages import ModelPullRequested
+from parllama.messages.messages import ModelPushed
+from parllama.messages.messages import ModelPushRequested
+from parllama.messages.messages import NotifyErrorMessage
+from parllama.messages.messages import NotifyInfoMessage
+from parllama.messages.messages import PsMessage
+from parllama.messages.messages import RegisterForUpdates
+from parllama.messages.messages import SendToClipboard
+from parllama.messages.messages import SessionListChanged
+from parllama.messages.messages import SessionSelected
+from parllama.messages.messages import SetModelNameLoading
+from parllama.messages.messages import SiteModelsLoaded
+from parllama.messages.messages import SiteModelsRefreshRequested
+from parllama.messages.messages import StatusMessage
+from parllama.messages.messages import UnRegisterForUpdates
 from parllama.models.jobs import CopyModelJob
 from parllama.models.jobs import CreateModelJob
 from parllama.models.jobs import PullModelJob
@@ -459,6 +459,8 @@ class ParLlamaApp(App[None]):
         """poll for queued jobs"""
         while True:
             try:
+                # asyncio.get_event_loop().run_until_complete(par_await_tasks())
+                # await par_await_tasks()
                 job: QueueJob = self.job_queue.get(block=True, timeout=1)
                 if self._exit:
                     return
@@ -706,6 +708,12 @@ class ParLlamaApp(App[None]):
         """Delete session event"""
         event.stop()
         self.post_message_all(event)
+
+    @on(LogIt)
+    def on_log_it(self, event: LogIt) -> None:
+        """Log an event to the log view"""
+        event.stop()
+        self.log_it(event.msg)
 
     def log_it(self, msg: ConsoleRenderable | RichCast | str | object) -> None:
         """Log a message to the log view"""
