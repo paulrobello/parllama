@@ -106,6 +106,8 @@ class ChatSession(ParEventSystemBase):
         else:
             self.messages.append(msg)
         self._id_to_msg[msg.message_id] = msg
+        self.mount(msg)
+
         self._notify_changed({"messages"})
         self.save()
 

@@ -11,9 +11,8 @@ from ollama import Options as OllamaOptions
 from textual.app import App
 from textual.message_pump import MessagePump
 
-
 from parllama.messages.messages import SessionListChanged, LogIt
-from parllama.messages.par_messages import ParSessionUpdated
+from parllama.messages.par_messages import ParSessionUpdated, ParLogIt
 from parllama.models.settings_data import settings
 from parllama.par_event_system import ParEventSystemBase
 from parllama.session_manager import ChatSession
@@ -177,6 +176,11 @@ class ChatManager(ParEventSystemBase):
         self.app.post_message(LogIt(f"CM Session {event.session_id} updated"))
         # self.app.notify(f"CM Session {event.session_id} updated")
         self.notify_changed()
+
+    def on_par_log_it(self, event: ParLogIt) -> None:
+        """Handle a ParLogIt event"""
+        event.stop()
+        self.app.post_message(LogIt(event.msg))
 
 
 chat_manager = ChatManager()

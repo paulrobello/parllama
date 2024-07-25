@@ -9,10 +9,11 @@ from typing import Literal
 import simplejson as json
 from ollama import Message as OMessage
 
+from parllama.par_event_system import ParEventSystemBase
 
-# ---------------------- OllamaMessage ---------------------------- #
+
 @dataclass
-class OllamaMessage:
+class OllamaMessage(ParEventSystemBase):
     """Chat message."""
 
     message_id: str
@@ -32,6 +33,7 @@ class OllamaMessage:
         message_id: str | None = None,
     ) -> None:
         """Initialize the chat message"""
+        super().__init__()
         self.message_id = message_id or uuid.uuid4().hex
         self.role = role
         self.content = content
