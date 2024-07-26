@@ -15,7 +15,7 @@ from parllama.messages.messages import SessionListChanged, LogIt
 from parllama.messages.par_messages import ParSessionUpdated, ParLogIt
 from parllama.models.settings_data import settings
 from parllama.par_event_system import ParEventSystemBase
-from parllama.session_manager import ChatSession
+from parllama.chat_session import ChatSession
 
 
 class ChatManager(ParEventSystemBase):

@@ -40,12 +40,12 @@ from parllama.messages.messages import UnRegisterForUpdates
 from parllama.messages.messages import UpdateChatControlStates
 from parllama.messages.messages import UpdateChatStatus
 from parllama.messages.messages import UpdateTabLabel
-from parllama.models.chat_message import OllamaMessage
+from parllama.chat_message import OllamaMessage
 from parllama.models.ollama_data import FullModel
 from parllama.models.settings_data import settings
 from parllama.screens.save_session import SaveSession
 from parllama.utils import str_ellipsis
-from parllama.widgets.chat_message import ChatMessageWidget
+from parllama.widgets.chat_message_widget import ChatMessageWidget
 from parllama.widgets.chat_message_list import ChatMessageList
 from parllama.widgets.input_blur_submit import InputBlurSubmit
 from parllama.widgets.input_tab_complete import InputTabComplete

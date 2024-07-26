@@ -23,7 +23,7 @@ from parllama.messages.messages import SessionChanges
 from parllama.messages.messages import SessionMessage
 from parllama.messages.messages import SessionUpdated
 from parllama.messages.par_messages import ParSessionUpdated, ParChatUpdatedMessage
-from parllama.models.chat_message import OllamaMessage
+from parllama.chat_message import OllamaMessage
 from parllama.models.settings_data import settings
 from parllama.par_event_system import ParEventSystemBase
 

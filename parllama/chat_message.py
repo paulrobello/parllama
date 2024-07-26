@@ -46,14 +46,6 @@ class OllamaMessage(ParEventSystemBase):
         """Convert a message to Ollama native format"""
         return OMessage(role=self.role, content=self.content)
 
-    def to_json(self, indent: int = 4) -> str:
-        """Convert the chat session to JSON"""
-        return json.dumps(
-            {"message_id": self.message_id, "role": self.role, "content": self.content},
-            default=str,
-            indent=indent,
-        )
-
     def __dict__(
         self,
     ):
