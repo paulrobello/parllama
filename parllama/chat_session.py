@@ -22,7 +22,7 @@ from parllama.messages.messages import ChatMessage
 from parllama.messages.messages import SessionChanges
 from parllama.messages.messages import SessionMessage
 from parllama.messages.messages import SessionUpdated
-from parllama.messages.par_messages import ParSessionUpdated, ParChatUpdatedMessage
+from parllama.messages.par_messages import ParSessionUpdated, ParChatUpdated
 from parllama.chat_message import OllamaMessage
 from parllama.models.settings_data import settings
 from parllama.par_event_system import ParEventSystemBase
@@ -94,10 +94,10 @@ class ChatSession(ParEventSystemBase):
         """Notify changed"""
         self.last_updated = datetime.datetime.now()
         self._notify_subs(SessionUpdated(session_id=self.session_id, changed=changed))
-        if "name" in changed or "temperature" in changed or "model" in changed:
-            self.post_message(
-                ParSessionUpdated(session_id=self.session_id, changed=changed)
-            )
+        # if "name" in changed or "temperature" in changed or "model" in changed:
+        self.post_message(
+            ParSessionUpdated(session_id=self.session_id, changed=changed)
+        )
 
     def add_message(self, msg: OllamaMessage, prepend: bool = False) -> None:
         """Add a message"""
@@ -155,7 +155,9 @@ class ChatSession(ParEventSystemBase):
             msg.content = system_prompt
             self._notify_changed({"messages"})
         else:
-            msg = OllamaMessage(content=system_prompt, role="system")
+            msg = OllamaMessage(
+                session_id=self.session_id, content=system_prompt, role="system"
+            )
             self.add_message(msg, True)
 
         self._notify_subs(
@@ -167,26 +169,24 @@ class ChatSession(ParEventSystemBase):
         """Send a chat message to LLM"""
         self._generating = True
         try:
-            msg: OllamaMessage = OllamaMessage(role="user", content=from_user)
+            msg: OllamaMessage = OllamaMessage(
+                session_id=self.session_id, role="user", content=from_user
+            )
             self.add_message(msg)
             self._notify_subs(
                 ChatMessage(session_id=self.session_id, message_id=msg.message_id)
             )
             self.post_message(
-                ParChatUpdatedMessage(
-                    session_id=self.session_id, message_id=msg.message_id
-                )
+                ParChatUpdated(session_id=self.session_id, message_id=msg.message_id)
             )
 
-            msg = OllamaMessage(role="assistant")
+            msg = OllamaMessage(session_id=self.session_id, role="assistant")
             self.add_message(msg)
             self._notify_subs(
                 ChatMessage(session_id=self.session_id, message_id=msg.message_id)
             )
             self.post_message(
-                ParChatUpdatedMessage(
-                    session_id=self.session_id, message_id=msg.message_id
-                )
+                ParChatUpdated(session_id=self.session_id, message_id=msg.message_id)
             )
 
             stream: Iterator[Mapping[str, Any]] = settings.ollama_client.chat(  # type: ignore
@@ -214,7 +214,7 @@ class ChatSession(ParEventSystemBase):
                     ChatMessage(session_id=self.session_id, message_id=msg.message_id)
                 )
                 self.post_message(
-                    ParChatUpdatedMessage(
+                    ParChatUpdated(
                         session_id=self.session_id, message_id=msg.message_id
                     )
                 )

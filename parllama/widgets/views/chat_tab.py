@@ -301,7 +301,11 @@ class ChatTab(TabPane):
             msgs = model.get_messages()
             for msg in msgs:
                 self.session.add_message(
-                    OllamaMessage(role=msg["role"], content=msg["content"])
+                    OllamaMessage(
+                        session_id=self.session.session_id,
+                        role=msg["role"],
+                        content=msg["content"],
+                    )
                 )
         self.on_update_chat_status()
         self.user_input.focus()

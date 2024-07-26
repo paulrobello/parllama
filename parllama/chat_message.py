@@ -6,15 +6,18 @@ import uuid
 from dataclasses import dataclass
 from typing import Literal
 
-import simplejson as json
 from ollama import Message as OMessage
 
+from parllama.messages.par_messages import ParChatUpdated
 from parllama.par_event_system import ParEventSystemBase
 
 
 @dataclass
 class OllamaMessage(ParEventSystemBase):
     """Chat message."""
+
+    _session_id: str
+    "Session ID for which the message was sent."
 
     message_id: str
     "Unique identifier of the message."
@@ -28,12 +31,14 @@ class OllamaMessage(ParEventSystemBase):
     def __init__(
         self,
         *,
+        session_id: str,
         role: Literal["user", "assistant", "system"],
         content: str = "",
         message_id: str | None = None,
     ) -> None:
         """Initialize the chat message"""
         super().__init__()
+        self._session_id = session_id
         self.message_id = message_id or uuid.uuid4().hex
         self.role = role
         self.content = content
@@ -41,10 +46,6 @@ class OllamaMessage(ParEventSystemBase):
     def __str__(self) -> str:
         """Ollama message representation"""
         return f"## {self.role}\n\n{self.content}\n\n"
-
-    def to_ollama_native(self) -> OMessage:
-        """Convert a message to Ollama native format"""
-        return OMessage(role=self.role, content=self.content)
 
     def __dict__(
         self,
@@ -56,10 +57,12 @@ class OllamaMessage(ParEventSystemBase):
             "content": self.content,
         }
 
-    @staticmethod
-    def from_json(json_data: str) -> OllamaMessage:
-        """Convert JSON to chat session"""
-        data: dict = json.loads(json_data)
-        return OllamaMessage(
-            message_id=data["message_id"], role=data["role"], content=data["content"]
+    def to_ollama_native(self) -> OMessage:
+        """Convert a message to Ollama native format"""
+        return OMessage(role=self.role, content=self.content)
+
+    def notify_changes(self) -> None:
+        """Notify changes to the chat message"""
+        self.post_message(
+            ParChatUpdated(session_id=self._session_id, message_id=self.message_id)
         )

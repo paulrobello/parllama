@@ -23,10 +23,15 @@ class ParSessionUpdated(ParSessionMessage):
 
 
 @dataclass
-class ParChatUpdatedMessage(ParSessionMessage):
-    """Chat message updated"""
+class ParChatMessage(ParSessionMessage):
+    """Chat message base class"""
 
     message_id: str
+
+
+@dataclass
+class ParChatUpdated(ParChatMessage):
+    """Chat message updated"""
 
 
 @dataclass
