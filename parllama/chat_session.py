@@ -26,6 +26,7 @@ from parllama.messages.par_messages import (
     ParSessionUpdated,
     ParChatUpdated,
     ParDeleteSession,
+    ParLogIt,
 )
 from parllama.chat_message import OllamaMessage
 from parllama.models.settings_data import settings
@@ -48,6 +49,7 @@ class ChatSession(ParEventSystemBase):
     _name_generated: bool = False
     _abort: bool = False
     _generating: bool = False
+    _loaded: bool = False
 
     # pylint: disable=too-many-arguments
     def __init__(
@@ -69,17 +71,41 @@ class ChatSession(ParEventSystemBase):
         self.options = options or {}
         self.session_name = session_name
         self.messages = []
+        self._loaded = messages is not None
         msgs = messages or []
         for m in msgs:
             if isinstance(m, OllamaMessage):
                 self.messages.append(m)
             else:
-                self.messages.append(OllamaMessage(**m))
+                self.messages.append(OllamaMessage(session_id=self.session_id, **m))
 
         for m in self.messages:
             self._id_to_msg[m.message_id] = m
 
         self.last_updated = last_updated or datetime.datetime.now()
+
+    def load(self) -> None:
+        """Load chat sessions from files"""
+        if self._loaded:
+            return
+        file_path = os.path.join(settings.chat_dir, self.session_id + ".json")
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"Session file not found: {file_path}")
+
+        try:
+            with open(file_path, mode="rt", encoding="utf-8") as fh:
+                data: dict = json.load(fh)
+
+                msgs = data["messages"] or []
+                for m in msgs:
+                    msg = OllamaMessage(session_id=self.session_id, **m)
+                    self.messages.append(msg)
+                    self._id_to_msg[msg.message_id] = msg
+            self._loaded = True
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            self.post_message(
+                ParLogIt(f"Error loading session {e}", notify=True, severity="error")
+            )
 
     def add_sub(self, sub: MessagePump) -> None:
         """Add a subscription"""
@@ -376,15 +402,17 @@ class ChatSession(ParEventSystemBase):
             len(self.session_name) > 0
             and len(self.llm_model_name) > 0
             and self.llm_model_name not in ["Select.BLANK", "None"]
-            and len(self.messages) > 0
+            # and len(self.messages) > 0
         )
 
     def save(self) -> bool:
         """Save the chat session to a file"""
-        if not self.is_valid():
+        if not self.is_valid() or len(self.messages) == 0:
             return False  # Cannot save without session name, LLM model name and at least one message
         if settings.no_save_chat:
             return False  # Do not save if no_save_chat is set in settings
+        if not self._loaded:
+            self.load()
         file_name = (
             f"{self.session_id}.json"  # Use session ID as filename to avoid over
         )

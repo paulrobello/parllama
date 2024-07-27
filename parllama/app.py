@@ -311,6 +311,7 @@ class ParLlamaApp(App[None]):
     @on(ModelPullRequested)
     def on_model_pull_requested(self, event: ModelPullRequested) -> None:
         """Pull requested model event"""
+        self.notify(f"Model pull {event.model_name} queued")
         self.job_queue.put(PullModelJob(modelName=event.model_name))
         self.post_message_all(SetModelNameLoading(event.model_name, True))
 
@@ -714,6 +715,8 @@ class ParLlamaApp(App[None]):
         """Log an event to the log view"""
         event.stop()
         self.log_it(event.msg)
+        if event.notify and isinstance(event.msg, str):
+            self.notify(event.msg, severity=event.severity)
 
     def log_it(self, msg: ConsoleRenderable | RichCast | str | object) -> None:
         """Log a message to the log view"""

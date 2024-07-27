@@ -378,8 +378,9 @@ class ChatTab(TabPane):
         """Load a session"""
         session = chat_manager.get_session(session_id, self)
         if not session:
-            self.notify("Chat session not found", severity="error")
+            self.notify(f"Chat session not found: {session_id}", severity="error")
             return
+        session.load()
         old_session = self.session
         old_session.remove_sub(self)
         self.session = session

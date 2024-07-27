@@ -152,15 +152,14 @@ class ChatManager(ParEventSystemBase):
                         session_name=data["session_name"],
                         llm_model_name=data["llm_model_name"],
                         session_id=data["session_id"],
-                        messages=data["messages"],
+                        # messages=data["messages"],
                         options=data.get("options"),
                         last_updated=datetime.datetime.fromisoformat(
                             data["last_updated"]
                         ),
                     )
-                    self.sessions.append(session)
                     self._id_to_session[session.session_id] = session
-
+                    self.sessions.append(session)
                     self.mount(session)
             except Exception as e:  # pylint: disable=broad-exception-caught
                 self.app.post_message(LogIt(f"Error loading session {e}"))
@@ -188,7 +187,7 @@ class ChatManager(ParEventSystemBase):
     def on_par_log_it(self, event: ParLogIt) -> None:
         """Handle a ParLogIt event"""
         event.stop()
-        self.app.post_message(LogIt(event.msg))
+        self.app.post_message(LogIt(event.msg, notify=event.notify))
 
 
 chat_manager = ChatManager()

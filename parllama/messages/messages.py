@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from rich.console import RenderableType, ConsoleRenderable, RichCast
 from textual.message import Message
 from textual.message_pump import MessagePump
+from textual.notifications import SeverityLevel
 
 from parllama.messages.shared import SessionChanges
 from parllama.models.ollama_data import FullModel
@@ -312,3 +313,5 @@ class LogIt(Message):
     """Log message."""
 
     msg: ConsoleRenderable | RichCast | str | object
+    notify: bool = False
+    severity: SeverityLevel = "information"
