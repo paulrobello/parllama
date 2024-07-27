@@ -22,7 +22,11 @@ from parllama.messages.messages import ChatMessage
 from parllama.messages.messages import SessionChanges
 from parllama.messages.messages import SessionMessage
 from parllama.messages.messages import SessionUpdated
-from parllama.messages.par_messages import ParSessionUpdated, ParChatUpdated
+from parllama.messages.par_messages import (
+    ParSessionUpdated,
+    ParChatUpdated,
+    ParDeleteSession,
+)
 from parllama.chat_message import OllamaMessage
 from parllama.models.settings_data import settings
 from parllama.par_event_system import ParEventSystemBase
@@ -84,6 +88,12 @@ class ChatSession(ParEventSystemBase):
     def remove_sub(self, sub: MessagePump) -> None:
         """Remove a subscription"""
         self._subs.discard(sub)
+        if self.num_subs == 0 and not self.is_valid():
+            self.delete()
+
+    def delete(self) -> None:
+        """Delete the session"""
+        self.post_message(ParDeleteSession(session_id=self.session_id))
 
     def _notify_subs(self, event: SessionMessage) -> None:
         """Notify all subscriptions"""
@@ -419,3 +429,8 @@ class ChatSession(ParEventSystemBase):
         for msg in self.messages:
             total += len(msg.content)
         return total
+
+    @property
+    def num_subs(self):
+        """Return the number of subscribers"""
+        return len(self._subs)

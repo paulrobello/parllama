@@ -23,6 +23,11 @@ class ParSessionUpdated(ParSessionMessage):
 
 
 @dataclass
+class ParDeleteSession(ParSessionMessage):
+    """Request session be deleted."""
+
+
+@dataclass
 class ParChatMessage(ParSessionMessage):
     """Chat message base class"""
 
