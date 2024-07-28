@@ -71,7 +71,7 @@ class ChatSession(ParEventSystemBase):
         self.options = options or {}
         self.session_name = session_name
         self.messages = []
-        self._loaded = messages is not None
+        self._loaded = messages is not None and len(messages) > 0
         msgs = messages or []
         for m in msgs:
             if isinstance(m, OllamaMessage):
@@ -96,11 +96,11 @@ class ChatSession(ParEventSystemBase):
             with open(file_path, mode="rt", encoding="utf-8") as fh:
                 data: dict = json.load(fh)
 
-                msgs = data["messages"] or []
-                for m in msgs:
-                    msg = OllamaMessage(session_id=self.session_id, **m)
-                    self.messages.append(msg)
-                    self._id_to_msg[msg.message_id] = msg
+            msgs = data["messages"] or []
+            for m in msgs:
+                msg = OllamaMessage(session_id=self.session_id, **m)
+                self.messages.append(msg)
+                self._id_to_msg[msg.message_id] = msg
             self._loaded = True
         except Exception as e:  # pylint: disable=broad-exception-caught
             self.post_message(
@@ -301,6 +301,11 @@ class ChatSession(ParEventSystemBase):
         self.messages.clear()
         self._id_to_msg.clear()
 
+    @property
+    def is_loaded(self):
+        """Check if the session is loaded"""
+        return self._loaded
+
     def __iter__(self):
         """Iterate over messages"""
         return iter(self.messages)
@@ -407,12 +412,13 @@ class ChatSession(ParEventSystemBase):
 
     def save(self) -> bool:
         """Save the chat session to a file"""
+        if not self._loaded:
+            self.load()
         if not self.is_valid() or len(self.messages) == 0:
             return False  # Cannot save without session name, LLM model name and at least one message
         if settings.no_save_chat:
             return False  # Do not save if no_save_chat is set in settings
-        if not self._loaded:
-            self.load()
+
         file_name = (
             f"{self.session_id}.json"  # Use session ID as filename to avoid over
         )
