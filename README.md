@@ -290,8 +290,6 @@ if anything remains to be fixed before the commit is allowed.
 * Ability to use other AI providers like Open AI
 
 ## What's new
-* Fixed startup slowness when you have a lot of local models
-
 
 ### v0.3.4
 * Fixed slow startup when you have a lot of models available locally

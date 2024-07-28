@@ -1,4 +1,4 @@
-"""Various utility functions and decorators."""
+"""Various types, utility functions and decorators."""
 
 from __future__ import annotations
 
@@ -43,8 +43,18 @@ from parllama.icons import TRASH_EMOJI
 
 DECIMAL_PRECESSION = 5
 
-ScreenType: TypeAlias = Literal["Local", "Site", "Chat", "Tools", "Create", "Logs"]
-valid_screens: list[ScreenType] = ["Local", "Site", "Chat", "Tools", "Create", "Logs"]
+ScreenType: TypeAlias = Literal[
+    "Local", "Site", "Chat", "Prompts", "Tools", "Create", "Logs"
+]
+valid_screens: list[ScreenType] = [
+    "Local",
+    "Site",
+    "Chat",
+    "Prompts",
+    "Tools",
+    "Create",
+    "Logs",
+]
 
 
 def id_generator(
