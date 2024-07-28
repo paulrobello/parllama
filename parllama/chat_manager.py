@@ -34,6 +34,11 @@ class ChatManager(ParEventSystemBase):
         self.options = {}
 
     @property
+    def valid_sessions(self) -> list[ChatSession]:
+        """Return a list of valid sessions"""
+        return [session for session in self.sessions if session.is_valid]
+
+    @property
     def session_ids(self) -> list[str]:
         """Return a list of session IDs"""
         return list(self._id_to_session.keys())
@@ -55,13 +60,13 @@ class ChatManager(ParEventSystemBase):
         self.app.post_message(LogIt(f"mk_session_name: {base_name}: {good}"))
         self.app.post_message(LogIt(json.dumps(self.session_names)))
 
-        self.app.post_message(
-            LogIt(
-                json.dumps(
-                    self.get_session_by_name(session_name), indent=2, default=str
-                )
-            )
-        )
+        # self.app.post_message(
+        #     LogIt(
+        #         json.dumps(
+        #             self.get_session_by_name(session_name), indent=2, default=str
+        #         )
+        #     )
+        # )
 
         i = 0
         while not good:
@@ -83,6 +88,8 @@ class ChatManager(ParEventSystemBase):
         widget: MessagePump,
     ) -> ChatSession:
         """Create a new chat session"""
+        self.app.post_message(LogIt("CM new_session"))
+
         session = ChatSession(
             session_name=self.mk_session_name(session_name),
             llm_model_name=model_name,
@@ -93,7 +100,6 @@ class ChatManager(ParEventSystemBase):
         self.mount(session)
         session.add_sub(widget)
 
-        self.sort_sessions()
         self.notify_changed()
         return session
 
@@ -202,8 +208,9 @@ class ChatManager(ParEventSystemBase):
     def on_par_session_updated(self, event: ParSessionUpdated) -> None:
         """Handle a ParSessionUpdated event"""
         event.stop()
-        self.app.post_message(LogIt(f"CM Session {event.session_id} updated"))
-        # self.app.notify(f"CM Session {event.session_id} updated")
+        self.app.post_message(
+            LogIt(f"CM Session {event.session_id} updated. [{','.join(event.changed)}]")
+        )
         self.notify_changed()
 
     def on_par_delete_session(self, event: ParDeleteSession) -> None:

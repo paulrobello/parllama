@@ -198,7 +198,7 @@ class ChatTab(TabPane):
         )
 
     @on(Input.Submitted, "#temperature_input")
-    def on_temperature_input_changed(self, event: Message) -> None:
+    def temperature_input_changed(self, event: Message) -> None:
         """Handle temperature input change"""
         event.stop()
         try:
@@ -214,14 +214,16 @@ class ChatTab(TabPane):
         self.user_input.focus()
 
     @on(Input.Submitted, "#session_name_input")
-    def on_session_name_input_changed(self, event: Message) -> None:
+    def session_name_input_changed(self, event: Input.Submitted) -> None:
         """Handle session name input change"""
         event.stop()
+        event.prevent_default()
+        self.app.post_message(LogIt("CT session_name_input_changed"))
         session_name: str = self.session_name_input.value.strip()
         if not session_name:
             return
-
-        self.session.set_name(chat_manager.mk_session_name(session_name))
+        with self.prevent(Input.Changed, Input.Submitted):
+            self.session.set_name(chat_manager.mk_session_name(session_name))
         self.user_input.focus()
         settings.last_chat_session_id = self.session.session_id
         settings.save_settings_to_file()
@@ -230,8 +232,8 @@ class ChatTab(TabPane):
         """Update disabled state of controls based on model and user input values"""
         self.post_message(UpdateChatControlStates())
 
-    @on(Select.Changed)
-    def on_model_select_changed(self) -> None:
+    @on(Select.Changed, "#model_name")
+    def model_select_changed(self) -> None:
         """Model select changed, update control states and save model name"""
         self.update_control_states()
         if self.model_select.value not in (Select.BLANK, settings.last_chat_model):
@@ -291,7 +293,7 @@ class ChatTab(TabPane):
                 options=self.get_session_options(),
                 widget=self,
             )
-            if not old_session.is_valid():
+            if not old_session.is_valid:
                 chat_manager.delete_session(old_session.session_id)
             self.session_name_input.value = self.session.session_name
 
@@ -386,7 +388,7 @@ class ChatTab(TabPane):
         old_session = self.session
         old_session.remove_sub(self)
         self.session = session
-        if not old_session.is_valid():
+        if not old_session.is_valid:
             chat_manager.delete_session(old_session.session_id)
         await self.vs.remove_children("*")
         await self.vs.mount(
@@ -425,13 +427,14 @@ class ChatTab(TabPane):
             await self.action_new_session()
 
     @on(SessionUpdated)
-    def on_session_updated(self, event: SessionUpdated) -> None:
+    def session_updated(self, event: SessionUpdated) -> None:
         """Handle a session updated event"""
         event.stop()
-        self.app.post_message(LogIt(f"CT session updated {','.join([*event.changed])}"))
-        # self.notify(f"CT session updated {','.join([*event.changed])}")
+        self.app.post_message(
+            LogIt(f"CT session updated [{','.join([*event.changed])}]")
+        )
         if "name" in event.changed:
-            with self.prevent(Input.Changed):
+            with self.prevent(Input.Changed, Input.Submitted):
                 self.session_name_input.value = self.session.session_name
                 self.notify_tab_label_changed()
         if "model_name" in event.changed or "messages" in event.changed:

@@ -115,7 +115,7 @@ class ChatSession(ParEventSystemBase):
     def remove_sub(self, sub: MessagePump) -> None:
         """Remove a subscription"""
         self._subs.discard(sub)
-        if self.num_subs == 0 and not self.is_valid():
+        if self.num_subs == 0 and not self.is_valid:
             self.delete()
 
     def delete(self) -> None:
@@ -402,6 +402,7 @@ class ChatSession(ParEventSystemBase):
         except (OSError, IOError):
             return None
 
+    @property
     def is_valid(self) -> bool:
         """return true if session is valid"""
         return (
@@ -415,7 +416,7 @@ class ChatSession(ParEventSystemBase):
         """Save the chat session to a file"""
         if not self._loaded:
             self.load()
-        if not self.is_valid() or len(self.messages) == 0:
+        if not self.is_valid or len(self.messages) == 0:
             return False  # Cannot save without session name, LLM model name and at least one message
         if settings.no_save_chat:
             return False  # Do not save if no_save_chat is set in settings

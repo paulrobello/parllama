@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from functools import partial
 from typing import cast
 
 from textual import on
@@ -67,10 +68,9 @@ class SessionList(Vertical, can_focus=False, can_focus_children=True):
         """Compose the content of the view."""
         yield Static("Sessions")
         yield Rule()
+        chat_manager.sort_sessions()
         with self.list_view:
-            for s in chat_manager.sessions:
-                if not s.is_valid():
-                    continue
+            for s in chat_manager.valid_sessions:
                 yield SessionListItem(s)
 
     def action_delete_item(self) -> None:
@@ -83,6 +83,15 @@ class SessionList(Vertical, can_focus=False, can_focus_children=True):
         self.app.post_message(
             DeleteSession(session_id=selected_item.session.session_id)
         )
+        self.set_timer(0.1, self.list_view.focus)
+        self.set_timer(0.2, partial(self.focus_next_item, self.list_view.index or 0))
+
+    def focus_next_item(self, old_index: int) -> None:
+        """Focus on the next item."""
+        num_children = len(self.list_view.children)
+        if num_children < 1:
+            return
+        self.list_view.index = old_index % num_children
 
     @on(SessionListChanged)
     async def on_session_list_changed(self, event: SessionListChanged) -> None:

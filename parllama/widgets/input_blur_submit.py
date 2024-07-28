@@ -9,10 +9,21 @@ from textual.widgets import Input
 class InputBlurSubmit(Input):
     """Input field that submits when losing focus."""
 
+    _last_value: str = ""
+
     def __init__(self, **kwargs) -> None:
         """Initialise the widget."""
         super().__init__(**kwargs)
 
+    def on_mount(self) -> None:
+        """Set up the widget once the DOM is ready."""
+        self._last_value = self.value
+
+    def _on_input_changed(self) -> None:
+        """Handle input change."""
+        self._last_value = self.value
+
     async def on_blur(self, _: Blur) -> None:
         """Submit the input when losing focus."""
-        await self.action_submit()
+        if self.value != self._last_value:
+            await self.action_submit()

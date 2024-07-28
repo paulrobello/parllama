@@ -337,7 +337,7 @@ Chat Commands:
             self.stop_button.disabled = True
 
     @on(SessionUpdated)
-    async def on_session_updated(self, event: SessionUpdated) -> None:
+    async def session_updated(self, event: SessionUpdated) -> None:
         """Session updated event"""
         event.stop()
         # self.notify(f"View session updated {','.join([*event.changed])}")
@@ -357,7 +357,7 @@ Chat Commands:
             self.set_timer(0.1, self.user_input.focus)
 
     @on(SessionSelected)
-    async def on_session_selected(self, event: SessionSelected) -> None:
+    async def session_selected(self, event: SessionSelected) -> None:
         """Session selected event"""
         event.stop()
         if event.new_tab:
@@ -367,7 +367,7 @@ Chat Commands:
             await self.active_tab.load_session(event.session_id)
 
     @on(UpdateChatControlStates)
-    def on_update_chat_control_states(self, event: UpdateChatControlStates) -> None:
+    def update_chat_control_states(self, event: UpdateChatControlStates) -> None:
         """Update chat control states event"""
         event.stop()
         self.update_control_states()

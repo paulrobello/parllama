@@ -294,6 +294,11 @@ if anything remains to be fixed before the commit is allowed.
 
 
 ### v0.3.4
+* Fixed slow startup when you have a lot of models available locally
+* Fixed slow startup and reduced memory utilization when you have many / large chats
+* Fixed session unique naming bug where it would always add a "1" to the session name
+* Major rework of internal message handling
+* Issue where some footer items are not clickable has been resolved by library PARLLAMA depends on
 
 ### v0.3.3
 * Added ability to edit existing messages. select message in chat list and press "e" to edit, then "escape" to exit edit mode
