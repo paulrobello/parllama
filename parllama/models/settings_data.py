@@ -31,7 +31,7 @@ class Settings(BaseModel):
     last_screen: ScreenType = "Local"
     last_chat_model: str = ""
     last_chat_temperature: float | None = None
-    last_chat_session_name: str = "My Chat"
+    last_chat_session_id: str | None = None
     theme_mode: str = "dark"
     site_models_namespace: str = ""
     max_log_lines: int = 1000
@@ -137,8 +137,8 @@ class Settings(BaseModel):
                     self.last_screen = self.starting_screen
                 self.last_chat_model = data.get("last_chat_model", self.last_chat_model)
                 self.last_chat_temperature = data.get("last_chat_temperature")
-                self.last_chat_session_name = data.get(
-                    "last_chat_session_name", self.last_chat_session_name
+                self.last_chat_session_id = data.get(
+                    "last_chat_session_id", self.last_chat_session_id
                 )
                 self.max_log_lines = max(0, data.get("max_log_lines", 1000))
                 self.ollama_ps_poll_interval = data.get(

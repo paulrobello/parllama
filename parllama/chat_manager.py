@@ -33,6 +33,16 @@ class ChatManager(ParEventSystemBase):
         self.sessions = []
         self.options = {}
 
+    @property
+    def session_ids(self) -> list[str]:
+        """Return a list of session IDs"""
+        return list(self._id_to_session.keys())
+
+    @property
+    def session_names(self) -> list[str]:
+        """Return a list of session names"""
+        return [session.session_name for session in self.sessions]
+
     def set_app(self, app: App[Any]) -> None:
         """Set the app and load existing sessions from storage"""
         self.app = app
@@ -42,11 +52,24 @@ class ChatManager(ParEventSystemBase):
         """Generate a unique session name"""
         session_name = base_name
         good = self.get_session_by_name(session_name) is None
+        self.app.post_message(LogIt(f"mk_session_name: {base_name}: {good}"))
+        self.app.post_message(LogIt(json.dumps(self.session_names)))
+
+        self.app.post_message(
+            LogIt(
+                json.dumps(
+                    self.get_session_by_name(session_name), indent=2, default=str
+                )
+            )
+        )
+
         i = 0
         while not good:
             i += 1
             session_name = f"{base_name} {i}"
             good = self.get_session_by_name(session_name) is None
+            self.app.post_message(LogIt(f"mk_session_name: {session_name}: {good}"))
+
             if good:
                 break
         return session_name
@@ -65,10 +88,11 @@ class ChatManager(ParEventSystemBase):
             llm_model_name=model_name,
             options=options or self.options,
         )
-        self.mount(session)
-        session.add_sub(widget)
         self._id_to_session[session.session_id] = session
         self.sessions.append(session)
+        self.mount(session)
+        session.add_sub(widget)
+
         self.sort_sessions()
         self.notify_changed()
         return session
@@ -77,8 +101,11 @@ class ChatManager(ParEventSystemBase):
         self, session_id: str, widget: MessagePump | None = None
     ) -> ChatSession | None:
         """Get a chat session"""
+        self.app.post_message(LogIt("get_session: " + session_id))
+
         session = self._id_to_session.get(session_id)
-        if session and widget:
+
+        if session is not None and widget:
             session.add_sub(widget)
         return session
 
@@ -95,6 +122,8 @@ class ChatManager(ParEventSystemBase):
 
     def delete_session(self, session_id: str) -> None:
         """Delete a chat session"""
+        self.app.post_message(LogIt(f"CM Delete session: {session_id}"))
+
         del self._id_to_session[session_id]
         for session in self.sessions:
             if session.session_id == session_id:
@@ -125,7 +154,7 @@ class ChatManager(ParEventSystemBase):
         session: ChatSession | None = None
         if session_id:
             session = self.get_session(session_id)
-        if not session:
+        if session is None:
             if not session_name:
                 session_name = self.mk_session_name("New Chat")
             session = self.new_session(

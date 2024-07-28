@@ -90,7 +90,8 @@ class ChatSession(ParEventSystemBase):
             return
         file_path = os.path.join(settings.chat_dir, self.session_id + ".json")
         if not os.path.exists(file_path):
-            raise FileNotFoundError(f"Session file not found: {file_path}")
+            return
+            # raise FileNotFoundError(f"Session file not found: {file_path}")
 
         try:
             with open(file_path, mode="rt", encoding="utf-8") as fh:

@@ -187,7 +187,7 @@ class ParLlamaApp(App[None]):
             StatusMessage(f"Last model temp: {settings.last_chat_temperature}")
         )
         self.post_message_all(
-            StatusMessage(f"Last session name: {settings.last_chat_session_name}")
+            StatusMessage(f"Last session id: {settings.last_chat_session_id}")
         )
 
         self.app.post_message(
@@ -702,6 +702,7 @@ class ParLlamaApp(App[None]):
     def on_session_selected(self, event: SessionSelected) -> None:
         """Session selected event"""
         event.stop()
+        self.post_message(LogIt(f"on_session_selected: {event.session_id}"))
         self.post_message_all(event)
 
     @on(DeleteSession)

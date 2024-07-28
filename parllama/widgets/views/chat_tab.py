@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from functools import partial
 from typing import cast
 
 import humanize
@@ -222,7 +223,7 @@ class ChatTab(TabPane):
 
         self.session.set_name(chat_manager.mk_session_name(session_name))
         self.user_input.focus()
-        settings.last_chat_session_name = self.session.session_name
+        settings.last_chat_session_id = self.session.session_id
         settings.save_settings_to_file()
 
     def update_control_states(self):
@@ -351,9 +352,9 @@ class ChatTab(TabPane):
         chat_manager.notify_changed()
         self.on_update_chat_status()
 
-    def scroll_to_bottom(self) -> None:
+    def scroll_to_bottom(self, animate: bool = True) -> None:
         """Scroll to the bottom of the chat window."""
-        self.vs.scroll_to(y=self.vs.max_scroll_y)
+        self.vs.scroll_to(y=self.vs.max_scroll_y, animate=animate)
         # self.vs.scroll_end(force=True)
 
     @work
@@ -376,8 +377,9 @@ class ChatTab(TabPane):
 
     async def load_session(self, session_id: str) -> None:
         """Load a session"""
+        self.app.post_message(LogIt("load_session: " + session_id))
         session = chat_manager.get_session(session_id, self)
-        if not session:
+        if session is None:
             self.notify(f"Chat session not found: {session_id}", severity="error")
             return
         session.load()
@@ -401,7 +403,7 @@ class ChatTab(TabPane):
                 self.session.options.get("temperature", "")
             )
             self.session_name_input.value = self.session.session_name
-        self.set_timer(0.1, self.scroll_to_bottom)
+        self.set_timer(0.25, partial(self.scroll_to_bottom, False))
         self.update_control_states()
         self.notify_tab_label_changed()
         self.on_update_chat_status()

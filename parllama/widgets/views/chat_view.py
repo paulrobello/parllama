@@ -22,7 +22,7 @@ from parllama.chat_manager import chat_manager
 from parllama.chat_manager import ChatSession
 from parllama.data_manager import dm
 from parllama.dialogs.information import InformationDialog
-from parllama.messages.messages import ChatGenerationAborted
+from parllama.messages.messages import ChatGenerationAborted, LogIt
 from parllama.messages.messages import ChatMessage
 from parllama.messages.messages import ChatMessageSent
 from parllama.messages.messages import DeleteSession
@@ -343,7 +343,7 @@ Chat Commands:
         # self.notify(f"View session updated {','.join([*event.changed])}")
 
         session = chat_manager.get_session(event.session_id)
-        if not session:
+        if session is None:
             return
 
         session.set_name(chat_manager.mk_session_name(session.session_name))
@@ -414,6 +414,7 @@ Chat Commands:
     async def on_delete_session(self, event: DeleteSession) -> None:
         """Delete session event"""
         event.stop()
+        self.app.post_message(LogIt(f"Deleted chat session {event.session_id}"))
         tab_removed: bool = False
         for tab in self.chat_tabs.query(ChatTab):
             if tab.session.session_id == event.session_id:
