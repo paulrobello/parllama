@@ -8,7 +8,6 @@ import uuid
 from collections.abc import Iterator
 from collections.abc import Mapping
 from dataclasses import dataclass
-from io import StringIO
 from typing import Any
 
 import simplejson as json
@@ -16,6 +15,7 @@ from ollama import Options as OllamaOptions
 from textual.message_pump import MessagePump
 import rich.repr
 
+from parllama.chat_message_container import ChatMessageContainer
 from parllama.llm_session_name import llm_session_name
 from parllama.messages.messages import ChatGenerationAborted
 from parllama.messages.messages import ChatMessage
@@ -24,30 +24,24 @@ from parllama.messages.messages import SessionMessage
 from parllama.messages.messages import SessionUpdated
 from parllama.messages.par_messages import (
     ParLogIt,
+    ParChatUpdated,
 )
 from parllama.chat_message import OllamaMessage
 from parllama.messages.par_session_messages import (
     ParSessionDelete,
     ParSessionUpdated,
-    ParSessionChatUpdated,
 )
 from parllama.models.settings_data import settings
-from parllama.par_event_system import ParEventSystemBase
 
 
 @rich.repr.auto
 @dataclass
-class ChatSession(ParEventSystemBase):
+class ChatSession(ChatMessageContainer):
     """Chat session class"""
 
-    session_id: str
     llm_model_name: str
     options: OllamaOptions
-    session_name: str
-    messages: list[OllamaMessage]
-    last_updated: datetime.datetime
     _subs: set[MessagePump]
-    _id_to_msg: dict[str, OllamaMessage]
     _name_generated: bool = False
     _abort: bool = False
     _generating: bool = False
@@ -57,40 +51,28 @@ class ChatSession(ParEventSystemBase):
     def __init__(
         self,
         *,
-        session_id: str | None = None,
+        id: str | None = None,  # pylint: disable=redefined-builtin
+        name: str,
         llm_model_name: str,
         options: OllamaOptions | None = None,
-        session_name: str,
         messages: list[OllamaMessage] | list[dict] | None = None,
         last_updated: datetime.datetime | None = None,
     ):
         """Initialize the chat session"""
-        super().__init__()
-        self._id_to_msg = {}
+        super().__init__(id=id, name=name, messages=messages, last_updated=last_updated)
+        self._loading = True
         self._subs = set()
-        self.session_id = session_id or uuid.uuid4().hex
         self.llm_model_name = llm_model_name
         self.options = options or {}
-        self.session_name = session_name
-        self.messages = []
         self._loaded = messages is not None and len(messages) > 0
-        msgs = messages or []
-        for m in msgs:
-            if isinstance(m, OllamaMessage):
-                self.messages.append(m)
-            else:
-                self.messages.append(OllamaMessage(session_id=self.session_id, **m))
-
-        for m in self.messages:
-            self._id_to_msg[m.message_id] = m
-
-        self.last_updated = last_updated or datetime.datetime.now()
+        self._loading = False
 
     def load(self) -> None:
         """Load chat sessions from files"""
         if self._loaded:
             return
-        file_path = os.path.join(settings.chat_dir, self.session_id + ".json")
+        self._loading = True
+        file_path = os.path.join(settings.chat_dir, self.id + ".json")
         if not os.path.exists(file_path):
             return
             # raise FileNotFoundError(f"Session file not found: {file_path}")
@@ -101,14 +83,18 @@ class ChatSession(ParEventSystemBase):
 
             msgs = data["messages"] or []
             for m in msgs:
-                msg = OllamaMessage(session_id=self.session_id, **m)
-                self.messages.append(msg)
-                self._id_to_msg[msg.message_id] = msg
+                if "message_id" in m:
+                    m["id"] = "message_id"
+                    del m["message_id"]
+            for m in msgs:
+                self.add_message(OllamaMessage(**m))
             self._loaded = True
         except Exception as e:  # pylint: disable=broad-exception-caught
             self.post_message(
                 ParLogIt(f"Error loading session {e}", notify=True, severity="error")
             )
+        finally:
+            self._loading = False
 
     def add_sub(self, sub: MessagePump) -> None:
         """Add a subscription"""
@@ -122,42 +108,17 @@ class ChatSession(ParEventSystemBase):
 
     def delete(self) -> None:
         """Delete the session"""
-        self.post_message(ParSessionDelete(session_id=self.session_id))
+        self.post_message(ParSessionDelete(session_id=self.id))
 
-    def _notify_subs(self, event: SessionMessage) -> None:
+    def _notify_subs(self, event: SessionMessage | ChatMessage) -> None:
         """Notify all subscriptions"""
         for sub in self._subs:
             sub.post_message(event)
 
     def _notify_changed(self, changed: SessionChanges) -> None:
         """Notify changed"""
-        self.last_updated = datetime.datetime.now()
-        self._notify_subs(SessionUpdated(session_id=self.session_id, changed=changed))
-        # if "name" in changed or "temperature" in changed or "model" in changed:
-        self.post_message(
-            ParSessionUpdated(session_id=self.session_id, changed=changed)
-        )
-
-    def add_message(self, msg: OllamaMessage, prepend: bool = False) -> None:
-        """Add a message"""
-        if prepend:
-            self.messages.insert(0, msg)
-        else:
-            self.messages.append(msg)
-        self._id_to_msg[msg.message_id] = msg
-        self.mount(msg)
-
-        self._notify_changed({"messages"})
-        self.save()
-
-    def set_name(self, name: str) -> None:
-        """Set the name of the chat session"""
-        name = name.strip()
-        if self.session_name == name:
-            return
-        self.session_name = name
-        self._notify_changed({"name"})
-        self.save()
+        self._notify_subs(SessionUpdated(session_id=self.id, changed=changed))
+        self.post_message(ParSessionUpdated(session_id=self.id, changed=changed))
 
     def set_llm_model(self, llm_model_name: str) -> None:
         """Set the LLM model name"""
@@ -165,7 +126,7 @@ class ChatSession(ParEventSystemBase):
         if self.llm_model_name == llm_model_name:
             return
         self.llm_model_name = llm_model_name
-        self._notify_changed({"model"})
+        self._changes.add("model")
         self.save()
 
     def set_temperature(self, temperature: float | None) -> None:
@@ -181,56 +142,22 @@ class ChatSession(ParEventSystemBase):
             if "temperature" not in self.options:
                 return
             del self.options["temperature"]
-        self._notify_changed({"temperature"})
-        self.save()
-
-    def set_system_prompt(self, system_prompt: str) -> None:
-        """Set system prompt for session"""
-        msg: OllamaMessage
-        if len(self.messages) > 0 and self.messages[0].role == "system":
-            msg = self.messages[0]
-            if msg.content == system_prompt:
-                return
-            msg.content = system_prompt
-            self._notify_changed({"messages"})
-        else:
-            msg = OllamaMessage(
-                session_id=self.session_id, content=system_prompt, role="system"
-            )
-            self.add_message(msg, True)
-
-        self._notify_subs(
-            ChatMessage(session_id=self.session_id, message_id=msg.message_id)
-        )
+        self._changes.add("temperature")
         self.save()
 
     async def send_chat(self, from_user: str) -> bool:
         """Send a chat message to LLM"""
         self._generating = True
         try:
-            msg: OllamaMessage = OllamaMessage(
-                session_id=self.session_id, role="user", content=from_user
-            )
+            msg: OllamaMessage = OllamaMessage(role="user", content=from_user)
             self.add_message(msg)
-            self._notify_subs(
-                ChatMessage(session_id=self.session_id, message_id=msg.message_id)
-            )
-            self.post_message(
-                ParSessionChatUpdated(
-                    session_id=self.session_id, message_id=msg.message_id
-                )
-            )
+            self._notify_subs(ChatMessage(parent_id=self.id, message_id=msg.id))
+            self.post_message(ParChatUpdated(parent_id=self.id, message_id=msg.id))
 
-            msg = OllamaMessage(session_id=self.session_id, role="assistant")
+            msg = OllamaMessage(role="assistant")
             self.add_message(msg)
-            self._notify_subs(
-                ChatMessage(session_id=self.session_id, message_id=msg.message_id)
-            )
-            self.post_message(
-                ParSessionChatUpdated(
-                    session_id=self.session_id, message_id=msg.message_id
-                )
-            )
+            self._notify_subs(ChatMessage(parent_id=self.id, message_id=msg.id))
+            self.post_message(ParChatUpdated(parent_id=self.id, message_id=msg.id))
 
             stream: Iterator[Mapping[str, Any]] = settings.ollama_client.chat(  # type: ignore
                 model=self.llm_model_name,
@@ -246,21 +173,15 @@ class ChatSession(ParEventSystemBase):
                     is_aborted = True
                     try:
                         msg.content += "\n\nAborted..."
-                        self._notify_subs(ChatGenerationAborted(self.session_id))
+                        self._notify_subs(ChatGenerationAborted(self.id))
                         stream.close()  # type: ignore
                     except Exception:  # pylint:disable=broad-except
                         pass
                     finally:
                         self._abort = False
                     break
-                self._notify_subs(
-                    ChatMessage(session_id=self.session_id, message_id=msg.message_id)
-                )
-                self.post_message(
-                    ParSessionChatUpdated(
-                        session_id=self.session_id, message_id=msg.message_id
-                    )
-                )
+                self._notify_subs(ChatMessage(parent_id=self.id, message_id=msg.id))
+                self.post_message(ParChatUpdated(parent_id=self.id, message_id=msg.id))
 
             self.save()
 
@@ -274,12 +195,10 @@ class ChatSession(ParEventSystemBase):
                 if user_msg:
                     new_name = llm_session_name(user_msg.content, self.llm_model_name)
                     if new_name:
-                        self.set_name(new_name)
-                self._notify_subs(
-                    SessionUpdated(session_id=self.session_id, changed={"name"})
-                )
+                        self.name = new_name
+                self._notify_subs(SessionUpdated(session_id=self.id, changed={"name"}))
                 self.post_message(
-                    ParSessionUpdated(session_id=self.session_id, changed={"name"})
+                    ParSessionUpdated(session_id=self.id, changed={"name"})
                 )
                 self.save()
         finally:
@@ -287,97 +206,42 @@ class ChatSession(ParEventSystemBase):
 
         return not is_aborted
 
-    def get_system_message(self) -> OllamaMessage | None:
-        """Get the system message"""
-        for msg in self.messages:
-            if msg.role == "system":
-                return msg
-        return None
-
-    def get_first_user_message(self) -> OllamaMessage | None:
-        """Get the first user message"""
-        for msg in self.messages:
-            if msg.role == "user":
-                return msg
-        return None
-
-    def new_session(self, session_name: str = "My Chat"):
+    def new_session(self, name: str = "My Chat"):
         """Start new session"""
-        self.session_id = uuid.uuid4().hex
-        self.session_name = session_name
+        self.id = uuid.uuid4().hex
+        self.name = name
         self.messages.clear()
         self._id_to_msg.clear()
+        self.clear_changes()
+        self._loaded = False
+        self._loading = False
 
     @property
     def is_loaded(self):
         """Check if the session is loaded"""
         return self._loaded
 
-    def __iter__(self):
-        """Iterate over messages"""
-        return iter(self.messages)
-
-    def __len__(self) -> int:
-        """Get the number of messages"""
-        return len(self.messages)
-
-    def __getitem__(self, msg_id: str) -> OllamaMessage:
-        """Get a message"""
-        return self._id_to_msg[msg_id]
-
-    def __setitem__(self, msg_id: str, value: OllamaMessage) -> None:
-        """Set a message"""
-        self._id_to_msg[msg_id] = value
-        for i, msg in enumerate(self.messages):
-            if msg.message_id == msg_id:
-                self.messages[i] = value
-                self._notify_changed({"messages"})
-                return
-        self.messages.append(value)
-        self._notify_changed({"messages"})
-
-    def __delitem__(self, key: str) -> None:
-        """Delete a message"""
-        del self._id_to_msg[key]
-        for i, msg in enumerate(self.messages):
-            if msg.message_id == key:
-                self.messages.pop(i)
-                self._notify_changed({"messages"})
-                return
-
-    def __contains__(self, item: OllamaMessage) -> bool:
-        """Check if a message exists"""
-        return item.message_id in self._id_to_msg
-
     def __eq__(self, other: object) -> bool:
         """Check if two sessions are equal"""
         if not isinstance(other, ChatSession):
             return NotImplemented
-        return self.session_id == other.session_id
+        return self.id == other.id
 
     def __ne__(self, other: object) -> bool:
         """Check if two sessions are not equal"""
         if not isinstance(other, ChatSession):
             return NotImplemented
-        return self.session_id != other.session_id
-
-    def __str__(self) -> str:
-        """Get a string representation of the chat session"""
-        ret = StringIO()
-        ret.write(f"# {self.session_name}\n\n")
-        for msg in self.messages:
-            ret.write(str(msg))
-        return ret.getvalue()
+        return self.id != other.id
 
     def to_json(self, indent: int = 4) -> str:
         """Convert the chat session to JSON"""
         return json.dumps(
             {
-                "session_id": self.session_id,
+                "id": self.id,
+                "name": self.name,
                 "last_updated": self.last_updated.isoformat(),
                 "llm_model_name": self.llm_model_name,
                 "options": self.options,
-                "session_name": self.session_name,
                 "messages": [m.__dict__() for m in self.messages],
             },
             default=str,
@@ -388,13 +252,18 @@ class ChatSession(ParEventSystemBase):
     def from_json(json_data: str) -> ChatSession:
         """Convert JSON to chat session"""
         data: dict = json.loads(json_data)
+        messages = data["messages"]
+        for m in messages:
+            if "message_id" in m:
+                m["id"] = "message_id"
+                del m["message_id"]
         return ChatSession(
-            session_id=data["session_id"],
+            id=data.get("id", data.get("id", data.get("session_id"))),
+            name=data.get("name", data.get("name", data.get("session_name"))),
             last_updated=datetime.datetime.fromisoformat(data["last_updated"]),
             llm_model_name=data["llm_model_name"],
             options=data.get("options"),
-            session_name=data["session_name"],
-            messages=[OllamaMessage(**m) for m in data["messages"]],
+            messages=[OllamaMessage(**m) for m in messages],
         )
 
     @staticmethod
@@ -412,7 +281,7 @@ class ChatSession(ParEventSystemBase):
     def is_valid(self) -> bool:
         """return true if session is valid"""
         return (
-            len(self.session_name) > 0
+            len(self.name) > 0
             and len(self.llm_model_name) > 0
             and self.llm_model_name not in ["Select.BLANK", "None"]
             # and len(self.messages) > 0
@@ -420,32 +289,28 @@ class ChatSession(ParEventSystemBase):
 
     def save(self) -> bool:
         """Save the chat session to a file"""
+        if self._loading:
+            return False
         if not self._loaded:
             self.load()
-        if not self.is_valid or len(self.messages) == 0:
-            return False  # Cannot save without session name, LLM model name and at least one message
         if settings.no_save_chat:
             return False  # Do not save if no_save_chat is set in settings
+        if not self.is_dirty or not self.is_valid or len(self.messages) == 0:
+            return False  # Cannot save without name, LLM model name and at least one message
 
-        file_name = (
-            f"{self.session_id}.json"  # Use session ID as filename to avoid over
-        )
+        if "system_prompt" in self._changes:
+            msg = self.system_prompt
+            if msg is not None:
+                self._notify_subs(ChatMessage(parent_id=self.id, message_id=msg.id))
+        if "messages" in self._changes:
+            self._notify_changed({"messages"})
+
+        file_name = f"{self.id}.json"  # Use session ID as filename to avoid over
         try:
             with open(
                 os.path.join(settings.chat_dir, file_name), "wt", encoding="utf-8"
             ) as f:
                 f.write(self.to_json())
-            return True
-        except (OSError, IOError):
-            return False
-
-    def export_as_markdown(self, filename: str) -> bool:
-        """Save the chat session to markdown file"""
-        try:
-            with open(
-                os.path.join(settings.export_md_dir, filename), "wt", encoding="utf-8"
-            ) as f:
-                f.write(str(self))
             return True
         except (OSError, IOError):
             return False
@@ -463,14 +328,6 @@ class ChatSession(ParEventSystemBase):
     def is_generating(self) -> bool:
         """Check if LLM model generation is in progress"""
         return self._generating
-
-    @property
-    def context_length(self) -> int:
-        """Return current message context length"""
-        total: int = 0
-        for msg in self.messages:
-            total += len(msg.content)
-        return total
 
     @property
     def num_subs(self):

@@ -12,8 +12,9 @@ from textual.app import App
 from textual.message_pump import MessagePump
 
 from parllama.chat_prompt import ChatPrompt
-from parllama.messages.messages import SessionListChanged, LogIt
+from parllama.messages.messages import SessionListChanged, LogIt, PromptListChanged
 from parllama.messages.par_messages import ParLogIt
+from parllama.messages.par_prompt_messages import ParPromptUpdated, ParPromptDelete
 from parllama.messages.par_session_messages import ParSessionUpdated, ParSessionDelete
 from parllama.models.settings_data import settings
 from parllama.par_event_system import ParEventSystemBase
@@ -33,8 +34,10 @@ class ChatManager(ParEventSystemBase):
         """Initialize the chat manager"""
         super().__init__()
         self._id_to_session = {}
+        self._id_to_prompt = {}
         self.options = {}
 
+    ############ Sessions #################
     @property
     def sessions(self) -> list[ChatSession]:
         """Return a list of chat sessions"""
@@ -46,6 +49,13 @@ class ChatManager(ParEventSystemBase):
         return [session for session in self._id_to_session.values() if session.is_valid]
 
     @property
+    def sorted_sessions(self) -> list[ChatSession]:
+        """Sort sessions by last_updated field in descending order."""
+        sessions = self.valid_sessions
+        sessions.sort(key=lambda x: x.last_updated, reverse=True)
+        return sessions
+
+    @property
     def session_ids(self) -> list[str]:
         """Return a list of session IDs"""
         return list(self._id_to_session.keys())
@@ -53,12 +63,36 @@ class ChatManager(ParEventSystemBase):
     @property
     def session_names(self) -> list[str]:
         """Return a list of session names"""
-        return [session.session_name for session in self._id_to_session.values()]
+        return [session.name for session in self._id_to_session.values()]
+
+    ############ Prompts #################
+    @property
+    def prompts(self) -> list[ChatPrompt]:
+        """Return a list of chat sessions"""
+        return list(self._id_to_prompt.values())
+
+    @property
+    def sorted_prompts(self) -> list[ChatPrompt]:
+        """Sort sessions by last_updated field in descending order."""
+        prompts = self.prompts
+        prompts.sort(key=lambda x: x.last_updated, reverse=True)
+        return prompts
+
+    @property
+    def prompt_ids(self) -> list[str]:
+        """Return a list of session IDs"""
+        return list(self._id_to_prompt.keys())
+
+    @property
+    def prompt_names(self) -> list[str]:
+        """Return a list of session names"""
+        return [prompt.name for prompt in self._id_to_prompt.values()]
 
     def set_app(self, app: App[Any]) -> None:
-        """Set the app and load existing sessions from storage"""
+        """Set the app and load existing sessions and prompts from storage"""
         self.app = app
         self.load_sessions()
+        # self.load_prompts()
 
     def mk_session_name(self, base_name: str) -> str:
         """Generate a unique session name"""
@@ -90,15 +124,15 @@ class ChatManager(ParEventSystemBase):
         self.app.post_message(LogIt("CM new_session"))
 
         session = ChatSession(
-            session_name=self.mk_session_name(session_name),
+            name=self.mk_session_name(session_name),
             llm_model_name=model_name,
             options=options or self.options,
         )
-        self._id_to_session[session.session_id] = session
+        self._id_to_session[session.id] = session
         self.mount(session)
         session.add_sub(widget)
 
-        self.notify_changed()
+        self.notify_sessions_changed()
         return session
 
     def get_session(
@@ -118,7 +152,7 @@ class ChatManager(ParEventSystemBase):
     ) -> ChatSession | None:
         """Get a chat session by name"""
         for session in self._id_to_session.values():
-            if session.session_name == session_name:
+            if session.name == session_name:
                 if widget:
                     session.add_sub(widget)
                 return session
@@ -133,12 +167,12 @@ class ChatManager(ParEventSystemBase):
         p = os.path.join(settings.chat_dir, f"{session_id}.json")
         if os.path.exists(p):
             os.remove(p)
-        self.notify_changed()
+        self.notify_sessions_changed()
         self.app.post_message(LogIt(f"CM Session {session_id} deleted"))
 
-    def notify_changed(self) -> None:
+    def notify_sessions_changed(self) -> None:
         """Notify changed"""
-        self.app.post_message(LogIt("CM Notify changed"))
+        self.app.post_message(LogIt("CM Notify session changed"))
         # self.app.notify("CM notify changed")
         self.app.post_message(SessionListChanged())
 
@@ -179,27 +213,60 @@ class ChatManager(ParEventSystemBase):
                 ) as fh:
                     data: dict = json.load(fh)
                     session = ChatSession(
-                        session_name=data["session_name"],
+                        name=data.get("name", data.get("session_name")),
                         llm_model_name=data["llm_model_name"],
-                        session_id=data["session_id"],
+                        id=data.get("id", data.get("session_id")),
                         # messages=data["messages"],
                         options=data.get("options"),
                         last_updated=datetime.datetime.fromisoformat(
                             data["last_updated"]
                         ),
                     )
-                    self._id_to_session[session.session_id] = session
+                    self._id_to_session[session.id] = session
                     self.mount(session)
             except Exception as e:  # pylint: disable=broad-exception-caught
-                self.app.post_message(LogIt(f"Error loading session {e}"))
-                self.app.notify(f"Error loading session {f}", severity="error")
+                self.app.post_message(
+                    LogIt(f"Error loading session {e}", notify=True, severity="error")
+                )
 
-    @property
-    def sorted_sessions(self) -> list[ChatSession]:
-        """Sort sessions by last_updated field in descending order."""
-        sessions = self.valid_sessions
-        sessions.sort(key=lambda x: x.last_updated, reverse=True)
-        return sessions
+    def load_prompts(self) -> None:
+        """Load custom prompts from files"""
+        for f in os.listdir(settings.prompt_dir):
+            f = f.lower()
+            if not f.endswith(".json"):
+                continue
+            try:
+                with open(
+                    os.path.join(settings.prompt_dir, f), mode="rt", encoding="utf-8"
+                ) as fh:
+                    data: dict = json.load(fh)
+                    prompt = ChatPrompt(
+                        id=data["id"],
+                        name=data.get("name", data.get("session_name")),
+                        description=data["description"],
+                        # messages=data["messages"],
+                        last_updated=datetime.datetime.fromisoformat(
+                            data["last_updated"]
+                        ),
+                    )
+                    self._id_to_prompt[prompt.id] = prompt
+                    self.mount(prompt)
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                self.app.post_message(
+                    LogIt(f"Error loading prompt {e}", notify=True, severity="error")
+                )
+
+    def delete_prompt(self, prompt_id: str) -> None:
+        """Delete a custom prompt"""
+        prompt = self._id_to_prompt.get(prompt_id)
+        if prompt is None:
+            return
+        del self._id_to_prompt[prompt_id]
+        p = os.path.join(settings.prompt_dir, f"{prompt_id}.json")
+        if os.path.exists(p):
+            os.remove(p)
+        self.notify_prompts_changed()
+        self.app.post_message(LogIt(f"CM Prompt {prompt_id} deleted"))
 
     def on_par_session_updated(self, event: ParSessionUpdated) -> None:
         """Handle a ParSessionUpdated event"""
@@ -207,14 +274,31 @@ class ChatManager(ParEventSystemBase):
         self.app.post_message(
             LogIt(f"CM Session {event.session_id} updated. [{','.join(event.changed)}]")
         )
-        self.notify_changed()
+        self.notify_sessions_changed()
+
+    def notify_prompts_changed(self) -> None:
+        """Notify changed"""
+        self.app.post_message(LogIt("CM Notify prompt changed"))
+        # self.app.notify("CM notify changed")
+        self.app.post_message(PromptListChanged())
+
+    def on_par_prompt_updated(self, event: ParPromptUpdated) -> None:
+        """Handle a ParSessionUpdated event"""
+        event.stop()
+        self.app.post_message(
+            LogIt(f"CM Prompt {event.prompt_id} updated. [{','.join(event.changed)}]")
+        )
+        self.notify_prompts_changed()
+
+    def on_par_prompt_delete(self, event: ParPromptDelete) -> None:
+        """Handle a ParDeleteSession event"""
+        event.stop()
+        self.delete_prompt(event.prompt_id)
 
     def on_par_session_delete(self, event: ParSessionDelete) -> None:
         """Handle a ParDeleteSession event"""
         event.stop()
         self.delete_session(event.session_id)
-        # self.app.notify(f"CM Session {event.session_id} deleted")
-        self.notify_changed()
 
     def on_par_log_it(self, event: ParLogIt) -> None:
         """Handle a ParLogIt event"""

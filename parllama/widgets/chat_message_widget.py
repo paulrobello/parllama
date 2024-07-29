@@ -74,7 +74,7 @@ class ChatMessageWidget(Vertical, can_focus=True):
 
     async def action_delete_msg(self) -> None:
         """Handle the delete message action."""
-        del self.session[self.msg.message_id]
+        del self.session[self.msg.id]
         await self.remove()
         self.session.save()
 

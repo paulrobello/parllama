@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from collections.abc import Awaitable
 from collections.abc import Iterable
 from typing import Callable
@@ -58,10 +59,16 @@ class ParEventBase:
 class ParEventSystemBase:
     """Base class for chat management"""
 
+    id: str
     parent: ParEventSystemBase | None
 
-    def __init__(self) -> None:
+    def __init__(
+        self, id: str | None = None  # pylint: disable=redefined-builtin
+    ) -> None:
         """Initialize the chat base"""
+        if not id:
+            id = uuid.uuid4().hex
+        self.id = id
         self.parent = None
 
     def _get_dispatch_methods(

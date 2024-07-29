@@ -32,7 +32,7 @@ class SessionListItem(DblClickListItem, can_focus=False, can_focus_children=True
     def compose(self) -> ComposeResult:
         """Compose the content of the view."""
         with Vertical():
-            yield Label(self.session.session_name)
+            yield Label(self.session.name)
             temp = (
                 f"{self.session.options['temperature']:.2f}"
                 if self.session.options.get("temperature") is not None

@@ -247,6 +247,14 @@ class UpdateChatStatus(Message):
     """Update chat status."""
 
 
+# ---------- Prompt Related Messages ---------- #
+
+
+@dataclass
+class PromptListChanged(Message):
+    """Notify that prompt list has changed."""
+
+
 # ---------- Session Related Messages ---------- #
 
 
@@ -273,9 +281,10 @@ class ChatGenerationAborted(SessionMessage):
 
 
 @dataclass
-class ChatMessage(SessionMessage):
+class ChatMessage(Message):
     """Chat message class"""
 
+    parent_id: str
     message_id: str
 
 

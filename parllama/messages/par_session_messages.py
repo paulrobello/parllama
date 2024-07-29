@@ -23,15 +23,3 @@ class ParSessionUpdated(ParSessionMessage):
 @dataclass
 class ParSessionDelete(ParSessionMessage):
     """Request session be deleted."""
-
-
-@dataclass
-class ParSessionChatMessage(ParSessionMessage):
-    """Chat message base class"""
-
-    message_id: str
-
-
-@dataclass
-class ParSessionChatUpdated(ParSessionChatMessage):
-    """Chat message updated"""

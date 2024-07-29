@@ -80,9 +80,7 @@ class SessionList(Vertical, can_focus=False, can_focus_children=True):
         )
         if not selected_item:
             return
-        self.app.post_message(
-            DeleteSession(session_id=selected_item.session.session_id)
-        )
+        self.app.post_message(DeleteSession(session_id=selected_item.session.id))
         self.set_timer(0.1, self.list_view.focus)
         self.set_timer(0.2, partial(self.focus_next_item, self.list_view.index or 0))
 
@@ -105,7 +103,7 @@ class SessionList(Vertical, can_focus=False, can_focus_children=True):
         if not selected_item:
             return
         for item in self.list_view.query(SessionListItem):
-            if item.session.session_id == selected_item.session.session_id:
+            if item.session.id == selected_item.session.id:
                 self.list_view.index = self.list_view.children.index(item)
                 break
 
@@ -117,9 +115,7 @@ class SessionList(Vertical, can_focus=False, can_focus_children=True):
         )
         if not selected_item:
             return
-        self.app.post_message(
-            SessionSelected(selected_item.session.session_id, new_tab=False)
-        )
+        self.app.post_message(SessionSelected(selected_item.session.id, new_tab=False))
         self.display = False
 
     def action_load_item_new(self) -> None:
@@ -129,9 +125,7 @@ class SessionList(Vertical, can_focus=False, can_focus_children=True):
         )
         if not selected_item:
             return
-        self.app.post_message(
-            SessionSelected(selected_item.session.session_id, new_tab=True)
-        )
+        self.app.post_message(SessionSelected(selected_item.session.id, new_tab=True))
         self.display = False
 
     @on(SessionSelected)
@@ -139,7 +133,7 @@ class SessionList(Vertical, can_focus=False, can_focus_children=True):
         """Handle session selected event."""
         event.stop()
         for item in self.list_view.query(SessionListItem):
-            if item.session.session_id == event.session_id:
-                # self.notify(f"Session selected {event.session_id}")
+            if item.session.id == event.session_id:
+                # self.notify(f"Session selected {event.parent_id}")
                 self.list_view.index = self.list_view.children.index(item)
                 break

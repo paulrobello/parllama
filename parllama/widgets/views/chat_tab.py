@@ -193,9 +193,7 @@ class ChatTab(TabPane):
 
     def update_session_select(self) -> None:
         """Update session select on show"""
-        self.session_list.post_message(
-            SessionSelected(session_id=self.session.session_id)
-        )
+        self.session_list.post_message(SessionSelected(session_id=self.session.id))
 
     @on(Input.Submitted, "#temperature_input")
     def temperature_input_changed(self, event: Message) -> None:
@@ -210,7 +208,7 @@ class ChatTab(TabPane):
             return
         self.session.set_temperature(settings.last_chat_temperature)
         settings.save_settings_to_file()
-        chat_manager.notify_changed()
+        chat_manager.notify_sessions_changed()
         self.user_input.focus()
 
     @on(Input.Submitted, "#session_name_input")
@@ -223,9 +221,9 @@ class ChatTab(TabPane):
         if not session_name:
             return
         with self.prevent(Input.Changed, Input.Submitted):
-            self.session.set_name(chat_manager.mk_session_name(session_name))
+            self.session.name = chat_manager.mk_session_name(session_name)
         self.user_input.focus()
-        settings.last_chat_session_id = self.session.session_id
+        settings.last_chat_session_id = self.session.id
         settings.save_settings_to_file()
 
     def update_control_states(self):
@@ -294,8 +292,8 @@ class ChatTab(TabPane):
                 widget=self,
             )
             if not old_session.is_valid:
-                chat_manager.delete_session(old_session.session_id)
-            self.session_name_input.value = self.session.session_name
+                chat_manager.delete_session(old_session.id)
+            self.session_name_input.value = self.session.name
 
         await self.vs.remove_children("*")
         self.update_control_states()
@@ -305,7 +303,6 @@ class ChatTab(TabPane):
             for msg in msgs:
                 self.session.add_message(
                     OllamaMessage(
-                        session_id=self.session.session_id,
                         role=msg["role"],
                         content=msg["content"],
                     )
@@ -319,7 +316,7 @@ class ChatTab(TabPane):
         self.post_message(
             UpdateTabLabel(
                 str(self.id),
-                str_ellipsis(self.session.session_name, settings.chat_tab_max_length),
+                str_ellipsis(self.session.name, settings.chat_tab_max_length),
             )
         )
 
@@ -327,7 +324,7 @@ class ChatTab(TabPane):
     async def on_chat_message(self, event: ChatMessage) -> None:
         """Handle a chat message"""
 
-        if self.session.session_id != event.session_id:
+        if self.session.id != event.parent_id:
             self.notify("Chat session id missmatch", severity="error")
             return
         msg: OllamaMessage | None = self.session[event.message_id]
@@ -337,7 +334,7 @@ class ChatTab(TabPane):
 
         msg_widget: ChatMessageWidget | None = None
         for w in self.query(ChatMessageWidget):
-            if w.msg.message_id == msg.message_id:
+            if w.msg.id == msg.id:
                 await w.update("")
                 msg_widget = w
                 break
@@ -351,7 +348,7 @@ class ChatTab(TabPane):
         if self.user_input.has_focus:
             self.set_timer(0.1, self.scroll_to_bottom)
 
-        chat_manager.notify_changed()
+        chat_manager.notify_sessions_changed()
         self.on_update_chat_status()
 
     def scroll_to_bottom(self, animate: bool = True) -> None:
@@ -389,7 +386,7 @@ class ChatTab(TabPane):
         old_session.remove_sub(self)
         self.session = session
         if not old_session.is_valid:
-            chat_manager.delete_session(old_session.session_id)
+            chat_manager.delete_session(old_session.id)
         await self.vs.remove_children("*")
         await self.vs.mount(
             *[
@@ -404,7 +401,7 @@ class ChatTab(TabPane):
             self.temperature_input.value = str(
                 self.session.options.get("temperature", "")
             )
-            self.session_name_input.value = self.session.session_name
+            self.session_name_input.value = self.session.name
         self.set_timer(0.25, partial(self.scroll_to_bottom, False))
         self.update_control_states()
         self.notify_tab_label_changed()
@@ -423,7 +420,7 @@ class ChatTab(TabPane):
         event.stop()
         chat_manager.delete_session(event.session_id)
         self.notify("Chat session deleted")
-        if self.session.session_id == event.session_id:
+        if self.session.id == event.session_id:
             await self.action_new_session()
 
     @on(SessionUpdated)
@@ -435,7 +432,7 @@ class ChatTab(TabPane):
         )
         if "name" in event.changed:
             with self.prevent(Input.Changed, Input.Submitted):
-                self.session_name_input.value = self.session.session_name
+                self.session_name_input.value = self.session.name
                 self.notify_tab_label_changed()
         if "model_name" in event.changed or "messages" in event.changed:
             self.on_update_chat_status()
@@ -477,7 +474,7 @@ class ChatTab(TabPane):
         if len(ret) != 1:
             return
         msg: ChatMessageWidget = cast(ChatMessageWidget, ret[0])
-        del self.session[msg.msg.message_id]
+        del self.session[msg.msg.id]
         await msg.remove()
         self.session.save()
         self.on_update_chat_status()
@@ -489,7 +486,7 @@ class ChatTab(TabPane):
         """Send the message."""
         self.busy = True
         await self.session.send_chat(msg)
-        self.post_message(ChatMessageSent(self.session.session_id))
+        self.post_message(ChatMessageSent(self.session.id))
 
     @on(ChatMessageSent)
     def on_chat_message_sent(self) -> None:

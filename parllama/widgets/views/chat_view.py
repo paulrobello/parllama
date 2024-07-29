@@ -20,6 +20,7 @@ from textual.widgets import TabbedContent
 
 from parllama.chat_manager import chat_manager
 from parllama.chat_manager import ChatSession
+from parllama.chat_message import OllamaMessage
 from parllama.data_manager import dm
 from parllama.dialogs.information import InformationDialog
 from parllama.messages.messages import ChatGenerationAborted, LogIt
@@ -284,7 +285,7 @@ Chat Commands:
             (_, v) = cmd.split(" ", 1)
             await self.active_tab.action_new_session(v)
         elif cmd == "session.delete":
-            self.app.post_message(DeleteSession(session_id=self.session.session_id))
+            self.app.post_message(DeleteSession(session_id=self.session.id))
         elif cmd == "session.model":
             self.set_timer(0.1, self.active_tab.model_select.focus)
             return
@@ -315,7 +316,7 @@ Chat Commands:
             if not v:
                 self.notify("System prompt cannot be empty", severity="error")
                 return
-            self.session.set_system_prompt(v)
+            self.session.system_prompt = OllamaMessage(role="system", content=v)
         else:
             self.notify(f"Unknown command: {cmd}", severity="error")
 
@@ -333,7 +334,7 @@ Chat Commands:
     def on_chat_message_sent(self, event: ChatMessageSent) -> None:
         """Handle a chat message sent"""
         event.stop()
-        if self.session.session_id == event.session_id:
+        if self.session.id == event.session_id:
             self.stop_button.disabled = True
 
     @on(SessionUpdated)
@@ -346,7 +347,7 @@ Chat Commands:
         if session is None:
             return
 
-        session.set_name(chat_manager.mk_session_name(session.session_name))
+        session.name = chat_manager.mk_session_name(session.name)
 
     def action_toggle_session_list(self) -> None:
         """Toggle the session list."""
@@ -387,7 +388,7 @@ Chat Commands:
         """Route chat message to correct tab"""
         event.stop()
         for tab in self.chat_tabs.query(ChatTab):
-            if tab.session.session_id == event.session_id:
+            if tab.session.id == event.parent_id:
                 await tab.on_chat_message(event)
 
     @on(UpdateTabLabel)
@@ -417,7 +418,7 @@ Chat Commands:
         self.app.post_message(LogIt(f"Deleted chat session {event.session_id}"))
         tab_removed: bool = False
         for tab in self.chat_tabs.query(ChatTab):
-            if tab.session.session_id == event.session_id:
+            if tab.session.id == event.session_id:
                 await self.chat_tabs.remove_pane(str(tab.id))
                 tab_removed = True
 
