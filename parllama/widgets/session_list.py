@@ -68,9 +68,9 @@ class SessionList(Vertical, can_focus=False, can_focus_children=True):
         """Compose the content of the view."""
         yield Static("Sessions")
         yield Rule()
-        chat_manager.sort_sessions()
+
         with self.list_view:
-            for s in chat_manager.valid_sessions:
+            for s in chat_manager.sorted_sessions:
                 yield SessionListItem(s)
 
     def action_delete_item(self) -> None:

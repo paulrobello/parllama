@@ -143,8 +143,8 @@ If you have Ollama running on multiple machines you must import each machines ke
 
 ## Command line arguments
 ```
-usage: parllama [-h] [-v] [-d DATA_DIR] [-u OLLAMA_URL] [-t THEME_NAME] [-m {dark,light}] [-s {local,site,tools,create,chat,logs}] [-p PS_POLL]
-                [--restore-defaults] [--clear-cache] [--purge-chats] [--no-save] [--no-chat-save]
+usage: parllama [-h] [-v] [-d DATA_DIR] [-u OLLAMA_URL] [-t THEME_NAME] [-m {dark,light}] [-s {local,site,chat,prompts,tools,create,logs}]
+                [-p PS_POLL] [--restore-defaults] [--clear-cache] [--purge-chats] [--purge-prompts] [--no-save] [--no-chat-save]
 
 PAR LLAMA -- Ollama TUI.
 
@@ -159,13 +159,14 @@ options:
                         Theme name. Defaults to par
   -m {dark,light}, --theme-mode {dark,light}
                         Dark / Light mode. Defaults to dark
-  -s {local,site,tools,create,chat,logs}, --starting-screen {local,site,tools,create,chat,logs}
+  -s {local,site,chat,prompts,tools,create,logs}, --starting-screen {local,site,chat,prompts,tools,create,logs}
                         Starting screen. Defaults to local
   -p PS_POLL, --ps-poll PS_POLL
                         Interval in seconds to poll ollama ps command. 0 = disable. Defaults to 3
   --restore-defaults    Restore default settings and theme
   --clear-cache         Clear cached data
   --purge-chats         Purge all chat history
+  --purge-prompts       Purge all custom prompts
   --no-save             Prevent saving settings for this session.
   --no-chat-save        Prevent saving chats for this session.
 ```

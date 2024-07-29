@@ -24,6 +24,9 @@ class Settings(BaseModel):
     data_dir: str = os.path.expanduser("~/.parllama")
     cache_dir: str = ""
     chat_dir: str = ""
+    prompt_dir: str = ""
+    export_md_dir: str = ""
+
     chat_tab_max_length: int = 15
     settings_file: str = "settings.json"
     theme_name: str = "par"
@@ -59,9 +62,13 @@ class Settings(BaseModel):
         )
         self.cache_dir = os.path.join(self.data_dir, "cache")
         self.chat_dir = os.path.join(self.data_dir, "chats")
+        self.prompt_dir = os.path.join(self.data_dir, "prompts")
+        self.export_md_dir = os.path.join(self.data_dir, "md_exports")
 
         os.makedirs(self.cache_dir, exist_ok=True)
         os.makedirs(self.chat_dir, exist_ok=True)
+        os.makedirs(self.prompt_dir, exist_ok=True)
+        os.makedirs(self.export_md_dir, exist_ok=True)
 
         if not os.path.exists(self.data_dir):
             raise FileNotFoundError(
@@ -84,6 +91,11 @@ class Settings(BaseModel):
             if os.path.exists(self.chat_dir):
                 shutil.rmtree(self.chat_dir, ignore_errors=True)
                 os.makedirs(self.chat_dir, exist_ok=True)
+
+        if args.purge_prompts:
+            if os.path.exists(self.prompt_dir):
+                shutil.rmtree(self.prompt_dir, ignore_errors=True)
+                os.makedirs(self.prompt_dir, exist_ok=True)
 
         self.load_from_file()
         url = os.environ.get("OLLAMA_URL")

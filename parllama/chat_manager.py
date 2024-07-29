@@ -11,8 +11,10 @@ from ollama import Options as OllamaOptions
 from textual.app import App
 from textual.message_pump import MessagePump
 
+from parllama.chat_prompt import ChatPrompt
 from parllama.messages.messages import SessionListChanged, LogIt
-from parllama.messages.par_messages import ParSessionUpdated, ParLogIt, ParDeleteSession
+from parllama.messages.par_messages import ParLogIt
+from parllama.messages.par_session_messages import ParSessionUpdated, ParSessionDelete
 from parllama.models.settings_data import settings
 from parllama.par_event_system import ParEventSystemBase
 from parllama.chat_session import ChatSession
@@ -22,21 +24,26 @@ class ChatManager(ParEventSystemBase):
     """Chat manager class"""
 
     _id_to_session: dict[str, ChatSession]
+    _id_to_prompt: dict[str, ChatPrompt]
+
     app: App[Any]
-    sessions: list[ChatSession]
     options: OllamaOptions
 
     def __init__(self) -> None:
         """Initialize the chat manager"""
         super().__init__()
         self._id_to_session = {}
-        self.sessions = []
         self.options = {}
+
+    @property
+    def sessions(self) -> list[ChatSession]:
+        """Return a list of chat sessions"""
+        return list(self._id_to_session.values())
 
     @property
     def valid_sessions(self) -> list[ChatSession]:
         """Return a list of valid sessions"""
-        return [session for session in self.sessions if session.is_valid]
+        return [session for session in self._id_to_session.values() if session.is_valid]
 
     @property
     def session_ids(self) -> list[str]:
@@ -46,7 +53,7 @@ class ChatManager(ParEventSystemBase):
     @property
     def session_names(self) -> list[str]:
         """Return a list of session names"""
-        return [session.session_name for session in self.sessions]
+        return [session.session_name for session in self._id_to_session.values()]
 
     def set_app(self, app: App[Any]) -> None:
         """Set the app and load existing sessions from storage"""
@@ -58,15 +65,7 @@ class ChatManager(ParEventSystemBase):
         session_name = base_name
         good = self.get_session_by_name(session_name) is None
         self.app.post_message(LogIt(f"mk_session_name: {base_name}: {good}"))
-        self.app.post_message(LogIt(json.dumps(self.session_names)))
-
-        # self.app.post_message(
-        #     LogIt(
-        #         json.dumps(
-        #             self.get_session_by_name(session_name), indent=2, default=str
-        #         )
-        #     )
-        # )
+        # self.app.post_message(LogIt(json.dumps(self.session_names)))
 
         i = 0
         while not good:
@@ -96,7 +95,6 @@ class ChatManager(ParEventSystemBase):
             options=options or self.options,
         )
         self._id_to_session[session.session_id] = session
-        self.sessions.append(session)
         self.mount(session)
         session.add_sub(widget)
 
@@ -119,7 +117,7 @@ class ChatManager(ParEventSystemBase):
         self, session_name: str, widget: MessagePump | None = None
     ) -> ChatSession | None:
         """Get a chat session by name"""
-        for session in self.sessions:
+        for session in self._id_to_session.values():
             if session.session_name == session_name:
                 if widget:
                     session.add_sub(widget)
@@ -128,18 +126,15 @@ class ChatManager(ParEventSystemBase):
 
     def delete_session(self, session_id: str) -> None:
         """Delete a chat session"""
-        self.app.post_message(LogIt(f"CM Delete session: {session_id}"))
-
+        session = self._id_to_session.get(session_id)
+        if session is None:
+            return
         del self._id_to_session[session_id]
-        for session in self.sessions:
-            if session.session_id == session_id:
-                self.sessions.remove(session)
-                p = os.path.join(settings.chat_dir, f"{session_id}.json")
-                if os.path.exists(p):
-                    os.remove(p)
-                self.notify_changed()
-                self.app.post_message(LogIt(f"CM Session {session_id} deleted"))
-                return
+        p = os.path.join(settings.chat_dir, f"{session_id}.json")
+        if os.path.exists(p):
+            os.remove(p)
+        self.notify_changed()
+        self.app.post_message(LogIt(f"CM Session {session_id} deleted"))
 
     def notify_changed(self) -> None:
         """Notify changed"""
@@ -194,16 +189,17 @@ class ChatManager(ParEventSystemBase):
                         ),
                     )
                     self._id_to_session[session.session_id] = session
-                    self.sessions.append(session)
                     self.mount(session)
             except Exception as e:  # pylint: disable=broad-exception-caught
                 self.app.post_message(LogIt(f"Error loading session {e}"))
                 self.app.notify(f"Error loading session {f}", severity="error")
-        self.sort_sessions()
 
-    def sort_sessions(self) -> None:
+    @property
+    def sorted_sessions(self) -> list[ChatSession]:
         """Sort sessions by last_updated field in descending order."""
-        self.sessions.sort(key=lambda x: x.last_updated, reverse=True)
+        sessions = self.valid_sessions
+        sessions.sort(key=lambda x: x.last_updated, reverse=True)
+        return sessions
 
     def on_par_session_updated(self, event: ParSessionUpdated) -> None:
         """Handle a ParSessionUpdated event"""
@@ -213,7 +209,7 @@ class ChatManager(ParEventSystemBase):
         )
         self.notify_changed()
 
-    def on_par_delete_session(self, event: ParDeleteSession) -> None:
+    def on_par_session_delete(self, event: ParSessionDelete) -> None:
         """Handle a ParDeleteSession event"""
         event.stop()
         self.delete_session(event.session_id)

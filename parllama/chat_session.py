@@ -23,12 +23,14 @@ from parllama.messages.messages import SessionChanges
 from parllama.messages.messages import SessionMessage
 from parllama.messages.messages import SessionUpdated
 from parllama.messages.par_messages import (
-    ParSessionUpdated,
-    ParChatUpdated,
-    ParDeleteSession,
     ParLogIt,
 )
 from parllama.chat_message import OllamaMessage
+from parllama.messages.par_session_messages import (
+    ParSessionDelete,
+    ParSessionUpdated,
+    ParSessionChatUpdated,
+)
 from parllama.models.settings_data import settings
 from parllama.par_event_system import ParEventSystemBase
 
@@ -120,7 +122,7 @@ class ChatSession(ParEventSystemBase):
 
     def delete(self) -> None:
         """Delete the session"""
-        self.post_message(ParDeleteSession(session_id=self.session_id))
+        self.post_message(ParSessionDelete(session_id=self.session_id))
 
     def _notify_subs(self, event: SessionMessage) -> None:
         """Notify all subscriptions"""
@@ -214,7 +216,9 @@ class ChatSession(ParEventSystemBase):
                 ChatMessage(session_id=self.session_id, message_id=msg.message_id)
             )
             self.post_message(
-                ParChatUpdated(session_id=self.session_id, message_id=msg.message_id)
+                ParSessionChatUpdated(
+                    session_id=self.session_id, message_id=msg.message_id
+                )
             )
 
             msg = OllamaMessage(session_id=self.session_id, role="assistant")
@@ -223,7 +227,9 @@ class ChatSession(ParEventSystemBase):
                 ChatMessage(session_id=self.session_id, message_id=msg.message_id)
             )
             self.post_message(
-                ParChatUpdated(session_id=self.session_id, message_id=msg.message_id)
+                ParSessionChatUpdated(
+                    session_id=self.session_id, message_id=msg.message_id
+                )
             )
 
             stream: Iterator[Mapping[str, Any]] = settings.ollama_client.chat(  # type: ignore
@@ -251,7 +257,7 @@ class ChatSession(ParEventSystemBase):
                     ChatMessage(session_id=self.session_id, message_id=msg.message_id)
                 )
                 self.post_message(
-                    ParChatUpdated(
+                    ParSessionChatUpdated(
                         session_id=self.session_id, message_id=msg.message_id
                     )
                 )
@@ -437,7 +443,7 @@ class ChatSession(ParEventSystemBase):
         """Save the chat session to markdown file"""
         try:
             with open(
-                os.path.join(settings.chat_dir, filename), "wt", encoding="utf-8"
+                os.path.join(settings.export_md_dir, filename), "wt", encoding="utf-8"
             ) as f:
                 f.write(str(self))
             return True

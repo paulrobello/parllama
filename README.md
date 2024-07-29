@@ -107,8 +107,8 @@ make first-setup
 
 ## Command line arguments
 ```
-usage: parllama [-h] [-v] [-d DATA_DIR] [-u OLLAMA_URL] [-t THEME_NAME] [-m {dark,light}] [-s {local,site,tools,create,chat,logs}] [-p PS_POLL]
-                [--restore-defaults] [--clear-cache] [--purge-chats] [--no-save] [--no-chat-save]
+usage: parllama [-h] [-v] [-d DATA_DIR] [-u OLLAMA_URL] [-t THEME_NAME] [-m {dark,light}] [-s {local,site,chat,prompts,tools,create,logs}]
+                [-p PS_POLL] [--restore-defaults] [--clear-cache] [--purge-chats] [--purge-prompts] [--no-save] [--no-chat-save]
 
 PAR LLAMA -- Ollama TUI.
 
@@ -123,13 +123,14 @@ options:
                         Theme name. Defaults to par
   -m {dark,light}, --theme-mode {dark,light}
                         Dark / Light mode. Defaults to dark
-  -s {local,site,tools,create,chat,logs}, --starting-screen {local,site,tools,create,chat,logs}
+  -s {local,site,chat,prompts,tools,create,logs}, --starting-screen {local,site,chat,prompts,tools,create,logs}
                         Starting screen. Defaults to local
   -p PS_POLL, --ps-poll PS_POLL
                         Interval in seconds to poll ollama ps command. 0 = disable. Defaults to 3
   --restore-defaults    Restore default settings and theme
   --clear-cache         Clear cached data
   --purge-chats         Purge all chat history
+  --purge-prompts       Purge all custom prompts
   --no-save             Prevent saving settings for this session.
   --no-chat-save        Prevent saving chats for this session.
 ```
@@ -292,6 +293,7 @@ if anything remains to be fixed before the commit is allowed.
 ## What's new
 
 ### v0.3.4
+* Added tab to manage custom prompts
 * Fixed slow startup when you have a lot of models available locally
 * Fixed slow startup and reduced memory utilization when you have many / large chats
 * Fixed session unique naming bug where it would always add a "1" to the session name

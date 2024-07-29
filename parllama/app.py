@@ -162,6 +162,11 @@ class ParLlamaApp(App[None]):
         await self.push_screen(self.main_screen)
         self.post_message_all(StatusMessage(f"Data folder: {settings.data_dir}"))
         self.post_message_all(StatusMessage(f"Chat folder: {settings.chat_dir}"))
+        self.post_message_all(StatusMessage(f"Prompt folder: {settings.prompt_dir}"))
+        self.post_message_all(
+            StatusMessage(f"MD export folder: {settings.export_md_dir}")
+        )
+
         self.post_message_all(
             StatusMessage(f"Using Ollama server url: {settings.ollama_host}")
         )

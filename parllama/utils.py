@@ -596,6 +596,13 @@ def get_args() -> Namespace:
     )
 
     parser.add_argument(
+        "--purge-prompts",
+        help="Purge all custom prompts",
+        default=False,
+        action="store_true",
+    )
+
+    parser.add_argument(
         "--no-save",
         help="Prevent saving settings for this session.",
         default=False,
