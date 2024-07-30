@@ -7,7 +7,7 @@ from typing import Literal
 
 from ollama import Message as OMessage
 
-from parllama.messages.par_messages import ParChatUpdated
+from parllama.messages.par_chat_messages import ParChatUpdated
 from parllama.par_event_system import ParEventSystemBase
 
 

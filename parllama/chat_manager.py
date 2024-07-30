@@ -13,11 +13,10 @@ from textual.message_pump import MessagePump
 
 from parllama.chat_prompt import ChatPrompt
 from parllama.messages.messages import SessionListChanged, LogIt, PromptListChanged
-from parllama.messages.par_messages import ParLogIt
 from parllama.messages.par_prompt_messages import ParPromptUpdated, ParPromptDelete
 from parllama.messages.par_session_messages import ParSessionUpdated, ParSessionDelete
 from parllama.models.settings_data import settings
-from parllama.par_event_system import ParEventSystemBase
+from parllama.par_event_system import ParEventSystemBase, ParLogIt
 from parllama.chat_session import ChatSession
 
 
@@ -303,7 +302,9 @@ class ChatManager(ParEventSystemBase):
     def on_par_log_it(self, event: ParLogIt) -> None:
         """Handle a ParLogIt event"""
         event.stop()
-        self.app.post_message(LogIt(event.msg, notify=event.notify))
+        self.app.post_message(
+            LogIt(event.msg, notify=event.notify, severity=event.severity)
+        )
 
 
 chat_manager = ChatManager()

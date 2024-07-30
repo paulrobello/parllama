@@ -206,7 +206,7 @@ class ChatTab(TabPane):
                 settings.last_chat_temperature = None
         except ValueError:
             return
-        self.session.set_temperature(settings.last_chat_temperature)
+        self.session.temperature = settings.last_chat_temperature
         settings.save_settings_to_file()
         chat_manager.notify_sessions_changed()
         self.user_input.focus()
@@ -238,9 +238,9 @@ class ChatTab(TabPane):
             settings.last_chat_model = str(self.model_select.value)
             settings.save_settings_to_file()
         if self.model_select.value != Select.BLANK:
-            self.session.set_llm_model(self.model_select.value)  # type: ignore
+            self.session.llm_model_name = self.model_select.value  # type: ignore
         else:
-            self.session.set_llm_model("")
+            self.session.llm_model_name = ""
         self.on_update_chat_status()
 
     def set_model_name(self, model_name: str) -> None:

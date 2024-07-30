@@ -22,11 +22,9 @@ from parllama.messages.messages import ChatMessage
 from parllama.messages.messages import SessionChanges
 from parllama.messages.messages import SessionMessage
 from parllama.messages.messages import SessionUpdated
-from parllama.messages.par_messages import (
-    ParLogIt,
-    ParChatUpdated,
-)
+
 from parllama.chat_message import OllamaMessage
+from parllama.messages.par_chat_messages import ParChatUpdated
 from parllama.messages.par_session_messages import (
     ParSessionDelete,
     ParSessionUpdated,
@@ -39,7 +37,7 @@ from parllama.models.settings_data import settings
 class ChatSession(ChatMessageContainer):
     """Chat session class"""
 
-    llm_model_name: str
+    _llm_model_name: str
     options: OllamaOptions
     _subs: set[MessagePump]
     _name_generated: bool = False
@@ -62,7 +60,7 @@ class ChatSession(ChatMessageContainer):
         super().__init__(id=id, name=name, messages=messages, last_updated=last_updated)
         self._loading = True
         self._subs = set()
-        self.llm_model_name = llm_model_name
+        self._llm_model_name = llm_model_name
         self.options = options or {}
         self._loaded = messages is not None and len(messages) > 0
         self._loading = False
@@ -90,9 +88,7 @@ class ChatSession(ChatMessageContainer):
                 self.add_message(OllamaMessage(**m))
             self._loaded = True
         except Exception as e:  # pylint: disable=broad-exception-caught
-            self.post_message(
-                ParLogIt(f"Error loading session {e}", notify=True, severity="error")
-            )
+            self.log_it(f"Error loading session {e}", notify=True, severity="error")
         finally:
             self._loading = False
 
@@ -120,30 +116,39 @@ class ChatSession(ChatMessageContainer):
         self._notify_subs(SessionUpdated(session_id=self.id, changed=changed))
         self.post_message(ParSessionUpdated(session_id=self.id, changed=changed))
 
-    def set_llm_model(self, llm_model_name: str) -> None:
-        """Set the LLM model name"""
-        llm_model_name = llm_model_name.strip()
-        if self.llm_model_name == llm_model_name:
-            return
-        self.llm_model_name = llm_model_name
-        self._changes.add("model")
-        self.save()
+    @property
+    def llm_model_name(self) -> str:
+        """Get the LLM model name"""
+        return self._llm_model_name
 
-    def set_temperature(self, temperature: float | None) -> None:
+    @llm_model_name.setter
+    def llm_model_name(self, value: str) -> None:
+        """Set the LLM model name"""
+        value = value.strip()
+        if self._llm_model_name == value:
+            return
+        self._llm_model_name = value
+        self._changes.add("model")
+        # self.save()
+
+    @property
+    def temperature(self) -> float | None:
+        """Get the temperature"""
+        return self.options.get("temperature")
+
+    @temperature.setter
+    def temperature(self, value: float | None) -> None:
         """Set the temperature"""
-        if temperature is not None:
-            if (
-                "temperature" in self.options
-                and self.options["temperature"] == temperature
-            ):
+        if value is not None:
+            if "temperature" in self.options and self.options["temperature"] == value:
                 return
-            self.options["temperature"] = temperature
+            self.options["temperature"] = value
         else:
             if "temperature" not in self.options:
                 return
             del self.options["temperature"]
         self._changes.add("temperature")
-        self.save()
+        # self.save()
 
     async def send_chat(self, from_user: str) -> bool:
         """Send a chat message to LLM"""

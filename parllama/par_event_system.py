@@ -5,10 +5,13 @@ from __future__ import annotations
 import uuid
 from collections.abc import Awaitable
 from collections.abc import Iterable
+from dataclasses import dataclass
 from typing import Callable
 from typing import ClassVar
 
 import rich.repr
+from rich.console import ConsoleRenderable, RichCast
+from textual.notifications import SeverityLevel
 
 from parllama.utils import camel_to_snake
 
@@ -109,3 +112,21 @@ class ParEventSystemBase:
         """Mount a child node"""
         child.parent = self
         child.on_mount()
+
+    def log_it(
+        self,
+        msg: ConsoleRenderable | RichCast | str | object,
+        notify: bool = False,
+        severity: SeverityLevel = "information",
+    ) -> None:
+        """Log a message to the log view and optionally notify"""
+        self.post_message(ParLogIt(msg=msg, notify=notify, severity=severity))
+
+
+@dataclass
+class ParLogIt(ParEventBase):
+    """Log message."""
+
+    msg: ConsoleRenderable | RichCast | str | object
+    notify: bool = False
+    severity: SeverityLevel = "information"

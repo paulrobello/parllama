@@ -12,7 +12,6 @@ import rich.repr
 
 from parllama.chat_message import OllamaMessage
 from parllama.chat_message_container import ChatMessageContainer
-from parllama.messages.par_messages import ParLogIt
 from parllama.messages.par_prompt_messages import ParPromptDelete, ParPromptUpdated
 from parllama.messages.shared import PromptChanges
 from parllama.models.settings_data import settings
@@ -65,9 +64,7 @@ class ChatPrompt(ChatMessageContainer):
                 self.add_message(OllamaMessage(**m))
             self._loaded = True
         except Exception as e:  # pylint: disable=broad-exception-caught
-            self.post_message(
-                ParLogIt(f"Error loading prompt {e}", notify=True, severity="error")
-            )
+            self.log_it(f"Error loading prompt {e}", notify=True, severity="error")
         finally:
             self._loading = False
 
