@@ -208,7 +208,7 @@ class ChatTab(TabPane):
             return
         self.session.temperature = settings.last_chat_temperature
         settings.save_settings_to_file()
-        chat_manager.notify_sessions_changed()
+        # chat_manager.notify_sessions_changed()
         self.user_input.focus()
 
     @on(Input.Submitted, "#session_name_input")
@@ -291,22 +291,21 @@ class ChatTab(TabPane):
                 options=self.get_session_options(),
                 widget=self,
             )
-            if not old_session.is_valid:
-                chat_manager.delete_session(old_session.id)
             self.session_name_input.value = self.session.name
+            self.session.loading = False
 
         await self.vs.remove_children("*")
         self.update_control_states()
-        model = dm.get_model_by_name(str(self.model_select.value))
-        if model:
-            msgs = model.get_messages()
-            for msg in msgs:
-                self.session.add_message(
-                    OllamaMessage(
-                        role=msg["role"],
-                        content=msg["content"],
-                    )
-                )
+        # model = dm.get_model_by_name(str(self.model_select.value))
+        # if model:
+        #     msgs = model.get_messages()
+        #     for msg in msgs:
+        #         self.session.add_message(
+        #             OllamaMessage(
+        #                 role=msg["role"],
+        #                 content=msg["content"],
+        #             )
+        #         )
         self.on_update_chat_status()
         self.user_input.focus()
 
@@ -348,7 +347,7 @@ class ChatTab(TabPane):
         if self.user_input.has_focus:
             self.set_timer(0.1, self.scroll_to_bottom)
 
-        chat_manager.notify_sessions_changed()
+        # chat_manager.notify_sessions_changed()
         self.on_update_chat_status()
 
     def scroll_to_bottom(self, animate: bool = True) -> None:
@@ -385,8 +384,6 @@ class ChatTab(TabPane):
         old_session = self.session
         old_session.remove_sub(self)
         self.session = session
-        if not old_session.is_valid:
-            chat_manager.delete_session(old_session.id)
         await self.vs.remove_children("*")
         await self.vs.mount(
             *[

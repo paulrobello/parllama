@@ -311,7 +311,7 @@ class ParLlamaApp(App[None]):
     def on_model_deleted(self, event: LocalModelDeleted) -> None:
         """Local model deleted event"""
         self.status_notify(f"Model {event.model_name} deleted.")
-        chat_manager.notify_sessions_changed()
+        # chat_manager.notify_sessions_changed()
 
     @on(ModelPullRequested)
     def on_model_pull_requested(self, event: ModelPullRequested) -> None:
@@ -501,7 +501,7 @@ class ParLlamaApp(App[None]):
             self.status_notify(
                 f"Model {event.model_name} pulled.",
             )
-            chat_manager.notify_sessions_changed()
+            # chat_manager.notify_sessions_changed()
         else:
             self.status_notify(
                 f"Model {event.model_name} failed to pull.",
@@ -516,7 +516,7 @@ class ParLlamaApp(App[None]):
                 f"Model {event.model_name} created.",
             )
             self.set_timer(1, self.action_refresh_models)
-            chat_manager.notify_sessions_changed()
+            # chat_manager.notify_sessions_changed()
         else:
             self.status_notify(
                 f"Model {event.model_name} failed to create.",

@@ -103,10 +103,10 @@ class ParEventSystemBase:
             self.parent.post_message(event)
 
     def on_message(self, event: ParEventBase) -> None:
-        """Handle chat events"""
+        """Handle events"""
 
     def on_mount(self) -> None:
-        """Mount child chat"""
+        """Mount child"""
 
     def mount(self, child: ParEventSystemBase) -> None:
         """Mount a child node"""

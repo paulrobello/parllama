@@ -124,6 +124,7 @@ class ChatManager(ParEventSystemBase):
             name=self.mk_session_name(session_name),
             llm_model_name=model_name,
             options=options or self.options,
+            messages=[],
         )
         self._id_to_session[session.id] = session
         self.mount(session)
@@ -196,6 +197,7 @@ class ChatManager(ParEventSystemBase):
                 widget=widget,
             )
         session.add_sub(widget)
+        session.loading = False
         return session
 
     def load_sessions(self) -> None:
@@ -222,7 +224,9 @@ class ChatManager(ParEventSystemBase):
                     self._id_to_session[session.id] = session
                     self.mount(session)
             except Exception as e:  # pylint: disable=broad-exception-caught
-                self.log_it(f"Error loading session {e}", notify=True, severity="error")
+                self.log_it(
+                    f"CM Error loading session {e}", notify=True, severity="error"
+                )
 
     def load_prompts(self) -> None:
         """Load custom prompts from files"""
@@ -267,7 +271,12 @@ class ChatManager(ParEventSystemBase):
         self.log_it(
             f"CM Session {event.session_id} updated. [{','.join(event.changed)}]"
         )
-        self.notify_sessions_changed()
+        if (
+            "name" in event.changed
+            or "model_name" in event.changed
+            or "temperature" in event.changed
+        ):
+            self.notify_sessions_changed()
 
     def notify_prompts_changed(self) -> None:
         """Notify changed"""

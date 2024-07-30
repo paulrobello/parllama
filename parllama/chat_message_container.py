@@ -70,6 +70,25 @@ class ChatMessageContainer(ParEventSystemBase):
         self.last_updated = datetime.datetime.now()
         self.mount(msg)
         self._changes.add("messages")
+        self.log_it(f"Added {msg.role} message to: {self.name}")
+        # if len(self.messages) > 2:
+        #     raise Exception(f"why! {len(self.messages)}")
+        self.save()
+
+    @property
+    def name(self) -> str:
+        """Get the name of the chat container"""
+        return self._name
+
+    @name.setter
+    def name(self, name: str) -> None:
+        """Set the name of the chat container"""
+        name = name.strip()
+        if self._name == name:
+            return
+        self._name = name
+        self._changes.add("name")
+
         self.save()
 
     @property
@@ -163,21 +182,6 @@ class ChatMessageContainer(ParEventSystemBase):
             ret.write(str(msg))
         return ret.getvalue()
 
-    @property
-    def name(self) -> str:
-        """Get the name of the chat container"""
-        return self._name
-
-    @name.setter
-    def name(self, name: str) -> None:
-        """Set the name of the chat container"""
-        name = name.strip()
-        if self._name == name:
-            return
-        self._name = name
-        self._changes.add("name")
-        self.save()
-
     def to_json(self, indent: int = 4) -> str:
         """Convert the chat session to JSON"""
         return json.dumps(
@@ -212,14 +216,15 @@ class ChatMessageContainer(ParEventSystemBase):
 
     def save(self) -> bool:
         """Save chats to file"""
-        self.clear_changes()
-        return False
+        raise NotImplementedError("save not implemented in base class")
 
     def clear_changes(self) -> None:
         """Clear changes"""
+        self.log_it("Clearing changes")
         self._changes.clear()
 
     @property
     def is_dirty(self) -> bool:
         """Check if there are any changes"""
-        return bool(self._changes)
+        self.log_it(",".join(self._changes))
+        return len(self._changes) > 0

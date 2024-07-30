@@ -41,10 +41,10 @@ class ChatSession(ChatMessageContainer):
     _llm_model_name: str
     options: OllamaOptions
     _subs: set[MessagePump]
-    _name_generated: bool = False
-    _abort: bool = False
-    _generating: bool = False
-    _loaded: bool = False
+    _name_generated: bool
+    _abort: bool
+    _generating: bool
+    _loaded: bool
 
     # pylint: disable=too-many-arguments
     def __init__(
@@ -60,21 +60,24 @@ class ChatSession(ChatMessageContainer):
         """Initialize the chat session"""
         super().__init__(id=id, name=name, messages=messages, last_updated=last_updated)
         self._loading = True
+        self._name_generated = False
+        self._abort = False
+        self._generating = False
         self._subs = set()
         self._llm_model_name = llm_model_name
         self.options = options or {}
-        self._loaded = messages is not None and len(messages) > 0
+        self._loaded = messages is not None
         self._loading = False
 
     def load(self) -> None:
         """Load chat sessions from files"""
         if self._loaded:
+            self._loading = False
             return
-        self._loading = True
         file_path = os.path.join(settings.chat_dir, self.id + ".json")
         if not os.path.exists(file_path):
             return
-
+        self._loading = True
         try:
             with open(file_path, mode="rt", encoding="utf-8") as fh:
                 data: dict = json.load(fh)
@@ -88,10 +91,20 @@ class ChatSession(ChatMessageContainer):
                 self.add_message(OllamaMessage(**m))
             self._loaded = True
         except Exception as e:  # pylint: disable=broad-exception-caught
-            self.log_it(f"Error loading session {e}", notify=True, severity="error")
+            self.log_it(f"CS Error loading session {e}", notify=True, severity="error")
         finally:
             self._loading = False
             self.clear_changes()
+
+    @property
+    def loading(self) -> bool:
+        """Check if the session is loading"""
+        return self._loading
+
+    @loading.setter
+    def loading(self, value: bool) -> None:
+        """Set the loading state"""
+        self._loading = value
 
     def add_sub(self, sub: MessagePump) -> None:
         """Add a subscription"""
@@ -155,15 +168,19 @@ class ChatSession(ChatMessageContainer):
         """Send a chat message to LLM"""
         self._generating = True
         try:
+            self.log_it("CM adding user message")
             msg: OllamaMessage = OllamaMessage(role="user", content=from_user)
             self.add_message(msg)
             self._notify_subs(ChatMessage(parent_id=self.id, message_id=msg.id))
             self.post_message(ParChatUpdated(parent_id=self.id, message_id=msg.id))
 
+            self.log_it("CM adding assistant message")
             msg = OllamaMessage(role="assistant")
             self.add_message(msg)
             self._notify_subs(ChatMessage(parent_id=self.id, message_id=msg.id))
             self.post_message(ParChatUpdated(parent_id=self.id, message_id=msg.id))
+
+            self.save()
 
             stream: Iterator[Mapping[str, Any]] = settings.ollama_client.chat(  # type: ignore
                 model=self.llm_model_name,
@@ -189,6 +206,7 @@ class ChatSession(ChatMessageContainer):
                 self._notify_subs(ChatMessage(parent_id=self.id, message_id=msg.id))
                 self.post_message(ParChatUpdated(parent_id=self.id, message_id=msg.id))
 
+            self._changes.add("messages")
             self.save()
 
             if (
@@ -202,11 +220,6 @@ class ChatSession(ChatMessageContainer):
                     new_name = llm_session_name(user_msg.content, self.llm_model_name)
                     if new_name:
                         self.name = new_name
-                self._notify_subs(SessionUpdated(session_id=self.id, changed={"name"}))
-                self.post_message(
-                    ParSessionUpdated(session_id=self.id, changed={"name"})
-                )
-                self.save()
         finally:
             self._generating = False
 
@@ -214,6 +227,7 @@ class ChatSession(ChatMessageContainer):
 
     def new_session(self, name: str = "My Chat"):
         """Start new session"""
+        self._loading = True
         self.id = uuid.uuid4().hex
         self.name = name
         self.messages.clear()
@@ -296,14 +310,13 @@ class ChatSession(ChatMessageContainer):
     def save(self) -> bool:
         """Save the chat session to a file"""
         if self._loading:
+            self.log_it(f"CS is loading, not notifying: {self.name}")
             return False
         if not self._loaded:
             self.load()
-        if settings.no_save_chat:
-            return False  # Do not save if no_save_chat is set in settings
-        if not self.is_dirty or not self.is_valid or len(self.messages) == 0:
-            return False  # Cannot save without name, LLM model name and at least one message
-        self.log_it(f"saving chat session: {self.name}")
+        if not self.is_dirty:
+            self.log_it(f"CS is not dirty, not notifying: {self.name}")
+            return False  # No need to save if no changes
         if "system_prompt" in self._changes:
             msg = self.system_prompt
             if msg is not None:
@@ -314,8 +327,16 @@ class ChatSession(ChatMessageContainer):
                 nc.add(change)  # type: ignore
 
         self._notify_changed(nc)
-
         self.clear_changes()
+
+        if settings.no_save_chat:
+            return False  # Do not save if no_save_chat is set in settings
+        if not self.is_valid or len(self.messages) == 0:
+            self.log_it(f"CS not valid, not saving: {self.name}")
+            return False  # Cannot save without name, LLM model name and at least one message
+
+        self.log_it(f"CS saving: {self.name}")
+
         file_name = f"{self.id}.json"  # Use session ID as filename to avoid over
         try:
             with open(
