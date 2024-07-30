@@ -29,6 +29,7 @@ from parllama.messages.par_session_messages import (
     ParSessionDelete,
     ParSessionUpdated,
 )
+from parllama.messages.shared import session_change_list
 from parllama.models.settings_data import settings
 
 
@@ -73,7 +74,6 @@ class ChatSession(ChatMessageContainer):
         file_path = os.path.join(settings.chat_dir, self.id + ".json")
         if not os.path.exists(file_path):
             return
-            # raise FileNotFoundError(f"Session file not found: {file_path}")
 
         try:
             with open(file_path, mode="rt", encoding="utf-8") as fh:
@@ -91,6 +91,7 @@ class ChatSession(ChatMessageContainer):
             self.log_it(f"Error loading session {e}", notify=True, severity="error")
         finally:
             self._loading = False
+            self.clear_changes()
 
     def add_sub(self, sub: MessagePump) -> None:
         """Add a subscription"""
@@ -129,7 +130,7 @@ class ChatSession(ChatMessageContainer):
             return
         self._llm_model_name = value
         self._changes.add("model")
-        # self.save()
+        self.save()
 
     @property
     def temperature(self) -> float | None:
@@ -148,7 +149,7 @@ class ChatSession(ChatMessageContainer):
                 return
             del self.options["temperature"]
         self._changes.add("temperature")
-        # self.save()
+        self.save()
 
     async def send_chat(self, from_user: str) -> bool:
         """Send a chat message to LLM"""
@@ -302,14 +303,19 @@ class ChatSession(ChatMessageContainer):
             return False  # Do not save if no_save_chat is set in settings
         if not self.is_dirty or not self.is_valid or len(self.messages) == 0:
             return False  # Cannot save without name, LLM model name and at least one message
-
+        self.log_it(f"saving chat session: {self.name}")
         if "system_prompt" in self._changes:
             msg = self.system_prompt
             if msg is not None:
                 self._notify_subs(ChatMessage(parent_id=self.id, message_id=msg.id))
-        if "messages" in self._changes:
-            self._notify_changed({"messages"})
+        nc: SessionChanges = SessionChanges()
+        for change in self._changes:
+            if change in session_change_list:
+                nc.add(change)  # type: ignore
 
+        self._notify_changed(nc)
+
+        self.clear_changes()
         file_name = f"{self.id}.json"  # Use session ID as filename to avoid over
         try:
             with open(

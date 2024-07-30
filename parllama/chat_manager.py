@@ -97,7 +97,7 @@ class ChatManager(ParEventSystemBase):
         """Generate a unique session name"""
         session_name = base_name
         good = self.get_session_by_name(session_name) is None
-        self.app.post_message(LogIt(f"mk_session_name: {base_name}: {good}"))
+        self.log_it(f"mk_session_name: {base_name}: {good}")
         # self.app.post_message(LogIt(json.dumps(self.session_names)))
 
         i = 0
@@ -105,8 +105,6 @@ class ChatManager(ParEventSystemBase):
             i += 1
             session_name = f"{base_name} {i}"
             good = self.get_session_by_name(session_name) is None
-            self.app.post_message(LogIt(f"mk_session_name: {session_name}: {good}"))
-
             if good:
                 break
         return session_name
@@ -120,7 +118,7 @@ class ChatManager(ParEventSystemBase):
         widget: MessagePump,
     ) -> ChatSession:
         """Create a new chat session"""
-        self.app.post_message(LogIt("CM new_session"))
+        self.log_it("CM new_session")
 
         session = ChatSession(
             name=self.mk_session_name(session_name),
@@ -138,7 +136,7 @@ class ChatManager(ParEventSystemBase):
         self, session_id: str, widget: MessagePump | None = None
     ) -> ChatSession | None:
         """Get a chat session"""
-        self.app.post_message(LogIt("get_session: " + session_id))
+        self.log_it("get_session: " + session_id)
 
         session = self._id_to_session.get(session_id)
 
@@ -167,11 +165,11 @@ class ChatManager(ParEventSystemBase):
         if os.path.exists(p):
             os.remove(p)
         self.notify_sessions_changed()
-        self.app.post_message(LogIt(f"CM Session {session_id} deleted"))
+        self.log_it(f"CM Session {session_id} deleted")
 
     def notify_sessions_changed(self) -> None:
         """Notify changed"""
-        self.app.post_message(LogIt("CM Notify session changed"))
+        self.log_it("CM Notify session changed")
         # self.app.notify("CM notify changed")
         self.app.post_message(SessionListChanged())
 
@@ -224,9 +222,7 @@ class ChatManager(ParEventSystemBase):
                     self._id_to_session[session.id] = session
                     self.mount(session)
             except Exception as e:  # pylint: disable=broad-exception-caught
-                self.app.post_message(
-                    LogIt(f"Error loading session {e}", notify=True, severity="error")
-                )
+                self.log_it(f"Error loading session {e}", notify=True, severity="error")
 
     def load_prompts(self) -> None:
         """Load custom prompts from files"""
@@ -251,9 +247,7 @@ class ChatManager(ParEventSystemBase):
                     self._id_to_prompt[prompt.id] = prompt
                     self.mount(prompt)
             except Exception as e:  # pylint: disable=broad-exception-caught
-                self.app.post_message(
-                    LogIt(f"Error loading prompt {e}", notify=True, severity="error")
-                )
+                self.log_it(f"Error loading prompt {e}", notify=True, severity="error")
 
     def delete_prompt(self, prompt_id: str) -> None:
         """Delete a custom prompt"""
@@ -265,28 +259,26 @@ class ChatManager(ParEventSystemBase):
         if os.path.exists(p):
             os.remove(p)
         self.notify_prompts_changed()
-        self.app.post_message(LogIt(f"CM Prompt {prompt_id} deleted"))
+        self.log_it(f"CM Prompt {prompt_id} deleted")
 
     def on_par_session_updated(self, event: ParSessionUpdated) -> None:
         """Handle a ParSessionUpdated event"""
         event.stop()
-        self.app.post_message(
-            LogIt(f"CM Session {event.session_id} updated. [{','.join(event.changed)}]")
+        self.log_it(
+            f"CM Session {event.session_id} updated. [{','.join(event.changed)}]"
         )
         self.notify_sessions_changed()
 
     def notify_prompts_changed(self) -> None:
         """Notify changed"""
-        self.app.post_message(LogIt("CM Notify prompt changed"))
+        self.log_it("CM Notify prompt changed")
         # self.app.notify("CM notify changed")
         self.app.post_message(PromptListChanged())
 
     def on_par_prompt_updated(self, event: ParPromptUpdated) -> None:
         """Handle a ParSessionUpdated event"""
         event.stop()
-        self.app.post_message(
-            LogIt(f"CM Prompt {event.prompt_id} updated. [{','.join(event.changed)}]")
-        )
+        self.log_it(f"CM Prompt {event.prompt_id} updated. [{','.join(event.changed)}]")
         self.notify_prompts_changed()
 
     def on_par_prompt_delete(self, event: ParPromptDelete) -> None:

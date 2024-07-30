@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from pydantic import ConfigDict
 from pydantic import Field
 
-MessageRoles: TypeAlias = Literal["user", "assistant", "system"]
+MessageRoles: TypeAlias = Literal["user", "assistant", "system", "tool"]
 
 
 class SiteModel(BaseModel):

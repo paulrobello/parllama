@@ -70,7 +70,7 @@ class ChatMessageContainer(ParEventSystemBase):
         self.last_updated = datetime.datetime.now()
         self.mount(msg)
         self._changes.add("messages")
-        # self.save()
+        self.save()
 
     @property
     def system_prompt(self) -> OllamaMessage | None:
@@ -91,7 +91,7 @@ class ChatMessageContainer(ParEventSystemBase):
             self.last_updated = datetime.datetime.now()
             self._changes.add("messages")
             self._changes.add("system_prompt")
-            # self.save()
+            self.save()
         else:
             self.add_message(value, True)
 
@@ -131,7 +131,7 @@ class ChatMessageContainer(ParEventSystemBase):
                 self.messages[i] = value
                 self.last_updated = datetime.datetime.now()
                 self._changes.add("messages")
-                # self.save()
+                self.save()
                 return
         self.add_message(value)
 
@@ -143,7 +143,7 @@ class ChatMessageContainer(ParEventSystemBase):
                 self.messages.pop(i)
                 self.last_updated = datetime.datetime.now()
                 self._changes.add("messages")
-                # self.save()
+                self.save()
                 return
 
     def __contains__(self, item: OllamaMessage) -> bool:
@@ -176,7 +176,7 @@ class ChatMessageContainer(ParEventSystemBase):
             return
         self._name = name
         self._changes.add("name")
-        # self.save()
+        self.save()
 
     def to_json(self, indent: int = 4) -> str:
         """Convert the chat session to JSON"""

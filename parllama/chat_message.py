@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal
 
 from ollama import Message as OMessage
 
 from parllama.messages.par_chat_messages import ParChatUpdated
+from parllama.models.ollama_data import MessageRoles
 from parllama.par_event_system import ParEventSystemBase
 
 
@@ -15,7 +15,7 @@ from parllama.par_event_system import ParEventSystemBase
 class OllamaMessage(ParEventSystemBase):
     """Chat message."""
 
-    role: Literal["user", "assistant", "system"]
+    role: MessageRoles
     "Assumed role of the message. Response messages always has role 'assistant'."
 
     content: str = ""
@@ -25,7 +25,7 @@ class OllamaMessage(ParEventSystemBase):
         self,
         *,
         id: str | None = None,  # pylint: disable=redefined-builtin
-        role: Literal["user", "assistant", "system"],
+        role: MessageRoles,
         content: str = "",
     ) -> None:
         """Initialize the chat message"""
