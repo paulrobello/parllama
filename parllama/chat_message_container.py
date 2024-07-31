@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import datetime
 import os
+from contextlib import contextmanager
 from dataclasses import dataclass
 from io import StringIO
+from typing import Generator
 
 import simplejson as json
 import rich.repr
@@ -29,7 +31,7 @@ class ChatMessageContainer(ParEventSystemBase):
 
     _id_to_msg: dict[str, OllamaMessage]
     _changes: set[str]
-    _loading: bool
+    _batching: bool
 
     # pylint: disable=too-many-arguments
     def __init__(
@@ -42,7 +44,7 @@ class ChatMessageContainer(ParEventSystemBase):
     ):
         """Initialize the chat prompt"""
         super().__init__(id=id)
-        self._loading = True
+        self._batching = True
         self._changes = set()
         self._id_to_msg = {}
         self._name = name or "Messages"
@@ -58,7 +60,7 @@ class ChatMessageContainer(ParEventSystemBase):
             self._id_to_msg[msg.id] = msg
             self.mount(msg)
         self.last_updated = last_updated or datetime.datetime.now()
-        self._loading = False
+        self._batching = False
 
     def add_message(self, msg: OllamaMessage, prepend: bool = False) -> None:
         """Add a message"""
@@ -228,3 +230,13 @@ class ChatMessageContainer(ParEventSystemBase):
         """Check if there are any changes"""
         self.log_it(",".join(self._changes))
         return len(self._changes) > 0
+
+    @contextmanager
+    def batch_changes(self) -> Generator[None, None, None]:
+        """Batch changes"""
+        self.log_it("Starting batch changes")
+        self._batching = True
+        yield
+        self._batching = False
+        self.log_it("Committing batch changes")
+        self.save()

@@ -368,7 +368,7 @@ def add_module_path(path: str) -> Generator[None, None, None]:
 
 
 @contextmanager
-def catch_to_logger(logger: any, re_throw: bool = False):  # type: ignore
+def catch_to_logger(logger: any, re_throw: bool = False) -> Generator[None, None, None]:  # type: ignore
     """Catch exceptions and log them to a logger."""
     try:
         yield

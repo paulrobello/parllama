@@ -40,16 +40,16 @@ class ChatPrompt(ChatMessageContainer):
     ):
         """Initialize the chat prompt"""
         super().__init__(id=id, name=name, messages=messages, last_updated=last_updated)
-        self._loading = True
+        self._batching = True
         self.description = description
         self._loaded = messages is not None and len(messages) > 0
-        self._loading = False
+        self._batching = False
 
     def load(self) -> None:
         """Load chat prompts from files"""
         if self._loaded:
             return
-        self._loading = True
+        self._batching = True
 
         file_path = os.path.join(settings.prompt_dir, self.id + ".json")
         if not os.path.exists(file_path):
@@ -66,7 +66,7 @@ class ChatPrompt(ChatMessageContainer):
         except Exception as e:  # pylint: disable=broad-exception-caught
             self.log_it(f"Error loading prompt {e}", notify=True, severity="error")
         finally:
-            self._loading = False
+            self._batching = False
 
     def delete(self) -> None:
         """Delete the prompt"""

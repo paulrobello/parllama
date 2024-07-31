@@ -59,7 +59,7 @@ class ChatSession(ChatMessageContainer):
     ):
         """Initialize the chat session"""
         super().__init__(id=id, name=name, messages=messages, last_updated=last_updated)
-        self._loading = True
+        self._batching = True
         self._name_generated = False
         self._abort = False
         self._generating = False
@@ -67,18 +67,20 @@ class ChatSession(ChatMessageContainer):
         self._llm_model_name = llm_model_name
         self.options = options or {}
         self._loaded = messages is not None
-        self._loading = False
+        self._batching = False
 
     def load(self) -> None:
         """Load chat sessions from files"""
         if self._loaded:
-            self._loading = False
+            self._batching = False
             return
-        file_path = os.path.join(settings.chat_dir, self.id + ".json")
-        if not os.path.exists(file_path):
-            return
-        self._loading = True
+
+        self._batching = True
         try:
+            file_path = os.path.join(settings.chat_dir, self.id + ".json")
+            if not os.path.exists(file_path):
+                return
+
             with open(file_path, mode="rt", encoding="utf-8") as fh:
                 data: dict = json.load(fh)
 
@@ -93,18 +95,18 @@ class ChatSession(ChatMessageContainer):
         except Exception as e:  # pylint: disable=broad-exception-caught
             self.log_it(f"CS Error loading session {e}", notify=True, severity="error")
         finally:
-            self._loading = False
+            self._batching = False
             self.clear_changes()
 
     @property
     def loading(self) -> bool:
         """Check if the session is loading"""
-        return self._loading
+        return self._batching
 
     @loading.setter
     def loading(self, value: bool) -> None:
         """Set the loading state"""
-        self._loading = value
+        self._batching = value
 
     def add_sub(self, sub: MessagePump) -> None:
         """Add a subscription"""
@@ -227,14 +229,14 @@ class ChatSession(ChatMessageContainer):
 
     def new_session(self, name: str = "My Chat"):
         """Start new session"""
-        self._loading = True
+        self._batching = True
         self.id = uuid.uuid4().hex
         self.name = name
         self.messages.clear()
         self._id_to_msg.clear()
         self.clear_changes()
         self._loaded = False
-        self._loading = False
+        self._batching = False
 
     @property
     def is_loaded(self):
@@ -309,8 +311,8 @@ class ChatSession(ChatMessageContainer):
 
     def save(self) -> bool:
         """Save the chat session to a file"""
-        if self._loading:
-            self.log_it(f"CS is loading, not notifying: {self.name}")
+        if self._batching:
+            self.log_it(f"CS is batching, not notifying: {self.name}")
             return False
         if not self._loaded:
             self.load()
