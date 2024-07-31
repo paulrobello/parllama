@@ -98,6 +98,13 @@ class Settings(BaseModel):
                 os.makedirs(self.prompt_dir, exist_ok=True)
 
         self.load_from_file()
+
+        auto_name_session = os.environ.get("PARLLAMA_AUTO_NAME_SESSION")
+        if args.auto_name_session:
+            self.auto_name_session = True
+        elif auto_name_session is not None:
+            self.auto_name_session = auto_name_session == "1"
+
         url = os.environ.get("OLLAMA_URL")
         if args.ollama_url:
             url = args.ollama_url
@@ -157,7 +164,7 @@ class Settings(BaseModel):
                     "ollama_ps_poll_interval", self.ollama_ps_poll_interval
                 )
                 self.auto_name_session = data.get(
-                    "auto_name_chat", self.auto_name_session
+                    "auto_name_session", self.auto_name_session
                 )
                 self.auto_name_session_llm = data.get(
                     "auto_name_session_llm", self.auto_name_session_llm

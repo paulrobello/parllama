@@ -575,6 +575,14 @@ def get_args() -> Namespace:
     )
 
     parser.add_argument(
+        "-a",
+        "--auto-name-session",
+        help="Auto name session using LLM",
+        default=False,
+        action="store_true",
+    )
+
+    parser.add_argument(
         "--restore-defaults",
         help="Restore default settings and theme",
         default=False,

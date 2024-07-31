@@ -13,7 +13,7 @@ import rich.repr
 from parllama.chat_message import OllamaMessage
 from parllama.chat_message_container import ChatMessageContainer
 from parllama.messages.par_prompt_messages import ParPromptDelete, ParPromptUpdated
-from parllama.messages.shared import PromptChanges
+from parllama.messages.shared import PromptChanges, prompt_change_list
 from parllama.models.settings_data import settings
 
 
@@ -22,11 +22,10 @@ from parllama.models.settings_data import settings
 class ChatPrompt(ChatMessageContainer):
     """Chat prompt class"""
 
-    description: str
+    _description: str
     messages: list[OllamaMessage]
     last_updated: datetime.datetime
     _id_to_msg: dict[str, OllamaMessage]
-    _loaded: bool = False
 
     # pylint: disable=too-many-arguments
     def __init__(
@@ -40,10 +39,7 @@ class ChatPrompt(ChatMessageContainer):
     ):
         """Initialize the chat prompt"""
         super().__init__(id=id, name=name, messages=messages, last_updated=last_updated)
-        self._batching = True
-        self.description = description
-        self._loaded = messages is not None and len(messages) > 0
-        self._batching = False
+        self._description = description
 
     def load(self) -> None:
         """Load chat prompts from files"""
@@ -74,30 +70,31 @@ class ChatPrompt(ChatMessageContainer):
 
     def _notify_changed(self, changed: PromptChanges) -> None:
         """Notify changed"""
-        self.last_updated = datetime.datetime.now()
         self.post_message(ParPromptUpdated(prompt_id=self.id, changed=changed))
 
-    def set_description(self, description: str) -> None:
+    @property
+    def description(self) -> str:
+        """Get the description of the chat prompt"""
+        return self._description
+
+    @description.setter
+    def description(self, value: str) -> None:
         """Set the description of the chat prompt"""
-        description = description.strip()
-        if self.description == description:
+        value = value.strip()
+        if self._description == value:
             return
-        self.description = description
-        self._notify_changed({"description"})
+        self._description = value
+        self._changes.add("description")
         self.save()
 
     def new_prompt(self, prompt_name: str = "My Prompt"):
         """Start new session"""
         self.id = uuid.uuid4().hex
-        self.name = prompt_name
-        self.description = ""
+        self._name = prompt_name
+        self._description = ""
         self.messages.clear()
         self._id_to_msg.clear()
-
-    @property
-    def is_loaded(self):
-        """Check if the prompt is loaded"""
-        return self._loaded
+        self.clear_changes()
 
     def __eq__(self, other: object) -> bool:
         """Check if two sessions are equal"""
@@ -118,7 +115,7 @@ class ChatPrompt(ChatMessageContainer):
                 "id": self.id,
                 "name": self.name,
                 "last_updated": self.last_updated.isoformat(),
-                "description": self.description,
+                "description": self._description,
                 "messages": [m.__dict__() for m in self.messages],
             },
             default=str,
@@ -155,10 +152,26 @@ class ChatPrompt(ChatMessageContainer):
 
     def save(self) -> bool:
         """Save the chat prompt to a file"""
+        if self._batching:
+            self.log_it(f"CP is batching, not notifying: {self.name}")
+            return False
         if not self._loaded:
             self.load()
+        if not self.is_dirty:
+            self.log_it(f"CP is not dirty, not notifying: {self.name}")
+            return False  # No need to save if no changes
+
+        nc: PromptChanges = PromptChanges()
+        for change in self._changes:
+            if change in prompt_change_list:
+                nc.add(change)  # type: ignore
+
+        self._notify_changed(nc)
+        self.clear_changes()
+
         if not self.is_valid:
-            return False  # Cannot save without session name, LLM model name and at least one message
+            self.log_it(f"CP not valid, not saving: {self.id}")
+            return False  # Cannot save without name
 
         file_name = f"{self.id}.json"  # Use prompt ID as filename
         try:

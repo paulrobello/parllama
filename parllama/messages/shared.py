@@ -10,3 +10,8 @@ session_change_list: list[
 ] = ["name", "model", "temperature", "options", "messages"]
 
 PromptChanges: TypeAlias = set[Literal["name", "description", "messages"]]
+prompt_change_list: list[Literal["name", "description", "messages"]] = [
+    "name",
+    "description",
+    "messages",
+]

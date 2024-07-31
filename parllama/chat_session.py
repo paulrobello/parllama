@@ -41,10 +41,9 @@ class ChatSession(ChatMessageContainer):
     _llm_model_name: str
     options: OllamaOptions
     _subs: set[MessagePump]
-    _name_generated: bool
+    name_generated: bool
     _abort: bool
     _generating: bool
-    _loaded: bool
 
     # pylint: disable=too-many-arguments
     def __init__(
@@ -60,13 +59,12 @@ class ChatSession(ChatMessageContainer):
         """Initialize the chat session"""
         super().__init__(id=id, name=name, messages=messages, last_updated=last_updated)
         self._batching = True
-        self._name_generated = False
+        self.name_generated = False
         self._abort = False
         self._generating = False
         self._subs = set()
         self._llm_model_name = llm_model_name
         self.options = options or {}
-        self._loaded = messages is not None
         self._batching = False
 
     def load(self) -> None:
@@ -97,16 +95,6 @@ class ChatSession(ChatMessageContainer):
         finally:
             self._batching = False
             self.clear_changes()
-
-    @property
-    def loading(self) -> bool:
-        """Check if the session is loading"""
-        return self._batching
-
-    @loading.setter
-    def loading(self, value: bool) -> None:
-        """Set the loading state"""
-        self._batching = value
 
     def add_sub(self, sub: MessagePump) -> None:
         """Add a subscription"""
@@ -214,9 +202,9 @@ class ChatSession(ChatMessageContainer):
             if (
                 not is_aborted
                 and settings.auto_name_session
-                and not self._name_generated
+                and not self.name_generated
             ):
-                self._name_generated = True
+                self.name_generated = True
                 user_msg = self.get_first_user_message()
                 if user_msg:
                     new_name = llm_session_name(user_msg.content, self.llm_model_name)
@@ -238,11 +226,6 @@ class ChatSession(ChatMessageContainer):
         self._loaded = False
         self._batching = False
 
-    @property
-    def is_loaded(self):
-        """Check if the session is loaded"""
-        return self._loaded
-
     def __eq__(self, other: object) -> bool:
         """Check if two sessions are equal"""
         if not isinstance(other, ChatSession):
@@ -261,6 +244,7 @@ class ChatSession(ChatMessageContainer):
             {
                 "id": self.id,
                 "name": self.name,
+                "name_generated": self.name_generated,
                 "last_updated": self.last_updated.isoformat(),
                 "llm_model_name": self.llm_model_name,
                 "options": self.options,
@@ -279,7 +263,7 @@ class ChatSession(ChatMessageContainer):
             if "message_id" in m:
                 m["id"] = "message_id"
                 del m["message_id"]
-        return ChatSession(
+        session = ChatSession(
             id=data.get("id", data.get("id", data.get("session_id"))),
             name=data.get("name", data.get("name", data.get("session_name"))),
             last_updated=datetime.datetime.fromisoformat(data["last_updated"]),
@@ -287,6 +271,8 @@ class ChatSession(ChatMessageContainer):
             options=data.get("options"),
             messages=[OllamaMessage(**m) for m in messages],
         )
+        session.name_generated = True
+        return session
 
     @staticmethod
     def load_from_file(filename: str) -> ChatSession | None:
@@ -334,7 +320,7 @@ class ChatSession(ChatMessageContainer):
         if settings.no_save_chat:
             return False  # Do not save if no_save_chat is set in settings
         if not self.is_valid or len(self.messages) == 0:
-            self.log_it(f"CS not valid, not saving: {self.name}")
+            self.log_it(f"CS not valid, not saving: {self.id}")
             return False  # Cannot save without name, LLM model name and at least one message
 
         self.log_it(f"CS saving: {self.name}")

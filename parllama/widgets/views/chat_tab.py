@@ -292,7 +292,7 @@ class ChatTab(TabPane):
                 widget=self,
             )
             self.session_name_input.value = self.session.name
-            self.session.loading = False
+            # self.session.batching = False
 
         await self.vs.remove_children("*")
         self.update_control_states()

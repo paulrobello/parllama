@@ -32,6 +32,7 @@ class ChatMessageContainer(ParEventSystemBase):
     _id_to_msg: dict[str, OllamaMessage]
     _changes: set[str]
     _batching: bool
+    _loaded: bool
 
     # pylint: disable=too-many-arguments
     def __init__(
@@ -60,7 +61,23 @@ class ChatMessageContainer(ParEventSystemBase):
             self._id_to_msg[msg.id] = msg
             self.mount(msg)
         self.last_updated = last_updated or datetime.datetime.now()
+        self._loaded = messages is not None
         self._batching = False
+
+    @property
+    def is_loaded(self):
+        """Check if the messages have been loaded"""
+        return self._loaded
+
+    @property
+    def batching(self) -> bool:
+        """Check if the session is loading"""
+        return self._batching
+
+    @batching.setter
+    def batching(self, value: bool) -> None:
+        """Set the loading state"""
+        self._batching = value
 
     def add_message(self, msg: OllamaMessage, prepend: bool = False) -> None:
         """Add a message"""

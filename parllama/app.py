@@ -178,6 +178,9 @@ class ParLlamaApp(App[None]):
             )
         else:
             self.post_message_all(StatusMessage("Polling Ollama ps disabled"))
+        self.post_message_all(
+            StatusMessage(f"Auto session naming: {settings.auto_name_session}")
+        )
 
         self.post_message_all(
             StatusMessage(
