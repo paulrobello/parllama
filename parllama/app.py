@@ -37,7 +37,14 @@ from parllama.chat_manager import chat_manager
 from parllama.chat_manager import ChatManager
 from parllama.data_manager import dm
 from parllama.dialogs.help_dialog import HelpDialog
-from parllama.messages.messages import ChangeTab, LogIt
+from parllama.messages.messages import (
+    ChangeTab,
+    LogIt,
+    SessionToPrompt,
+    DeletePrompt,
+    PromptListChanged,
+    PromptSelected,
+)
 from parllama.messages.messages import CreateModelFromExistingRequested
 from parllama.messages.messages import DeleteSession
 from parllama.messages.messages import LocalModelCopied
@@ -706,11 +713,22 @@ class ParLlamaApp(App[None]):
         event.stop()
         self.post_message_all(event)
 
+    @on(PromptListChanged)
+    def on_prompt_list_changed(self, event: PromptListChanged) -> None:
+        """Prompt list changed event"""
+        event.stop()
+        self.post_message_all(event)
+
     @on(SessionSelected)
     def on_session_selected(self, event: SessionSelected) -> None:
         """Session selected event"""
         event.stop()
-        self.post_message(LogIt(f"on_session_selected: {event.session_id}"))
+        self.post_message_all(event)
+
+    @on(PromptSelected)
+    def on_prompt_selected(self, event: PromptSelected) -> None:
+        """Session selected event"""
+        event.stop()
         self.post_message_all(event)
 
     @on(DeleteSession)
@@ -718,6 +736,20 @@ class ParLlamaApp(App[None]):
         """Delete session event"""
         event.stop()
         self.post_message_all(event)
+
+    @on(DeletePrompt)
+    def on_delete_prompt(self, event: DeletePrompt) -> None:
+        """Delete prompt event"""
+        event.stop()
+        self.post_message_all(event)
+
+    @on(SessionToPrompt)
+    def on_session_to_prompt(self, event: SessionToPrompt) -> None:
+        """Session to prompt event"""
+        event.stop()
+        chat_manager.session_to_prompt(
+            event.session_id, event.submit_on_load, event.prompt_name
+        )
 
     @on(LogIt)
     def on_log_it(self, event: LogIt) -> None:

@@ -25,6 +25,7 @@ class ChatPrompt(ChatMessageContainer):
     _description: str
     messages: list[OllamaMessage]
     last_updated: datetime.datetime
+    _submit_on_load: bool
     _id_to_msg: dict[str, OllamaMessage]
 
     # pylint: disable=too-many-arguments
@@ -35,11 +36,13 @@ class ChatPrompt(ChatMessageContainer):
         name: str,
         description: str,
         messages: list[OllamaMessage] | list[dict] | None = None,
+        submit_on_load: bool = False,
         last_updated: datetime.datetime | None = None,
     ):
         """Initialize the chat prompt"""
         super().__init__(id=id, name=name, messages=messages, last_updated=last_updated)
         self._description = description
+        self._submit_on_load = submit_on_load
 
     def load(self) -> None:
         """Load chat prompts from files"""
@@ -87,6 +90,20 @@ class ChatPrompt(ChatMessageContainer):
         self._changes.add("description")
         self.save()
 
+    @property
+    def submit_on_load(self) -> bool:
+        """Get whether the prompt should be submitted on load"""
+        return self._submit_on_load
+
+    @submit_on_load.setter
+    def submit_on_load(self, value: bool) -> None:
+        """Set whether the prompt should be submitted on load"""
+        if self._submit_on_load == value:
+            return
+        self._submit_on_load = value
+        self._changes.add("submit_on_load")
+        self.save()
+
     def new_prompt(self, prompt_name: str = "My Prompt"):
         """Start new session"""
         self.id = uuid.uuid4().hex
@@ -94,6 +111,8 @@ class ChatPrompt(ChatMessageContainer):
         self._description = ""
         self.messages.clear()
         self._id_to_msg.clear()
+        self._loaded = False
+        self.batching = False
         self.clear_changes()
 
     def __eq__(self, other: object) -> bool:
@@ -116,6 +135,7 @@ class ChatPrompt(ChatMessageContainer):
                 "name": self.name,
                 "last_updated": self.last_updated.isoformat(),
                 "description": self._description,
+                "submit_on_load": self._submit_on_load,
                 "messages": [m.__dict__() for m in self.messages],
             },
             default=str,
@@ -123,7 +143,7 @@ class ChatPrompt(ChatMessageContainer):
         )
 
     @staticmethod
-    def from_json(json_data: str) -> ChatPrompt:
+    def from_json(json_data: str, load_messages: bool = False) -> ChatPrompt:
         """Convert JSON to chat session"""
         data: dict = json.loads(json_data)
         return ChatPrompt(
@@ -131,7 +151,12 @@ class ChatPrompt(ChatMessageContainer):
             name=data["name"],
             last_updated=datetime.datetime.fromisoformat(data["last_updated"]),
             description=data.get("description", ""),
-            messages=[OllamaMessage(**m) for m in data["messages"]],
+            messages=(
+                [OllamaMessage(**m) for m in data["messages"]]
+                if load_messages
+                else None
+            ),
+            submit_on_load=data.get("submit_on_load", False),
         )
 
     @staticmethod

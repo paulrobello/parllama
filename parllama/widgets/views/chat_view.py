@@ -23,7 +23,13 @@ from parllama.chat_manager import ChatSession
 from parllama.chat_message import OllamaMessage
 from parllama.data_manager import dm
 from parllama.dialogs.information import InformationDialog
-from parllama.messages.messages import ChatGenerationAborted, LogIt
+from parllama.messages.messages import (
+    ChatGenerationAborted,
+    LogIt,
+    SessionToPrompt,
+    PromptSelected,
+    ChangeTab,
+)
 from parllama.messages.messages import ChatMessage
 from parllama.messages.messages import ChatMessageSent
 from parllama.messages.messages import DeleteSession
@@ -51,6 +57,7 @@ valid_commands: list[str] = [
     "/session.delete",
     "/session.export",
     "/session.system_prompt",
+    "/session.to_prompt",
 ]
 
 
@@ -173,6 +180,7 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
                     "LocalModelListLoaded",
                     "SessionSelected",
                     "DeleteSession",
+                    "PromptSelected",
                 ],
             )
         )
@@ -259,6 +267,7 @@ Chat Commands:
 /session.delete - Delete the chat session for current tab
 /session.export - Export the conversation in current tab to a Markdown file
 /session.system_prompt [system prompt] - Set system prompt in current tab
+/session.to_prompt submit_on_load [prompt name] - Copy current session to new custom prompt. submit_on_load = {0|1}
                     """,
                 )
             )
@@ -283,6 +292,7 @@ Chat Commands:
             await self.active_tab.action_new_session()
         elif cmd.startswith("session.new "):
             (_, v) = cmd.split(" ", 1)
+            v = v.strip()
             await self.active_tab.action_new_session(v)
         elif cmd == "session.delete":
             self.app.post_message(DeleteSession(session_id=self.session.id))
@@ -291,6 +301,7 @@ Chat Commands:
             return
         elif cmd.startswith("session.model "):
             (_, v) = cmd.split(" ", 1)
+            v = v.strip()
             if v not in [m.model.name for m in dm.models]:
                 self.notify(f"Model {v} not found", severity="error")
                 return
@@ -300,14 +311,31 @@ Chat Commands:
             self.set_timer(0.1, self.active_tab.temperature_input.focus)
         elif cmd.startswith("session.temp "):
             (_, v) = cmd.split(" ", 1)
+            v = v.strip()
             self.active_tab.temperature_input.value = v
             self.set_timer(0.1, self.user_input.focus)
         elif cmd == "session.name":
             self.set_timer(0.1, self.active_tab.session_name_input.focus)
         elif cmd.startswith("session.name "):
             (_, v) = cmd.split(" ", 1)
+            v = v.strip()
             self.active_tab.session_name_input.value = v
             await self.active_tab.session_name_input.action_submit()
+        elif cmd.startswith("session.to_prompt "):
+            vs: list[str] = cmd.split(" ", 2)
+            if len(vs) == 2:
+                (_, submit_on_load) = vs
+                v = ""
+            else:
+                (_, submit_on_load, v) = vs
+            v = v.strip()
+            self.app.post_message(
+                SessionToPrompt(
+                    session_id=self.session.id,
+                    submit_on_load=submit_on_load == "1",
+                    prompt_name=v,
+                )
+            )
         elif cmd.startswith("session.export"):
             self.active_tab.save_conversation_text()
         elif cmd.startswith("session.system_prompt "):
@@ -366,6 +394,14 @@ Chat Commands:
             await self.active_tab.load_session(event.session_id)
         else:
             await self.active_tab.load_session(event.session_id)
+
+    @on(PromptSelected)
+    async def prompt_selected(self, event: PromptSelected) -> None:
+        """Prompt selected event"""
+        event.stop()
+        await self.action_new_tab()
+        await self.active_tab.load_prompt(event.prompt_id)
+        self.app.post_message(ChangeTab(tab="Chat"))
 
     @on(UpdateChatControlStates)
     def update_chat_control_states(self, event: UpdateChatControlStates) -> None:

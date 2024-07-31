@@ -394,7 +394,48 @@ class ChatTab(TabPane):
         with self.prevent(Focus, Input.Changed, Select.Changed):
             self.set_model_name(self.session.llm_model_name)
             if self.model_select.value == Select.BLANK:
-                self.notify("Model defined in session is not installed")
+                self.notify(
+                    "Model defined in session is not installed", severity="warning"
+                )
+            self.temperature_input.value = str(
+                self.session.options.get("temperature", "")
+            )
+            self.session_name_input.value = self.session.name
+        self.set_timer(0.25, partial(self.scroll_to_bottom, False))
+        self.update_control_states()
+        self.notify_tab_label_changed()
+        self.on_update_chat_status()
+        self.user_input.focus()
+
+    async def load_prompt(self, prompt_id: str) -> None:
+        """Load a session"""
+        self.app.post_message(LogIt("load_prompt: " + prompt_id))
+        prompt = chat_manager.get_prompt(prompt_id)
+        if prompt is None:
+            self.notify(f"Prompt not found: {prompt_id}", severity="error")
+            return
+        prompt.load()
+        old_session = self.session
+        old_session.remove_sub(self)
+        self.session = chat_manager.new_session(
+            session_name=prompt.name,
+            model_name=old_session.llm_model_name,
+            options=old_session.options,
+            widget=self,
+        )
+        await self.vs.remove_children("*")
+        await self.vs.mount(
+            *[
+                ChatMessageWidget.mk_msg_widget(msg=m, session=self.session)
+                for m in prompt.messages
+            ]
+        )
+        with self.prevent(Focus, Input.Changed, Select.Changed):
+            self.set_model_name(self.session.llm_model_name)
+            if self.model_select.value == Select.BLANK:
+                self.notify(
+                    "Model defined in session is not installed", severity="warning"
+                )
             self.temperature_input.value = str(
                 self.session.options.get("temperature", "")
             )

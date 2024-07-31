@@ -2,18 +2,22 @@
 
 from __future__ import annotations
 
-import datetime
 import os
-from typing import Any
+from typing import Any, Optional
 
-import simplejson as json
 from ollama import Options as OllamaOptions
 from textual.app import App
 from textual.message_pump import MessagePump
 
+from parllama.chat_message import OllamaMessage
 from parllama.chat_prompt import ChatPrompt
 from parllama.llm_session_name import llm_session_name
-from parllama.messages.messages import SessionListChanged, LogIt, PromptListChanged
+from parllama.messages.messages import (
+    SessionListChanged,
+    LogIt,
+    PromptListChanged,
+    ChangeTab,
+)
 from parllama.messages.par_prompt_messages import ParPromptUpdated, ParPromptDelete
 from parllama.messages.par_session_messages import (
     ParSessionUpdated,
@@ -139,6 +143,11 @@ class ChatManager(ParEventSystemBase):
             session.add_sub(widget)
         return session
 
+    def get_prompt(self, prompt_id: str) -> ChatPrompt | None:
+        """Get a chat prompt"""
+        self.log_it("get_prompt: " + prompt_id)
+        return self._id_to_prompt.get(prompt_id)
+
     def get_session_by_name(
         self, session_name: str, widget: MessagePump | None = None
     ) -> ChatSession | None:
@@ -203,17 +212,8 @@ class ChatManager(ParEventSystemBase):
                 with open(
                     os.path.join(settings.chat_dir, f), mode="rt", encoding="utf-8"
                 ) as fh:
-                    data: dict = json.load(fh)
-                    session = ChatSession(
-                        id=data.get("id", data.get("session_id")),
-                        name=data.get("name", data.get("session_name")),
-                        llm_model_name=data["llm_model_name"],
-                        # messages=data["messages"],
-                        options=data.get("options"),
-                        last_updated=datetime.datetime.fromisoformat(
-                            data["last_updated"]
-                        ),
-                    )
+                    # data: dict = json.load(fh)
+                    session = ChatSession.from_json(fh.read())
                     session.name_generated = True
                     self._id_to_session[session.id] = session
                     self.mount(session)
@@ -250,6 +250,40 @@ class ChatManager(ParEventSystemBase):
         event.stop()
         self.delete_session(event.session_id)
 
+    def session_to_prompt(
+        self, session_id: str, submit_on_load: bool, prompt_name: Optional[str] = None
+    ) -> ChatPrompt | None:
+        """Copy a session to a new custom prompt"""
+        session = self.get_session(session_id)
+        if session is None:
+            self.log_it(
+                f"Chat session {session_id} not found", severity="error", notify=True
+            )
+            return None
+        prompt_name = prompt_name or session.name
+        messages = [
+            OllamaMessage(
+                role=m.role, content=m.content, images=m.images, tool_calls=m.tool_calls
+            )
+            for m in session.messages
+        ]
+        prompt = ChatPrompt(
+            name=prompt_name,
+            description="",
+            messages=messages,
+            submit_on_load=submit_on_load,
+        )
+        self._id_to_prompt[prompt.id] = prompt
+        self.mount(prompt)
+        self.notify_prompts_changed()
+        prompt.description = "-"
+        prompt.save()
+        self.log_it(
+            f"Session {session.name or session.id} copied to prompt", notify=True
+        )
+        self.app.post_message(ChangeTab(tab="Prompts"))
+        return prompt
+
     ############ Prompts #################
     @property
     def prompts(self) -> list[ChatPrompt]:
@@ -283,18 +317,10 @@ class ChatManager(ParEventSystemBase):
                 with open(
                     os.path.join(settings.prompt_dir, f), mode="rt", encoding="utf-8"
                 ) as fh:
-                    data: dict = json.load(fh)
-                    prompt = ChatPrompt(
-                        id=data["id"],
-                        name=data.get("name", data.get("session_name")),
-                        description=data["description"],
-                        # messages=data["messages"],
-                        last_updated=datetime.datetime.fromisoformat(
-                            data["last_updated"]
-                        ),
-                    )
+                    prompt = ChatPrompt.from_json(fh.read())
                     self._id_to_prompt[prompt.id] = prompt
                     self.mount(prompt)
+                    self.log_it(prompt)
             except Exception as e:  # pylint: disable=broad-exception-caught
                 self.log_it(f"Error loading prompt {e}", notify=True, severity="error")
 
@@ -308,11 +334,11 @@ class ChatManager(ParEventSystemBase):
         if os.path.exists(p):
             os.remove(p)
         self.notify_prompts_changed()
-        self.log_it(f"CM Prompt {prompt_id} deleted")
+        self.log_it(f"Prompt {prompt.name or prompt.id} deleted", notify=True)
 
     def notify_prompts_changed(self) -> None:
         """Notify changed"""
-        self.log_it("CM Notify prompt changed")
+        self.log_it("CM Notify prompts changed")
         # self.app.notify("CM notify changed")
         self.app.post_message(PromptListChanged())
 

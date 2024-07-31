@@ -194,7 +194,7 @@ class ChatSession(ChatMessageContainer):
             # ttft: float = 0.0
             for stream_chunk in stream:
                 chunk: ChatChunk = ChatChunk(**stream_chunk)
-                self.log_it(chunk)
+                # self.log_it(chunk)
                 if chunk.message.content:
                     # elapsed_time = datetime.datetime.now() - start_time
                     # if num_tokens == 0:
@@ -258,6 +258,7 @@ class ChatSession(ChatMessageContainer):
         self._batching = True
         self.id = uuid.uuid4().hex
         self.name = name
+        self.name_generated = False
         self.messages.clear()
         self._id_to_msg.clear()
         self.clear_changes()
@@ -294,7 +295,7 @@ class ChatSession(ChatMessageContainer):
         )
 
     @staticmethod
-    def from_json(json_data: str) -> ChatSession:
+    def from_json(json_data: str, load_messages: bool = False) -> ChatSession:
         """Convert JSON to chat session"""
         data: dict = json.loads(json_data)
         messages = data["messages"]
@@ -308,7 +309,7 @@ class ChatSession(ChatMessageContainer):
             last_updated=datetime.datetime.fromisoformat(data["last_updated"]),
             llm_model_name=data["llm_model_name"],
             options=data.get("options"),
-            messages=[OllamaMessage(**m) for m in messages],
+            messages=[OllamaMessage(**m) for m in messages] if load_messages else None,
         )
         session.name_generated = True
         return session

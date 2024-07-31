@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Optional
 
 from rich.console import RenderableType, ConsoleRenderable, RichCast
 from textual.message import Message
@@ -255,6 +256,23 @@ class PromptListChanged(Message):
     """Notify that prompt list has changed."""
 
 
+@dataclass
+class PromptMessage(Message):
+    """Prompt base class."""
+
+    prompt_id: str
+
+
+@dataclass
+class DeletePrompt(PromptMessage):
+    """Request prompt be deleted."""
+
+
+@dataclass
+class PromptSelected(PromptMessage):
+    """Notify that a prompt has been selected."""
+
+
 # ---------- Session Related Messages ---------- #
 
 
@@ -265,9 +283,17 @@ class SessionListChanged(Message):
 
 @dataclass
 class SessionMessage(Message):
-    """Session Was Updated"""
+    """Session base class."""
 
     session_id: str
+
+
+@dataclass
+class SessionToPrompt(SessionMessage):
+    """Request session be copied to prompt."""
+
+    prompt_name: Optional[str] = None
+    submit_on_load: bool = False
 
 
 @dataclass

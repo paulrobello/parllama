@@ -39,17 +39,21 @@ class OllamaMessage(ParEventSystemBase):
     Tools calls to be made by the model.
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments
         self,
         *,
         id: str | None = None,  # pylint: disable=redefined-builtin
         role: MessageRoles,
         content: str = "",
+        images: Optional[Sequence[Any]] = None,
+        tool_calls: Optional[Sequence[ToolCall]] = None,
     ) -> None:
         """Initialize the chat message"""
         super().__init__(id=id)
         self.role = role
         self.content = content
+        self.images = images
+        self.tool_calls = tool_calls
 
     def __str__(self) -> str:
         """Ollama message representation"""
