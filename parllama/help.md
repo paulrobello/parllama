@@ -122,6 +122,7 @@ Chat Commands:
 * /session.temp [temperature] - Select temperature input or set temperature in current tab
 * /session.delete - Delete the chat session for current tab
 * /session.export - Export the conversation in current tab to a Markdown file
+* /session.to_prompt submit_on_load [prompt name] - Copy current session to new custom prompt using optional prompt name. submit_on_load = {0|1}
 
 ## Logs Screen
 This screen allows viewing any messages that have passed through the status bar.

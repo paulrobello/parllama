@@ -168,20 +168,15 @@ class ChatSession(ChatMessageContainer):
         """Send a chat message to LLM"""
         self._generating = True
         try:
-            self.log_it("CM adding user message")
-            msg: OllamaMessage = OllamaMessage(role="user", content=from_user)
-            self.add_message(msg)
-            self._notify_subs(ChatMessage(parent_id=self.id, message_id=msg.id))
-            self.post_message(ParChatUpdated(parent_id=self.id, message_id=msg.id))
+            if from_user:
+                # self.log_it("CM adding user message")
+                msg: OllamaMessage = OllamaMessage(role="user", content=from_user)
+                self.add_message(msg)
+                self._notify_subs(ChatMessage(parent_id=self.id, message_id=msg.id))
+                self.post_message(ParChatUpdated(parent_id=self.id, message_id=msg.id))
+                self.save()
 
-            self.log_it("CM adding assistant message")
-            msg = OllamaMessage(role="assistant")
-            self.add_message(msg)
-            self._notify_subs(ChatMessage(parent_id=self.id, message_id=msg.id))
-            self.post_message(ParChatUpdated(parent_id=self.id, message_id=msg.id))
-
-            self.save()
-
+            # self.log_it(self.messages)
             stream: Iterator[Mapping[str, Any]] = settings.ollama_client.chat(  # type: ignore
                 model=self.llm_model_name,
                 messages=[m.to_ollama_native() for m in self.messages],
@@ -189,6 +184,12 @@ class ChatSession(ChatMessageContainer):
                 stream=True,
             )
             is_aborted = False
+            # self.log_it("CM adding assistant message")
+            msg = OllamaMessage(role="assistant")
+            self.add_message(msg)
+            self._notify_subs(ChatMessage(parent_id=self.id, message_id=msg.id))
+            self.post_message(ParChatUpdated(parent_id=self.id, message_id=msg.id))
+
             # num_tokens: int = 0
             # start_time = datetime.datetime.now()
             # ttft: float = 0.0

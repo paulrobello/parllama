@@ -33,7 +33,7 @@ class PromptListItem(DblClickListItem, can_focus=False, can_focus_children=True)
         """Compose the content of the view."""
         with Vertical():
             yield Label(self.prompt.name)
-            yield Label(self.prompt.description)
+            yield Label(self.prompt.description or "-")
             yield Label(
                 Text.assemble(
                     "Submit on load: ",

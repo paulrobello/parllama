@@ -423,11 +423,21 @@ class ChatTab(TabPane):
             options=old_session.options,
             widget=self,
         )
+        with self.session.batch_changes():
+            for m in prompt.messages:
+                self.session.add_message(
+                    OllamaMessage(
+                        role=m.role,
+                        content=m.content,
+                        images=m.images,
+                        tool_calls=m.tool_calls,
+                    )
+                )
         await self.vs.remove_children("*")
         await self.vs.mount(
             *[
                 ChatMessageWidget.mk_msg_widget(msg=m, session=self.session)
-                for m in prompt.messages
+                for m in self.session.messages
             ]
         )
         with self.prevent(Focus, Input.Changed, Select.Changed):
@@ -445,6 +455,8 @@ class ChatTab(TabPane):
         self.notify_tab_label_changed()
         self.on_update_chat_status()
         self.user_input.focus()
+        if prompt.submit_on_load:
+            self.do_send_message("")
 
     @on(SessionSelected)
     async def on_session_selected(self, event: SessionSelected) -> None:

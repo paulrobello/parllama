@@ -297,8 +297,8 @@ if anything remains to be fixed before the commit is allowed.
 
 ### v0.3.4
 * Added cli option and environment var to enable auto naming of sessions using LLM
-* Added tokens / second stats to session info line on chat tab
-* Added tab to manage custom prompts
+* Added tokens per second stats to session info line on chat tab
+* Added custom prompt library support
 * Fixed app crash when it cant contact ollama server for PS info
 * Fixed slow startup when you have a lot of models available locally
 * Fixed slow startup and reduced memory utilization when you have many / large chats
