@@ -144,6 +144,7 @@ Unless you specify "--no-save" most flags such as -u, -t, -m, -s are sticky and 
 * PARLLAMA_THEME_NAME - Used to set --theme-name
 * PARLLAMA_THEME_MODE - Used to set --theme-mode
 * OLLAMA_URL - Used to set --ollama-url
+* PARLLAMA_AUTO_NAME_SESSION - Set to 0 or 1 to disable / enable session auto naming using LLM
 
 ## Running PAR_LLAMA
 
@@ -296,6 +297,7 @@ if anything remains to be fixed before the commit is allowed.
 
 ### v0.3.4
 * Added cli option and environment var to enable auto naming of sessions using LLM
+* Added tokens / second stats to session info line on chat tab
 * Added tab to manage custom prompts
 * Fixed app crash when it cant contact ollama server for PS info
 * Fixed slow startup when you have a lot of models available locally

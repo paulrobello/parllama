@@ -125,6 +125,11 @@ class ChatSession(ChatMessageContainer):
         self.post_message(ParSessionUpdated(session_id=self.id, changed=changed))
 
     @property
+    def stats(self) -> TokenStats | None:
+        """Get the chat session stats"""
+        return self._stream_stats
+
+    @property
     def llm_model_name(self) -> str:
         """Get the LLM model name"""
         return self._llm_model_name
@@ -189,7 +194,7 @@ class ChatSession(ChatMessageContainer):
             # ttft: float = 0.0
             for stream_chunk in stream:
                 chunk: ChatChunk = ChatChunk(**stream_chunk)
-                # self.log_it(chunk)
+                self.log_it(chunk)
                 if chunk.message.content:
                     # elapsed_time = datetime.datetime.now() - start_time
                     # if num_tokens == 0:

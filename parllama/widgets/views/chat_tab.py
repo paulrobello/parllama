@@ -456,14 +456,20 @@ class ChatTab(TabPane):
                 self.get_model_details(model)
             elif model.model_info:
                 max_context_length = model.model_info.llama_context_length or 0
-        self.session_status_bar.update(
-            Text.assemble(
-                "Context Length: ",
-                humanize.intcomma(self.session.context_length),
-                " / ",
-                humanize.intcomma(max_context_length),
-            )
-        )
+        parts = [
+            "Context Length: ",
+            humanize.intcomma(self.session.context_length),
+            " / ",
+            humanize.intcomma(max_context_length),
+        ]
+        stats = self.session.stats
+        if stats:
+            if stats.eval_duration:
+                parts.append(
+                    f" | Tokens / Sec: {stats.eval_count / (stats.eval_duration/1_000_000_000):.1f}"
+                )
+
+        self.session_status_bar.update(Text.assemble(*parts))
 
     async def action_delete_msg(self) -> None:
         """Handle the delete message action."""
