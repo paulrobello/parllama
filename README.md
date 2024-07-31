@@ -108,7 +108,7 @@ make first-setup
 ## Command line arguments
 ```
 usage: parllama [-h] [-v] [-d DATA_DIR] [-u OLLAMA_URL] [-t THEME_NAME] [-m {dark,light}] [-s {local,site,chat,prompts,tools,create,logs}]
-                [-p PS_POLL] [--restore-defaults] [--clear-cache] [--purge-chats] [--purge-prompts] [--no-save] [--no-chat-save]
+                [-p PS_POLL] [-a {0,1}] [--restore-defaults] [--clear-cache] [--purge-chats] [--purge-prompts] [--no-save] [--no-chat-save]
 
 PAR LLAMA -- Ollama TUI.
 
@@ -127,6 +127,8 @@ options:
                         Starting screen. Defaults to local
   -p PS_POLL, --ps-poll PS_POLL
                         Interval in seconds to poll ollama ps command. 0 = disable. Defaults to 3
+  -a {0,1}, --auto-name-session {0,1}
+                        Auto name session using LLM
   --restore-defaults    Restore default settings and theme
   --clear-cache         Clear cached data
   --purge-chats         Purge all chat history
@@ -293,12 +295,15 @@ if anything remains to be fixed before the commit is allowed.
 ## What's new
 
 ### v0.3.4
+* Added cli option and environment var to enable auto naming of sessions using LLM
 * Added tab to manage custom prompts
+* Fixed app crash when it cant contact ollama server for PS info
 * Fixed slow startup when you have a lot of models available locally
 * Fixed slow startup and reduced memory utilization when you have many / large chats
 * Fixed session unique naming bug where it would always add a "1" to the session name
+* Fixed app sometimes slowing down during LLM generation
 * Major rework of internal message handling
-* Issue where some footer items are not clickable has been resolved by library PARLLAMA depends on
+* Issue where some footer items are not clickable has been resolved by a library PARLLAMA depends on
 
 ### v0.3.3
 * Added ability to edit existing messages. select message in chat list and press "e" to edit, then "escape" to exit edit mode

@@ -578,8 +578,7 @@ def get_args() -> Namespace:
         "-a",
         "--auto-name-session",
         help="Auto name session using LLM",
-        default=False,
-        action="store_true",
+        choices=["0", "1"],
     )
 
     parser.add_argument(

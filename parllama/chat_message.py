@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Optional, Sequence, Any
 
 from ollama import Message as OMessage
 
 from parllama.messages.par_chat_messages import ParChatUpdated
-from parllama.models.ollama_data import MessageRoles
+from parllama.models.ollama_data import MessageRoles, ToolCall
 from parllama.par_event_system import ParEventSystemBase
 
 
@@ -20,6 +21,23 @@ class OllamaMessage(ParEventSystemBase):
 
     content: str = ""
     "Content of the message. Response messages contains message fragments when streaming."
+
+    images: Optional[Sequence[Any]] = None
+    """
+      Optional list of image data for multimodal models.
+
+      Valid input types are:
+
+      - `str` or path-like object: path to image file
+      - `bytes` or bytes-like object: raw image data
+
+      Valid image formats depend on the model. See the model card for more information.
+      """
+
+    tool_calls: Optional[Sequence[ToolCall]] = None
+    """
+    Tools calls to be made by the model.
+    """
 
     def __init__(
         self,

@@ -144,7 +144,7 @@ If you have Ollama running on multiple machines you must import each machines ke
 ## Command line arguments
 ```
 usage: parllama [-h] [-v] [-d DATA_DIR] [-u OLLAMA_URL] [-t THEME_NAME] [-m {dark,light}] [-s {local,site,chat,prompts,tools,create,logs}]
-                [-p PS_POLL] [--restore-defaults] [--clear-cache] [--purge-chats] [--purge-prompts] [--no-save] [--no-chat-save]
+                [-p PS_POLL] [-a {0,1}] [--restore-defaults] [--clear-cache] [--purge-chats] [--purge-prompts] [--no-save] [--no-chat-save]
 
 PAR LLAMA -- Ollama TUI.
 
@@ -163,6 +163,8 @@ options:
                         Starting screen. Defaults to local
   -p PS_POLL, --ps-poll PS_POLL
                         Interval in seconds to poll ollama ps command. 0 = disable. Defaults to 3
+  -a {0,1}, --auto-name-session {0,1}
+                        Auto name session using LLM
   --restore-defaults    Restore default settings and theme
   --clear-cache         Clear cached data
   --purge-chats         Purge all chat history

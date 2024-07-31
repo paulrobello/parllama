@@ -23,3 +23,11 @@ class ParSessionUpdated(ParSessionMessage):
 @dataclass
 class ParSessionDelete(ParSessionMessage):
     """Request session be deleted."""
+
+
+@dataclass
+class ParSessionAutoName(ParSessionMessage):
+    """Request session be auto named."""
+
+    model_name: str
+    context: str

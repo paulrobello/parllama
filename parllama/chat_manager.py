@@ -15,7 +15,11 @@ from parllama.chat_prompt import ChatPrompt
 from parllama.llm_session_name import llm_session_name
 from parllama.messages.messages import SessionListChanged, LogIt, PromptListChanged
 from parllama.messages.par_prompt_messages import ParPromptUpdated, ParPromptDelete
-from parllama.messages.par_session_messages import ParSessionUpdated, ParSessionDelete
+from parllama.messages.par_session_messages import (
+    ParSessionUpdated,
+    ParSessionDelete,
+    ParSessionAutoName,
+)
 from parllama.models.settings_data import settings
 from parllama.par_event_system import ParEventSystemBase, ParLogIt
 from parllama.chat_session import ChatSession
@@ -228,6 +232,18 @@ class ChatManager(ParEventSystemBase):
             or "temperature" in event.changed
         ):
             self.notify_sessions_changed()
+
+    def on_par_session_auto_name(self, event: ParSessionAutoName) -> None:
+        """Handle a ParSessionAutoName event"""
+        event.stop()
+        session = self.get_session(event.session_id)
+        if not session:
+            return
+        new_name = llm_session_name(event.context, event.model_name)
+        if not new_name:
+            return
+        session.name = self.mk_session_name(new_name)
+        self.log_it(f"CM Session {event.session_id} auto-named: {new_name}")
 
     def on_par_session_delete(self, event: ParSessionDelete) -> None:
         """Handle a ParDeleteSession event"""

@@ -100,8 +100,8 @@ class Settings(BaseModel):
         self.load_from_file()
 
         auto_name_session = os.environ.get("PARLLAMA_AUTO_NAME_SESSION")
-        if args.auto_name_session:
-            self.auto_name_session = True
+        if args.auto_name_session is not None:
+            self.auto_name_session = args.auto_name_session == "1"
         elif auto_name_session is not None:
             self.auto_name_session = auto_name_session == "1"
 

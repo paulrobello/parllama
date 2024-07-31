@@ -9,7 +9,7 @@ from collections.abc import Generator
 from collections.abc import Iterator
 from collections.abc import Mapping
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional
 from typing import Literal
 
 import docker.errors  # type: ignore
@@ -19,6 +19,7 @@ import requests
 import simplejson as json
 from bs4 import BeautifulSoup
 from docker.models.containers import Container  # type: ignore
+from httpx import Response
 
 from parllama.docker_utils import start_docker_container
 from parllama.models.ollama_data import FullModel
@@ -37,15 +38,18 @@ from parllama.widgets.site_model_list_item import SiteModelListItem
 def api_model_ps() -> OllamaPsResponse:
     """Get model ps."""
     # fetch data from self.ollama_host as json
-    res = httpx.get(f"{settings.ollama_host}/api/ps")
-    if res.status_code != 200:
-        return OllamaPsResponse()
+    res: Optional[Response] = None
     try:
+        res = httpx.get(f"{settings.ollama_host}/api/ps", timeout=5)
+        if res.status_code != 200:
+            return OllamaPsResponse()
+
         ret = OllamaPsResponse(**res.json())
         return ret
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        print(f"Error: {e}")
-        print(res.text)
+    except Exception:  # pylint: disable=broad-exception-caught
+        # print(f"Error: {e}")
+        # if res:
+        #     print(res.text)
         return OllamaPsResponse()
 
 

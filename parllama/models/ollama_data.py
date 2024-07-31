@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from datetime import datetime
-from typing import cast
+from typing import cast, Sequence, Any, Mapping
 from typing import Literal
 from typing import Optional
 from typing import TypeAlias
@@ -162,3 +162,79 @@ class FullModel(Model):
                 messages.append(match.group(1))
 
         return messages
+
+
+class ToolCallFunction(BaseModel):
+    """
+    Tool call function.
+    """
+
+    name: str
+    "Name of the function."
+
+    arguments: Optional[Mapping[str, Any]] = None
+    "Arguments of the function."
+
+
+class ToolCall(BaseModel):
+    """
+    Model tool calls.
+    """
+
+    function: ToolCallFunction
+    "Function to be called."
+
+
+class OllamaChunkMessage(BaseModel):
+    """Chat message."""
+
+    role: MessageRoles
+    "Assumed role of the message. Response messages always has role 'assistant'."
+
+    content: str = ""
+    "Content of the message. Response messages contains message fragments when streaming."
+    images: Optional[Sequence[Any]] = None
+    """
+      Optional list of image data for multimodal models.
+
+      Valid input types are:
+
+      - `str` or path-like object: path to image file
+      - `bytes` or bytes-like object: raw image data
+
+      Valid image formats depend on the model. See the model card for more information.
+      """
+
+    tool_calls: Optional[Sequence[ToolCall]] = None
+    """
+    Tools calls to be made by the model.
+    """
+
+
+class ChatChunk(BaseModel):
+    """Ollama Streaming Chat Chunk."""
+
+    model: str
+    created_at: datetime
+    message: OllamaChunkMessage
+    done: bool
+    done_reason: Optional[str] = None
+    total_duration: Optional[int] = None
+    load_duration: Optional[int] = None
+    prompt_eval_count: Optional[int] = None
+    prompt_eval_duration: Optional[int] = None
+    eval_count: Optional[int] = None
+    eval_duration: Optional[int] = None
+
+
+class TokenStats(BaseModel):
+    """Ollama Streaming Chat Chunk Stats."""
+
+    model: str
+    created_at: datetime
+    total_duration: int
+    load_duration: int
+    prompt_eval_count: int
+    prompt_eval_duration: int
+    eval_count: int
+    eval_duration: int
