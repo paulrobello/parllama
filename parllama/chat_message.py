@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass
 from typing import Optional, Sequence, Any
 
@@ -78,3 +79,14 @@ class OllamaMessage(ParEventSystemBase):
         if self.parent is None:
             return
         self.post_message(ParChatUpdated(parent_id=self.parent.id, message_id=self.id))
+
+    def clone(self, new_id: bool = False) -> OllamaMessage:
+        """Clone the chat message"""
+
+        return OllamaMessage(
+            id=uuid.uuid4().hex if new_id else self.id,
+            role=self.role,
+            content=self.content,
+            images=self.images,
+            tool_calls=self.tool_calls,
+        )

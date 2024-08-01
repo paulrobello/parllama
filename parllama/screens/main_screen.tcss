@@ -56,6 +56,12 @@ ListView:focus > SiteModelListItem.--highlight {
                     width: 15;
                 }
             }
+            #add_bar {
+                width: 1fr;
+                height: 3;
+                align: left top;
+                text-align: left;
+            }
             #message_container {
               width: 1fr;
               height: auto;
@@ -67,6 +73,12 @@ ListView:focus > SiteModelListItem.--highlight {
         width: 1fr;
         height: auto;
         border: double $accent;
+        #tool_bar {
+            width: 1fr;
+            height: 3;
+            align: right top;
+            text-align: right;
+        }
         Select, TextArea {
             width: 1fr;
         }

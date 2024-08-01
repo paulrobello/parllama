@@ -207,3 +207,19 @@ class ChatPrompt(ChatMessageContainer):
             return True
         except (OSError, IOError):
             return False
+
+    def replace_messages(self, new_messages: list[OllamaMessage]) -> None:
+        """Replace all messages with new ones"""
+        self.messages = new_messages
+        self._id_to_msg = {m.id: m for m in new_messages}
+
+    def clone(self, new_id: bool = False) -> ChatPrompt:
+        """Clone the chat prompt"""
+        return ChatPrompt(
+            id=uuid.uuid4().hex if new_id else self.id,
+            name=self.name,
+            description=self._description,
+            messages=[m.clone() for m in self.messages],
+            submit_on_load=self._submit_on_load,
+            last_updated=self.last_updated,
+        )

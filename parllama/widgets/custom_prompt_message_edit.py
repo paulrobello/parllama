@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 from textual import on
 from textual.app import ComposeResult
-from textual.containers import Vertical
+from textual.containers import Vertical, Horizontal
+from textual.widget import Widget
 from textual.widgets import Select, Button
 from textual.widgets import TextArea
 
@@ -35,14 +38,14 @@ class CustomPromptMessageEdit(Vertical):
 
     def compose(self) -> ComposeResult:
         """Compose the child widgets."""
-        yield mk_trash_button()
+        with Horizontal(id="tool_bar"):
+            yield mk_trash_button()
         yield self.role
         yield self.content
 
     @on(Select.Changed)
-    def on_role_change(self, event: Select.Changed) -> None:
+    def on_role_change(self) -> None:
         """Update the message role when the role select changes."""
-        event.stop()
         if self.role.value == Select.BLANK:
             return
         self.msg.role = self.role.value  # type: ignore
@@ -50,8 +53,9 @@ class CustomPromptMessageEdit(Vertical):
     @on(TextArea.Changed)
     def on_content_change(self, event: TextArea.Changed) -> None:
         """Update the message content when the content text area changes."""
-        event.stop()
         self.msg.content = self.content.text
+        if self.parent and self.parent.parent:
+            cast(Widget, self.parent.parent).scroll_to_center(event.control)
 
     @on(Button.Pressed, "#delete")
     def on_trash_pressed(self, event: Button.Pressed) -> None:

@@ -242,8 +242,11 @@ class ChatManager(ParEventSystemBase):
         new_name = llm_session_name(event.context, event.model_name)
         if not new_name:
             return
+        self.log_it(
+            f"CM Session auto name {event.session_id} context: {event.context} named: {new_name}"
+        )
         session.name = self.mk_session_name(new_name)
-        self.log_it(f"CM Session {event.session_id} auto-named: {new_name}")
+        # self.log_it(f"CM Session {event.session_id} auto-named: {new_name}")
 
     def on_par_session_delete(self, event: ParSessionDelete) -> None:
         """Handle a ParDeleteSession event"""
