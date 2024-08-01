@@ -153,10 +153,13 @@ class LocalModelView(Container):
 
     def action_pull_all_models(self) -> None:
         """Pull all local models"""
+        self.notify("Queuing pull of all local models...")
         for item in self.grid.query(LocalModelListItem):
             item.loading = True
             self.post_message(
-                ModelPullRequested(widget=self, model_name=item.model.name)
+                ModelPullRequested(
+                    widget=self, model_name=item.model.name, notify=False
+                )
             )
 
     def action_push_model(self) -> None:

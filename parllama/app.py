@@ -11,6 +11,7 @@ from typing import Any
 import humanize
 import ollama
 import pyperclip  # type: ignore
+from httpx import ConnectError
 from rich.columns import Columns
 from rich.console import ConsoleRenderable
 from rich.console import RenderableType
@@ -326,7 +327,8 @@ class ParLlamaApp(App[None]):
     @on(ModelPullRequested)
     def on_model_pull_requested(self, event: ModelPullRequested) -> None:
         """Pull requested model event"""
-        self.notify(f"Model pull {event.model_name} queued")
+        if event.notify:
+            self.notify(f"Model pull {event.model_name} queued")
         self.job_queue.put(PullModelJob(modelName=event.model_name))
         self.post_message_all(SetModelNameLoading(event.model_name, True))
 
@@ -580,6 +582,14 @@ class ParLlamaApp(App[None]):
             dm.refresh_models()
             self.post_message_all(StatusMessage("Local model list refreshed"))
             self.post_message_all(LocalModelListLoaded())
+        except ConnectError as e:
+            self.post_message(
+                LogIt(
+                    f"Failed to refresh local models: {e}",
+                    severity="error",
+                    notify=True,
+                )
+            )
         finally:
             self.is_refreshing = False
 
@@ -661,7 +671,9 @@ class ParLlamaApp(App[None]):
 
     def status_notify(self, msg: str, severity: SeverityLevel = "information") -> None:
         """Show notification and update status bar"""
-        self.notify(msg, severity=severity)
+        self.notify(
+            msg, severity=severity, timeout=5 if severity != "information" else 3
+        )
         self.main_screen.post_message(StatusMessage(msg))
 
     def post_message_all(self, event: Message) -> None:
@@ -757,7 +769,11 @@ class ParLlamaApp(App[None]):
         event.stop()
         self.log_it(event.msg)
         if event.notify and isinstance(event.msg, str):
-            self.notify(event.msg, severity=event.severity)
+            self.notify(
+                event.msg,
+                severity=event.severity,
+                timeout=5 if event.severity != "information" else 3,
+            )
 
     def log_it(self, msg: ConsoleRenderable | RichCast | str | object) -> None:
         """Log a message to the log view"""

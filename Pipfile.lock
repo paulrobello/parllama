@@ -1,7 +1,7 @@
 {
   "_meta": {
     "hash": {
-      "sha256": "6ab28310f7dbbc19a4cae6dbaed7693b81b970873f64580ed7e936e6395aa1c9"
+      "sha256": "bcb550dca89d5047020d9279d893a9fb36635981c2dfc8cfc9743b9a803d110c"
     },
     "pipfile-spec": 6,
     "requires": {
@@ -860,7 +860,7 @@
         "sha256:04e5ca0351e0f3f85c6853954072df659d0d13fac324d0072316b67d7794700d",
         "sha256:1a7ead55c7e559dd4dee8856e3a88b41225abfe1ce8df57b7c13915fe121ffb8"
       ],
-      "markers": "python_version < '3.13'",
+      "markers": "python_version >= '3.8'",
       "version": "==4.12.2"
     },
     "uc-micro-py": {
@@ -1193,7 +1193,7 @@
         "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44",
         "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"
       ],
-      "markers": "sys_platform == 'win32'",
+      "markers": "os_name == 'nt'",
       "version": "==0.4.6"
     },
     "dill": {
@@ -2041,7 +2041,7 @@
         "sha256:04e5ca0351e0f3f85c6853954072df659d0d13fac324d0072316b67d7794700d",
         "sha256:1a7ead55c7e559dd4dee8856e3a88b41225abfe1ce8df57b7c13915fe121ffb8"
       ],
-      "markers": "python_version < '3.13'",
+      "markers": "python_version >= '3.8'",
       "version": "==4.12.2"
     },
     "uc-micro-py": {

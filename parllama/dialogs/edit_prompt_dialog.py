@@ -8,28 +8,62 @@ from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import VerticalScroll, Vertical, Horizontal
-from textual.events import Focus, Event
+from textual.events import Event
 from textual.screen import ModalScreen
 from textual.widgets import Button, Input, Label, Checkbox, TextArea, Select
 
 from parllama.chat_message import OllamaMessage
 from parllama.chat_prompt import ChatPrompt
 from parllama.messages.messages import DeletePromptMessage
-from parllama.utils import mk_add_button
 from parllama.widgets.custom_prompt_message_edit import CustomPromptMessageEdit
 from parllama.widgets.field_set import FieldSet
 
 
-class EditPromptDialog(ModalScreen[None]):
+class EditPromptDialog(ModalScreen[bool]):
     """Modal dialog that allows custom prompt editing."""
 
     DEFAULT_CSS = """
+    EditPromptDialog {
+        background: black 75%;
+        align: center middle;
+        &> VerticalScroll {
+            background: $surface;
+            width: 75%;
+            height: 90%;
+            min-width: 80;
+            border: thick $accent;
+            border-title-color: $primary;
+            padding: 1;
+
+            #last_updated {
+              width: auto;
+            }
+
+            &> Input, FieldSet{
+                height: 3;
+                Label {
+                    padding-top: 1;
+                    width: 15;
+                }
+            }
+            #add_bar {
+                width: 1fr;
+                height: 3;
+                align: left top;
+                text-align: left;
+            }
+            #message_container {
+              width: 1fr;
+              height: auto;
+            }
+        }
+    }
     """
 
     BINDINGS = [
         Binding("left,up", "app.focus_previous", "", show=False),
         Binding("right,down", "app.focus_next", "", show=False),
-        Binding("escape, ctrl+q", "app.pop_screen", "", show=True),
+        Binding("escape, ctrl+q", "dismiss(False)", "", show=True),
         Binding("ctrl+c", "app.copy_to_clipboard", "", show=True),
     ]
     prompt: ChatPrompt
@@ -73,7 +107,7 @@ class EditPromptDialog(ModalScreen[None]):
                     Label(str(self.edit_prompt.last_updated), id="last_updated"),
                 )
                 with Horizontal(id="add_bar"):
-                    yield mk_add_button()
+                    yield Button("Add Message", id="add")
 
                 with self.message_container:
                     for m in self.edit_prompt.messages:
@@ -97,6 +131,30 @@ class EditPromptDialog(ModalScreen[None]):
     def save(self, event: Button.Pressed) -> None:
         """Copy model to create screen."""
         event.stop()
+        if len(self.edit_prompt.messages) == 0:
+            self.notify(
+                "Prompt must have at least one message", severity="error", timeout=5
+            )
+            return
+        num_system_prompts = 0
+        last_system_prompt_index = -1
+        for i, m in enumerate(self.edit_prompt.messages):
+            if m.role == "system":
+                num_system_prompts += 1
+                last_system_prompt_index = i
+        if num_system_prompts > 1:
+            self.notify(
+                "You may only have 1 system role in your prompt",
+                severity="error",
+                timeout=5,
+            )
+            return
+
+        if num_system_prompts == 1 and last_system_prompt_index != 0:
+            sp = self.edit_prompt.messages.pop(last_system_prompt_index)
+            self.edit_prompt.messages.insert(0, sp)
+            self.notify("System prompt moved to the top", timeout=5)
+
         with self.prompt.batch_changes():
             self.prompt.name = self.query_one("#name", Input).value
             self.prompt.description = self.query_one("#description", Input).value
@@ -105,14 +163,15 @@ class EditPromptDialog(ModalScreen[None]):
             ).value
             self.prompt.replace_messages(self.edit_prompt.messages)
             self.prompt.last_updated = datetime.datetime.now()
-        with self.prevent(Focus):
-            self.app.pop_screen()
+        # with self.prevent(Focus):
+        self.dismiss(True)
 
     @on(DeletePromptMessage)
     def delete_message(self, event: DeletePromptMessage) -> None:
         """Delete a message from the prompt."""
         event.stop()
         del self.edit_prompt[event.message_id]
+        self.dirty = True
 
     @on(Input.Changed)
     @on(Checkbox.Changed)

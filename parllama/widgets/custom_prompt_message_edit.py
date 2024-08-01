@@ -21,6 +21,23 @@ class CustomPromptMessageEdit(Vertical):
     """Used to edit custom prompt message"""
 
     DEFAULT_CSS = """
+    CustomPromptMessageEdit {
+        width: 1fr;
+        height: auto;
+        border: double $accent;
+        #tool_bar {
+            width: 1fr;
+            height: 3;
+            align: right top;
+            text-align: right;
+        }
+        Select, TextArea {
+            width: 1fr;
+        }
+        TextArea {
+            height: auto;
+        }
+    }
     """
     role: Select[MessageRoles]
     content: TextArea

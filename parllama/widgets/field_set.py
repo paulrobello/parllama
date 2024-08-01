@@ -35,7 +35,6 @@ class FieldSet(Widget):
                 width: 3fr;
             }
         }
-
         Input, Select, TextArea, Checkbox, HiddenInputField{
             width: 1fr;
         }

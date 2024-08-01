@@ -13,7 +13,7 @@ from textual.widgets import ListView
 
 from parllama.chat_manager import chat_manager
 from parllama.dialogs.edit_prompt_dialog import EditPromptDialog
-from parllama.messages.messages import DeletePrompt, LogIt
+from parllama.messages.messages import LogIt, PromptDeleteRequested
 from parllama.messages.messages import RegisterForUpdates
 from parllama.messages.messages import PromptListChanged
 from parllama.messages.messages import PromptSelected
@@ -78,7 +78,9 @@ class PromptList(Vertical, can_focus=False, can_focus_children=True):
         )
         if not selected_item:
             return
-        self.app.post_message(DeletePrompt(prompt_id=selected_item.prompt.id))
+        self.post_message(
+            PromptDeleteRequested(widget=self, prompt_id=selected_item.prompt.id)
+        )
         self.set_timer(0.1, self.list_view.focus)
         self.set_timer(0.2, partial(self.focus_next_item, self.list_view.index or 0))
 

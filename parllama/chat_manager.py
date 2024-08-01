@@ -323,9 +323,15 @@ class ChatManager(ParEventSystemBase):
                     prompt = ChatPrompt.from_json(fh.read())
                     self._id_to_prompt[prompt.id] = prompt
                     self.mount(prompt)
-                    self.log_it(prompt)
+                    # self.log_it(prompt)
             except Exception as e:  # pylint: disable=broad-exception-caught
                 self.log_it(f"Error loading prompt {e}", notify=True, severity="error")
+
+    def add_prompt(self, prompt: ChatPrompt) -> None:
+        """Add a custom prompt"""
+        self._id_to_prompt[prompt.id] = prompt
+        self.mount(prompt)
+        self.notify_prompts_changed()
 
     def delete_prompt(self, prompt_id: str) -> None:
         """Delete a custom prompt"""

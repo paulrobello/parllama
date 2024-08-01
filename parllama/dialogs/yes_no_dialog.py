@@ -24,6 +24,7 @@ class YesNoDialog(ModalScreen[bool]):
 		background: $panel;
 		height: auto;
 		width: auto;
+		min-width: 38;
 		border: thick $secondary;
 	}
 

@@ -138,6 +138,7 @@ class ModelPullRequested(AppRequest):
     """Message to notify that a model pull has been requested."""
 
     model_name: str
+    notify: bool = True
 
 
 @dataclass
@@ -259,6 +260,13 @@ class PromptListChanged(Message):
 @dataclass
 class PromptMessage(Message):
     """Prompt base class."""
+
+    prompt_id: str
+
+
+@dataclass
+class PromptDeleteRequested(AppRequest):
+    """Message to notify that a prompt delete has been requested."""
 
     prompt_id: str
 
