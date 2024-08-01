@@ -346,6 +346,8 @@ class ChatSession(ChatMessageContainer):
         if not self.is_dirty:
             self.log_it(f"CS is not dirty, not notifying: {self.name}")
             return False  # No need to save if no changes
+
+        self.last_updated = datetime.datetime.now()
         if "system_prompt" in self._changes:
             msg = self.system_prompt
             if msg is not None:

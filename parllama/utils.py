@@ -38,7 +38,7 @@ from textual.widgets.button import ButtonVariant
 from parllama import __application_binary__
 from parllama import __application_title__
 from parllama import __version__
-from parllama.icons import PENCIL_EMOJI
+from parllama.icons import PENCIL_EMOJI, HEAVY_PLUS_SIGN_EMOJI
 from parllama.icons import TRASH_EMOJI
 
 DECIMAL_PRECESSION = 5
@@ -481,6 +481,21 @@ def mk_edit_button(
         id=id,
         classes=classes,
         emoji=PENCIL_EMOJI,
+        tooltip=tooltip,
+    )
+
+
+def mk_add_button(
+    *,
+    id: str = "add",  # pylint: disable=redefined-builtin
+    classes: str = "",
+    tooltip: str = "Add",
+) -> Button:
+    """Make an add button."""
+    return mk_field_button(
+        id=id,
+        classes=classes,
+        emoji=HEAVY_PLUS_SIGN_EMOJI,
         tooltip=tooltip,
     )
 

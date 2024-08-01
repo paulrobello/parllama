@@ -31,3 +31,46 @@ ListView:focus > SiteModelListItem.--highlight {
     background: $surface;
   }
 }
+
+
+    EditPromptDialog {
+        background: black 75%;
+        align: center middle;
+        &> VerticalScroll {
+            background: $surface;
+            width: 75%;
+            height: 90%;
+            min-width: 80;
+            border: thick $accent;
+            border-title-color: $primary;
+            padding: 1;
+
+            #last_updated {
+              width: auto;
+            }
+
+            Input, FieldSet{
+                height: 3;
+                Label {
+                    padding-top: 1;
+                    width: 15;
+                }
+            }
+            #message_container {
+              width: 1fr;
+              height: auto;
+            }
+        }
+    }
+
+    CustomPromptMessageEdit {
+        width: 1fr;
+        height: auto;
+        border: double $accent;
+        Select, TextArea {
+            width: 1fr;
+        }
+        TextArea {
+            height: auto;
+        }
+    }

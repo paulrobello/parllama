@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from datetime import datetime
-from typing import cast, Sequence, Any, Mapping
+from typing import cast, Sequence, Any, Mapping, Tuple
 from typing import Literal
 from typing import Optional
 from typing import TypeAlias
@@ -15,6 +15,12 @@ from pydantic import ConfigDict
 from pydantic import Field
 
 MessageRoles: TypeAlias = Literal["user", "assistant", "system", "tool"]
+MessageRoleSelectOptions: list[Tuple[str, MessageRoles]] = [
+    ("user", "user"),
+    ("assistant", "assistant"),
+    ("system", "system"),
+    ("tool", "tool"),
+]
 
 
 class SiteModel(BaseModel):

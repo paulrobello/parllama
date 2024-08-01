@@ -269,6 +269,13 @@ class DeletePrompt(PromptMessage):
 
 
 @dataclass
+class DeletePromptMessage(PromptMessage):
+    """Request message be deleted from prompt."""
+
+    message_id: str
+
+
+@dataclass
 class PromptSelected(PromptMessage):
     """Notify that a prompt has been selected."""
 

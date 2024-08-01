@@ -12,6 +12,7 @@ from textual.containers import Vertical
 from textual.widgets import ListView
 
 from parllama.chat_manager import chat_manager
+from parllama.dialogs.edit_prompt_dialog import EditPromptDialog
 from parllama.messages.messages import DeletePrompt, LogIt
 from parllama.messages.messages import RegisterForUpdates
 from parllama.messages.messages import PromptListChanged
@@ -26,6 +27,12 @@ class PromptList(Vertical, can_focus=False, can_focus_children=True):
     DEFAULT_CSS = """
     """
     BINDINGS = [
+        Binding(
+            key="e",
+            action="edit_item",
+            description="Edit",
+            show=True,
+        ),
         Binding(
             key="enter",
             action="load_item",
@@ -118,3 +125,12 @@ class PromptList(Vertical, can_focus=False, can_focus_children=True):
                 # self.notify(f"Prompt selected {event.parent_id}")
                 self.list_view.index = self.list_view.children.index(item)
                 break
+
+    def action_edit_item(self) -> None:
+        """Handle edit item action."""
+        selected_item: PromptListItem = cast(
+            PromptListItem, self.list_view.highlighted_child
+        )
+        if not selected_item:
+            return
+        self.app.push_screen(EditPromptDialog(selected_item.prompt))

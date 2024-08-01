@@ -1,0 +1,61 @@
+"""Used to edit custom prompt message"""
+
+from __future__ import annotations
+
+from textual import on
+from textual.app import ComposeResult
+from textual.containers import Vertical
+from textual.widgets import Select, Button
+from textual.widgets import TextArea
+
+from parllama.chat_message import OllamaMessage
+from parllama.messages.messages import DeletePromptMessage
+from parllama.models.ollama_data import MessageRoles, MessageRoleSelectOptions
+from parllama.utils import mk_trash_button
+
+
+class CustomPromptMessageEdit(Vertical):
+    """Used to edit custom prompt message"""
+
+    DEFAULT_CSS = """
+    """
+    role: Select[MessageRoles]
+    content: TextArea
+    msg: OllamaMessage
+
+    def __init__(self, msg: OllamaMessage, **kwargs) -> None:
+        """Initialize the widget."""
+        super().__init__(**kwargs)
+        self.msg = msg
+        self.role = Select(
+            options=MessageRoleSelectOptions,
+            value=msg.role,
+        )
+        self.content = TextArea(text=msg.content)
+
+    def compose(self) -> ComposeResult:
+        """Compose the child widgets."""
+        yield mk_trash_button()
+        yield self.role
+        yield self.content
+
+    @on(Select.Changed)
+    def on_role_change(self, event: Select.Changed) -> None:
+        """Update the message role when the role select changes."""
+        event.stop()
+        if self.role.value == Select.BLANK:
+            return
+        self.msg.role = self.role.value  # type: ignore
+
+    @on(TextArea.Changed)
+    def on_content_change(self, event: TextArea.Changed) -> None:
+        """Update the message content when the content text area changes."""
+        event.stop()
+        self.msg.content = self.content.text
+
+    @on(Button.Pressed, "#delete")
+    def on_trash_pressed(self, event: Button.Pressed) -> None:
+        """Handle the trash button press."""
+        event.stop()
+        self.post_message(DeletePromptMessage(prompt_id="", message_id=self.msg.id))
+        self.remove()
