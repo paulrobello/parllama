@@ -45,6 +45,7 @@ from parllama.messages.messages import (
     DeletePrompt,
     PromptListChanged,
     PromptSelected,
+    PromptListLoaded,
 )
 from parllama.messages.messages import CreateModelFromExistingRequested
 from parllama.messages.messages import DeleteSession
@@ -762,6 +763,12 @@ class ParLlamaApp(App[None]):
         chat_manager.session_to_prompt(
             event.session_id, event.submit_on_load, event.prompt_name
         )
+
+    @on(PromptListLoaded)
+    def on_prompt_list_loaded(self, event: PromptListLoaded) -> None:
+        """Prompt list loaded event"""
+        event.stop()
+        self.post_message_all(event)
 
     @on(LogIt)
     def on_log_it(self, event: LogIt) -> None:

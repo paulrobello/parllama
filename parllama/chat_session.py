@@ -95,7 +95,7 @@ class ChatSession(ChatMessageContainer):
                 self.add_message(OllamaMessage(**m))
             self._loaded = True
         except Exception as e:  # pylint: disable=broad-exception-caught
-            self.log_it(f"CS Error loading session {e}", notify=True, severity="error")
+            self.log_it(f"Error loading session {e}", notify=True, severity="error")
         finally:
             self._batching = False
             self.clear_changes()
@@ -339,12 +339,12 @@ class ChatSession(ChatMessageContainer):
     def save(self) -> bool:
         """Save the chat session to a file"""
         if self._batching:
-            self.log_it(f"CS is batching, not notifying: {self.name}")
+            # self.log_it(f"CS is batching, not notifying: {self.name}")
             return False
         if not self._loaded:
             self.load()
         if not self.is_dirty:
-            self.log_it(f"CS is not dirty, not notifying: {self.name}")
+            # self.log_it(f"CS is not dirty, not notifying: {self.name}")
             return False  # No need to save if no changes
 
         self.last_updated = datetime.datetime.now()
@@ -363,10 +363,10 @@ class ChatSession(ChatMessageContainer):
         if settings.no_save_chat:
             return False  # Do not save if no_save_chat is set in settings
         if not self.is_valid or len(self.messages) == 0:
-            self.log_it(f"CS not valid, not saving: {self.id}")
+            # self.log_it(f"CS not valid, not saving: {self.id}")
             return False  # Cannot save without name, LLM model name and at least one message
 
-        self.log_it(f"CS saving: {self.name}")
+        # self.log_it(f"CS saving: {self.name}")
 
         file_name = f"{self.id}.json"  # Use session ID as filename to avoid over
         try:

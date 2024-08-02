@@ -287,6 +287,14 @@ class DeletePromptMessage(PromptMessage):
 class PromptSelected(PromptMessage):
     """Notify that a prompt has been selected."""
 
+    temperature: float = 0.5
+    llm_model_name: str = ""
+
+
+@dataclass
+class PromptListLoaded(Message):
+    """Prompt list loaded"""
+
 
 # ---------- Session Related Messages ---------- #
 

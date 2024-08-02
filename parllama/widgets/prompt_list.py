@@ -13,7 +13,7 @@ from textual.widgets import ListView
 
 from parllama.chat_manager import chat_manager
 from parllama.dialogs.edit_prompt_dialog import EditPromptDialog
-from parllama.messages.messages import LogIt, PromptDeleteRequested
+from parllama.messages.messages import PromptDeleteRequested
 from parllama.messages.messages import RegisterForUpdates
 from parllama.messages.messages import PromptListChanged
 from parllama.messages.messages import PromptSelected
@@ -99,7 +99,7 @@ class PromptList(Vertical, can_focus=False, can_focus_children=True):
         selected_item: PromptListItem = cast(
             PromptListItem, self.list_view.highlighted_child
         )
-        self.app.post_message(LogIt("PL Recompose: Prompt list changed"))
+        # self.app.post_message(LogIt("PL Recompose: Prompt list changed"))
         await self.recompose()
         if not selected_item:
             return
@@ -116,17 +116,17 @@ class PromptList(Vertical, can_focus=False, can_focus_children=True):
         )
         if not selected_item:
             return
-        self.app.post_message(PromptSelected(selected_item.prompt.id))
+        self.post_message(PromptSelected(selected_item.prompt.id))
 
-    @on(PromptSelected)
-    def on_prompt_selected(self, event: PromptSelected) -> None:
-        """Handle prompt selected event."""
-        event.stop()
-        for item in self.list_view.query(PromptListItem):
-            if item.prompt.id == event.prompt_id:
-                # self.notify(f"Prompt selected {event.parent_id}")
-                self.list_view.index = self.list_view.children.index(item)
-                break
+    # @on(PromptSelected)
+    # def on_prompt_selected(self, event: PromptSelected) -> None:
+    #     """Handle prompt selected event."""
+    #     event.stop()
+    #     for item in self.list_view.query(PromptListItem):
+    #         if item.prompt.id == event.prompt_id:
+    #             # self.notify(f"Prompt selected {event.parent_id}")
+    #             self.list_view.index = self.list_view.children.index(item)
+    #             break
 
     def action_edit_item(self) -> None:
         """Handle edit item action."""

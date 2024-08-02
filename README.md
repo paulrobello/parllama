@@ -286,9 +286,11 @@ if anything remains to be fixed before the commit is allowed.
 * Connect to remote instances
 * Chat with history / conversation management
 * Chat tabs allow chat with multiple models at same time
+* Custom prompt library
 
 ### Where we're going
-* Custom prompt library
+* Add config tab to help with settings management
+* Ability to import prompts from tools like fabric or langsmith hub
 * Chat using embeddings for local documents
 * LLM tool use
 * Ability to use other AI providers like Open AI

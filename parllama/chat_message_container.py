@@ -89,9 +89,8 @@ class ChatMessageContainer(ParEventSystemBase):
         self.last_updated = datetime.datetime.now()
         self.mount(msg)
         self._changes.add("messages")
-        self.log_it(f"Added {msg.role} message to: {self.name}")
-        # if len(self.messages) > 2:
-        #     raise Exception(f"why! {len(self.messages)}")
+        self._loaded = True
+        # self.log_it(f"Added {msg.role} message to: {self.name}")
         self.save()
 
     @property
@@ -237,23 +236,29 @@ class ChatMessageContainer(ParEventSystemBase):
         """Save chats to file"""
         raise NotImplementedError("save not implemented in base class")
 
+    def clear_messages(self) -> None:
+        """Clear all messages"""
+        self.messages.clear()
+        self._id_to_msg.clear()
+        self._changes.add("messages")
+
     def clear_changes(self) -> None:
         """Clear changes"""
-        self.log_it("Clearing changes")
+        # self.log_it("Clearing changes")
         self._changes.clear()
 
     @property
     def is_dirty(self) -> bool:
         """Check if there are any changes"""
-        self.log_it(",".join(self._changes))
+        # self.log_it(",".join(self._changes))
         return len(self._changes) > 0
 
     @contextmanager
     def batch_changes(self) -> Generator[None, None, None]:
         """Batch changes"""
-        self.log_it("Starting batch changes")
+        # self.log_it("Starting batch changes")
         self._batching = True
         yield
         self._batching = False
-        self.log_it("Committing batch changes")
+        # self.log_it("Committing batch changes")
         self.save()

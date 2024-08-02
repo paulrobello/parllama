@@ -29,6 +29,8 @@ from parllama.messages.messages import (
     SessionToPrompt,
     PromptSelected,
     ChangeTab,
+    PromptListChanged,
+    PromptListLoaded,
 )
 from parllama.messages.messages import ChatMessage
 from parllama.messages.messages import ChatMessageSent
@@ -58,6 +60,7 @@ valid_commands: list[str] = [
     "/session.export",
     "/session.system_prompt",
     "/session.to_prompt",
+    "/prompt.load ",
 ]
 
 
@@ -131,6 +134,8 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         ),
     ]
     chat_tabs: TabbedContent
+    model_list_auto_complete_list: list[str]
+    prompt_list_auto_complete_list: list[str]
 
     def __init__(self, **kwargs) -> None:
         """Initialise the view."""
@@ -158,6 +163,8 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
             "Stop", id="stop_button", disabled=True, variant="error"
         )
         self.last_command = ""
+        self.model_list_auto_complete_list = []
+        self.prompt_list_auto_complete_list = []
 
     def compose(self) -> ComposeResult:
         """Compose the content of the view."""
@@ -180,9 +187,29 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
                     "LocalModelListLoaded",
                     "SessionSelected",
                     "DeleteSession",
+                    "PromptListLoaded",
                     "PromptSelected",
+                    "PromptListChanged",
                 ],
             )
+        )
+        self.prompt_list_auto_complete_list = [
+            f"/prompt.load {prompt.name}" for prompt in chat_manager.sorted_prompts
+        ]
+
+    @on(PromptListLoaded)
+    def on_prompt_list_loaded(self, event: PromptListLoaded) -> None:
+        """Prompt list changed"""
+        event.stop()
+        self.post_message(LogIt("Prompt list loaded"))
+        self.prompt_list_auto_complete_list = [
+            f"/prompt.load {prompt.name}" for prompt in chat_manager.sorted_prompts
+        ]
+        self.user_input.suggester = SuggestFromList(
+            valid_commands
+            + self.model_list_auto_complete_list
+            + self.prompt_list_auto_complete_list,
+            case_sensitive=False,
         )
 
     @on(Input.Changed, "#user_input")
@@ -207,9 +234,28 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         evt.stop()
         for tab in self.chat_tabs.query(ChatTab):
             tab.on_local_model_list_loaded(evt)
-
+        self.model_list_auto_complete_list = [
+            f"/session.model {m.model.name}" for m in dm.models
+        ]
         self.user_input.suggester = SuggestFromList(
-            valid_commands + [f"/session.model {m.model.name}" for m in dm.models],
+            valid_commands
+            + self.model_list_auto_complete_list
+            + self.prompt_list_auto_complete_list,
+            case_sensitive=False,
+        )
+
+    @on(PromptListChanged)
+    def on_prompt_list_changed(self, evt: PromptListChanged) -> None:
+        """Prompt list changed"""
+        evt.stop()
+        self.post_message(LogIt("Prompt list changed"))
+        self.prompt_list_auto_complete_list = [
+            f"/prompt.load {prompt.name}" for prompt in chat_manager.sorted_prompts
+        ]
+        self.user_input.suggester = SuggestFromList(
+            valid_commands
+            + self.model_list_auto_complete_list
+            + self.prompt_list_auto_complete_list,
             case_sensitive=False,
         )
 
@@ -266,8 +312,9 @@ Chat Commands:
 /session.temp [temperature] - Select temperature input or set temperature in current tab
 /session.delete - Delete the chat session for current tab
 /session.export - Export the conversation in current tab to a Markdown file
-/session.system_prompt [system prompt] - Set system prompt in current tab
-/session.to_prompt submit_on_load [prompt name] - Copy current session to new custom prompt. submit_on_load = {0|1}
+/session.system_prompt [system_prompt] - Set system prompt in current tab
+/session.to_prompt submit_on_load [prompt_name] - Copy current session to new custom prompt. submit_on_load = {0|1}
+/prompt.load prompt_name - Load a custom prompt using current tabs model and temperature
                     """,
                 )
             )
@@ -345,6 +392,14 @@ Chat Commands:
                 self.notify("System prompt cannot be empty", severity="error")
                 return
             self.session.system_prompt = OllamaMessage(role="system", content=v)
+        elif cmd.startswith("prompt.load "):
+            (_, v) = cmd.split(" ", 1)
+            v = v.strip()
+            prompt = chat_manager.get_prompt_by_name(v)
+            if prompt is None:
+                self.notify(f"Prompt {v} not found", severity="error")
+                return
+            await self.active_tab.load_prompt(PromptSelected(prompt_id=prompt.id))
         else:
             self.notify(f"Unknown command: {cmd}", severity="error")
 
@@ -400,7 +455,7 @@ Chat Commands:
         """Prompt selected event"""
         event.stop()
         await self.action_new_tab()
-        await self.active_tab.load_prompt(event.prompt_id)
+        await self.active_tab.load_prompt(event)
         self.app.post_message(ChangeTab(tab="Chat"))
 
     @on(UpdateChatControlStates)

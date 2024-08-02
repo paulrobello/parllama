@@ -10,7 +10,7 @@ from textual.binding import Binding
 from textual.containers import VerticalScroll, Vertical, Horizontal
 from textual.events import Event
 from textual.screen import ModalScreen
-from textual.widgets import Button, Input, Label, Checkbox, TextArea, Select
+from textual.widgets import Button, Input, Label, Checkbox, TextArea, Select, Static
 
 from parllama.chat_message import OllamaMessage
 from parllama.chat_prompt import ChatPrompt
@@ -78,6 +78,8 @@ class EditPromptDialog(ModalScreen[bool]):
         if not prompt.is_loaded:
             prompt.load()
         self.edit_prompt = self.prompt.clone()
+        # we don't want the edit prompt to save or notify things
+        self.edit_prompt.batching = True
         self.message_container = Vertical(id="message_container")
         self.dirty = False
         self.save_button = Button("Save", id="save")
@@ -91,6 +93,7 @@ class EditPromptDialog(ModalScreen[bool]):
             with VerticalScroll() as vs:
                 vs.border_title = "Custom Prompt Edit"
                 yield self.save_button
+                yield Static(f"Prompt ID: {self.edit_prompt.id}")
                 yield FieldSet("Name", Input(value=self.edit_prompt.name, id="name"))
                 yield FieldSet(
                     "Description",
@@ -138,6 +141,10 @@ class EditPromptDialog(ModalScreen[bool]):
             return
         num_system_prompts = 0
         last_system_prompt_index = -1
+        # remove empty messages and move system message to the top
+        self.edit_prompt.messages = [
+            m for m in self.edit_prompt.messages if m.content.strip()
+        ]
         for i, m in enumerate(self.edit_prompt.messages):
             if m.role == "system":
                 num_system_prompts += 1
@@ -149,8 +156,7 @@ class EditPromptDialog(ModalScreen[bool]):
                 timeout=5,
             )
             return
-
-        if num_system_prompts == 1 and last_system_prompt_index != 0:
+        if num_system_prompts == 1 and last_system_prompt_index > 0:
             sp = self.edit_prompt.messages.pop(last_system_prompt_index)
             self.edit_prompt.messages.insert(0, sp)
             self.notify("System prompt moved to the top", timeout=5)
@@ -163,7 +169,7 @@ class EditPromptDialog(ModalScreen[bool]):
             ).value
             self.prompt.replace_messages(self.edit_prompt.messages)
             self.prompt.last_updated = datetime.datetime.now()
-        # with self.prevent(Focus):
+        # self.post_message(LogIt(self.prompt))
         self.dismiss(True)
 
     @on(DeletePromptMessage)
@@ -171,6 +177,7 @@ class EditPromptDialog(ModalScreen[bool]):
         """Delete a message from the prompt."""
         event.stop()
         del self.edit_prompt[event.message_id]
+        self.save_button.disabled = False
         self.dirty = True
 
     @on(Input.Changed)

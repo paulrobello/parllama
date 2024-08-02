@@ -29,7 +29,7 @@ from textual.widgets import TabPane
 from parllama.chat_manager import chat_manager
 from parllama.chat_manager import ChatSession
 from parllama.data_manager import dm
-from parllama.messages.messages import ChatMessage, LogIt
+from parllama.messages.messages import ChatMessage, LogIt, PromptSelected
 from parllama.messages.messages import ChatMessageSent
 from parllama.messages.messages import DeleteSession
 from parllama.messages.messages import LocalModelDeleted
@@ -66,7 +66,7 @@ class ChatTab(TabPane):
             }
         }
         #temperature_input {
-            width: 11;
+            width: 12;
         }
         #session_name_input {
             min-width: 15;
@@ -216,7 +216,7 @@ class ChatTab(TabPane):
         """Handle session name input change"""
         event.stop()
         event.prevent_default()
-        self.app.post_message(LogIt("CT session_name_input_changed"))
+        # self.app.post_message(LogIt("CT session_name_input_changed"))
         session_name: str = self.session_name_input.value.strip()
         if not session_name:
             return
@@ -294,7 +294,7 @@ class ChatTab(TabPane):
             self.session_name_input.value = self.session.name
             # self.session.batching = False
 
-        await self.vs.remove_children("*")
+        await self.vs.remove_children(ChatMessageWidget)
         self.update_control_states()
         # model = dm.get_model_by_name(str(self.model_select.value))
         # if model:
@@ -384,7 +384,7 @@ class ChatTab(TabPane):
         old_session = self.session
         old_session.remove_sub(self)
         self.session = session
-        await self.vs.remove_children("*")
+        await self.vs.remove_children(ChatMessageWidget)
         await self.vs.mount(
             *[
                 ChatMessageWidget.mk_msg_widget(msg=m, session=self.session)
@@ -407,22 +407,26 @@ class ChatTab(TabPane):
         self.on_update_chat_status()
         self.user_input.focus()
 
-    async def load_prompt(self, prompt_id: str) -> None:
+    async def load_prompt(self, event: PromptSelected) -> None:
         """Load a session"""
-        self.app.post_message(LogIt("load_prompt: " + prompt_id))
-        prompt = chat_manager.get_prompt(prompt_id)
+        self.app.post_message(LogIt("load_prompt: " + event.prompt_id))
+        self.app.post_message(LogIt(event))
+        prompt = chat_manager.get_prompt(event.prompt_id)
         if prompt is None:
-            self.notify(f"Prompt not found: {prompt_id}", severity="error")
+            self.notify(f"Prompt not found: {event.prompt_id}", severity="error")
             return
         prompt.load()
         old_session = self.session
         old_session.remove_sub(self)
         self.session = chat_manager.new_session(
-            session_name=prompt.name,
-            model_name=old_session.llm_model_name,
-            options=old_session.options,
+            session_name=prompt.name or old_session.name,
+            model_name=event.llm_model_name or old_session.llm_model_name,
+            options=old_session.options | {"temperature": event.temperature},
             widget=self,
         )
+        with self.prevent(Focus, Input.Changed, Select.Changed):
+            self.set_model_name(self.session.llm_model_name)
+
         with self.session.batch_changes():
             for m in prompt.messages:
                 self.session.add_message(
@@ -433,7 +437,7 @@ class ChatTab(TabPane):
                         tool_calls=m.tool_calls,
                     )
                 )
-        await self.vs.remove_children("*")
+        await self.vs.remove_children(ChatMessageWidget)
         await self.vs.mount(
             *[
                 ChatMessageWidget.mk_msg_widget(msg=m, session=self.session)
@@ -477,9 +481,9 @@ class ChatTab(TabPane):
     def session_updated(self, event: SessionUpdated) -> None:
         """Handle a session updated event"""
         event.stop()
-        self.app.post_message(
-            LogIt(f"CT session updated [{','.join([*event.changed])}]")
-        )
+        # self.app.post_message(
+        #     LogIt(f"CT session updated [{','.join([*event.changed])}]")
+        # )
         if "name" in event.changed:
             with self.prevent(Input.Changed, Input.Submitted):
                 self.session_name_input.value = self.session.name

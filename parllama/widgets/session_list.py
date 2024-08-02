@@ -14,7 +14,7 @@ from textual.widgets import Rule
 from textual.widgets import Static
 
 from parllama.chat_manager import chat_manager
-from parllama.messages.messages import DeleteSession, LogIt
+from parllama.messages.messages import DeleteSession
 from parllama.messages.messages import RegisterForUpdates
 from parllama.messages.messages import SessionListChanged
 from parllama.messages.messages import SessionSelected
@@ -99,7 +99,7 @@ class SessionList(Vertical, can_focus=False, can_focus_children=True):
         selected_item: SessionListItem = cast(
             SessionListItem, self.list_view.highlighted_child
         )
-        self.app.post_message(LogIt("SL Recompose: Session list changed"))
+        # self.app.post_message(LogIt("SL Recompose: Session list changed"))
         await self.recompose()
         if not selected_item:
             return

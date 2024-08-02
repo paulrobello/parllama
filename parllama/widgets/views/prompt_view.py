@@ -9,17 +9,23 @@ from textual.app import ComposeResult
 from textual.containers import Container, Horizontal
 from textual.containers import Vertical
 from textual.events import Show
-from textual.widgets import Button
+from textual.message import Message
+from textual.widgets import Button, Select, Label, Input
 
 from parllama.chat_manager import chat_manager
 from parllama.chat_prompt import ChatPrompt
+from parllama.data_manager import dm
 from parllama.dialogs.edit_prompt_dialog import EditPromptDialog
 from parllama.dialogs.yes_no_dialog import YesNoDialog
 from parllama.messages.messages import (
     DeletePrompt,
     RegisterForUpdates,
     PromptDeleteRequested,
+    LocalModelListLoaded,
+    PromptSelected,
 )
+from parllama.models.settings_data import settings
+from parllama.widgets.input_blur_submit import InputBlurSubmit
 from parllama.widgets.prompt_list import PromptList
 
 
@@ -28,18 +34,24 @@ class PromptView(Container):
 
     DEFAULT_CSS = """
     PromptView {
-      #tool_bar {
-        height: 3;
-        background: $surface-darken-1;
-        Label {
-          margin-top: 1;
-          background: transparent;
+        #tool_bar {
+            height: 3;
+            background: $surface-darken-1;
+            Label {
+                margin-top: 1;
+                background: transparent;
+            }
+            #temperature_input {
+                width: 12;
+            }
+            #model_name {
+                max-width: 40;
+            }
         }
-      }
-      #prompt_list {
-        width: 1fr;
-        height: 1fr;
-      }
+        #prompt_list {
+            width: 1fr;
+            height: 1fr;
+        }
     }
     """
 
@@ -47,6 +59,20 @@ class PromptView(Container):
         """Initialise the screen."""
         super().__init__(**kwargs)
         self.list_view = PromptList(id="prompt_list")
+        self.model_select: Select[str] = Select(
+            id="model_name", options=[], prompt="Select Model"
+        )
+        self.temperature_input: InputBlurSubmit = InputBlurSubmit(
+            id="temperature_input",
+            value=(
+                f"{settings.last_chat_temperature:.2f}"
+                if settings.last_chat_temperature
+                else ""
+            ),
+            max_length=4,
+            restrict=r"^\d?\.?\d?\d?$",
+            valid_empty=False,
+        )
 
     def compose(self) -> ComposeResult:
         """Compose the content of the view."""
@@ -54,6 +80,10 @@ class PromptView(Container):
         with Vertical():
             with Horizontal(id="tool_bar"):
                 yield Button("New", id="new_prompt", variant="primary")
+                yield self.model_select
+                yield Label("Temp")
+                yield self.temperature_input
+
             yield self.list_view
 
     def _on_show(self, event: Show) -> None:
@@ -67,7 +97,11 @@ class PromptView(Container):
         self.app.post_message(
             RegisterForUpdates(
                 widget=self,
-                event_names=["DeletePrompt", "PromptDeleteRequested"],
+                event_names=[
+                    "DeletePrompt",
+                    "PromptDeleteRequested",
+                    "LocalModelListLoaded",
+                ],
             )
         )
 
@@ -107,3 +141,35 @@ class PromptView(Container):
 
         chat_manager.add_prompt(prompt)
         self.notify("Prompt added")
+
+    @on(LocalModelListLoaded)
+    def on_local_model_list_loaded(self, evt: LocalModelListLoaded) -> None:
+        """Model list changed"""
+        evt.stop()
+        if self.model_select.value != Select.BLANK:
+            old_v = self.model_select.value
+        elif settings.last_chat_model:
+            old_v = settings.last_chat_model
+        else:
+            old_v = Select.BLANK
+        opts = dm.get_model_select_options()
+        self.model_select.set_options(opts)
+        for _, v in opts:
+            if v == old_v:
+                self.model_select.value = old_v
+
+    @on(Input.Submitted, "#temperature_input")
+    def temperature_input_changed(self, event: Message) -> None:
+        """Handle temperature input change"""
+        event.stop()
+
+    @on(PromptSelected)
+    def on_prompt_selected(self, event: PromptSelected) -> None:
+        """Prompt selected event"""
+        try:
+            if self.temperature_input.value:
+                event.temperature = float(self.temperature_input.value)
+        except ValueError:
+            pass
+        if self.model_select.value and self.model_select.value != Select.BLANK:
+            event.llm_model_name = self.model_select.value  # type: ignore

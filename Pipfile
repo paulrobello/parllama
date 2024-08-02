@@ -10,7 +10,8 @@ simplejson = "*"
 attrs = "*"
 certifi = "*"
 requests-file = "*"
-textual = { version = "==0.74.0", extras = ["syntax"] }
+#textual = { version = "==0.74.0", extras = ["syntax"] }
+textual = { version = "*", extras = ["syntax"] }
 asyncio = "*"
 humanize = "*"
 argparse = "*"

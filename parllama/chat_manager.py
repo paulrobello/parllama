@@ -17,6 +17,7 @@ from parllama.messages.messages import (
     LogIt,
     PromptListChanged,
     ChangeTab,
+    PromptListLoaded,
 )
 from parllama.messages.par_prompt_messages import ParPromptUpdated, ParPromptDelete
 from parllama.messages.par_session_messages import (
@@ -90,7 +91,7 @@ class ChatManager(ParEventSystemBase):
         """Generate a unique session name"""
         session_name = base_name
         good = self.get_session_by_name(session_name) is None
-        self.log_it(f"mk_session_name: {base_name}: {good}")
+        # self.log_it(f"mk_session_name: {base_name}: {good}")
 
         i = 0
         while not good:
@@ -117,7 +118,7 @@ class ChatManager(ParEventSystemBase):
         widget: MessagePump,
     ) -> ChatSession:
         """Create a new chat session"""
-        self.log_it("CM new_session")
+        # self.log_it("CM new_session")
 
         session = ChatSession(
             name=self.mk_session_name(session_name),
@@ -135,7 +136,7 @@ class ChatManager(ParEventSystemBase):
         self, session_id: str, widget: MessagePump | None = None
     ) -> ChatSession | None:
         """Get a chat session"""
-        self.log_it("get_session: " + session_id)
+        # self.log_it("get_session: " + session_id)
 
         session = self._id_to_session.get(session_id)
 
@@ -145,7 +146,7 @@ class ChatManager(ParEventSystemBase):
 
     def get_prompt(self, prompt_id: str) -> ChatPrompt | None:
         """Get a chat prompt"""
-        self.log_it("get_prompt: " + prompt_id)
+        # self.log_it("get_prompt: " + prompt_id)
         return self._id_to_prompt.get(prompt_id)
 
     def get_session_by_name(
@@ -169,11 +170,11 @@ class ChatManager(ParEventSystemBase):
         if os.path.exists(p):
             os.remove(p)
         self.notify_sessions_changed()
-        self.log_it(f"CM Session {session_id} deleted")
+        # self.log_it(f"CM Session {session_id} deleted")
 
     def notify_sessions_changed(self) -> None:
         """Notify changed"""
-        self.log_it("CM Notify session changed")
+        # self.log_it("CM Notify session changed")
         self.app.post_message(SessionListChanged())
 
     def get_or_create_session(  # pylint: disable=too-many-arguments
@@ -223,9 +224,9 @@ class ChatManager(ParEventSystemBase):
     def on_par_session_updated(self, event: ParSessionUpdated) -> None:
         """Handle a ParSessionUpdated event"""
         event.stop()
-        self.log_it(
-            f"CM Session {event.session_id} updated. [{','.join(event.changed)}]"
-        )
+        # self.log_it(
+        #     f"CM Session {event.session_id} updated. [{','.join(event.changed)}]"
+        # )
         if (
             "name" in event.changed
             or "model_name" in event.changed
@@ -310,6 +311,14 @@ class ChatManager(ParEventSystemBase):
         """Return a list of session names"""
         return [prompt.name for prompt in self._id_to_prompt.values()]
 
+    def get_prompt_by_name(self, name: str) -> ChatPrompt | None:
+        """Get a custom prompt by name"""
+        name = name.strip().lower()
+        for prompt in self._id_to_prompt.values():
+            if prompt.name.lower() == name:
+                return prompt
+        return None
+
     def load_prompts(self) -> None:
         """Load custom prompts from files"""
         for f in os.listdir(settings.prompt_dir):
@@ -326,6 +335,7 @@ class ChatManager(ParEventSystemBase):
                     # self.log_it(prompt)
             except Exception as e:  # pylint: disable=broad-exception-caught
                 self.log_it(f"Error loading prompt {e}", notify=True, severity="error")
+        self.app.post_message(PromptListLoaded())
 
     def add_prompt(self, prompt: ChatPrompt) -> None:
         """Add a custom prompt"""
@@ -347,14 +357,13 @@ class ChatManager(ParEventSystemBase):
 
     def notify_prompts_changed(self) -> None:
         """Notify changed"""
-        self.log_it("CM Notify prompts changed")
-        # self.app.notify("CM notify changed")
+        # self.log_it("CM Notify prompts changed")
         self.app.post_message(PromptListChanged())
 
     def on_par_prompt_updated(self, event: ParPromptUpdated) -> None:
         """Handle a ParSessionUpdated event"""
         event.stop()
-        self.log_it(f"CM Prompt {event.prompt_id} updated. [{','.join(event.changed)}]")
+        # self.log_it(f"CM Prompt {event.prompt_id} updated. [{','.join(event.changed)}]")
         self.notify_prompts_changed()
 
     def on_par_prompt_delete(self, event: ParPromptDelete) -> None:

@@ -57,7 +57,7 @@ class ChatPrompt(ChatMessageContainer):
         try:
             with open(file_path, mode="rt", encoding="utf-8") as fh:
                 data: dict = json.load(fh)
-
+            self.clear_messages()
             msgs = data["messages"] or []
             for m in msgs:
                 self.add_message(OllamaMessage(**m))
@@ -178,12 +178,12 @@ class ChatPrompt(ChatMessageContainer):
     def save(self) -> bool:
         """Save the chat prompt to a file"""
         if self._batching:
-            self.log_it(f"CP is batching, not notifying: {self.name}")
+            # self.log_it(f"CP is batching, not notifying: {self.name}")
             return False
         if not self._loaded:
             self.load()
         if not self.is_dirty:
-            self.log_it(f"CP is not dirty, not notifying: {self.name}")
+            # self.log_it(f"CP is not dirty, not notifying: {self.name}")
             return False  # No need to save if no changes
         self.last_updated = datetime.datetime.now()
         nc: PromptChanges = PromptChanges()
@@ -195,7 +195,7 @@ class ChatPrompt(ChatMessageContainer):
         self.clear_changes()
 
         if not self.is_valid:
-            self.log_it(f"CP not valid, not saving: {self.id}")
+            # self.log_it(f"CP not valid, not saving: {self.id}")
             return False  # Cannot save without name
 
         file_name = f"{self.id}.json"  # Use prompt ID as filename
@@ -212,6 +212,7 @@ class ChatPrompt(ChatMessageContainer):
         """Replace all messages with new ones"""
         self.messages = new_messages
         self._id_to_msg = {m.id: m for m in new_messages}
+        self._changes.add("messages")
 
     def clone(self, new_id: bool = False) -> ChatPrompt:
         """Clone the chat prompt"""
