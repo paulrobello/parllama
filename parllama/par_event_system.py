@@ -6,13 +6,15 @@ import uuid
 from collections.abc import Awaitable
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, Any
 from typing import ClassVar
 
 import rich.repr
 from rich.console import ConsoleRenderable, RichCast
+from textual.app import App
 from textual.notifications import SeverityLevel
 
+from parllama.messages.messages import LogIt
 from parllama.utils import camel_to_snake
 
 
@@ -64,6 +66,7 @@ class ParEventSystemBase:
 
     id: str
     parent: ParEventSystemBase | None
+    app: App[Any]
 
     def __init__(
         self, id: str | None = None  # pylint: disable=redefined-builtin
@@ -73,6 +76,10 @@ class ParEventSystemBase:
             id = uuid.uuid4().hex
         self.id = id
         self.parent = None
+
+    def set_app(self, app: App[Any]) -> None:
+        """Set the app and load existing sessions and prompts from storage"""
+        self.app = app
 
     def _get_dispatch_methods(
         self, method_name: str
@@ -121,6 +128,15 @@ class ParEventSystemBase:
     ) -> None:
         """Log a message to the log view and optionally notify"""
         self.post_message(ParLogIt(msg=msg, notify=notify, severity=severity))
+
+    def on_par_log_it(self, event: ParLogIt) -> None:
+        """Handle a ParLogIt event"""
+        if not self.app:
+            return
+        event.stop()
+        self.app.post_message(
+            LogIt(event.msg, notify=event.notify, severity=event.severity)
+        )
 
 
 @dataclass

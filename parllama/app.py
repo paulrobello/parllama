@@ -126,6 +126,7 @@ class ParLlamaApp(App[None]):
         """Initialize the application."""
         super().__init__()
         self.notify_subs = {"*": set[MessagePump]()}
+        dm.set_app(self)
         chat_manager.set_app(self)
 
         self.job_timer = None

@@ -1425,11 +1425,11 @@
     },
     "keyring": {
       "hashes": [
-        "sha256:2458681cdefc0dbc0b7eb6cf75d0b98e59f9ad9b2d4edd319d18f68bdca95e50",
-        "sha256:daaffd42dbda25ddafb1ad5fec4024e5bbcfe424597ca1ca452b299861e49f1b"
+        "sha256:8d85a1ea5d6db8515b59e1c5d1d1678b03cf7fc8b8dcfb1651e8c4a524eb42ef",
+        "sha256:8d963da00ccdf06e356acd9bf3b743208878751032d8599c6cc89eb51310ffae"
       ],
       "markers": "python_version >= '3.8'",
-      "version": "==25.2.1"
+      "version": "==25.3.0"
     },
     "linkify-it-py": {
       "hashes": [

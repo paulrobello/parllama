@@ -29,6 +29,7 @@ from parllama.models.ollama_data import SiteModel
 from parllama.models.ollama_data import SiteModelData
 from parllama.models.ollama_ps import OllamaPsResponse
 from parllama.models.settings_data import settings
+from parllama.par_event_system import ParEventSystemBase
 from parllama.utils import output_to_dicts
 from parllama.utils import run_cmd
 from parllama.widgets.local_model_list_item import LocalModelListItem
@@ -53,7 +54,7 @@ def api_model_ps() -> OllamaPsResponse:
         return OllamaPsResponse()
 
 
-class DataManager:
+class DataManager(ParEventSystemBase):
     """Data manager for Par Llama."""
 
     ollama_site_categories: list[str] = ["popular", "featured", "newest"]
@@ -63,6 +64,8 @@ class DataManager:
 
     def __init__(self):
         """ "Initialize the data manager."""
+        super().__init__(id="data_manager")
+
         self.models = []
         self.site_models = []
         # get location of ollama binary in path
@@ -93,8 +96,7 @@ class DataManager:
                 return model.model
         return None
 
-    @staticmethod
-    def enrich_model_details(model: FullModel) -> None:
+    def enrich_model_details(self, model: FullModel) -> None:
         """Enrich model details."""
         pattern = r"^(# Modelfile .*)\n(# To build.*)\n# (FROM .*\n)\n(FROM .*)\n(.*)$"
         replacement = r"\3\5"
@@ -107,6 +109,7 @@ class DataManager:
         model.template = msp.template
         model.modelfile = msp.modelfile
         model.model_info = msp.model_info
+        model.license = msp.license
 
     @staticmethod
     def _get_all_model_data() -> list[LocalModelListItem]:

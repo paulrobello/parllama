@@ -12,21 +12,19 @@ from textual.message_pump import MessagePump
 from parllama.chat_message import OllamaMessage
 from parllama.chat_prompt import ChatPrompt
 from parllama.llm_session_name import llm_session_name
-from parllama.messages.messages import (
-    SessionListChanged,
-    LogIt,
-    PromptListChanged,
-    ChangeTab,
-    PromptListLoaded,
-)
-from parllama.messages.par_prompt_messages import ParPromptUpdated, ParPromptDelete
-from parllama.messages.par_session_messages import (
-    ParSessionUpdated,
-    ParSessionDelete,
-    ParSessionAutoName,
-)
+from parllama.messages.messages import PromptListChanged
+from parllama.messages.messages import ChangeTab
+from parllama.messages.messages import PromptListLoaded
+from parllama.messages.messages import SessionListChanged
+
+from parllama.messages.par_prompt_messages import ParPromptUpdated
+from parllama.messages.par_prompt_messages import ParPromptDelete
+from parllama.messages.par_session_messages import ParSessionDelete
+from parllama.messages.par_session_messages import ParSessionAutoName
+from parllama.messages.par_session_messages import ParSessionUpdated
+
 from parllama.models.settings_data import settings
-from parllama.par_event_system import ParEventSystemBase, ParLogIt
+from parllama.par_event_system import ParEventSystemBase
 from parllama.chat_session import ChatSession
 
 
@@ -36,28 +34,20 @@ class ChatManager(ParEventSystemBase):
     _id_to_session: dict[str, ChatSession]
     _id_to_prompt: dict[str, ChatPrompt]
 
-    app: App[Any]
     options: OllamaOptions
 
     def __init__(self) -> None:
         """Initialize the chat manager"""
-        super().__init__()
+        super().__init__(id="chat_manager")
         self._id_to_session = {}
         self._id_to_prompt = {}
         self.options = {}
 
     def set_app(self, app: App[Any]) -> None:
         """Set the app and load existing sessions and prompts from storage"""
-        self.app = app
+        super().set_app(app)
         self.load_sessions()
         self.load_prompts()
-
-    def on_par_log_it(self, event: ParLogIt) -> None:
-        """Handle a ParLogIt event"""
-        event.stop()
-        self.app.post_message(
-            LogIt(event.msg, notify=event.notify, severity=event.severity)
-        )
 
     ############ Sessions #################
     @property

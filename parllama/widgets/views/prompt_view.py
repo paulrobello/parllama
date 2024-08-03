@@ -23,6 +23,7 @@ from parllama.messages.messages import (
     PromptDeleteRequested,
     LocalModelListLoaded,
     PromptSelected,
+    LocalModelDeleted,
 )
 from parllama.models.settings_data import settings
 from parllama.widgets.input_blur_submit import InputBlurSubmit
@@ -100,6 +101,7 @@ class PromptView(Container):
                 event_names=[
                     "DeletePrompt",
                     "PromptDeleteRequested",
+                    "LocalModelDeleted",
                     "LocalModelListLoaded",
                 ],
             )
@@ -143,9 +145,10 @@ class PromptView(Container):
         self.notify("Prompt added")
 
     @on(LocalModelListLoaded)
-    def on_local_model_list_loaded(self, evt: LocalModelListLoaded) -> None:
+    @on(LocalModelDeleted)
+    def on_local_model_list_loaded(self, event: Message) -> None:
         """Model list changed"""
-        evt.stop()
+        event.stop()
         if self.model_select.value != Select.BLANK:
             old_v = self.model_select.value
         elif settings.last_chat_model:
