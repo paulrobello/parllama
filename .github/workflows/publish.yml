@@ -179,7 +179,6 @@ jobs:
     if: ${{ needs.check-release.outputs.do_release == 'true' }}  # only publish to PyPI when do_release is true
     needs:
       - build
-      - tag-version
       - check-release
     runs-on: ubuntu-latest
 
