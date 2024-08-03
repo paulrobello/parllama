@@ -1,4 +1,5 @@
-"""Various utility functions and decorators."""
+"""Various types, utility functions and decorators."""
+
 from __future__ import annotations
 
 import csv
@@ -7,6 +8,7 @@ import io
 import math
 import os
 import random
+import re
 import string
 import subprocess
 import sys
@@ -23,6 +25,8 @@ from io import StringIO
 from os import listdir
 from os.path import isfile
 from os.path import join
+from re import Match
+from re import Pattern
 from typing import Any
 from typing import Literal
 from typing import TypeAlias
@@ -34,13 +38,23 @@ from textual.widgets.button import ButtonVariant
 from parllama import __application_binary__
 from parllama import __application_title__
 from parllama import __version__
-from parllama.icons import PENCIL_EMOJI
+from parllama.icons import PENCIL_EMOJI, HEAVY_PLUS_SIGN_EMOJI
 from parllama.icons import TRASH_EMOJI
 
 DECIMAL_PRECESSION = 5
 
-ScreenType: TypeAlias = Literal["Local", "Site", "Tools", "Create", "Chat", "Logs"]
-valid_screens: list[ScreenType] = ["Local", "Site", "Tools", "Create", "Chat", "Logs"]
+ScreenType: TypeAlias = Literal[
+    "Local", "Site", "Chat", "Prompts", "Tools", "Create", "Logs"
+]
+valid_screens: list[ScreenType] = [
+    "Local",
+    "Site",
+    "Chat",
+    "Prompts",
+    "Tools",
+    "Create",
+    "Logs",
+]
 
 
 def id_generator(
@@ -354,7 +368,7 @@ def add_module_path(path: str) -> Generator[None, None, None]:
 
 
 @contextmanager
-def catch_to_logger(logger: any, re_throw: bool = False):  # type: ignore
+def catch_to_logger(logger: any, re_throw: bool = False) -> Generator[None, None, None]:  # type: ignore
     """Catch exceptions and log them to a logger."""
     try:
         yield
@@ -386,6 +400,27 @@ def str_ellipsis(s: str, max_len: int) -> str:
     if len(s) <= max_len:
         return s.ljust(max_len)
     return s[: max_len - 3] + "..."
+
+
+def camel_to_snake(
+    name: str, _re_snake: Pattern[str] = re.compile("[a-z][A-Z]")
+) -> str:
+    """Convert name from CamelCase to snake_case.
+
+    Args:
+        name: A symbol name, such as a class name.
+
+    Returns:
+        Name in camel case.
+    """
+
+    def repl(match: Match[str]) -> str:
+        lower: str
+        upper: str
+        lower, upper = match.group()  # type: ignore
+        return f"{lower}_{upper.lower()}"
+
+    return _re_snake.sub(repl, name).lower()
 
 
 def detect_syntax(text: str) -> str | None:
@@ -446,6 +481,21 @@ def mk_edit_button(
         id=id,
         classes=classes,
         emoji=PENCIL_EMOJI,
+        tooltip=tooltip,
+    )
+
+
+def mk_add_button(
+    *,
+    id: str = "add",  # pylint: disable=redefined-builtin
+    classes: str = "",
+    tooltip: str = "Add",
+) -> Button:
+    """Make an add button."""
+    return mk_field_button(
+        id=id,
+        classes=classes,
+        emoji=HEAVY_PLUS_SIGN_EMOJI,
         tooltip=tooltip,
     )
 
@@ -540,6 +590,13 @@ def get_args() -> Namespace:
     )
 
     parser.add_argument(
+        "-a",
+        "--auto-name-session",
+        help="Auto name session using LLM",
+        choices=["0", "1"],
+    )
+
+    parser.add_argument(
         "--restore-defaults",
         help="Restore default settings and theme",
         default=False,
@@ -556,6 +613,13 @@ def get_args() -> Namespace:
     parser.add_argument(
         "--purge-chats",
         help="Purge all chat history",
+        default=False,
+        action="store_true",
+    )
+
+    parser.add_argument(
+        "--purge-prompts",
+        help="Purge all custom prompts",
         default=False,
         action="store_true",
     )

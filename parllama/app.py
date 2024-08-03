@@ -1,4 +1,5 @@
 """The main application class."""
+
 from __future__ import annotations
 
 import asyncio
@@ -10,6 +11,7 @@ from typing import Any
 import humanize
 import ollama
 import pyperclip  # type: ignore
+from httpx import ConnectError
 from rich.columns import Columns
 from rich.console import ConsoleRenderable
 from rich.console import RenderableType
@@ -36,34 +38,42 @@ from parllama.chat_manager import chat_manager
 from parllama.chat_manager import ChatManager
 from parllama.data_manager import dm
 from parllama.dialogs.help_dialog import HelpDialog
-from parllama.messages.main import ChangeTab
-from parllama.messages.main import CreateModelFromExistingRequested
-from parllama.messages.main import DeleteSession
-from parllama.messages.main import LocalModelCopied
-from parllama.messages.main import LocalModelCopyRequested
-from parllama.messages.main import LocalModelDelete
-from parllama.messages.main import LocalModelDeleted
-from parllama.messages.main import LocalModelListLoaded
-from parllama.messages.main import LocalModelListRefreshRequested
-from parllama.messages.main import ModelCreated
-from parllama.messages.main import ModelCreateRequested
-from parllama.messages.main import ModelInteractRequested
-from parllama.messages.main import ModelPulled
-from parllama.messages.main import ModelPullRequested
-from parllama.messages.main import ModelPushed
-from parllama.messages.main import ModelPushRequested
-from parllama.messages.main import NotifyErrorMessage
-from parllama.messages.main import NotifyInfoMessage
-from parllama.messages.main import PsMessage
-from parllama.messages.main import RegisterForUpdates
-from parllama.messages.main import SendToClipboard
-from parllama.messages.main import SessionListChanged
-from parllama.messages.main import SessionSelected
-from parllama.messages.main import SetModelNameLoading
-from parllama.messages.main import SiteModelsLoaded
-from parllama.messages.main import SiteModelsRefreshRequested
-from parllama.messages.main import StatusMessage
-from parllama.messages.main import UnRegisterForUpdates
+from parllama.messages.messages import (
+    ChangeTab,
+    LogIt,
+    SessionToPrompt,
+    DeletePrompt,
+    PromptListChanged,
+    PromptSelected,
+    PromptListLoaded,
+)
+from parllama.messages.messages import CreateModelFromExistingRequested
+from parllama.messages.messages import DeleteSession
+from parllama.messages.messages import LocalModelCopied
+from parllama.messages.messages import LocalModelCopyRequested
+from parllama.messages.messages import LocalModelDelete
+from parllama.messages.messages import LocalModelDeleted
+from parllama.messages.messages import LocalModelListLoaded
+from parllama.messages.messages import LocalModelListRefreshRequested
+from parllama.messages.messages import ModelCreated
+from parllama.messages.messages import ModelCreateRequested
+from parllama.messages.messages import ModelInteractRequested
+from parllama.messages.messages import ModelPulled
+from parllama.messages.messages import ModelPullRequested
+from parllama.messages.messages import ModelPushed
+from parllama.messages.messages import ModelPushRequested
+from parllama.messages.messages import NotifyErrorMessage
+from parllama.messages.messages import NotifyInfoMessage
+from parllama.messages.messages import PsMessage
+from parllama.messages.messages import RegisterForUpdates
+from parllama.messages.messages import SendToClipboard
+from parllama.messages.messages import SessionListChanged
+from parllama.messages.messages import SessionSelected
+from parllama.messages.messages import SetModelNameLoading
+from parllama.messages.messages import SiteModelsLoaded
+from parllama.messages.messages import SiteModelsRefreshRequested
+from parllama.messages.messages import StatusMessage
+from parllama.messages.messages import UnRegisterForUpdates
 from parllama.models.jobs import CopyModelJob
 from parllama.models.jobs import CreateModelJob
 from parllama.models.jobs import PullModelJob
@@ -116,6 +126,7 @@ class ParLlamaApp(App[None]):
         """Initialize the application."""
         super().__init__()
         self.notify_subs = {"*": set[MessagePump]()}
+        dm.set_app(self)
         chat_manager.set_app(self)
 
         self.job_timer = None
@@ -161,6 +172,11 @@ class ParLlamaApp(App[None]):
         await self.push_screen(self.main_screen)
         self.post_message_all(StatusMessage(f"Data folder: {settings.data_dir}"))
         self.post_message_all(StatusMessage(f"Chat folder: {settings.chat_dir}"))
+        self.post_message_all(StatusMessage(f"Prompt folder: {settings.prompt_dir}"))
+        self.post_message_all(
+            StatusMessage(f"MD export folder: {settings.export_md_dir}")
+        )
+
         self.post_message_all(
             StatusMessage(f"Using Ollama server url: {settings.ollama_host}")
         )
@@ -172,6 +188,9 @@ class ParLlamaApp(App[None]):
             )
         else:
             self.post_message_all(StatusMessage("Polling Ollama ps disabled"))
+        self.post_message_all(
+            StatusMessage(f"Auto session naming: {settings.auto_name_session}")
+        )
 
         self.post_message_all(
             StatusMessage(
@@ -186,7 +205,7 @@ class ParLlamaApp(App[None]):
             StatusMessage(f"Last model temp: {settings.last_chat_temperature}")
         )
         self.post_message_all(
-            StatusMessage(f"Last session name: {settings.last_chat_session_name}")
+            StatusMessage(f"Last session id: {settings.last_chat_session_id}")
         )
 
         self.app.post_message(
@@ -305,10 +324,13 @@ class ParLlamaApp(App[None]):
     def on_model_deleted(self, event: LocalModelDeleted) -> None:
         """Local model deleted event"""
         self.status_notify(f"Model {event.model_name} deleted.")
+        # chat_manager.notify_sessions_changed()
 
     @on(ModelPullRequested)
     def on_model_pull_requested(self, event: ModelPullRequested) -> None:
         """Pull requested model event"""
+        if event.notify:
+            self.notify(f"Model pull {event.model_name} queued")
         self.job_queue.put(PullModelJob(modelName=event.model_name))
         self.post_message_all(SetModelNameLoading(event.model_name, True))
 
@@ -457,6 +479,8 @@ class ParLlamaApp(App[None]):
         """poll for queued jobs"""
         while True:
             try:
+                # asyncio.get_event_loop().run_until_complete(par_await_tasks())
+                # await par_await_tasks()
                 job: QueueJob = self.job_queue.get(block=True, timeout=1)
                 if self._exit:
                     return
@@ -491,6 +515,7 @@ class ParLlamaApp(App[None]):
             self.status_notify(
                 f"Model {event.model_name} pulled.",
             )
+            # chat_manager.notify_sessions_changed()
         else:
             self.status_notify(
                 f"Model {event.model_name} failed to pull.",
@@ -505,6 +530,7 @@ class ParLlamaApp(App[None]):
                 f"Model {event.model_name} created.",
             )
             self.set_timer(1, self.action_refresh_models)
+            # chat_manager.notify_sessions_changed()
         else:
             self.status_notify(
                 f"Model {event.model_name} failed to create.",
@@ -558,6 +584,14 @@ class ParLlamaApp(App[None]):
             dm.refresh_models()
             self.post_message_all(StatusMessage("Local model list refreshed"))
             self.post_message_all(LocalModelListLoaded())
+        except ConnectError as e:
+            self.post_message(
+                LogIt(
+                    f"Failed to refresh local models: {e}",
+                    severity="error",
+                    notify=True,
+                )
+            )
         finally:
             self.is_refreshing = False
 
@@ -639,7 +673,9 @@ class ParLlamaApp(App[None]):
 
     def status_notify(self, msg: str, severity: SeverityLevel = "information") -> None:
         """Show notification and update status bar"""
-        self.notify(msg, severity=severity)
+        self.notify(
+            msg, severity=severity, timeout=5 if severity != "information" else 3
+        )
         self.main_screen.post_message(StatusMessage(msg))
 
     def post_message_all(self, event: Message) -> None:
@@ -691,8 +727,20 @@ class ParLlamaApp(App[None]):
         event.stop()
         self.post_message_all(event)
 
+    @on(PromptListChanged)
+    def on_prompt_list_changed(self, event: PromptListChanged) -> None:
+        """Prompt list changed event"""
+        event.stop()
+        self.post_message_all(event)
+
     @on(SessionSelected)
     def on_session_selected(self, event: SessionSelected) -> None:
+        """Session selected event"""
+        event.stop()
+        self.post_message_all(event)
+
+    @on(PromptSelected)
+    def on_prompt_selected(self, event: PromptSelected) -> None:
         """Session selected event"""
         event.stop()
         self.post_message_all(event)
@@ -702,6 +750,38 @@ class ParLlamaApp(App[None]):
         """Delete session event"""
         event.stop()
         self.post_message_all(event)
+
+    @on(DeletePrompt)
+    def on_delete_prompt(self, event: DeletePrompt) -> None:
+        """Delete prompt event"""
+        event.stop()
+        self.post_message_all(event)
+
+    @on(SessionToPrompt)
+    def on_session_to_prompt(self, event: SessionToPrompt) -> None:
+        """Session to prompt event"""
+        event.stop()
+        chat_manager.session_to_prompt(
+            event.session_id, event.submit_on_load, event.prompt_name
+        )
+
+    @on(PromptListLoaded)
+    def on_prompt_list_loaded(self, event: PromptListLoaded) -> None:
+        """Prompt list loaded event"""
+        event.stop()
+        self.post_message_all(event)
+
+    @on(LogIt)
+    def on_log_it(self, event: LogIt) -> None:
+        """Log an event to the log view"""
+        event.stop()
+        self.log_it(event.msg)
+        if event.notify and isinstance(event.msg, str):
+            self.notify(
+                event.msg,
+                severity=event.severity,
+                timeout=5 if event.severity != "information" else 3,
+            )
 
     def log_it(self, msg: ConsoleRenderable | RichCast | str | object) -> None:
         """Log a message to the log view"""

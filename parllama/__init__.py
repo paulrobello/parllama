@@ -1,4 +1,5 @@
 """PAR LLAMA TUI - A terminal user interface for Ollama."""
+
 from __future__ import annotations
 
 __author__ = "Paul Robello"
@@ -6,7 +7,7 @@ __copyright__ = "Copyright 2024, Paul Robello"
 __credits__ = ["Paul Robello"]
 __maintainer__ = "Paul Robello"
 __email__ = "probello@gmail.com"
-__version__ = "0.3.3"
+__version__ = "0.3.4"
 __licence__ = "MIT"
 __application_title__ = "PAR LLAMA"
 __application_binary__ = "parllama"

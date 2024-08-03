@@ -1,4 +1,5 @@
 """Widget for viewing application logs."""
+
 from __future__ import annotations
 
 from textual import on
@@ -25,7 +26,7 @@ class LogView(Container):
         height: 3;
         background: $surface-darken-1;
         #max_lines {
-          width: 10;
+          width: 12;
         }
         Label {
           margin-top: 1;

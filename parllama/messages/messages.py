@@ -1,14 +1,18 @@
 """Messages for application."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal
+from typing import Optional
 
-from rich.console import RenderableType
+from rich.console import RenderableType, ConsoleRenderable, RichCast
 from textual.message import Message
 from textual.message_pump import MessagePump
+from textual.notifications import SeverityLevel
 
+from parllama.messages.shared import SessionChanges
 from parllama.models.ollama_data import FullModel
+from parllama.utils import ScreenType
 
 
 @dataclass
@@ -134,6 +138,7 @@ class ModelPullRequested(AppRequest):
     """Message to notify that a model pull has been requested."""
 
     model_name: str
+    notify: bool = True
 
 
 @dataclass
@@ -216,36 +221,7 @@ class SetModelNameLoading(Message):
 class ChangeTab(Message):
     """Change to requested tab."""
 
-    tab: Literal["Local", "Site", "Tools", "Create", "Logs"]
-
-
-@dataclass
-class ChatMessage(Message):
-    """Chat message class"""
-
-    session_id: str
-    message_id: str
-
-
-@dataclass
-class ChatMessageSent(Message):
-    """Chat message sent class"""
-
-    session_id: str
-
-
-@dataclass
-class NewChatSession(Message):
-    """New chat session class"""
-
-    session_id: str
-
-
-@dataclass
-class SessionUpdated(Message):
-    """Session Was Updated"""
-
-    session_id: str
+    tab: ScreenType
 
 
 @dataclass
@@ -253,40 +229,6 @@ class ModelInteractRequested(Message):
     """Message to notify that a model interact has been requested."""
 
     model_name: str
-
-
-@dataclass
-class SessionListChanged(Message):
-    """Notify that session list has changed."""
-
-
-@dataclass
-class SessionSelected(Message):
-    """Notify that session has been selected."""
-
-    session_id: str
-    new_tab: bool = False
-
-
-@dataclass
-class DeleteSession(Message):
-    """Request session be deleted."""
-
-    session_id: str
-
-
-@dataclass
-class StopChatGeneration(Message):
-    """Request chat generation to be stopped."""
-
-    session_id: str
-
-
-@dataclass
-class ChatGenerationAborted(Message):
-    """Chat generation has been aborted."""
-
-    session_id: str
 
 
 @dataclass
@@ -300,3 +242,134 @@ class UpdateTabLabel(Message):
 
     tab_id: str
     tab_label: str
+
+
+@dataclass
+class UpdateChatStatus(Message):
+    """Update chat status."""
+
+
+# ---------- Prompt Related Messages ---------- #
+
+
+@dataclass
+class PromptListChanged(Message):
+    """Notify that prompt list has changed."""
+
+
+@dataclass
+class PromptMessage(Message):
+    """Prompt base class."""
+
+    prompt_id: str
+
+
+@dataclass
+class PromptDeleteRequested(AppRequest):
+    """Message to notify that a prompt delete has been requested."""
+
+    prompt_id: str
+
+
+@dataclass
+class DeletePrompt(PromptMessage):
+    """Request prompt be deleted."""
+
+
+@dataclass
+class DeletePromptMessage(PromptMessage):
+    """Request message be deleted from prompt."""
+
+    message_id: str
+
+
+@dataclass
+class PromptSelected(PromptMessage):
+    """Notify that a prompt has been selected."""
+
+    temperature: float = 0.5
+    llm_model_name: str = ""
+
+
+@dataclass
+class PromptListLoaded(Message):
+    """Prompt list loaded"""
+
+
+# ---------- Session Related Messages ---------- #
+
+
+@dataclass
+class SessionListChanged(Message):
+    """Notify that session list has changed."""
+
+
+@dataclass
+class SessionMessage(Message):
+    """Session base class."""
+
+    session_id: str
+
+
+@dataclass
+class SessionToPrompt(SessionMessage):
+    """Request session be copied to prompt."""
+
+    prompt_name: Optional[str] = None
+    submit_on_load: bool = False
+
+
+@dataclass
+class StopChatGeneration(SessionMessage):
+    """Request chat generation to be stopped."""
+
+
+@dataclass
+class ChatGenerationAborted(SessionMessage):
+    """Chat generation has been aborted."""
+
+
+@dataclass
+class ChatMessage(Message):
+    """Chat message class"""
+
+    parent_id: str
+    message_id: str
+
+
+@dataclass
+class ChatMessageSent(SessionMessage):
+    """Chat message sent class"""
+
+
+@dataclass
+class SessionSelected(SessionMessage):
+    """Notify that session has been selected."""
+
+    new_tab: bool = False
+
+
+@dataclass
+class DeleteSession(SessionMessage):
+    """Request session be deleted."""
+
+
+@dataclass
+class NewChatSession(SessionMessage):
+    """New chat session class"""
+
+
+@dataclass
+class SessionUpdated(SessionMessage):
+    """Session Was Updated"""
+
+    changed: SessionChanges
+
+
+@dataclass
+class LogIt(Message):
+    """Log message."""
+
+    msg: ConsoleRenderable | RichCast | str | object
+    notify: bool = False
+    severity: SeverityLevel = "information"

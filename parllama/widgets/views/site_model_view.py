@@ -1,4 +1,5 @@
 """Site Model View"""
+
 from __future__ import annotations
 
 import webbrowser
@@ -18,10 +19,10 @@ from textual.widgets import Static
 from textual.widgets import TabbedContent
 
 from parllama.data_manager import dm
-from parllama.messages.main import ModelPullRequested
-from parllama.messages.main import RegisterForUpdates
-from parllama.messages.main import SiteModelsLoaded
-from parllama.messages.main import SiteModelsRefreshRequested
+from parllama.messages.messages import ModelPullRequested
+from parllama.messages.messages import RegisterForUpdates
+from parllama.messages.messages import SiteModelsLoaded
+from parllama.messages.messages import SiteModelsRefreshRequested
 from parllama.models.settings_data import settings
 from parllama.widgets.input_tab_complete import InputTabComplete
 from parllama.widgets.site_model_list_item import SiteModelListItem

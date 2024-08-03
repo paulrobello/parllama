@@ -1,4 +1,5 @@
 """Provides a dialog for getting a yes/no response from the user."""
+
 from __future__ import annotations
 
 from textual.app import ComposeResult
@@ -23,6 +24,7 @@ class YesNoDialog(ModalScreen[bool]):
 		background: $panel;
 		height: auto;
 		width: auto;
+		min-width: 38;
 		border: thick $secondary;
 	}
 

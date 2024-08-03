@@ -1,4 +1,5 @@
 """Docker related functions"""
+
 from __future__ import annotations
 
 import os
@@ -36,7 +37,7 @@ def start_docker_container(
         ports (dict | None): The ports to expose. Defaults to None
         network_name (str | None): The network to use. Defaults to None
         mounts (List[docker.types.Mount]): The mounts to use.
-            Example: [docker.types.Mount(target="/workspace", source=f"{os.getcwd()}/output/{session_id}", type="bind")]
+            Example: [docker.types.Mount(target="/workspace", source=f"{os.getcwd()}/output/{parent_id}", type="bind")]
         re_create (bool): Whether to recreate the container if it exists. Defaults to False
         remove (bool): Whether to remove the container after execution. Defaults to False
         background (bool): Whether to run the container in the background. Defaults to True

@@ -1,4 +1,5 @@
 """Field set consisting of Label and Input for editing items."""
+
 from __future__ import annotations
 
 from textual import on
@@ -12,7 +13,7 @@ from textual.widgets import Select
 from textual.widgets import TextArea
 
 from parllama.icons import COPY_EMOJI
-from parllama.messages.main import SendToClipboard
+from parllama.messages.messages import SendToClipboard
 from parllama.utils import to_class_case
 from parllama.widgets.hidden_input import HiddenInputField
 
@@ -34,7 +35,6 @@ class FieldSet(Widget):
                 width: 3fr;
             }
         }
-
         Input, Select, TextArea, Checkbox, HiddenInputField{
             width: 1fr;
         }

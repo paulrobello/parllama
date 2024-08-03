@@ -1,4 +1,5 @@
 """Session list item"""
+
 from __future__ import annotations
 
 from rich.text import Text
@@ -6,7 +7,7 @@ from textual.app import ComposeResult
 from textual.containers import Vertical
 from textual.widgets import Label
 
-from parllama.models.chat import ChatSession
+from parllama.chat_manager import ChatSession
 from parllama.widgets.dbl_click_list_item import DblClickListItem
 
 
@@ -31,7 +32,7 @@ class SessionListItem(DblClickListItem, can_focus=False, can_focus_children=True
     def compose(self) -> ComposeResult:
         """Compose the content of the view."""
         with Vertical():
-            yield Label(self.session.session_name)
+            yield Label(self.session.name)
             temp = (
                 f"{self.session.options['temperature']:.2f}"
                 if self.session.options.get("temperature") is not None

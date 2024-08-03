@@ -1,4 +1,5 @@
 """Model for application settings."""
+
 from __future__ import annotations
 
 import functools
@@ -23,6 +24,9 @@ class Settings(BaseModel):
     data_dir: str = os.path.expanduser("~/.parllama")
     cache_dir: str = ""
     chat_dir: str = ""
+    prompt_dir: str = ""
+    export_md_dir: str = ""
+
     chat_tab_max_length: int = 15
     settings_file: str = "settings.json"
     theme_name: str = "par"
@@ -30,7 +34,7 @@ class Settings(BaseModel):
     last_screen: ScreenType = "Local"
     last_chat_model: str = ""
     last_chat_temperature: float | None = None
-    last_chat_session_name: str = "My Chat"
+    last_chat_session_id: str | None = None
     theme_mode: str = "dark"
     site_models_namespace: str = ""
     max_log_lines: int = 1000
@@ -58,9 +62,13 @@ class Settings(BaseModel):
         )
         self.cache_dir = os.path.join(self.data_dir, "cache")
         self.chat_dir = os.path.join(self.data_dir, "chats")
+        self.prompt_dir = os.path.join(self.data_dir, "prompts")
+        self.export_md_dir = os.path.join(self.data_dir, "md_exports")
 
         os.makedirs(self.cache_dir, exist_ok=True)
         os.makedirs(self.chat_dir, exist_ok=True)
+        os.makedirs(self.prompt_dir, exist_ok=True)
+        os.makedirs(self.export_md_dir, exist_ok=True)
 
         if not os.path.exists(self.data_dir):
             raise FileNotFoundError(
@@ -84,7 +92,19 @@ class Settings(BaseModel):
                 shutil.rmtree(self.chat_dir, ignore_errors=True)
                 os.makedirs(self.chat_dir, exist_ok=True)
 
+        if args.purge_prompts:
+            if os.path.exists(self.prompt_dir):
+                shutil.rmtree(self.prompt_dir, ignore_errors=True)
+                os.makedirs(self.prompt_dir, exist_ok=True)
+
         self.load_from_file()
+
+        auto_name_session = os.environ.get("PARLLAMA_AUTO_NAME_SESSION")
+        if args.auto_name_session is not None:
+            self.auto_name_session = args.auto_name_session == "1"
+        elif auto_name_session is not None:
+            self.auto_name_session = auto_name_session == "1"
+
         url = os.environ.get("OLLAMA_URL")
         if args.ollama_url:
             url = args.ollama_url
@@ -136,15 +156,15 @@ class Settings(BaseModel):
                     self.last_screen = self.starting_screen
                 self.last_chat_model = data.get("last_chat_model", self.last_chat_model)
                 self.last_chat_temperature = data.get("last_chat_temperature")
-                self.last_chat_session_name = data.get(
-                    "last_chat_session_name", self.last_chat_session_name
+                self.last_chat_session_id = data.get(
+                    "last_chat_session_id", self.last_chat_session_id
                 )
                 self.max_log_lines = max(0, data.get("max_log_lines", 1000))
                 self.ollama_ps_poll_interval = data.get(
                     "ollama_ps_poll_interval", self.ollama_ps_poll_interval
                 )
                 self.auto_name_session = data.get(
-                    "auto_name_chat", self.auto_name_session
+                    "auto_name_session", self.auto_name_session
                 )
                 self.auto_name_session_llm = data.get(
                     "auto_name_session_llm", self.auto_name_session_llm

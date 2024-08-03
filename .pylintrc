@@ -10,7 +10,7 @@ py-version = 3.11.0
 max-line-length=120
 
 [MESSAGES CONTROL]
-disable=fixme, too-many-instance-attributes, too-many-public-methods, too-few-public-methods, too-many-ancestors, too-many-locals
+disable=fixme, too-many-instance-attributes, too-many-public-methods, too-few-public-methods, too-many-ancestors, too-many-locals, duplicate-code
 
 [SIMILARITIES]
 min-similarity-lines = 10

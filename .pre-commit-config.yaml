@@ -1,18 +1,19 @@
 default_stages: [pre-commit, pre-push]
-fail_fast: true
+fail_fast: false
 repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v2.3.0
+    rev: v4.6.0
     hooks:
-    -   id: check-yaml
+    -   id: check-merge-conflict
+    -   id: detect-private-key
     -   id: end-of-file-fixer
+    -   id: mixed-line-ending
     -   id: trailing-whitespace
         args: [--markdown-linebreak-ext=md]
     -   id: check-docstring-first
-    -   id: check-json
     -   id: check-toml
-    -   id: detect-private-key
-    -   id: mixed-line-ending
+    -   id: check-yaml
+    -   id: check-json
     -   id: pretty-format-json
         args: [--autofix, --no-sort-keys]
         exclude: tests(/\w*)*/functional/|tests/input|tests(/.*)+/conftest.py|doc/data/messages|tests(/\w*)*data/
@@ -23,17 +24,18 @@ repos:
 #    -   message_id: pyupgrade
 
 -   repo: https://github.com/psf/black
-    rev: 22.10.0
+    rev: 24.4.2
     hooks:
     -   id: black
+        args: [-t, py310, -t, py311, -t, py312]
         exclude: tests(/\w*)*/functional/|tests/input|tests(/.*)+/conftest.py|doc/data/messages|tests(/\w*)*data/
 
--   repo: https://github.com/asottile/reorder-python-imports
-    rev: v3.13.0
-    hooks:
-    -   id: reorder-python-imports
-        args: [--py39-plus, --add-import, 'from __future__ import annotations']
-        exclude: tests(/\w*)*/functional/|tests/input|tests(/.*)+/conftest.py|doc/data/messages|tests(/\w*)*data/
+#-   repo: https://github.com/asottile/reorder-python-imports
+#    rev: v3.13.0
+#    hooks:
+#    -   id: reorder-python-imports
+#        args: [--py39-plus, --add-import, "from __future__ import annotations"]
+#        exclude: tests(/\w*)*/functional/|tests/input|tests(/.*)+/conftest.py|doc/data/messages|tests(/\w*)*data/
 
 #-   repo: https://github.com/pre-commit/mirrors-mypy
 #    rev: v1.10.1

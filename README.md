@@ -107,8 +107,8 @@ make first-setup
 
 ## Command line arguments
 ```
-usage: parllama [-h] [-v] [-d DATA_DIR] [-u OLLAMA_URL] [-t THEME_NAME] [-m {dark,light}] [-s {local,site,tools,create,chat,logs}] [-p PS_POLL]
-                [--restore-defaults] [--clear-cache] [--purge-chats] [--no-save] [--no-chat-save]
+usage: parllama [-h] [-v] [-d DATA_DIR] [-u OLLAMA_URL] [-t THEME_NAME] [-m {dark,light}] [-s {local,site,chat,prompts,tools,create,logs}]
+                [-p PS_POLL] [-a {0,1}] [--restore-defaults] [--clear-cache] [--purge-chats] [--purge-prompts] [--no-save] [--no-chat-save]
 
 PAR LLAMA -- Ollama TUI.
 
@@ -123,13 +123,16 @@ options:
                         Theme name. Defaults to par
   -m {dark,light}, --theme-mode {dark,light}
                         Dark / Light mode. Defaults to dark
-  -s {local,site,tools,create,chat,logs}, --starting-screen {local,site,tools,create,chat,logs}
+  -s {local,site,chat,prompts,tools,create,logs}, --starting-screen {local,site,chat,prompts,tools,create,logs}
                         Starting screen. Defaults to local
   -p PS_POLL, --ps-poll PS_POLL
                         Interval in seconds to poll ollama ps command. 0 = disable. Defaults to 3
+  -a {0,1}, --auto-name-session {0,1}
+                        Auto name session using LLM
   --restore-defaults    Restore default settings and theme
   --clear-cache         Clear cached data
   --purge-chats         Purge all chat history
+  --purge-prompts       Purge all custom prompts
   --no-save             Prevent saving settings for this session.
   --no-chat-save        Prevent saving chats for this session.
 ```
@@ -141,6 +144,7 @@ Unless you specify "--no-save" most flags such as -u, -t, -m, -s are sticky and 
 * PARLLAMA_THEME_NAME - Used to set --theme-name
 * PARLLAMA_THEME_MODE - Used to set --theme-mode
 * OLLAMA_URL - Used to set --ollama-url
+* PARLLAMA_AUTO_NAME_SESSION - Set to 0 or 1 to disable / enable session auto naming using LLM
 
 ## Running PAR_LLAMA
 
@@ -282,14 +286,28 @@ if anything remains to be fixed before the commit is allowed.
 * Connect to remote instances
 * Chat with history / conversation management
 * Chat tabs allow chat with multiple models at same time
+* Custom prompt library
 
 ### Where we're going
-* Custom prompt library
+* Add config tab to help with settings management
+* Ability to import prompts from tools like fabric or langsmith hub
 * Chat using embeddings for local documents
 * LLM tool use
 * Ability to use other AI providers like Open AI
 
 ## What's new
+
+### v0.3.4
+* Added custom prompt library support  (Work in progress)
+* Added cli option and environment var to enable auto naming of sessions using LLM (Work in progress)
+* Added tokens per second stats to session info line on chat tab
+* Fixed app crash when it cant contact ollama server for PS info
+* Fixed slow startup when you have a lot of models available locally
+* Fixed slow startup and reduced memory utilization when you have many / large chats
+* Fixed session unique naming bug where it would always add a "1" to the session name
+* Fixed app sometimes slowing down during LLM generation
+* Major rework of internal message handling
+* Issue where some footer items are not clickable has been resolved by a library PARLLAMA depends on
 
 ### v0.3.3
 * Added ability to edit existing messages. select message in chat list and press "e" to edit, then "escape" to exit edit mode

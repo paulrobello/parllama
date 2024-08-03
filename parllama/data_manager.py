@@ -1,4 +1,5 @@
 """Data manager for Par Llama."""
+
 from __future__ import annotations
 
 import os.path
@@ -8,7 +9,7 @@ from collections.abc import Generator
 from collections.abc import Iterator
 from collections.abc import Mapping
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional
 from typing import Literal
 
 import docker.errors  # type: ignore
@@ -18,6 +19,7 @@ import requests
 import simplejson as json
 from bs4 import BeautifulSoup
 from docker.models.containers import Container  # type: ignore
+from httpx import Response
 
 from parllama.docker_utils import start_docker_container
 from parllama.models.ollama_data import FullModel
@@ -27,6 +29,7 @@ from parllama.models.ollama_data import SiteModel
 from parllama.models.ollama_data import SiteModelData
 from parllama.models.ollama_ps import OllamaPsResponse
 from parllama.models.settings_data import settings
+from parllama.par_event_system import ParEventSystemBase
 from parllama.utils import output_to_dicts
 from parllama.utils import run_cmd
 from parllama.widgets.local_model_list_item import LocalModelListItem
@@ -36,19 +39,22 @@ from parllama.widgets.site_model_list_item import SiteModelListItem
 def api_model_ps() -> OllamaPsResponse:
     """Get model ps."""
     # fetch data from self.ollama_host as json
-    res = httpx.get(f"{settings.ollama_host}/api/ps")
-    if res.status_code != 200:
-        return OllamaPsResponse()
+    res: Optional[Response] = None
     try:
+        res = httpx.get(f"{settings.ollama_host}/api/ps", timeout=5)
+        if res.status_code != 200:
+            return OllamaPsResponse()
+
         ret = OllamaPsResponse(**res.json())
         return ret
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        print(f"Error: {e}")
-        print(res.text)
+    except Exception:  # pylint: disable=broad-exception-caught
+        # print(f"Error: {e}")
+        # if res:
+        #     print(res.text)
         return OllamaPsResponse()
 
 
-class DataManager:
+class DataManager(ParEventSystemBase):
     """Data manager for Par Llama."""
 
     ollama_site_categories: list[str] = ["popular", "featured", "newest"]
@@ -58,6 +64,8 @@ class DataManager:
 
     def __init__(self):
         """ "Initialize the data manager."""
+        super().__init__(id="data_manager")
+
         self.models = []
         self.site_models = []
         # get location of ollama binary in path
@@ -88,29 +96,29 @@ class DataManager:
                 return model.model
         return None
 
+    def enrich_model_details(self, model: FullModel) -> None:
+        """Enrich model details."""
+        pattern = r"^(# Modelfile .*)\n(# To build.*)\n# (FROM .*\n)\n(FROM .*)\n(.*)$"
+        replacement = r"\3\5"
+        model_data = settings.ollama_client.show(model.name)
+        msp = ModelShowPayload(**model_data)
+        msp.modelfile = re.sub(
+            pattern, replacement, msp.modelfile, flags=re.MULTILINE | re.IGNORECASE
+        )
+        model.parameters = msp.parameters
+        model.template = msp.template
+        model.modelfile = msp.modelfile
+        model.model_info = msp.model_info
+        model.license = msp.license
+
     @staticmethod
     def _get_all_model_data() -> list[LocalModelListItem]:
         """Get all model data."""
         all_models: list[LocalModelListItem] = []
         res = ModelListPayload(**settings.ollama_client.list())
-        pattern = r"^(# Modelfile .*)\n(# To build.*)\n# (FROM .*\n)\n(FROM .*)\n(.*)$"
-        replacement = r"\3\5"
+
         for model in res.models:
-            model_data = settings.ollama_client.show(model.name)
-            res2 = ModelShowPayload(**model_data)
-            res2.modelfile = re.sub(
-                pattern, replacement, res2.modelfile, flags=re.MULTILINE | re.IGNORECASE
-            )
-            res3 = FullModel(
-                **model.model_dump(),
-                parameters=res2.parameters,
-                template=res2.template,
-                modelfile=res2.modelfile,
-                model_info=res2.model_info,
-            )
-            # print(json.dumps(model.model_dump(), indent=2, default=str))
-            # print(json.dumps(res2.model_dump(), indent=2, default=str))
-            # print(json.dumps(res3.model_dump(), indent=2, default=str))
+            res3 = FullModel(**model.model_dump())
             all_models.append(LocalModelListItem(res3))
             # break
         return all_models

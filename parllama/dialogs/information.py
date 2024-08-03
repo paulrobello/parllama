@@ -1,4 +1,5 @@
 """Provides an information dialog."""
+
 from __future__ import annotations
 
 from .text_dialog import TextDialog

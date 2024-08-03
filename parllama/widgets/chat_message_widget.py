@@ -1,4 +1,5 @@
 """Chat message widget"""
+
 from __future__ import annotations
 
 from textual.app import ComposeResult
@@ -8,9 +9,9 @@ from textual.containers import Vertical
 from textual.widgets import Markdown
 from textual.widgets import TextArea
 
-from parllama.messages.main import SendToClipboard
-from parllama.models.chat import ChatSession
-from parllama.models.chat import OllamaMessage
+from parllama.chat_manager import ChatSession
+from parllama.messages.messages import SendToClipboard
+from parllama.chat_message import OllamaMessage
 
 
 class ChatMessageWidget(Vertical, can_focus=True):
@@ -73,7 +74,7 @@ class ChatMessageWidget(Vertical, can_focus=True):
 
     async def action_delete_msg(self) -> None:
         """Handle the delete message action."""
-        del self.session[self.msg.message_id]
+        del self.session[self.msg.id]
         await self.remove()
         self.session.save()
 

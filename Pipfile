@@ -10,6 +10,7 @@ simplejson = "*"
 attrs = "*"
 certifi = "*"
 requests-file = "*"
+#textual = { version = "==0.74.0", extras = ["syntax"] }
 textual = { version = "*", extras = ["syntax"] }
 asyncio = "*"
 humanize = "*"
@@ -22,6 +23,9 @@ ollama = "*"
 bs4 = "*"
 docker = "*"
 textual-fspicker = "*"
+google-api-python-client = "*"
+youtube-transcript-api = "*"
+isodate2 = "*"
 
 [dev-packages]
 mypy = "*"
@@ -37,6 +41,7 @@ types-requests = "*"
 types-beautifulsoup4 = "*"
 pydevd_pycharm = "*"
 pre-commit = "*"
+google-api-python-client-stubs = "*"
 
 [requires]
 python_version = "3.11"

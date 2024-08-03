@@ -1,4 +1,5 @@
 """Main screen for TUI."""
+
 from __future__ import annotations
 
 from typing import cast
@@ -13,9 +14,9 @@ from textual.widgets import Static
 from textual.widgets import TabbedContent
 from textual.widgets import TabPane
 
-from parllama.messages.main import ModelInteractRequested
-from parllama.messages.main import PsMessage
-from parllama.messages.main import StatusMessage
+from parllama.messages.messages import ModelInteractRequested
+from parllama.messages.messages import PsMessage
+from parllama.messages.messages import StatusMessage
 from parllama.models.settings_data import ScreenType
 from parllama.models.settings_data import settings
 from parllama.widgets.views.chat_view import ChatView
@@ -23,6 +24,7 @@ from parllama.widgets.views.create_model_view import ModelCreateView
 from parllama.widgets.views.local_model_view import LocalModelView
 from parllama.widgets.views.log_view import LogView
 from parllama.widgets.views.model_tools_view import ModelToolsView
+from parllama.widgets.views.prompt_view import PromptView
 from parllama.widgets.views.site_model_view import SiteModelView
 
 
@@ -37,6 +39,7 @@ class MainScreen(Screen[None]):
     ps_status_bar: Static
     tabbed_content: TabbedContent
     log_view: LogView
+    prompt_view: PromptView
     local_view: LocalModelView
     site_view: SiteModelView
     model_tools_view: ModelToolsView
@@ -52,9 +55,10 @@ class MainScreen(Screen[None]):
 
         self.local_view = LocalModelView(id="local_models")
         self.site_view = SiteModelView(id="site_models")
+        self.chat_view = ChatView(id="chat_view")
+        self.prompt_view = PromptView(id="prompt_view")
         self.create_view = ModelCreateView(id="model_create")
         self.model_tools_view = ModelToolsView(id="model_tools")
-        self.chat_view = ChatView(id="chat_view")
         self.log_view = LogView()
 
     async def on_mount(self) -> None:
@@ -80,12 +84,14 @@ class MainScreen(Screen[None]):
                 yield self.local_view
             with TabPane("Site", id="Site"):
                 yield self.site_view
+            with TabPane("Chat", id="Chat"):
+                yield self.chat_view
+            with TabPane("Prompts", id="Prompts"):
+                yield self.prompt_view
             with TabPane("Tools", id="Tools"):
                 yield self.model_tools_view
             with TabPane("Create", id="Create"):
                 yield self.create_view
-            with TabPane("Chat", id="Chat"):
-                yield self.chat_view
             with TabPane("Logs", id="Logs"):
                 yield self.log_view
 

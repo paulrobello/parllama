@@ -1,4 +1,5 @@
 """Widget for chatting with LLM."""
+
 from __future__ import annotations
 
 import re
@@ -18,19 +19,28 @@ from textual.widgets import Select
 from textual.widgets import TabbedContent
 
 from parllama.chat_manager import chat_manager
+from parllama.chat_manager import ChatSession
+from parllama.chat_message import OllamaMessage
 from parllama.data_manager import dm
 from parllama.dialogs.information import InformationDialog
-from parllama.messages.main import ChatGenerationAborted
-from parllama.messages.main import ChatMessage
-from parllama.messages.main import ChatMessageSent
-from parllama.messages.main import DeleteSession
-from parllama.messages.main import LocalModelListLoaded
-from parllama.messages.main import RegisterForUpdates
-from parllama.messages.main import SessionSelected
-from parllama.messages.main import SessionUpdated
-from parllama.messages.main import UpdateChatControlStates
-from parllama.messages.main import UpdateTabLabel
-from parllama.models.chat import ChatSession
+from parllama.messages.messages import (
+    ChatGenerationAborted,
+    LogIt,
+    SessionToPrompt,
+    PromptSelected,
+    ChangeTab,
+    PromptListChanged,
+    PromptListLoaded,
+)
+from parllama.messages.messages import ChatMessage
+from parllama.messages.messages import ChatMessageSent
+from parllama.messages.messages import DeleteSession
+from parllama.messages.messages import LocalModelListLoaded
+from parllama.messages.messages import RegisterForUpdates
+from parllama.messages.messages import SessionSelected
+from parllama.messages.messages import SessionUpdated
+from parllama.messages.messages import UpdateChatControlStates
+from parllama.messages.messages import UpdateTabLabel
 from parllama.widgets.input_tab_complete import InputTabComplete
 from parllama.widgets.session_list import SessionList
 from parllama.widgets.views.chat_tab import ChatTab
@@ -49,6 +59,8 @@ valid_commands: list[str] = [
     "/session.delete",
     "/session.export",
     "/session.system_prompt",
+    "/session.to_prompt",
+    "/prompt.load ",
 ]
 
 
@@ -122,6 +134,8 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         ),
     ]
     chat_tabs: TabbedContent
+    model_list_auto_complete_list: list[str]
+    prompt_list_auto_complete_list: list[str]
 
     def __init__(self, **kwargs) -> None:
         """Initialise the view."""
@@ -149,6 +163,8 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
             "Stop", id="stop_button", disabled=True, variant="error"
         )
         self.last_command = ""
+        self.model_list_auto_complete_list = []
+        self.prompt_list_auto_complete_list = []
 
     def compose(self) -> ComposeResult:
         """Compose the content of the view."""
@@ -171,8 +187,29 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
                     "LocalModelListLoaded",
                     "SessionSelected",
                     "DeleteSession",
+                    "PromptListLoaded",
+                    "PromptSelected",
+                    "PromptListChanged",
                 ],
             )
+        )
+        self.prompt_list_auto_complete_list = [
+            f"/prompt.load {prompt.name}" for prompt in chat_manager.sorted_prompts
+        ]
+
+    @on(PromptListLoaded)
+    def on_prompt_list_loaded(self, event: PromptListLoaded) -> None:
+        """Prompt list changed"""
+        event.stop()
+        self.post_message(LogIt("Prompt list loaded"))
+        self.prompt_list_auto_complete_list = [
+            f"/prompt.load {prompt.name}" for prompt in chat_manager.sorted_prompts
+        ]
+        self.user_input.suggester = SuggestFromList(
+            valid_commands
+            + self.model_list_auto_complete_list
+            + self.prompt_list_auto_complete_list,
+            case_sensitive=False,
         )
 
     @on(Input.Changed, "#user_input")
@@ -197,9 +234,28 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         evt.stop()
         for tab in self.chat_tabs.query(ChatTab):
             tab.on_local_model_list_loaded(evt)
-
+        self.model_list_auto_complete_list = [
+            f"/session.model {m.model.name}" for m in dm.models
+        ]
         self.user_input.suggester = SuggestFromList(
-            valid_commands + [f"/session.model {m.model.name}" for m in dm.models],
+            valid_commands
+            + self.model_list_auto_complete_list
+            + self.prompt_list_auto_complete_list,
+            case_sensitive=False,
+        )
+
+    @on(PromptListChanged)
+    def on_prompt_list_changed(self, evt: PromptListChanged) -> None:
+        """Prompt list changed"""
+        evt.stop()
+        self.post_message(LogIt("Prompt list changed"))
+        self.prompt_list_auto_complete_list = [
+            f"/prompt.load {prompt.name}" for prompt in chat_manager.sorted_prompts
+        ]
+        self.user_input.suggester = SuggestFromList(
+            valid_commands
+            + self.model_list_auto_complete_list
+            + self.prompt_list_auto_complete_list,
             case_sensitive=False,
         )
 
@@ -256,7 +312,9 @@ Chat Commands:
 /session.temp [temperature] - Select temperature input or set temperature in current tab
 /session.delete - Delete the chat session for current tab
 /session.export - Export the conversation in current tab to a Markdown file
-/session.system_prompt [system prompt] - Set system prompt in current tab
+/session.system_prompt [system_prompt] - Set system prompt in current tab
+/session.to_prompt submit_on_load [prompt_name] - Copy current session to new custom prompt. submit_on_load = {0|1}
+/prompt.load prompt_name - Load a custom prompt using current tabs model and temperature
                     """,
                 )
             )
@@ -281,14 +339,16 @@ Chat Commands:
             await self.active_tab.action_new_session()
         elif cmd.startswith("session.new "):
             (_, v) = cmd.split(" ", 1)
+            v = v.strip()
             await self.active_tab.action_new_session(v)
         elif cmd == "session.delete":
-            self.app.post_message(DeleteSession(session_id=self.session.session_id))
+            self.app.post_message(DeleteSession(session_id=self.session.id))
         elif cmd == "session.model":
             self.set_timer(0.1, self.active_tab.model_select.focus)
             return
         elif cmd.startswith("session.model "):
             (_, v) = cmd.split(" ", 1)
+            v = v.strip()
             if v not in [m.model.name for m in dm.models]:
                 self.notify(f"Model {v} not found", severity="error")
                 return
@@ -298,14 +358,31 @@ Chat Commands:
             self.set_timer(0.1, self.active_tab.temperature_input.focus)
         elif cmd.startswith("session.temp "):
             (_, v) = cmd.split(" ", 1)
+            v = v.strip()
             self.active_tab.temperature_input.value = v
             self.set_timer(0.1, self.user_input.focus)
         elif cmd == "session.name":
             self.set_timer(0.1, self.active_tab.session_name_input.focus)
         elif cmd.startswith("session.name "):
             (_, v) = cmd.split(" ", 1)
+            v = v.strip()
             self.active_tab.session_name_input.value = v
             await self.active_tab.session_name_input.action_submit()
+        elif cmd.startswith("session.to_prompt "):
+            vs: list[str] = cmd.split(" ", 2)
+            if len(vs) == 2:
+                (_, submit_on_load) = vs
+                v = ""
+            else:
+                (_, submit_on_load, v) = vs
+            v = v.strip()
+            self.app.post_message(
+                SessionToPrompt(
+                    session_id=self.session.id,
+                    submit_on_load=submit_on_load == "1",
+                    prompt_name=v,
+                )
+            )
         elif cmd.startswith("session.export"):
             self.active_tab.save_conversation_text()
         elif cmd.startswith("session.system_prompt "):
@@ -314,7 +391,15 @@ Chat Commands:
             if not v:
                 self.notify("System prompt cannot be empty", severity="error")
                 return
-            await self.session.set_system_prompt(v, self.active_tab)
+            self.session.system_prompt = OllamaMessage(role="system", content=v)
+        elif cmd.startswith("prompt.load "):
+            (_, v) = cmd.split(" ", 1)
+            v = v.strip()
+            prompt = chat_manager.get_prompt_by_name(v)
+            if prompt is None:
+                self.notify(f"Prompt {v} not found", severity="error")
+                return
+            await self.active_tab.load_prompt(PromptSelected(prompt_id=prompt.id))
         else:
             self.notify(f"Unknown command: {cmd}", severity="error")
 
@@ -332,21 +417,20 @@ Chat Commands:
     def on_chat_message_sent(self, event: ChatMessageSent) -> None:
         """Handle a chat message sent"""
         event.stop()
-        if self.session.session_id == event.session_id:
+        if self.session.id == event.session_id:
             self.stop_button.disabled = True
 
     @on(SessionUpdated)
-    async def on_session_updated(self, event: SessionUpdated) -> None:
+    async def session_updated(self, event: SessionUpdated) -> None:
         """Session updated event"""
-
         event.stop()
+        # self.notify(f"View session updated {','.join([*event.changed])}")
+
         session = chat_manager.get_session(event.session_id)
-        if not session:
+        if session is None:
             return
-        session.set_name(chat_manager.mk_session_name(session.session_name))
-        for tab in self.chat_tabs.query(ChatTab):
-            if tab.session.session_id == event.session_id:
-                await tab.on_session_updated()
+
+        session.name = chat_manager.mk_session_name(session.name)
 
     def action_toggle_session_list(self) -> None:
         """Toggle the session list."""
@@ -357,7 +441,7 @@ Chat Commands:
             self.set_timer(0.1, self.user_input.focus)
 
     @on(SessionSelected)
-    async def on_session_selected(self, event: SessionSelected) -> None:
+    async def session_selected(self, event: SessionSelected) -> None:
         """Session selected event"""
         event.stop()
         if event.new_tab:
@@ -366,8 +450,16 @@ Chat Commands:
         else:
             await self.active_tab.load_session(event.session_id)
 
+    @on(PromptSelected)
+    async def prompt_selected(self, event: PromptSelected) -> None:
+        """Prompt selected event"""
+        event.stop()
+        await self.action_new_tab()
+        await self.active_tab.load_prompt(event)
+        self.app.post_message(ChangeTab(tab="Chat"))
+
     @on(UpdateChatControlStates)
-    def on_update_chat_control_states(self, event: UpdateChatControlStates) -> None:
+    def update_chat_control_states(self, event: UpdateChatControlStates) -> None:
         """Update chat control states event"""
         event.stop()
         self.update_control_states()
@@ -387,13 +479,14 @@ Chat Commands:
         """Route chat message to correct tab"""
         event.stop()
         for tab in self.chat_tabs.query(ChatTab):
-            if tab.session.session_id == event.session_id:
+            if tab.session.id == event.parent_id:
                 await tab.on_chat_message(event)
 
     @on(UpdateTabLabel)
     def on_update_tab_label(self, event: UpdateTabLabel) -> None:
         """Update tab label event"""
         event.stop()
+        # self.notify(f"Updated tab label: {event.tab_label}")
         tab = self.chat_tabs.get_tab(event.tab_id)
         tab_num = self.chat_tabs.get_child_by_type(ContentSwitcher).children.index(
             self.chat_tabs.get_pane(event.tab_id)
@@ -413,9 +506,10 @@ Chat Commands:
     async def on_delete_session(self, event: DeleteSession) -> None:
         """Delete session event"""
         event.stop()
+        self.app.post_message(LogIt(f"Deleted chat session {event.session_id}"))
         tab_removed: bool = False
         for tab in self.chat_tabs.query(ChatTab):
-            if tab.session.session_id == event.session_id:
+            if tab.session.id == event.session_id:
                 await self.chat_tabs.remove_pane(str(tab.id))
                 tab_removed = True
 

@@ -1,4 +1,5 @@
 """Chat message list widget."""
+
 from __future__ import annotations
 
 from textual.containers import VerticalScroll

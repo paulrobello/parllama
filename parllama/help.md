@@ -1,8 +1,9 @@
 ## PAR Ollama Workflows
-The app is separated into 3 sections.  
+The app is separated into various sections.  
 * Local models (models that have already be pulled / created on your machine)
 * Site models (models that can be pulled from ollama.com)
 * Creation / Editing / Utils (This area helps you create new models from scratch or by repackaging / quantizing existing models). Work in progress
+* Chatting with models and Custom prompts to easily start new chats
 
 
 ## Global keys
@@ -17,8 +18,8 @@ The app is separated into 3 sections.
 Actions like delete, pull, etc. are queued and will be performed in the order they were queued.  
 Lists / screens will automatically refresh once the action is completed.
 
-## Local Model Screen
-This screen displays all local models currently available to your local Ollama.
+## Local Model Tab
+Displays all local models currently available to your local Ollama.
 `ctrl+q` will quit the application.  
 `ctrl+r` will refresh the list.  
 `enter` will open its details dialog for the selected item.
@@ -29,7 +30,7 @@ This screen displays all local models currently available to your local Ollama.
 `ctrl+d` will bring up the copy model dialog which will prompt you for the name to copy the model to.  
 `ctrl+c` will jump to chat tab and select the model highlighted model.  
 
-### Local Model Screen keys
+### Local Model Tab keys
 
 | Key      | Command                                  |
 |----------|------------------------------------------|
@@ -43,8 +44,8 @@ This screen displays all local models currently available to your local Ollama.
 | `ctrl+c` | Copy selected model to new name          |
 
 
-## Site Model Screen
-This screen allows you to search for models on [Ollama.com](https://ollama.com/library?sort=popular) directly within the terminal.  
+## Site Model Tab
+This tab allows you to search for models on [Ollama.com](https://ollama.com/library?sort=popular) directly within the terminal.  
 Ollama.com does not publish an API for this so a web scrapping method is used to get the data.  
 Web scraping is not an overly reliable method to get structured data so this search / list may break if Ollama updates their site.  
 
@@ -62,7 +63,7 @@ You can queue as many pulls as you like. They will be processed in order one at 
 You can use `ctrl+b` to open the model card in a web browser
 
 
-### Site Model Screen keys
+### Site Model Tab keys
 
 | Key      | Command                                  |
 |----------|------------------------------------------|
@@ -71,13 +72,13 @@ You can use `ctrl+b` to open the model card in a web browser
 | `ctrl+r` | Refresh local model grid list            |
 
 
-## Model Tools Screen
-This screen allows you to access tools to create, modify, and publish models  
+## Tools Tab
+Tools to create, modify, and publish models  
 
 ## Chat Screen
-Chat with local LLMs  
+Chat with local LLMs and manage saved sessions
 
-### Chat Screen keys
+### Chat Tab keys
 | Key             | Command                                 |
 |-----------------|-----------------------------------------|
 | `ctrl+s`        | Toggle session list                     |
@@ -100,7 +101,7 @@ Chat with local LLMs
 | `escape` | Exit message edit mode                  |
 
 
-### Chat Screen Session Panel keys
+### Chat Tab Session Panel keys
 
 | Key                     | Command                                  |
 |-------------------------|------------------------------------------|
@@ -109,7 +110,7 @@ Chat with local LLMs
 | `delete`                | Delete selected session and related tabs |
 
 
-### Chat Slash Commands:
+### Chat Tab input Slash Commands:
 Chat Commands:
 * /? or /help - Show slash command help dialog
 * /tab.# - Switch to the tab with the given number
@@ -122,9 +123,23 @@ Chat Commands:
 * /session.temp [temperature] - Select temperature input or set temperature in current tab
 * /session.delete - Delete the chat session for current tab
 * /session.export - Export the conversation in current tab to a Markdown file
+* /session.system_prompt [system_prompt] - Set system prompt in current tab
+* /session.to_prompt submit_on_load [prompt_name] - Copy current session to new custom prompt. submit_on_load = {0|1}
+* /prompt.load prompt_name - Load a custom prompt using current tabs model and temperature
 
-## Logs Screen
-This screen allows viewing any messages that have passed through the status bar.
+## Prompts Tab
+Allows you to create, edit and execute custom prompts
+
+### Prompts Tab keys
+
+| Key                    | Command                                |
+|------------------------|----------------------------------------|
+| `enter` or `dbl click` | Load selected prompt into new chat tab |
+| `e`                    | Edit the selected prompt               |
+| `delete`               | Delete selected prompt                 |
+
+## Logs Tab
+Allows viewing any messages that have passed through the status bar.
 
 ## Publishing
 
@@ -143,8 +158,8 @@ If you have Ollama running on multiple machines you must import each machines ke
 
 ## Command line arguments
 ```
-usage: parllama [-h] [-v] [-d DATA_DIR] [-u OLLAMA_URL] [-t THEME_NAME] [-m {dark,light}] [-s {local,site,tools,create,chat,logs}] [-p PS_POLL]
-                [--restore-defaults] [--clear-cache] [--purge-chats] [--no-save] [--no-chat-save]
+usage: parllama [-h] [-v] [-d DATA_DIR] [-u OLLAMA_URL] [-t THEME_NAME] [-m {dark,light}] [-s {local,site,chat,prompts,tools,create,logs}]
+                [-p PS_POLL] [-a {0,1}] [--restore-defaults] [--clear-cache] [--purge-chats] [--purge-prompts] [--no-save] [--no-chat-save]
 
 PAR LLAMA -- Ollama TUI.
 
@@ -159,13 +174,16 @@ options:
                         Theme name. Defaults to par
   -m {dark,light}, --theme-mode {dark,light}
                         Dark / Light mode. Defaults to dark
-  -s {local,site,tools,create,chat,logs}, --starting-screen {local,site,tools,create,chat,logs}
+  -s {local,site,chat,prompts,tools,create,logs}, --starting-screen {local,site,chat,prompts,tools,create,logs}
                         Starting screen. Defaults to local
   -p PS_POLL, --ps-poll PS_POLL
                         Interval in seconds to poll ollama ps command. 0 = disable. Defaults to 3
+  -a {0,1}, --auto-name-session {0,1}
+                        Auto name session using LLM
   --restore-defaults    Restore default settings and theme
   --clear-cache         Clear cached data
   --purge-chats         Purge all chat history
+  --purge-prompts       Purge all custom prompts
   --no-save             Prevent saving settings for this session.
   --no-chat-save        Prevent saving chats for this session.
 ```

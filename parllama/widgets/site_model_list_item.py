@@ -1,4 +1,5 @@
 """Site Model List Item."""
+
 from __future__ import annotations
 
 from textual.app import ComposeResult

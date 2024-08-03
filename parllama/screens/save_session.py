@@ -1,4 +1,5 @@
 """Provides a modal dialog for prompting for a save screen."""
+
 from __future__ import annotations
 
 from pathlib import Path
