@@ -139,7 +139,7 @@ jobs:
         #  git push origin "release-v$VERSION"
         #el
         run: |
-          if  [[ ${{ github.ref }} == "refs/tags/release-v"* ]] ; then
+          if  [[ "${{ github.ref }}" == "refs/tags/release-v"* ]] ; then
             echo "do_release=true" >> $GITHUB_OUTPUT
           else
             echo "do_release=false" >> $GITHUB_OUTPUT
