@@ -25,6 +25,8 @@ class ChatPrompt(ChatMessageContainer):
     _description: str
     messages: list[OllamaMessage]
     last_updated: datetime.datetime
+    source: str | None
+
     _submit_on_load: bool
     _id_to_msg: dict[str, OllamaMessage]
 
@@ -38,11 +40,13 @@ class ChatPrompt(ChatMessageContainer):
         messages: list[OllamaMessage] | list[dict] | None = None,
         submit_on_load: bool = False,
         last_updated: datetime.datetime | None = None,
+        source: str | None = None,
     ):
         """Initialize the chat prompt"""
         super().__init__(id=id, name=name, messages=messages, last_updated=last_updated)
         self._description = description
         self._submit_on_load = submit_on_load
+        self.source = source
 
     def load(self) -> None:
         """Load chat prompts from files"""
@@ -109,6 +113,7 @@ class ChatPrompt(ChatMessageContainer):
         self.id = uuid.uuid4().hex
         self._name = prompt_name
         self._description = ""
+        self.source = ""
         self.messages.clear()
         self._id_to_msg.clear()
         self._loaded = False
@@ -137,6 +142,7 @@ class ChatPrompt(ChatMessageContainer):
                 "description": self._description,
                 "submit_on_load": self._submit_on_load,
                 "messages": [m.__dict__() for m in self.messages],
+                "source": self.source,
             },
             default=str,
             indent=indent,
@@ -157,6 +163,7 @@ class ChatPrompt(ChatMessageContainer):
                 else None
             ),
             submit_on_load=data.get("submit_on_load", False),
+            source=data.get("source"),
         )
 
     @staticmethod

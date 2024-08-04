@@ -106,6 +106,10 @@ class EditPromptDialog(ModalScreen[bool]):
                     ),
                 )
                 yield FieldSet(
+                    "Source", Input(value=self.edit_prompt.source, id="source")
+                )
+
+                yield FieldSet(
                     "Last updated",
                     Label(str(self.edit_prompt.last_updated), id="last_updated"),
                 )
@@ -162,8 +166,11 @@ class EditPromptDialog(ModalScreen[bool]):
             self.notify("System prompt moved to the top", timeout=5)
 
         with self.prompt.batch_changes():
-            self.prompt.name = self.query_one("#name", Input).value
-            self.prompt.description = self.query_one("#description", Input).value
+            self.prompt.name = self.query_one("#name", Input).value.strip()
+            self.prompt.description = self.query_one(
+                "#description", Input
+            ).value.strip()
+            self.prompt.source = self.query_one("#source", Input).value.strip()
             self.prompt.submit_on_load = self.query_one(
                 "#submit_on_load", Checkbox
             ).value
