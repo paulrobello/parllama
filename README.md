@@ -297,6 +297,9 @@ if anything remains to be fixed before the commit is allowed.
 
 ## What's new
 
+### v0.3.5
+* Added ability to import custom prompts from [fabric](https://github.com/danielmiessler/fabric)
+
 ### v0.3.4
 * Added custom prompt library support  (Work in progress)
 * Added cli option and environment var to enable auto naming of sessions using LLM (Work in progress)

@@ -52,12 +52,12 @@
     },
     "attrs": {
       "hashes": [
-        "sha256:935dc3b529c262f6cf76e50877d35a4bd3c1de194fd41f47a2b7ae8f19971f30",
-        "sha256:99b87a485a5820b23b879f04c2305b44b951b502fd64be915879d77a7e8fc6f1"
+        "sha256:377b47448cb61fea38533f671fba0d0f8a96fd58facd4dc518e3dac9dbea0905",
+        "sha256:adbdec84af72d38be7628e353a09b6a6790d15cd71819f6e9d7b0faa8a125745"
       ],
       "index": "pypi",
       "markers": "python_version >= '3.7'",
-      "version": "==23.2.0"
+      "version": "==24.1.0"
     },
     "beautifulsoup4": {
       "hashes": [
@@ -1006,12 +1006,12 @@
     },
     "attrs": {
       "hashes": [
-        "sha256:935dc3b529c262f6cf76e50877d35a4bd3c1de194fd41f47a2b7ae8f19971f30",
-        "sha256:99b87a485a5820b23b879f04c2305b44b951b502fd64be915879d77a7e8fc6f1"
+        "sha256:377b47448cb61fea38533f671fba0d0f8a96fd58facd4dc518e3dac9dbea0905",
+        "sha256:adbdec84af72d38be7628e353a09b6a6790d15cd71819f6e9d7b0faa8a125745"
       ],
       "index": "pypi",
       "markers": "python_version >= '3.7'",
-      "version": "==23.2.0"
+      "version": "==24.1.0"
     },
     "backports.tarfile": {
       "hashes": [
@@ -1193,7 +1193,7 @@
         "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44",
         "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"
       ],
-      "markers": "os_name == 'nt'",
+      "markers": "sys_platform == 'win32'",
       "version": "==0.4.6"
     },
     "dill": {
