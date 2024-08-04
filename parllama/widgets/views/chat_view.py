@@ -183,13 +183,12 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
             RegisterForUpdates(
                 widget=self,
                 event_names=[
-                    "LocalModelDeleted",
                     "LocalModelListLoaded",
-                    "SessionSelected",
                     "DeleteSession",
+                    "SessionSelected",
                     "PromptListLoaded",
-                    "PromptSelected",
                     "PromptListChanged",
+                    "PromptSelected",
                 ],
             )
         )
@@ -232,8 +231,6 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
     def on_local_model_list_loaded(self, evt: LocalModelListLoaded) -> None:
         """Model list changed"""
         evt.stop()
-        for tab in self.chat_tabs.query(ChatTab):
-            tab.on_local_model_list_loaded(evt)
         self.model_list_auto_complete_list = [
             f"/session.model {m.model.name}" for m in dm.models
         ]
@@ -526,7 +523,6 @@ Chat Commands:
         """New tab action"""
         tab = ChatTab(user_input=self.user_input, session_list=self.session_list)
         await self.chat_tabs.add_pane(tab)
-        tab.on_local_model_list_loaded(LocalModelListLoaded())
         self.chat_tabs.active = str(tab.id)
 
     async def remove_active_tab(self) -> None:

@@ -33,7 +33,6 @@ from parllama.messages.messages import ChatMessage, LogIt, PromptSelected
 from parllama.messages.messages import ChatMessageSent
 from parllama.messages.messages import DeleteSession
 from parllama.messages.messages import LocalModelDeleted
-from parllama.messages.messages import LocalModelListLoaded
 from parllama.messages.messages import RegisterForUpdates
 from parllama.messages.messages import SessionSelected
 from parllama.messages.messages import SessionUpdated
@@ -50,6 +49,7 @@ from parllama.widgets.chat_message_widget import ChatMessageWidget
 from parllama.widgets.chat_message_list import ChatMessageList
 from parllama.widgets.input_blur_submit import InputBlurSubmit
 from parllama.widgets.input_tab_complete import InputTabComplete
+from parllama.widgets.local_model_select import LocalModelSelect
 from parllama.widgets.session_list import SessionList
 
 
@@ -101,8 +101,8 @@ class ChatTab(TabPane):
         )
         self.session_list = session_list
         self.user_input = user_input
-        self.model_select: Select[str] = Select(
-            id="model_name", options=[], prompt="Select Model"
+        self.model_select: LocalModelSelect = LocalModelSelect(
+            id="model_name",
         )
         self.temperature_input: InputBlurSubmit = InputBlurSubmit(
             id="temperature_input",
@@ -250,22 +250,6 @@ class ChatTab(TabPane):
                 self.model_select.value = model_name
                 return
         self.model_select.value = Select.BLANK
-
-    @on(LocalModelListLoaded)
-    def on_local_model_list_loaded(self, evt: LocalModelListLoaded) -> None:
-        """Model list changed"""
-        evt.stop()
-        if self.model_select.value != Select.BLANK:
-            old_v = self.model_select.value
-        elif settings.last_chat_model:
-            old_v = settings.last_chat_model
-        else:
-            old_v = Select.BLANK
-        opts = dm.get_model_select_options()
-        self.model_select.set_options(opts)
-        for _, v in opts:
-            if v == old_v:
-                self.model_select.value = old_v
 
     @on(Button.Pressed, "#new_button")
     async def on_new_button_pressed(self, event: Button.Pressed) -> None:
@@ -557,8 +541,4 @@ class ChatTab(TabPane):
     def on_model_deleted(self, event: LocalModelDeleted) -> None:
         """Model deleted check if the currently selected model."""
         event.stop()
-
-        if event.model_name == self.model_select.value:
-            self.model_select.value = Select.BLANK
-            self.on_local_model_list_loaded(LocalModelListLoaded())
-            self.update_control_states()
+        self.update_control_states()

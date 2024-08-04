@@ -44,7 +44,7 @@ from parllama.icons import TRASH_EMOJI
 DECIMAL_PRECESSION = 5
 
 ScreenType: TypeAlias = Literal[
-    "Local", "Site", "Chat", "Prompts", "Tools", "Create", "Logs"
+    "Local", "Site", "Chat", "Prompts", "Tools", "Create", "Options", "Logs"
 ]
 valid_screens: list[ScreenType] = [
     "Local",
@@ -53,6 +53,7 @@ valid_screens: list[ScreenType] = [
     "Prompts",
     "Tools",
     "Create",
+    "Options",
     "Logs",
 ]
 

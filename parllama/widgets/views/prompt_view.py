@@ -14,19 +14,17 @@ from textual.widgets import Button, Select, Label, Input
 
 from parllama.chat_manager import chat_manager
 from parllama.chat_prompt import ChatPrompt
-from parllama.data_manager import dm
 from parllama.dialogs.edit_prompt_dialog import EditPromptDialog
 from parllama.dialogs.yes_no_dialog import YesNoDialog
 from parllama.messages.messages import (
     DeletePrompt,
     RegisterForUpdates,
     PromptDeleteRequested,
-    LocalModelListLoaded,
     PromptSelected,
-    LocalModelDeleted,
 )
 from parllama.models.settings_data import settings
 from parllama.widgets.input_blur_submit import InputBlurSubmit
+from parllama.widgets.local_model_select import LocalModelSelect
 from parllama.widgets.prompt_list import PromptList
 
 
@@ -60,8 +58,8 @@ class PromptView(Container):
         """Initialise the screen."""
         super().__init__(**kwargs)
         self.list_view = PromptList(id="prompt_list")
-        self.model_select: Select[str] = Select(
-            id="model_name", options=[], prompt="Select Model"
+        self.model_select: LocalModelSelect = LocalModelSelect(
+            id="model_name",
         )
         self.temperature_input: InputBlurSubmit = InputBlurSubmit(
             id="temperature_input",
@@ -77,7 +75,6 @@ class PromptView(Container):
 
     def compose(self) -> ComposeResult:
         """Compose the content of the view."""
-
         with Vertical():
             with Horizontal(id="tool_bar"):
                 yield Button("New", id="new_prompt", variant="primary")
@@ -101,8 +98,6 @@ class PromptView(Container):
                 event_names=[
                     "DeletePrompt",
                     "PromptDeleteRequested",
-                    "LocalModelDeleted",
-                    "LocalModelListLoaded",
                 ],
             )
         )
@@ -143,23 +138,6 @@ class PromptView(Container):
 
         chat_manager.add_prompt(prompt)
         self.notify("Prompt added")
-
-    @on(LocalModelListLoaded)
-    @on(LocalModelDeleted)
-    def on_local_model_list_loaded(self, event: Message) -> None:
-        """Model list changed"""
-        event.stop()
-        if self.model_select.value != Select.BLANK:
-            old_v = self.model_select.value
-        elif settings.last_chat_model:
-            old_v = settings.last_chat_model
-        else:
-            old_v = Select.BLANK
-        opts = dm.get_model_select_options()
-        self.model_select.set_options(opts)
-        for _, v in opts:
-            if v == old_v:
-                self.model_select.value = old_v
 
     @on(Input.Submitted, "#temperature_input")
     def temperature_input_changed(self, event: Message) -> None:

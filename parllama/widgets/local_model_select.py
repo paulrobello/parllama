@@ -18,8 +18,9 @@ class LocalModelSelect(Select[str]):
 
     def __init__(self, **kwargs) -> None:
         """Initialise the screen."""
-        super().__init__(**kwargs)
-        self.set_options(dm.get_model_select_options())
+        super().__init__(
+            prompt="Select Model", options=dm.get_model_select_options(), **kwargs
+        )
 
     async def on_mount(self) -> None:
         """Set up the dialog once the DOM is ready."""
@@ -45,7 +46,10 @@ class LocalModelSelect(Select[str]):
         else:
             old_v = Select.BLANK
         opts = dm.get_model_select_options()
-        self.set_options(opts)
+        with self.prevent(Select.Changed):
+            self.set_options(opts)
         for _, v in opts:
             if v == old_v:
                 self.value = old_v
+                return
+        self.value = Select.BLANK

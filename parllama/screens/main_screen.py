@@ -24,6 +24,7 @@ from parllama.widgets.views.create_model_view import ModelCreateView
 from parllama.widgets.views.local_model_view import LocalModelView
 from parllama.widgets.views.log_view import LogView
 from parllama.widgets.views.model_tools_view import ModelToolsView
+from parllama.widgets.views.options_view import OptionsView
 from parllama.widgets.views.prompt_view import PromptView
 from parllama.widgets.views.site_model_view import SiteModelView
 
@@ -38,13 +39,14 @@ class MainScreen(Screen[None]):
     status_bar: Static
     ps_status_bar: Static
     tabbed_content: TabbedContent
-    log_view: LogView
     prompt_view: PromptView
     local_view: LocalModelView
     site_view: SiteModelView
+    chat_view: ChatView
     model_tools_view: ModelToolsView
     create_view: ModelCreateView
-    chat_view: ChatView
+    options_view: OptionsView
+    log_view: LogView
 
     def __init__(self, **kwargs) -> None:
         """Initialize the Main screen."""
@@ -59,6 +61,7 @@ class MainScreen(Screen[None]):
         self.prompt_view = PromptView(id="prompt_view")
         self.create_view = ModelCreateView(id="model_create")
         self.model_tools_view = ModelToolsView(id="model_tools")
+        self.options_view = OptionsView(id="options")
         self.log_view = LogView()
 
     async def on_mount(self) -> None:
@@ -92,6 +95,8 @@ class MainScreen(Screen[None]):
                 yield self.model_tools_view
             with TabPane("Create", id="Create"):
                 yield self.create_view
+            with TabPane("Options", id="Options"):
+                yield self.options_view
             with TabPane("Logs", id="Logs"):
                 yield self.log_view
 
