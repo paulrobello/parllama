@@ -197,7 +197,7 @@ class ParLlamaApp(App[None]):
                 f"""Theme: "{settings.theme_name}" in {settings.theme_mode} mode"""
             )
         )
-        self.post_message_all(StatusMessage(f"Last screen: {settings.last_screen}"))
+        self.post_message_all(StatusMessage(f"Last screen: {settings.last_tab}"))
         self.post_message_all(
             StatusMessage(f"Last chat model: {settings.last_chat_model}")
         )

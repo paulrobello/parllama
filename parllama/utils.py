@@ -578,9 +578,14 @@ def get_args() -> Namespace:
 
     parser.add_argument(
         "-s",
-        "--starting-screen",
-        help="Starting screen. Defaults to local",
+        "--starting-tab",
+        help="Starting tab. Defaults to local",
         choices=[s.lower() for s in valid_screens],
+    )
+    parser.add_argument(
+        "--use-last-tab-on-startup",
+        help="Use last tab on startup",
+        choices=["0", "1"],
     )
 
     parser.add_argument(
@@ -605,8 +610,8 @@ def get_args() -> Namespace:
     )
 
     parser.add_argument(
-        "--clear-cache",
-        help="Clear cached data",
+        "--purge-cache",
+        help="Purge cached data",
         default=False,
         action="store_true",
     )

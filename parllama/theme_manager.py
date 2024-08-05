@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import shutil
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Tuple
 from typing import Literal
 from typing import TypeAlias
 
@@ -96,6 +96,10 @@ class ThemeManager:
     def list_themes(self) -> list[str]:
         """Get list of themes"""
         return list(self.themes.keys())
+
+    def theme_select_options(self) -> list[Tuple[str, str]]:
+        """Get select options for theme"""
+        return [(theme, theme) for theme in self.list_themes()]
 
     def theme_has_dark(self, theme_name: str) -> bool:
         """Check if theme has dark mode"""

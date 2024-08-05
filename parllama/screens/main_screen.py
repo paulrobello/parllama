@@ -79,7 +79,14 @@ class MainScreen(Screen[None]):
         yield self.status_bar
         yield self.ps_status_bar
 
-        with TabbedContent(id="tabbed_content", initial=settings.last_screen) as tc:
+        with TabbedContent(
+            id="tabbed_content",
+            initial=(
+                settings.last_tab
+                if settings.use_last_tab_on_startup
+                else settings.starting_tab
+            ),
+        ) as tc:
             self.tabbed_content = tc
             tc.loading = True
 
@@ -105,7 +112,7 @@ class MainScreen(Screen[None]):
         """Tab activated event"""
         msg.stop()
         # self.notify(f"tab activated: {msg.tab.label.plain}")
-        settings.last_screen = cast(ScreenType, msg.tab.label.plain)
+        settings.last_tab = cast(ScreenType, msg.tab.label.plain)
         settings.save_settings_to_file()
 
         self.log_view.richlog.write(f"Tab activated: {msg.tab.label.plain}")

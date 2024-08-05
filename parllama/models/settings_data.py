@@ -30,8 +30,9 @@ class Settings(BaseModel):
     chat_tab_max_length: int = 15
     settings_file: str = "settings.json"
     theme_name: str = "par"
-    starting_screen: ScreenType = "Local"
-    last_screen: ScreenType = "Local"
+    starting_tab: ScreenType = "Local"
+    last_tab: ScreenType = "Local"
+    use_last_tab_on_startup: bool = True
     last_chat_model: str = ""
     last_chat_temperature: float | None = None
     last_chat_session_id: str | None = None
@@ -82,20 +83,15 @@ class Settings(BaseModel):
             theme_file = os.path.join(self.data_dir, "themes", "par.json")
             if os.path.exists(theme_file):
                 os.unlink(theme_file)
-        if args.clear_cache:
-            if os.path.exists(self.cache_dir):
-                shutil.rmtree(self.cache_dir, ignore_errors=True)
-                os.makedirs(self.cache_dir, exist_ok=True)
+
+        if args.purge_cache:
+            self.purge_cache_folder()
 
         if args.purge_chats:
-            if os.path.exists(self.chat_dir):
-                shutil.rmtree(self.chat_dir, ignore_errors=True)
-                os.makedirs(self.chat_dir, exist_ok=True)
+            self.purge_chats_folder()
 
         if args.purge_prompts:
-            if os.path.exists(self.prompt_dir):
-                shutil.rmtree(self.prompt_dir, ignore_errors=True)
-                os.makedirs(self.prompt_dir, exist_ok=True)
+            self.purge_prompts_folder()
 
         self.load_from_file()
 
@@ -124,14 +120,35 @@ class Settings(BaseModel):
         if args.theme_mode:
             self.theme_mode = args.theme_mode
 
-        if args.starting_screen:
-            self.starting_screen = args.starting_screen.capitalize()
-            if self.starting_screen not in valid_screens:
-                self.starting_screen = "Local"
+        if args.starting_tab:
+            self.starting_tab = args.starting_tab.capitalize()
+            if self.starting_tab not in valid_screens:
+                self.starting_tab = "Local"
+
+        if args.use_last_tab_on_startup is not None:
+            self.use_last_tab_on_startup = args.use_last_tab_on_startup == "1"
 
         if args.ps_poll:
             self.ollama_ps_poll_interval = args.ps_poll
         self.save_settings_to_file()
+
+    def purge_cache_folder(self) -> None:
+        """Purge cache folder."""
+        if os.path.exists(self.cache_dir):
+            shutil.rmtree(self.cache_dir, ignore_errors=True)
+            os.makedirs(self.cache_dir, exist_ok=True)
+
+    def purge_chats_folder(self) -> None:
+        """Purge chats folder."""
+        if os.path.exists(self.chat_dir):
+            shutil.rmtree(self.chat_dir, ignore_errors=True)
+            os.makedirs(self.chat_dir, exist_ok=True)
+
+    def purge_prompts_folder(self) -> None:
+        """Purge prompts folder."""
+        if os.path.exists(self.prompt_dir):
+            shutil.rmtree(self.prompt_dir, ignore_errors=True)
+            os.makedirs(self.prompt_dir, exist_ok=True)
 
     def load_from_file(self) -> None:
         """Load settings from file."""
@@ -147,13 +164,20 @@ class Settings(BaseModel):
                 self.theme_name = data.get("theme_name", self.theme_name)
                 self.theme_mode = data.get("theme_mode", self.theme_mode)
                 self.site_models_namespace = data.get("site_models_namespace", "")
-                self.starting_screen = data.get("starting_screen", "Local")
-                if self.starting_screen not in valid_screens:
-                    self.starting_screen = "Local"
+                self.starting_tab = data.get(
+                    "starting_tab", data.get("starting_screen", "Local")
+                )
+                if self.starting_tab not in valid_screens:
+                    self.starting_tab = "Local"
 
-                self.last_screen = data.get("last_screen", "Local")
-                if self.last_screen not in valid_screens:
-                    self.last_screen = self.starting_screen
+                self.last_tab = data.get("last_tap", data.get("last_screen", "Local"))
+                if self.last_tab not in valid_screens:
+                    self.last_tab = self.starting_tab
+
+                self.use_last_tab_on_startup = data.get(
+                    "use_last_tab_on_startup", self.use_last_tab_on_startup
+                )
+
                 self.last_chat_model = data.get("last_chat_model", self.last_chat_model)
                 self.last_chat_temperature = data.get("last_chat_temperature")
                 self.last_chat_session_id = data.get(
