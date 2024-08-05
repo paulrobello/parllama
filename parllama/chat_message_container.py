@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import datetime
+from datetime import datetime, timezone
 import os
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -26,7 +26,7 @@ class ChatMessageContainer(ParEventSystemBase):
     """Name of the chat message container"""
     messages: list[OllamaMessage]
     """Messages in the chat message container"""
-    last_updated: datetime.datetime
+    last_updated: datetime
     """Last updated timestamp of the chat message container"""
 
     _id_to_msg: dict[str, OllamaMessage]
@@ -41,7 +41,7 @@ class ChatMessageContainer(ParEventSystemBase):
         id: str | None = None,  # pylint: disable=redefined-builtin
         name: str | None = None,
         messages: list[OllamaMessage] | list[dict] | None = None,
-        last_updated: datetime.datetime | None = None,
+        last_updated: datetime | None = None,
     ):
         """Initialize the chat prompt"""
         super().__init__(id=id)
@@ -60,7 +60,7 @@ class ChatMessageContainer(ParEventSystemBase):
             self.messages.append(msg)
             self._id_to_msg[msg.id] = msg
             self.mount(msg)
-        self.last_updated = last_updated or datetime.datetime.now()
+        self.last_updated = last_updated or datetime.now(timezone.utc)
         self._loaded = messages is not None
         self._batching = False
 
@@ -86,7 +86,7 @@ class ChatMessageContainer(ParEventSystemBase):
         else:
             self.messages.append(msg)
         self._id_to_msg[msg.id] = msg
-        self.last_updated = datetime.datetime.now()
+        self.last_updated = datetime.now(timezone.utc)
         self.mount(msg)
         self._changes.add("messages")
         self._loaded = True
@@ -125,7 +125,7 @@ class ChatMessageContainer(ParEventSystemBase):
             if msg.content == value.content:
                 return
             msg.content = value.content
-            self.last_updated = datetime.datetime.now()
+            self.last_updated = datetime.now(timezone.utc)
             self._changes.add("messages")
             self._changes.add("system_prompt")
             self.save()
@@ -166,7 +166,7 @@ class ChatMessageContainer(ParEventSystemBase):
             if msg.id == msg_id:
                 self._id_to_msg[msg_id] = value
                 self.messages[i] = value
-                self.last_updated = datetime.datetime.now()
+                self.last_updated = datetime.now(timezone.utc)
                 self._changes.add("messages")
                 self.save()
                 return
@@ -178,7 +178,7 @@ class ChatMessageContainer(ParEventSystemBase):
         for i, msg in enumerate(self.messages):
             if msg.id == key:
                 self.messages.pop(i)
-                self.last_updated = datetime.datetime.now()
+                self.last_updated = datetime.now(timezone.utc)
                 self._changes.add("messages")
                 self.save()
                 return

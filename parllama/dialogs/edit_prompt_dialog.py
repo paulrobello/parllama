@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import datetime
+from datetime import datetime, timezone
 
 from textual import on
 from textual.app import ComposeResult
@@ -175,7 +175,7 @@ class EditPromptDialog(ModalScreen[bool]):
                 "#submit_on_load", Checkbox
             ).value
             self.prompt.replace_messages(self.edit_prompt.messages)
-            self.prompt.last_updated = datetime.datetime.now()
+            self.prompt.last_updated = datetime.now(timezone.utc)
         # self.post_message(LogIt(self.prompt))
         self.dismiss(True)
 

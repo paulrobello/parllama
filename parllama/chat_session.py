@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import datetime
+from datetime import datetime, timezone
 import os
 import uuid
 from collections.abc import Iterator
@@ -56,7 +56,7 @@ class ChatSession(ChatMessageContainer):
         llm_model_name: str,
         options: OllamaOptions | None = None,
         messages: list[OllamaMessage] | list[dict] | None = None,
-        last_updated: datetime.datetime | None = None,
+        last_updated: datetime | None = None,
     ):
         """Initialize the chat session"""
         super().__init__(id=id, name=name, messages=messages, last_updated=last_updated)
@@ -191,13 +191,13 @@ class ChatSession(ChatMessageContainer):
             self.post_message(ParChatUpdated(parent_id=self.id, message_id=msg.id))
 
             # num_tokens: int = 0
-            # start_time = datetime.datetime.now()
+            # start_time = datetime.now(timezone.utc)
             # ttft: float = 0.0
             for stream_chunk in stream:
                 chunk: ChatChunk = ChatChunk(**stream_chunk)
                 # self.log_it(chunk)
                 if chunk.message.content:
-                    # elapsed_time = datetime.datetime.now() - start_time
+                    # elapsed_time = datetime.now(timezone.utc) - start_time
                     # if num_tokens == 0:
                     #     ttft = elapsed_time.total_seconds()
                     # num_tokens += 1
@@ -307,7 +307,7 @@ class ChatSession(ChatMessageContainer):
         session = ChatSession(
             id=data.get("id", data.get("id", data.get("session_id"))),
             name=data.get("name", data.get("name", data.get("session_name"))),
-            last_updated=datetime.datetime.fromisoformat(data["last_updated"]),
+            last_updated=datetime.fromisoformat(data["last_updated"]),
             llm_model_name=data["llm_model_name"],
             options=data.get("options"),
             messages=[OllamaMessage(**m) for m in messages] if load_messages else None,
@@ -347,7 +347,7 @@ class ChatSession(ChatMessageContainer):
             # self.log_it(f"CS is not dirty, not notifying: {self.name}")
             return False  # No need to save if no changes
 
-        self.last_updated = datetime.datetime.now()
+        self.last_updated = datetime.now(timezone.utc)
         if "system_prompt" in self._changes:
             msg = self.system_prompt
             if msg is not None:

@@ -8,7 +8,7 @@ import shutil
 from collections.abc import Generator
 from collections.abc import Iterator
 from collections.abc import Mapping
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Optional
 from typing import Literal
 
@@ -258,7 +258,7 @@ class DataManager(ParEventSystemBase):
             with open(file_name, "w", encoding="utf-8") as f:
                 f.write(
                     SiteModelData(
-                        models=models, last_update=datetime.now()
+                        models=models, last_update=datetime.now(timezone.utc)
                     ).model_dump_json(indent=4)
                 )
         self.site_models = [SiteModelListItem(m) for m in models]

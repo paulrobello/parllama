@@ -26,6 +26,8 @@ textual-fspicker = "*"
 google-api-python-client = "*"
 youtube-transcript-api = "*"
 isodate2 = "*"
+pypdf = "*"
+semver = "*"
 
 [dev-packages]
 mypy = "*"

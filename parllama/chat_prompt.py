@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import datetime
+from datetime import datetime, timezone
 import os
 import uuid
 from dataclasses import dataclass
@@ -24,7 +24,7 @@ class ChatPrompt(ChatMessageContainer):
 
     _description: str
     messages: list[OllamaMessage]
-    last_updated: datetime.datetime
+    last_updated: datetime
     source: str | None
 
     _submit_on_load: bool
@@ -39,7 +39,7 @@ class ChatPrompt(ChatMessageContainer):
         description: str,
         messages: list[OllamaMessage] | list[dict] | None = None,
         submit_on_load: bool = False,
-        last_updated: datetime.datetime | None = None,
+        last_updated: datetime | None = None,
         source: str | None = None,
     ):
         """Initialize the chat prompt"""
@@ -155,7 +155,7 @@ class ChatPrompt(ChatMessageContainer):
         return ChatPrompt(
             id=data["id"],
             name=data["name"],
-            last_updated=datetime.datetime.fromisoformat(data["last_updated"]),
+            last_updated=datetime.fromisoformat(data["last_updated"]),
             description=data.get("description", ""),
             messages=(
                 [OllamaMessage(**m) for m in data["messages"]]
@@ -192,7 +192,7 @@ class ChatPrompt(ChatMessageContainer):
         if not self.is_dirty:
             # self.log_it(f"CP is not dirty, not notifying: {self.name}")
             return False  # No need to save if no changes
-        self.last_updated = datetime.datetime.now()
+        self.last_updated = datetime.now(timezone.utc)
         nc: PromptChanges = PromptChanges()
         for change in self._changes:
             if change in prompt_change_list:

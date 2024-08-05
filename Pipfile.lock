@@ -1,7 +1,7 @@
 {
   "_meta": {
     "hash": {
-      "sha256": "6ab28310f7dbbc19a4cae6dbaed7693b81b970873f64580ed7e936e6395aa1c9"
+      "sha256": "e0e2eab3e2d1bb5654807d4c83e68e8653307f74ae11f6e3835cb15e2191639e"
     },
     "pipfile-spec": 6,
     "requires": {
@@ -499,6 +499,15 @@
       "markers": "python_version >= '3.1'",
       "version": "==3.1.2"
     },
+    "pypdf": {
+      "hashes": [
+        "sha256:64b31da97eda0771ef22edb1bfecd5deee4b72c3d1736b7df2689805076d6418",
+        "sha256:b2f37fe9a3030aa97ca86067a56ba3f9d3565f9a791b305c7355d8392c30d91b"
+      ],
+      "index": "pypi",
+      "markers": "python_version >= '3.6'",
+      "version": "==4.3.1"
+    },
     "pyperclip": {
       "hashes": [
         "sha256:b7de0142ddc81bfc5c7507eea19da920b92252b548b96186caf94a5e2527d310"
@@ -568,6 +577,15 @@
       ],
       "markers": "python_version >= '3.6' and python_version < '4'",
       "version": "==4.9"
+    },
+    "semver": {
+      "hashes": [
+        "sha256:6253adb39c70f6e51afed2fa7152bcd414c411286088fb4b9effb133885ab4cc",
+        "sha256:b1ea4686fe70b981f85359eda33199d60c53964284e0cfb4977d243e37cf4bf4"
+      ],
+      "index": "pypi",
+      "markers": "python_version >= '3.7'",
+      "version": "==3.0.2"
     },
     "simplejson": {
       "hashes": [

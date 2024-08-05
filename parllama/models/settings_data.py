@@ -20,7 +20,7 @@ from parllama.utils import valid_tabs
 class Settings(BaseModel):
     """Model for application settings."""
 
-    first_run: bool = True
+    show_first_run: bool = True
     check_for_updates: bool = False
     last_version_check: datetime | None = None
     new_version_notified: bool = False
@@ -213,6 +213,9 @@ class Settings(BaseModel):
                     self.last_version_check = datetime.fromisoformat(lvc)
                 else:
                     self.last_version_check = None
+
+                self.show_first_run = data.get("show_first_run", self.show_first_run)
+
         except FileNotFoundError:
             pass  # If file does not exist, continue with default settings
 
@@ -242,6 +245,15 @@ class Settings(BaseModel):
     def save(self) -> None:
         """Persist settings"""
         self.save_settings_to_file()
+
+    @property
+    def initial_tab(self) -> TabType:
+        """Return initial tab"""
+        if settings.show_first_run:
+            return "Options"
+        if settings.use_last_tab_on_startup:
+            return settings.last_tab
+        return settings.starting_tab
 
 
 settings = Settings()

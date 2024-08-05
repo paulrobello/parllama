@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import cast, Sequence, Any, Mapping, Tuple
 from typing import Literal
 from typing import Optional
@@ -39,7 +39,7 @@ class SiteModelData(BaseModel):
     """Ollama Site Model Data."""
 
     models: list[SiteModel]
-    last_update: datetime = datetime.now()
+    last_update: datetime = datetime.now(timezone.utc)
 
 
 class ModelDetails(BaseModel):

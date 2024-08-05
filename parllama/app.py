@@ -36,8 +36,10 @@ from textual.widgets import TextArea
 from parllama import __application_title__
 from parllama.chat_manager import chat_manager
 from parllama.chat_manager import ChatManager
+from parllama.check_for_updates import update_manager
 from parllama.data_manager import dm
 from parllama.dialogs.help_dialog import HelpDialog
+from parllama.dialogs.information import InformationDialog
 from parllama.messages.messages import (
     ChangeTab,
     LogIt,
@@ -129,6 +131,7 @@ class ParLlamaApp(App[None]):
         dm.set_app(self)
         chat_manager.set_app(self)
         theme_manager.set_app(self)
+        update_manager.set_app(self)
 
         self.job_timer = None
         self.ps_timer = None
@@ -171,6 +174,9 @@ class ParLlamaApp(App[None]):
     async def on_mount(self) -> None:
         """Display the main or locked screen."""
         await self.push_screen(self.main_screen)
+
+        await update_manager.check_for_updates()
+
         self.post_message_all(StatusMessage(f"Data folder: {settings.data_dir}"))
         self.post_message_all(StatusMessage(f"Chat folder: {settings.chat_dir}"))
         self.post_message_all(StatusMessage(f"Prompt folder: {settings.prompt_dir}"))
@@ -224,6 +230,27 @@ class ParLlamaApp(App[None]):
         self.job_timer = self.set_timer(1, self.do_jobs)
         if settings.ollama_ps_poll_interval > 0:
             self.ps_timer = self.set_timer(1, self.update_ps)
+
+        if settings.show_first_run:
+            self.set_timer(1, self.show_first_run)
+
+    async def show_first_run(self) -> None:
+        """Show first run screen"""
+        settings.show_first_run = False
+        settings.save()
+        await self.app.push_screen(
+            InformationDialog(
+                title="Welcome",
+                message="""
+Thank your for trying ParLlama!
+Please take a moment to familiarize yourself with the the various options.
+New options are being added all the time. Check out Whats New on the repo.
+[link]https://github.com/paulrobello/parllama?tab=readme-ov-file#whats-new[/link]
+By default ParLlama makes not attempt to connect to the internet.
+If you would like to auto check for updates, you can enable it in the Startup section of Options.
+                """,
+            )
+        )
 
     def action_noop(self) -> None:
         """Do nothing"""
@@ -781,7 +808,7 @@ class ParLlamaApp(App[None]):
             self.notify(
                 event.msg,
                 severity=event.severity,
-                timeout=5 if event.severity != "information" else 3,
+                timeout=event.timeout or 5,
             )
 
     def log_it(self, msg: ConsoleRenderable | RichCast | str | object) -> None:
