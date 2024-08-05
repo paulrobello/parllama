@@ -6,6 +6,7 @@ import functools
 import os
 import shutil
 from argparse import Namespace
+from datetime import datetime
 
 import ollama
 import simplejson as json
@@ -18,6 +19,11 @@ from parllama.utils import valid_tabs
 
 class Settings(BaseModel):
     """Model for application settings."""
+
+    first_run: bool = True
+    check_for_updates: bool = False
+    last_version_check: datetime | None = None
+    new_version_notified: bool = False
 
     no_save: bool = False
     no_save_chat: bool = False
@@ -196,6 +202,17 @@ class Settings(BaseModel):
                 self.chat_tab_max_length = max(
                     8, data.get("chat_tab_max_length", self.chat_tab_max_length)
                 )
+                self.check_for_updates = data.get(
+                    "check_for_updates", self.check_for_updates
+                )
+                self.new_version_notified = data.get(
+                    "new_version_notified", self.new_version_notified
+                )
+                lvc = data.get("last_version_check")
+                if lvc:
+                    self.last_version_check = datetime.fromisoformat(lvc)
+                else:
+                    self.last_version_check = None
         except FileNotFoundError:
             pass  # If file does not exist, continue with default settings
 

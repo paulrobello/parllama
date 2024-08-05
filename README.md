@@ -306,6 +306,8 @@ if anything remains to be fixed before the commit is allowed.
 
 ### v0.3.5
 * Added Options tab
+* Added option to check for new versions
+* Added first time launch welcome
 * Added ability to import custom prompts from [fabric](https://github.com/danielmiessler/fabric)
 
 ### v0.3.4

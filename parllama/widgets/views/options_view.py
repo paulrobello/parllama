@@ -68,7 +68,9 @@ class OptionsView(Grid):
     def compose(self) -> ComposeResult:
         """Compose the content of the view."""
 
-        with self.prevent(Input.Changed, Input.Submitted, Select.Changed):
+        with self.prevent(
+            Input.Changed, Input.Submitted, Select.Changed, Checkbox.Changed
+        ):
             with Vertical(classes="section") as vs:
                 vs.border_title = "Folders"
                 with Horizontal(classes="folder-item"):
@@ -114,6 +116,15 @@ class OptionsView(Grid):
                         id="use_last_tab_on_startup",
                     )
                     yield Label(f"Last Tab Used: {settings.last_tab}")
+                    with Horizontal():
+                        yield Checkbox(
+                            label="Check for updates on startup",
+                            value=settings.check_for_updates,
+                            id="check_for_updates",
+                        )
+                        yield Label(
+                            f"Last check: {settings.last_version_check if settings.last_version_check else 'Never'}"
+                        )
                 yield Label("Startup Tab")
                 yield Select[str](
                     value=settings.starting_tab,
@@ -201,6 +212,22 @@ class OptionsView(Grid):
             return
         settings.save()
 
+    @on(Checkbox.Changed)
+    def on_checkbox_changed(self, event: Checkbox.Changed) -> None:
+        """Handle checkbox changed"""
+        event.stop()
+        ctrl: Checkbox = event.control
+        if ctrl.id == "check_for_updates":
+            settings.check_for_updates = bool(int(ctrl.value))
+        elif ctrl.id == "use_last_tab_on_startup":
+            settings.use_last_tab_on_startup = bool(int(ctrl.value))
+        elif ctrl.id == "auto_name_session":
+            settings.auto_name_session = bool(int(ctrl.value))
+        else:
+            self.notify(f"Unhandled input: {ctrl.id}", severity="error", timeout=8)
+            return
+        settings.save()
+
     @on(Input.Submitted)
     def on_input_submitted(self, event: Input.Submitted) -> None:
         """Handle input submission"""
@@ -217,10 +244,6 @@ class OptionsView(Grid):
             settings.ollama_host = ctrl.value
         elif ctrl.id == "ollama_ps_poll_interval":
             settings.ollama_ps_poll_interval = int(ctrl.value)
-        elif ctrl.id == "use_last_tab_on_startup":
-            settings.use_last_tab_on_startup = bool(int(ctrl.value))
-        elif ctrl.id == "auto_name_session":
-            settings.auto_name_session = bool(int(ctrl.value))
         elif ctrl.id == "chat_tab_max_length":
             settings.chat_tab_max_length = int(ctrl.value)
         else:
