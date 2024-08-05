@@ -12,7 +12,7 @@ from textual.notifications import SeverityLevel
 
 from parllama.messages.shared import SessionChanges
 from parllama.models.ollama_data import FullModel
-from parllama.utils import ScreenType
+from parllama.utils import TabType
 
 
 @dataclass
@@ -221,7 +221,7 @@ class SetModelNameLoading(Message):
 class ChangeTab(Message):
     """Change to requested tab."""
 
-    tab: ScreenType
+    tab: TabType
 
 
 @dataclass

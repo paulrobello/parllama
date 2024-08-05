@@ -158,8 +158,9 @@ If you have Ollama running on multiple machines you must import each machines ke
 
 ## Command line arguments
 ```
-usage: parllama [-h] [-v] [-d DATA_DIR] [-u OLLAMA_URL] [-t THEME_NAME] [-m {dark,light}] [-s {local,site,chat,prompts,tools,create,logs}]
-                [-p PS_POLL] [-a {0,1}] [--restore-defaults] [--clear-cache] [--purge-chats] [--purge-prompts] [--no-save] [--no-chat-save]
+usage: parllama [-h] [-v] [-d DATA_DIR] [-u OLLAMA_URL] [-t THEME_NAME] [-m {dark,light}]
+                [-s {local,site,chat,prompts,tools,create,options,logs}] [--use-last-tab-on-startup {0,1}] [-p PS_POLL] [-a {0,1}]
+                [--restore-defaults] [--purge-cache] [--purge-chats] [--purge-prompts] [--no-save] [--no-chat-save]
 
 PAR LLAMA -- Ollama TUI.
 
@@ -174,14 +175,16 @@ options:
                         Theme name. Defaults to par
   -m {dark,light}, --theme-mode {dark,light}
                         Dark / Light mode. Defaults to dark
-  -s {local,site,chat,prompts,tools,create,logs}, --starting-screen {local,site,chat,prompts,tools,create,logs}
-                        Starting screen. Defaults to local
+  -s {local,site,chat,prompts,tools,create,options,logs}, --starting-tab {local,site,chat,prompts,tools,create,options,logs}
+                        Starting tab. Defaults to local
+  --use-last-tab-on-startup {0,1}
+                        Use last tab on startup
   -p PS_POLL, --ps-poll PS_POLL
                         Interval in seconds to poll ollama ps command. 0 = disable. Defaults to 3
   -a {0,1}, --auto-name-session {0,1}
                         Auto name session using LLM
   --restore-defaults    Restore default settings and theme
-  --clear-cache         Clear cached data
+  --purge-cache         Purge cached data
   --purge-chats         Purge all chat history
   --purge-prompts       Purge all custom prompts
   --no-save             Prevent saving settings for this session.

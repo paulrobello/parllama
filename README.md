@@ -25,10 +25,14 @@
     1. [Where we are](#where-we-are)
     2. [Where we're going](#where-were-going)
 17. [What's new](#whats-new)
-    1. [v0.3.1](#v031)
-    2. [v0.3.0](#v030)
-    3. [v0.2.51](#v0251)
-    4. [v0.2.5](#v025)
+    1. [v0.3.5](#v035)
+    2. [v0.3.4](#v034)
+    3. [v0.3.3](#v033)
+    4. [v0.3.2](#v032)
+    5. [v0.3.1](#v031)
+    6. [v0.3.0](#v030)
+    7. [v0.2.51](#v0251)
+    8. [v0.2.5](#v025)
 
 ## About
 PAR LLAMA is a TUI application designed for easy management and use of Ollama based LLMs.
@@ -107,8 +111,9 @@ make first-setup
 
 ## Command line arguments
 ```
-usage: parllama [-h] [-v] [-d DATA_DIR] [-u OLLAMA_URL] [-t THEME_NAME] [-m {dark,light}] [-s {local,site,chat,prompts,tools,create,logs}]
-                [-p PS_POLL] [-a {0,1}] [--restore-defaults] [--clear-cache] [--purge-chats] [--purge-prompts] [--no-save] [--no-chat-save]
+usage: parllama [-h] [-v] [-d DATA_DIR] [-u OLLAMA_URL] [-t THEME_NAME] [-m {dark,light}]
+                [-s {local,site,chat,prompts,tools,create,options,logs}] [--use-last-tab-on-startup {0,1}] [-p PS_POLL] [-a {0,1}]
+                [--restore-defaults] [--purge-cache] [--purge-chats] [--purge-prompts] [--no-save] [--no-chat-save]
 
 PAR LLAMA -- Ollama TUI.
 
@@ -123,14 +128,16 @@ options:
                         Theme name. Defaults to par
   -m {dark,light}, --theme-mode {dark,light}
                         Dark / Light mode. Defaults to dark
-  -s {local,site,chat,prompts,tools,create,logs}, --starting-screen {local,site,chat,prompts,tools,create,logs}
-                        Starting screen. Defaults to local
+  -s {local,site,chat,prompts,tools,create,options,logs}, --starting-tab {local,site,chat,prompts,tools,create,options,logs}
+                        Starting tab. Defaults to local
+  --use-last-tab-on-startup {0,1}
+                        Use last tab on startup
   -p PS_POLL, --ps-poll PS_POLL
                         Interval in seconds to poll ollama ps command. 0 = disable. Defaults to 3
   -a {0,1}, --auto-name-session {0,1}
                         Auto name session using LLM
   --restore-defaults    Restore default settings and theme
-  --clear-cache         Clear cached data
+  --purge-cache         Purge cached data
   --purge-chats         Purge all chat history
   --purge-prompts       Purge all custom prompts
   --no-save             Prevent saving settings for this session.
@@ -298,6 +305,7 @@ if anything remains to be fixed before the commit is allowed.
 ## What's new
 
 ### v0.3.5
+* Added Options tab
 * Added ability to import custom prompts from [fabric](https://github.com/danielmiessler/fabric)
 
 ### v0.3.4

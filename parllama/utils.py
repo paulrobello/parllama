@@ -43,10 +43,10 @@ from parllama.icons import TRASH_EMOJI
 
 DECIMAL_PRECESSION = 5
 
-ScreenType: TypeAlias = Literal[
+TabType: TypeAlias = Literal[
     "Local", "Site", "Chat", "Prompts", "Tools", "Create", "Options", "Logs"
 ]
-valid_screens: list[ScreenType] = [
+valid_tabs: list[TabType] = [
     "Local",
     "Site",
     "Chat",
@@ -580,7 +580,7 @@ def get_args() -> Namespace:
         "-s",
         "--starting-tab",
         help="Starting tab. Defaults to local",
-        choices=[s.lower() for s in valid_screens],
+        choices=[s.lower() for s in valid_tabs],
     )
     parser.add_argument(
         "--use-last-tab-on-startup",

@@ -17,7 +17,7 @@ from textual.widgets import TabPane
 from parllama.messages.messages import ModelInteractRequested
 from parllama.messages.messages import PsMessage
 from parllama.messages.messages import StatusMessage
-from parllama.models.settings_data import ScreenType
+from parllama.models.settings_data import TabType
 from parllama.models.settings_data import settings
 from parllama.widgets.views.chat_view import ChatView
 from parllama.widgets.views.create_model_view import ModelCreateView
@@ -112,8 +112,8 @@ class MainScreen(Screen[None]):
         """Tab activated event"""
         msg.stop()
         # self.notify(f"tab activated: {msg.tab.label.plain}")
-        settings.last_tab = cast(ScreenType, msg.tab.label.plain)
-        settings.save_settings_to_file()
+        settings.last_tab = cast(TabType, msg.tab.label.plain)
+        settings.save()
 
         self.log_view.richlog.write(f"Tab activated: {msg.tab.label.plain}")
 
@@ -140,7 +140,7 @@ class MainScreen(Screen[None]):
         self.ps_status_bar.update(msg)
         self.ps_status_bar.display = bool(msg)
 
-    def change_tab(self, tab: ScreenType) -> None:
+    def change_tab(self, tab: TabType) -> None:
         """Change active tab."""
         self.tabbed_content.active = tab
 

@@ -213,7 +213,7 @@ class SiteModelView(Container):
         self.search_input.focus()
         self.action_refresh_models()
         settings.site_models_namespace = self.namespace_input.value
-        settings.save_settings_to_file()
+        settings.save()
 
     @on(SiteModelsLoaded)
     def on_site_models_loaded(self, event: SiteModelsLoaded) -> None:

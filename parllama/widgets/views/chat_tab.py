@@ -207,7 +207,7 @@ class ChatTab(TabPane):
         except ValueError:
             return
         self.session.temperature = settings.last_chat_temperature
-        settings.save_settings_to_file()
+        settings.save()
         # chat_manager.notify_sessions_changed()
         self.user_input.focus()
 
@@ -224,7 +224,7 @@ class ChatTab(TabPane):
             self.session.name = chat_manager.mk_session_name(session_name)
         self.user_input.focus()
         settings.last_chat_session_id = self.session.id
-        settings.save_settings_to_file()
+        settings.save()
 
     def update_control_states(self):
         """Update disabled state of controls based on model and user input values"""
@@ -236,7 +236,7 @@ class ChatTab(TabPane):
         self.update_control_states()
         if self.model_select.value not in (Select.BLANK, settings.last_chat_model):
             settings.last_chat_model = str(self.model_select.value)
-            settings.save_settings_to_file()
+            settings.save()
         if self.model_select.value != Select.BLANK:
             self.session.llm_model_name = self.model_select.value  # type: ignore
         else:

@@ -13,6 +13,7 @@ import simplejson as json
 from textual.design import ColorSystem
 
 from parllama.models.settings_data import settings
+from parllama.par_event_system import ParEventSystemBase
 
 ThemeMode: TypeAlias = Literal["dark", "light"]
 ThemeModes: list[ThemeMode] = ["dark", "light"]
@@ -39,7 +40,7 @@ class ThemeModeError(InvalidThemeError):
         )
 
 
-class ThemeManager:
+class ThemeManager(ParEventSystemBase):
     """Theme manager for Textual"""
 
     themes: Themes
@@ -47,8 +48,8 @@ class ThemeManager:
 
     def __init__(self) -> None:
         """Initialize the theme manager"""
+        super().__init__(id="theme_manager")
         self.theme_folder = os.path.join(settings.data_dir, "themes")
-
         self.themes = self.load_themes()
 
     def ensure_default_theme(self) -> None:
@@ -123,6 +124,13 @@ class ThemeManager:
         if "light" in theme:
             return theme["light"]
         return theme["dark"]
+
+    def change_theme(self, theme_name: str, dark: bool) -> None:
+        """Change the theme"""
+        if not self.app:
+            return
+        self.app.design = self.get_theme(theme_name)  # type: ignore
+        self.app.dark = dark
 
 
 theme_manager = ThemeManager()

@@ -88,4 +88,4 @@ class LogView(Container):
         max_lines: int = max(0, int(event.value or "0"))
         self.richlog.max_lines = max_lines
         settings.max_log_lines = max_lines
-        settings.save_settings_to_file()
+        settings.save()

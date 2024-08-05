@@ -128,6 +128,7 @@ class ParLlamaApp(App[None]):
         self.notify_subs = {"*": set[MessagePump]()}
         dm.set_app(self)
         chat_manager.set_app(self)
+        theme_manager.set_app(self)
 
         self.job_timer = None
         self.ps_timer = None
@@ -143,7 +144,7 @@ class ParLlamaApp(App[None]):
     def _watch_dark(self, value: bool) -> None:
         """Watch the dark property and save pref to file."""
         settings.theme_mode = "dark" if value else "light"
-        settings.save_settings_to_file()
+        settings.save()
 
     def get_css_variables(self) -> dict[str, str]:
         """Get a mapping of variables used to pre-populate CSS.

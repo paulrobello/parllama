@@ -12,8 +12,8 @@ import simplejson as json
 from pydantic import BaseModel
 
 from parllama.utils import get_args
-from parllama.utils import ScreenType
-from parllama.utils import valid_screens
+from parllama.utils import TabType
+from parllama.utils import valid_tabs
 
 
 class Settings(BaseModel):
@@ -30,8 +30,8 @@ class Settings(BaseModel):
     chat_tab_max_length: int = 15
     settings_file: str = "settings.json"
     theme_name: str = "par"
-    starting_tab: ScreenType = "Local"
-    last_tab: ScreenType = "Local"
+    starting_tab: TabType = "Local"
+    last_tab: TabType = "Local"
     use_last_tab_on_startup: bool = True
     last_chat_model: str = ""
     last_chat_temperature: float | None = None
@@ -122,7 +122,7 @@ class Settings(BaseModel):
 
         if args.starting_tab:
             self.starting_tab = args.starting_tab.capitalize()
-            if self.starting_tab not in valid_screens:
+            if self.starting_tab not in valid_tabs:
                 self.starting_tab = "Local"
 
         if args.use_last_tab_on_startup is not None:
@@ -130,7 +130,7 @@ class Settings(BaseModel):
 
         if args.ps_poll:
             self.ollama_ps_poll_interval = args.ps_poll
-        self.save_settings_to_file()
+        self.save()
 
     def purge_cache_folder(self) -> None:
         """Purge cache folder."""
@@ -167,11 +167,11 @@ class Settings(BaseModel):
                 self.starting_tab = data.get(
                     "starting_tab", data.get("starting_screen", "Local")
                 )
-                if self.starting_tab not in valid_screens:
+                if self.starting_tab not in valid_tabs:
                     self.starting_tab = "Local"
 
                 self.last_tab = data.get("last_tap", data.get("last_screen", "Local"))
-                if self.last_tab not in valid_screens:
+                if self.last_tab not in valid_tabs:
                     self.last_tab = self.starting_tab
 
                 self.use_last_tab_on_startup = data.get(
@@ -221,6 +221,10 @@ class Settings(BaseModel):
     def ollama_client(self) -> ollama.Client:
         """Get the ollama client."""
         return ollama.Client(host=self.ollama_host)
+
+    def save(self) -> None:
+        """Persist settings"""
+        self.save_settings_to_file()
 
 
 settings = Settings()

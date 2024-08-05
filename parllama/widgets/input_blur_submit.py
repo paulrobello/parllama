@@ -19,7 +19,11 @@ class InputBlurSubmit(Input):
         """Set up the widget once the DOM is ready."""
         self._last_value = self.value
 
-    def _on_input_changed(self) -> None:
+    # def _on_input_changed(self) -> None:
+    #     """Handle input change."""
+    #     self._last_value = self.value
+
+    def _on_submitted(self) -> None:
         """Handle input change."""
         self._last_value = self.value
 
