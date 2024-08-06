@@ -1,5 +1,7 @@
 """Prompt messages for par event system"""
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 
 from parllama.messages.shared import PromptChanges

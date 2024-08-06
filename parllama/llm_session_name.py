@@ -1,5 +1,7 @@
 """Generate a session name from the given text using llm"""
 
+from __future__ import annotations
+
 from parllama.models.settings_data import settings
 
 

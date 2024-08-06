@@ -9,7 +9,8 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Container
 from textual.containers import VerticalScroll
-from textual.events import Show, Focus
+from textual.events import Focus
+from textual.events import Show
 from textual.widget import Widget
 from textual.widgets import Input
 from textual.widgets import TabbedContent

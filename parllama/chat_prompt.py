@@ -2,18 +2,21 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import os
 import uuid
 from dataclasses import dataclass
+from datetime import datetime
+from datetime import timezone
 
-import simplejson as json
 import rich.repr
+import simplejson as json
 
 from parllama.chat_message import OllamaMessage
 from parllama.chat_message_container import ChatMessageContainer
-from parllama.messages.par_prompt_messages import ParPromptDelete, ParPromptUpdated
-from parllama.messages.shared import PromptChanges, prompt_change_list
+from parllama.messages.par_prompt_messages import ParPromptDelete
+from parllama.messages.par_prompt_messages import ParPromptUpdated
+from parllama.messages.shared import prompt_change_list
+from parllama.messages.shared import PromptChanges
 from parllama.models.settings_data import settings
 
 

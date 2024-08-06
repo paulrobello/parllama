@@ -2,35 +2,35 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import os
 import uuid
 from collections.abc import Iterator
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Optional
+from datetime import datetime
+from datetime import timezone
+from typing import Any
+from typing import Optional
 
+import rich.repr
 import simplejson as json
 from ollama import Options as OllamaOptions
 from textual.message_pump import MessagePump
-import rich.repr
 
+from parllama.chat_message import OllamaMessage
 from parllama.chat_message_container import ChatMessageContainer
 from parllama.messages.messages import ChatGenerationAborted
 from parllama.messages.messages import ChatMessage
 from parllama.messages.messages import SessionChanges
 from parllama.messages.messages import SessionMessage
 from parllama.messages.messages import SessionUpdated
-
-from parllama.chat_message import OllamaMessage
 from parllama.messages.par_chat_messages import ParChatUpdated
-from parllama.messages.par_session_messages import (
-    ParSessionDelete,
-    ParSessionUpdated,
-    ParSessionAutoName,
-)
+from parllama.messages.par_session_messages import ParSessionAutoName
+from parllama.messages.par_session_messages import ParSessionDelete
+from parllama.messages.par_session_messages import ParSessionUpdated
 from parllama.messages.shared import session_change_list
-from parllama.models.ollama_data import ChatChunk, TokenStats
+from parllama.models.ollama_data import ChatChunk
+from parllama.models.ollama_data import TokenStats
 from parllama.models.settings_data import settings
 
 

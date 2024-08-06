@@ -23,19 +23,19 @@ repos:
 #    hooks:
 #    -   message_id: pyupgrade
 
--   repo: https://github.com/psf/black
-    rev: 24.4.2
-    hooks:
-    -   id: black
-        args: [-t, py310, -t, py311, -t, py312]
-        exclude: tests(/\w*)*/functional/|tests/input|tests(/.*)+/conftest.py|doc/data/messages|tests(/\w*)*data/
-
 #-   repo: https://github.com/asottile/reorder-python-imports
 #    rev: v3.13.0
 #    hooks:
 #    -   id: reorder-python-imports
 #        args: [--py39-plus, --add-import, "from __future__ import annotations"]
 #        exclude: tests(/\w*)*/functional/|tests/input|tests(/.*)+/conftest.py|doc/data/messages|tests(/\w*)*data/
+
+-   repo: https://github.com/psf/black
+    rev: 24.4.2
+    hooks:
+    -   id: black
+        args: [-t, py310, -t, py311, -t, py312]
+        exclude: tests(/\w*)*/functional/|tests/input|tests(/.*)+/conftest.py|doc/data/messages|tests(/\w*)*data/
 
 #-   repo: https://github.com/pre-commit/mirrors-mypy
 #    rev: v1.10.1

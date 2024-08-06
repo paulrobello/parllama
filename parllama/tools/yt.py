@@ -1,14 +1,16 @@
+from __future__ import annotations
+
+import argparse
+import json
+import os
 import re
 from typing import Any
 
+import isodate2  # type: ignore
+from dotenv import load_dotenv
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from youtube_transcript_api import YouTubeTranscriptApi  # type: ignore
-from dotenv import load_dotenv
-import os
-import json
-import isodate2  # type: ignore
-import argparse
 
 
 def get_video_id(url: str) -> str | None:

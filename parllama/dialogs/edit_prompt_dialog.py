@@ -2,15 +2,24 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
+from datetime import timezone
 
 from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import VerticalScroll, Vertical, Horizontal
+from textual.containers import Horizontal
+from textual.containers import Vertical
+from textual.containers import VerticalScroll
 from textual.events import Event
 from textual.screen import ModalScreen
-from textual.widgets import Button, Input, Label, Checkbox, TextArea, Select, Static
+from textual.widgets import Button
+from textual.widgets import Checkbox
+from textual.widgets import Input
+from textual.widgets import Label
+from textual.widgets import Select
+from textual.widgets import Static
+from textual.widgets import TextArea
 
 from parllama.chat_message import OllamaMessage
 from parllama.chat_prompt import ChatPrompt

@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Optional
+from typing import Any
+from typing import Optional
 
 from ollama import Options as OllamaOptions
 from textual.app import App
@@ -11,21 +12,19 @@ from textual.message_pump import MessagePump
 
 from parllama.chat_message import OllamaMessage
 from parllama.chat_prompt import ChatPrompt
+from parllama.chat_session import ChatSession
 from parllama.llm_session_name import llm_session_name
-from parllama.messages.messages import PromptListChanged
 from parllama.messages.messages import ChangeTab
+from parllama.messages.messages import PromptListChanged
 from parllama.messages.messages import PromptListLoaded
 from parllama.messages.messages import SessionListChanged
-
-from parllama.messages.par_prompt_messages import ParPromptUpdated
 from parllama.messages.par_prompt_messages import ParPromptDelete
-from parllama.messages.par_session_messages import ParSessionDelete
+from parllama.messages.par_prompt_messages import ParPromptUpdated
 from parllama.messages.par_session_messages import ParSessionAutoName
+from parllama.messages.par_session_messages import ParSessionDelete
 from parllama.messages.par_session_messages import ParSessionUpdated
-
 from parllama.models.settings_data import settings
 from parllama.par_event_system import ParEventSystemBase
-from parllama.chat_session import ChatSession
 
 
 class ChatManager(ParEventSystemBase):

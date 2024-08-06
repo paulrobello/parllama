@@ -28,11 +28,14 @@ from textual.widgets import TabPane
 
 from parllama.chat_manager import chat_manager
 from parllama.chat_manager import ChatSession
+from parllama.chat_message import OllamaMessage
 from parllama.data_manager import dm
-from parllama.messages.messages import ChatMessage, LogIt, PromptSelected
+from parllama.messages.messages import ChatMessage
 from parllama.messages.messages import ChatMessageSent
 from parllama.messages.messages import DeleteSession
 from parllama.messages.messages import LocalModelDeleted
+from parllama.messages.messages import LogIt
+from parllama.messages.messages import PromptSelected
 from parllama.messages.messages import RegisterForUpdates
 from parllama.messages.messages import SessionSelected
 from parllama.messages.messages import SessionUpdated
@@ -40,13 +43,12 @@ from parllama.messages.messages import UnRegisterForUpdates
 from parllama.messages.messages import UpdateChatControlStates
 from parllama.messages.messages import UpdateChatStatus
 from parllama.messages.messages import UpdateTabLabel
-from parllama.chat_message import OllamaMessage
 from parllama.models.ollama_data import FullModel
 from parllama.models.settings_data import settings
 from parllama.screens.save_session import SaveSession
 from parllama.utils import str_ellipsis
-from parllama.widgets.chat_message_widget import ChatMessageWidget
 from parllama.widgets.chat_message_list import ChatMessageList
+from parllama.widgets.chat_message_widget import ChatMessageWidget
 from parllama.widgets.input_blur_submit import InputBlurSubmit
 from parllama.widgets.input_tab_complete import InputTabComplete
 from parllama.widgets.local_model_select import LocalModelSelect

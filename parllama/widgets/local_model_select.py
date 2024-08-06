@@ -1,15 +1,15 @@
 """A select widget for selecting a local model."""
 
+from __future__ import annotations
+
 from textual import on
 from textual.message import Message
 from textual.widgets import Select
 
 from parllama.data_manager import dm
-from parllama.messages.messages import (
-    LocalModelListLoaded,
-    LocalModelDeleted,
-    RegisterForUpdates,
-)
+from parllama.messages.messages import LocalModelDeleted
+from parllama.messages.messages import LocalModelListLoaded
+from parllama.messages.messages import RegisterForUpdates
 from parllama.models.settings_data import settings
 
 
@@ -17,7 +17,7 @@ class LocalModelSelect(Select[str]):
     """A select widget for selecting a local model."""
 
     def __init__(self, **kwargs) -> None:
-        """Initialise the screen."""
+        """Initialise the widget."""
         self._deferred_value = None  # No deferred value.
         opts = dm.get_model_select_options()
         if "value" in kwargs:
@@ -36,7 +36,7 @@ class LocalModelSelect(Select[str]):
         super().__init__(prompt="Select Model", options=opts, **kwargs)
 
     async def on_mount(self) -> None:
-        """Set up the dialog once the DOM is ready."""
+        """Subscribe to model list changes and update the widget's options accordingly."""
         self.app.post_message(
             RegisterForUpdates(
                 widget=self,
@@ -50,7 +50,7 @@ class LocalModelSelect(Select[str]):
     @on(LocalModelListLoaded)
     @on(LocalModelDeleted)
     def on_local_model_list_loaded(self, event: Message) -> None:
-        """Model list changed"""
+        """Model list changed. Update options and preserve value if possible."""
         event.stop()
         if self._deferred_value is not None:
             old_v = self._deferred_value

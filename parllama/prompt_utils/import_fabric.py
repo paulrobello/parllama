@@ -1,8 +1,11 @@
+from __future__ import annotations
+
+import hashlib
 import os
 import tempfile
 import zipfile
+
 import requests
-import hashlib
 
 from parllama.chat_manager import chat_manager
 from parllama.chat_message import OllamaMessage

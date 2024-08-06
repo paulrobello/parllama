@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import os
+from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
+from datetime import datetime
+from datetime import timezone
 from io import StringIO
-from typing import Generator
 
-import simplejson as json
 import rich.repr
+import simplejson as json
 
 from parllama.chat_message import OllamaMessage
 from parllama.models.settings_data import settings

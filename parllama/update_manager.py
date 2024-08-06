@@ -1,6 +1,9 @@
 """Check for PARLLAMA Updates on pypi"""
 
-from datetime import datetime, timezone
+from __future__ import annotations
+
+from datetime import datetime
+from datetime import timezone
 
 import httpx
 import requests

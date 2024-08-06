@@ -6,11 +6,13 @@ import uuid
 from collections.abc import Awaitable
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Callable, Any
+from typing import Any
+from typing import Callable
 from typing import ClassVar
 
 import rich.repr
-from rich.console import ConsoleRenderable, RichCast
+from rich.console import ConsoleRenderable
+from rich.console import RichCast
 from textual.app import App
 from textual.notifications import SeverityLevel
 

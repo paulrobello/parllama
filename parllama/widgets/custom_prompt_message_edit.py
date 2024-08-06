@@ -6,14 +6,17 @@ from typing import cast
 
 from textual import on
 from textual.app import ComposeResult
-from textual.containers import Vertical, Horizontal
+from textual.containers import Horizontal
+from textual.containers import Vertical
 from textual.widget import Widget
-from textual.widgets import Select, Button
+from textual.widgets import Button
+from textual.widgets import Select
 from textual.widgets import TextArea
 
 from parllama.chat_message import OllamaMessage
 from parllama.messages.messages import DeletePromptMessage
-from parllama.models.ollama_data import MessageRoles, MessageRoleSelectOptions
+from parllama.models.ollama_data import MessageRoles
+from parllama.models.ollama_data import MessageRoleSelectOptions
 from parllama.utils import mk_trash_button
 
 

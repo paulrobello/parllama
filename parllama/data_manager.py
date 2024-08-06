@@ -8,9 +8,11 @@ import shutil
 from collections.abc import Generator
 from collections.abc import Iterator
 from collections.abc import Mapping
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import datetime
+from datetime import timezone
+from typing import Any
 from typing import Literal
+from typing import Optional
 
 import docker.errors  # type: ignore
 import docker.types  # type: ignore

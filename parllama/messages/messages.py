@@ -5,7 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
-from rich.console import RenderableType, ConsoleRenderable, RichCast
+from rich.console import ConsoleRenderable
+from rich.console import RenderableType
+from rich.console import RichCast
 from textual.message import Message
 from textual.message_pump import MessagePump
 from textual.notifications import SeverityLevel
@@ -179,26 +181,6 @@ class ShowLocalModel(Message):
     """Message to notify that a local model show has been requested."""
 
     model: FullModel
-
-
-@dataclass
-class NotifyMessage(Message):
-    """Message to toast info message."""
-
-    message: str
-    timeout: int = 3
-
-
-@dataclass
-class NotifyInfoMessage(NotifyMessage):
-    """Message to toast info message."""
-
-
-@dataclass
-class NotifyErrorMessage(NotifyMessage):
-    """Message to toast error message."""
-
-    timeout: int = 6
 
 
 @dataclass

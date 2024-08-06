@@ -1,7 +1,11 @@
 """Validator for URLs."""
 
-from textual.validation import Validator, ValidationResult
+from __future__ import annotations
+
 import urllib.parse
+
+from textual.validation import ValidationResult
+from textual.validation import Validator
 
 
 class HttpValidator(Validator):

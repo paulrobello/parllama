@@ -6,22 +6,24 @@ from functools import partial
 
 from textual import on
 from textual.app import ComposeResult
-from textual.containers import Container, Horizontal
+from textual.containers import Container
+from textual.containers import Horizontal
 from textual.containers import Vertical
 from textual.events import Show
 from textual.message import Message
-from textual.widgets import Button, Select, Label, Input
+from textual.widgets import Button
+from textual.widgets import Input
+from textual.widgets import Label
+from textual.widgets import Select
 
 from parllama.chat_manager import chat_manager
 from parllama.chat_prompt import ChatPrompt
 from parllama.dialogs.edit_prompt_dialog import EditPromptDialog
 from parllama.dialogs.yes_no_dialog import YesNoDialog
-from parllama.messages.messages import (
-    DeletePrompt,
-    RegisterForUpdates,
-    PromptDeleteRequested,
-    PromptSelected,
-)
+from parllama.messages.messages import DeletePrompt
+from parllama.messages.messages import PromptDeleteRequested
+from parllama.messages.messages import PromptSelected
+from parllama.messages.messages import RegisterForUpdates
 from parllama.models.settings_data import settings
 from parllama.widgets.input_blur_submit import InputBlurSubmit
 from parllama.widgets.local_model_select import LocalModelSelect

@@ -4,10 +4,15 @@ from __future__ import annotations
 
 from textual import on
 from textual.app import ComposeResult
-from textual.containers import Vertical, Horizontal
+from textual.containers import Horizontal
+from textual.containers import Vertical
 from textual.events import Show
 from textual.validation import Integer
-from textual.widgets import Static, Checkbox, Input, Select, Label
+from textual.widgets import Checkbox
+from textual.widgets import Input
+from textual.widgets import Label
+from textual.widgets import Select
+from textual.widgets import Static
 
 from parllama.models.settings_data import settings
 from parllama.theme_manager import theme_manager
@@ -67,7 +72,7 @@ class OptionsView(Horizontal):
                             value=settings.use_last_tab_on_startup,
                             id="use_last_tab_on_startup",
                         )
-                        yield Label(f"Last Tab Used: {settings.last_tab}")
+                        # yield Label(f"Last Tab Used: {settings.last_tab}")
                     with Horizontal():
                         yield Checkbox(
                             label="Check for updates on startup",

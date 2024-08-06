@@ -23,21 +23,19 @@ from parllama.chat_manager import ChatSession
 from parllama.chat_message import OllamaMessage
 from parllama.data_manager import dm
 from parllama.dialogs.information import InformationDialog
-from parllama.messages.messages import (
-    ChatGenerationAborted,
-    LogIt,
-    SessionToPrompt,
-    PromptSelected,
-    ChangeTab,
-    PromptListChanged,
-    PromptListLoaded,
-)
+from parllama.messages.messages import ChangeTab
+from parllama.messages.messages import ChatGenerationAborted
 from parllama.messages.messages import ChatMessage
 from parllama.messages.messages import ChatMessageSent
 from parllama.messages.messages import DeleteSession
 from parllama.messages.messages import LocalModelListLoaded
+from parllama.messages.messages import LogIt
+from parllama.messages.messages import PromptListChanged
+from parllama.messages.messages import PromptListLoaded
+from parllama.messages.messages import PromptSelected
 from parllama.messages.messages import RegisterForUpdates
 from parllama.messages.messages import SessionSelected
+from parllama.messages.messages import SessionToPrompt
 from parllama.messages.messages import SessionUpdated
 from parllama.messages.messages import UpdateChatControlStates
 from parllama.messages.messages import UpdateTabLabel

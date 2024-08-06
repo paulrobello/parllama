@@ -177,7 +177,7 @@ class Settings(BaseModel):
                 if self.starting_tab not in valid_tabs:
                     self.starting_tab = "Local"
 
-                self.last_tab = data.get("last_tap", data.get("last_screen", "Local"))
+                self.last_tab = data.get("last_tab", data.get("last_screen", "Local"))
                 if self.last_tab not in valid_tabs:
                     self.last_tab = self.starting_tab
 

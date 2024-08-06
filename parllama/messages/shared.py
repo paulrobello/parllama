@@ -1,6 +1,9 @@
 """Shared types"""
 
-from typing import TypeAlias, Literal
+from __future__ import annotations
+
+from typing import Literal
+from typing import TypeAlias
 
 SessionChanges: TypeAlias = set[
     Literal["name", "model", "temperature", "options", "messages"]

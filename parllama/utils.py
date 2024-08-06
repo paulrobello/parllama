@@ -38,7 +38,8 @@ from textual.widgets.button import ButtonVariant
 from parllama import __application_binary__
 from parllama import __application_title__
 from parllama import __version__
-from parllama.icons import PENCIL_EMOJI, HEAVY_PLUS_SIGN_EMOJI
+from parllama.icons import HEAVY_PLUS_SIGN_EMOJI
+from parllama.icons import PENCIL_EMOJI
 from parllama.icons import TRASH_EMOJI
 
 DECIMAL_PRECESSION = 5
