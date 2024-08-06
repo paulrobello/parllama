@@ -77,6 +77,7 @@ from parllama.models.jobs import PullModelJob
 from parllama.models.jobs import PushModelJob
 from parllama.models.jobs import QueueJob
 from parllama.models.settings_data import settings
+from parllama.prompt_utils.import_fabric import import_fabric_manager
 from parllama.screens.main_screen import MainScreen
 from parllama.theme_manager import theme_manager
 from parllama.update_manager import update_manager
@@ -125,6 +126,7 @@ class ParLlamaApp(App[None]):
         chat_manager.set_app(self)
         theme_manager.set_app(self)
         update_manager.set_app(self)
+        import_fabric_manager.set_app(self)
 
         self.job_timer = None
         self.ps_timer = None

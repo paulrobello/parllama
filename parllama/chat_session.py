@@ -12,6 +12,7 @@ from datetime import timezone
 from typing import Any
 from typing import Optional
 
+import pytz
 import rich.repr
 import simplejson as json
 from ollama import Options as OllamaOptions
@@ -304,10 +305,14 @@ class ChatSession(ChatMessageContainer):
             if "message_id" in m:
                 m["id"] = "message_id"
                 del m["message_id"]
+        utc = pytz.UTC
+
         session = ChatSession(
             id=data.get("id", data.get("id", data.get("session_id"))),
             name=data.get("name", data.get("name", data.get("session_name"))),
-            last_updated=datetime.fromisoformat(data["last_updated"]),
+            last_updated=datetime.fromisoformat(data["last_updated"]).replace(
+                tzinfo=utc
+            ),
             llm_model_name=data["llm_model_name"],
             options=data.get("options"),
             messages=[OllamaMessage(**m) for m in messages] if load_messages else None,

@@ -25,6 +25,7 @@ from parllama.messages.messages import PromptDeleteRequested
 from parllama.messages.messages import PromptSelected
 from parllama.messages.messages import RegisterForUpdates
 from parllama.models.settings_data import settings
+from parllama.prompt_utils.import_fabric import import_fabric_manager
 from parllama.widgets.input_blur_submit import InputBlurSubmit
 from parllama.widgets.local_model_select import LocalModelSelect
 from parllama.widgets.prompt_list import PromptList
@@ -83,6 +84,7 @@ class PromptView(Container):
                 yield self.model_select
                 yield Label("Temp")
                 yield self.temperature_input
+                yield Button("Import", id="import")
 
             yield self.list_view
 
@@ -156,3 +158,9 @@ class PromptView(Container):
             pass
         if self.model_select.value and self.model_select.value != Select.BLANK:
             event.llm_model_name = self.model_select.value  # type: ignore
+
+    @on(Button.Pressed, "#import")
+    def import_prompts(self, event: Message) -> None:
+        """Handle import prompts"""
+        event.stop()
+        import_fabric_manager.test_import()

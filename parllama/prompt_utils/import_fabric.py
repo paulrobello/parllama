@@ -10,22 +10,19 @@ import requests
 from parllama.chat_manager import chat_manager
 from parllama.chat_message import OllamaMessage
 from parllama.chat_prompt import ChatPrompt
+from parllama.par_event_system import ParEventSystemBase
 
 
-class ImportFabric:
+class ImportFabricManager(ParEventSystemBase):
     """Import Fabric prompts from fabric repo."""
 
     def __init__(self) -> None:
-        """Initialize the object with default values."""
+        """Initialize the import manager."""
+        super().__init__(id="import_fabric_manager")
+
         self.repo_zip_url = (
             "https://github.com/danielmiessler/fabric/archive/refs/heads/main.zip"
         )
-        # self.config_directory = os.path.expanduser("~/.config/fabric")
-        # self.pattern_directory = os.path.join(
-        #     self.config_directory, "patterns")
-        # os.makedirs(self.pattern_directory, exist_ok=True)
-        # print("Updating patterns...")
-        self.import_patterns()  # Start the update process immediately
 
     def import_patterns(self) -> None:
         """Update the patterns by downloading the zip from GitHub and extracting it."""
@@ -50,15 +47,32 @@ class ImportFabric:
                 if not os.path.exists(src_prompt_path):
                     continue
                 with open(src_prompt_path, "rt", encoding="utf-8") as f:
-                    prompt_content = f.read()
-                    description = self.get_description(prompt_content)
-                    prompt = ChatPrompt(
-                        id=hashlib.md5(prompt_content.encode()).hexdigest(),
-                        name=pattern_name,
-                        description=description,
-                        messages=[OllamaMessage(role="system", content=prompt_content)],
+                    prompt_content = ""
+                    for line in f.readlines():
+                        if line.upper().startswith(
+                            "# INPUT"
+                        ) or line.upper().startswith("INPUT:"):
+                            break
+                        prompt_content += line + "\n"
+                    prompt_content = prompt_content.strip()
+                    prompt: ChatPrompt = self.markdown_to_prompt(
+                        pattern_name, prompt_content
                     )
                     chat_manager.add_prompt(prompt)
+                    prompt.is_dirty = True
+                    prompt.save()
+
+    def markdown_to_prompt(self, pattern_name: str, prompt_content: str) -> ChatPrompt:
+        """Convert markdown to ChatPrompt."""
+        description = self.get_description(prompt_content)
+        prompt = ChatPrompt(
+            id=hashlib.md5(prompt_content.encode()).hexdigest(),
+            name=pattern_name,
+            description=description,
+            messages=[OllamaMessage(role="system", content=prompt_content)],
+            source="fabric",
+        )
+        return prompt
 
     @staticmethod
     def get_description(prompt_data: str) -> str:
@@ -89,3 +103,29 @@ class ImportFabric:
             zip_ref.extractall(extract_to)
         print("Extracted zip file successfully.")
         return extract_to  # Return the path to the extracted contents
+
+    def test_import(self) -> None:
+        """Test importing fabric prompts."""
+        with open(
+            "d:/repos/parllama/fabric_samples/extract_wisdom/system.md",
+            "rt",
+            encoding="utf-8",
+        ) as f:
+            prompt_content = ""
+            for line in f.readlines():
+                if line.upper().startswith("# INPUT") or line.upper().startswith(
+                    "INPUT:"
+                ):
+                    break
+                prompt_content += line + "\n"
+            prompt_content = prompt_content.strip()
+            prompt: ChatPrompt = self.markdown_to_prompt(
+                "extract_wisdom", prompt_content
+            )
+        chat_manager.add_prompt(prompt)
+        prompt.is_dirty = True
+        prompt.save()
+        self.log_it("Prompt imported: extract_wisdom", notify=True)
+
+
+import_fabric_manager = ImportFabricManager()

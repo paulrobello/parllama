@@ -40,5 +40,10 @@ class PromptListItem(DblClickListItem, can_focus=False, can_focus_children=True)
                     str(self.prompt.submit_on_load),
                     " - Last updated: ",
                     self.prompt.last_updated.strftime("%Y-%m-%d %H:%M:%S"),
+                    (
+                        f" - Imported from: {self.prompt.source}"
+                        if self.prompt.source
+                        else ""
+                    ),
                 )
             )

@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from datetime import timezone
 
+import pytz
 import rich.repr
 import simplejson as json
 
@@ -155,10 +156,14 @@ class ChatPrompt(ChatMessageContainer):
     def from_json(json_data: str, load_messages: bool = False) -> ChatPrompt:
         """Convert JSON to chat session"""
         data: dict = json.loads(json_data)
+        utc = pytz.UTC
+
         return ChatPrompt(
             id=data["id"],
             name=data["name"],
-            last_updated=datetime.fromisoformat(data["last_updated"]),
+            last_updated=datetime.fromisoformat(data["last_updated"]).replace(
+                tzinfo=utc
+            ),
             description=data.get("description", ""),
             messages=(
                 [OllamaMessage(**m) for m in data["messages"]]

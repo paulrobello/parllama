@@ -254,6 +254,14 @@ class ChatMessageContainer(ParEventSystemBase):
         # self.log_it(",".join(self._changes))
         return len(self._changes) > 0
 
+    @is_dirty.setter
+    def is_dirty(self, value: bool) -> None:
+        """Set dirty status"""
+        if value:
+            self._changes.add("is_dirty")
+        else:
+            self.clear_changes()
+
     @contextmanager
     def batch_changes(self) -> Generator[None, None, None]:
         """Batch changes"""
