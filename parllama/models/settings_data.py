@@ -20,6 +20,7 @@ from parllama.utils import valid_tabs
 class Settings(BaseModel):
     """Model for application settings."""
 
+    _shutting_down: bool = False
     show_first_run: bool = True
     check_for_updates: bool = False
     last_version_check: datetime | None = None
@@ -221,7 +222,7 @@ class Settings(BaseModel):
 
     def save_settings_to_file(self) -> None:
         """Save settings to file."""
-        if self.no_save:
+        if self.no_save or self._shutting_down:
             return
         os.makedirs(self.data_dir, exist_ok=True)
         if not os.path.exists(self.data_dir):
@@ -254,6 +255,16 @@ class Settings(BaseModel):
         if settings.use_last_tab_on_startup:
             return settings.last_tab
         return settings.starting_tab
+
+    @property
+    def shutting_down(self) -> bool:
+        """Return whether Par Llama is shutting down"""
+        return self._shutting_down
+
+    @shutting_down.setter
+    def shutting_down(self, value: bool) -> None:
+        """Set whether Par Llama is shutting down"""
+        self._shutting_down = value
 
 
 settings = Settings()

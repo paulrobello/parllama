@@ -92,7 +92,7 @@ class ParLlamaApp(App[None]):
     TITLE = __application_title__
     BINDINGS = [
         Binding(key="f1", action="help", description="Help", show=True, priority=True),
-        Binding(key="ctrl+q", action="app.quit", description="Quit", show=True),
+        Binding(key="ctrl+q", action="app.shutdown", description="Quit", show=True),
         Binding(
             key="f10",
             action="toggle_dark",
@@ -510,7 +510,7 @@ If you would like to auto check for updates, you can enable it in the Startup se
                 # asyncio.get_event_loop().run_until_complete(par_await_tasks())
                 # await par_await_tasks()
                 job: QueueJob = self.job_queue.get(block=True, timeout=1)
-                if self._exit:
+                if settings.shutting_down:
                     return
                 if not job:
                     continue
@@ -669,7 +669,7 @@ If you would like to auto check for updates, you can enable it in the Startup se
     async def update_ps(self) -> None:
         """Update ps status bar msg"""
         was_blank = False
-        while self.is_running:
+        while not settings.shutting_down:
             if settings.ollama_ps_poll_interval < 1:
                 self.post_message_all(PsMessage(msg=""))
                 break
@@ -814,3 +814,8 @@ If you would like to auto check for updates, you can enable it in the Startup se
     def log_it(self, msg: ConsoleRenderable | RichCast | str | object) -> None:
         """Log a message to the log view"""
         self.main_screen.log_view.richlog.write(msg)
+
+    async def action_shutdown(self) -> None:
+        """Quit the application"""
+        settings.shutting_down = True
+        await self.action_quit()
