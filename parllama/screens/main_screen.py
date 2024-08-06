@@ -7,7 +7,6 @@ from typing import cast
 from rich.console import RenderableType
 from textual import on
 from textual.app import ComposeResult
-from textual.events import Focus
 from textual.screen import Screen
 from textual.widgets import Footer
 from textual.widgets import Header
@@ -80,36 +79,36 @@ class MainScreen(Screen[None]):
         yield self.status_bar
         yield self.ps_status_bar
 
-        with self.prevent(TabbedContent.TabActivated, Focus):
-            with TabbedContent(
-                id="tabbed_content",
-                initial=settings.initial_tab,
-            ) as tc:
-                self.tabbed_content = tc
-                tc.loading = True
+        # with self.prevent(TabbedContent.TabActivated, Focus):
+        with TabbedContent(
+            id="tabbed_content",
+            initial=settings.initial_tab,
+        ) as tc:
+            self.tabbed_content = tc
+            tc.loading = True
 
-                with TabPane("Local", id="Local"):
-                    yield self.local_view
-                with TabPane("Site", id="Site"):
-                    yield self.site_view
-                with TabPane("Chat", id="Chat"):
-                    yield self.chat_view
-                with TabPane("Prompts", id="Prompts"):
-                    yield self.prompt_view
-                with TabPane("Tools", id="Tools"):
-                    yield self.model_tools_view
-                with TabPane("Create", id="Create"):
-                    yield self.create_view
-                with TabPane("Options", id="Options"):
-                    yield self.options_view
-                with TabPane("Logs", id="Logs"):
-                    yield self.log_view
+            with TabPane("Local", id="Local"):
+                yield self.local_view
+            with TabPane("Site", id="Site"):
+                yield self.site_view
+            with TabPane("Chat", id="Chat"):
+                yield self.chat_view
+            with TabPane("Prompts", id="Prompts"):
+                yield self.prompt_view
+            with TabPane("Tools", id="Tools"):
+                yield self.model_tools_view
+            with TabPane("Create", id="Create"):
+                yield self.create_view
+            with TabPane("Options", id="Options"):
+                yield self.options_view
+            with TabPane("Logs", id="Logs"):
+                yield self.log_view
 
     @on(TabbedContent.TabActivated)
     def on_tab_activated(self, msg: TabbedContent.TabActivated) -> None:
         """Tab activated event"""
         msg.stop()
-        # self.notify(f"tab activated: {msg.tab.label.plain}")
+        self.notify(f"tab activated: {msg.tab.label.plain}")
         settings.last_tab = cast(TabType, msg.tab.label.plain)
         settings.save()
 
@@ -140,6 +139,7 @@ class MainScreen(Screen[None]):
 
     def change_tab(self, tab: TabType) -> None:
         """Change active tab."""
+        self.log_view.richlog.write(f"Changing tab to: {tab}")
         self.tabbed_content.active = tab
 
     def action_site_tag_clicked(self, model_tag: str) -> None:

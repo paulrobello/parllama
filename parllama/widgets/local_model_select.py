@@ -52,21 +52,27 @@ class LocalModelSelect(Select[str]):
     def on_local_model_list_loaded(self, event: Message) -> None:
         """Model list changed"""
         event.stop()
-        with self.prevent(Select.Changed):  # TODO is this needed?
-            if self._deferred_value is not None:
-                old_v = self._deferred_value
-                self._deferred_value = None  # Reset the deferred value.
-            elif self.value != Select.BLANK:
-                old_v = self.value
-            elif settings.last_chat_model:
-                old_v = settings.last_chat_model
-            else:
-                old_v = None
-            opts = dm.get_model_select_options()
-            with self.prevent(Select.Changed):
-                self.set_options(opts)
-            if old_v is not None:
-                for _, v in opts:
-                    if v == old_v:
-                        self.value = old_v
-                        return
+        if self._deferred_value is not None:
+            old_v = self._deferred_value
+            self._deferred_value = None  # Reset the deferred value.
+        elif self.value != Select.BLANK:
+            old_v = self.value
+        elif settings.last_chat_model:
+            old_v = settings.last_chat_model
+        else:
+            old_v = None
+
+        opts = dm.get_model_select_options()
+
+        if old_v is not None:
+            found = False
+            for _, v in opts:
+                if v == old_v:
+                    found = True
+                    break
+            if found:
+                with self.prevent(Select.Changed):
+                    self.set_options(opts)
+                    self.value = old_v
+                    return
+        self.set_options(opts)

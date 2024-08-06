@@ -562,3 +562,8 @@ Chat Commands:
         """Chat generation aborted event"""
         event.stop()
         self.notify("Chat Aborted", severity="warning")
+
+    @on(TabbedContent.TabActivated)
+    def on_tab_activated(self, msg: TabbedContent.TabActivated) -> None:
+        """Prevent Tab activated event bubble"""
+        msg.stop()

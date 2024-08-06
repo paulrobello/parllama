@@ -2013,11 +2013,11 @@
     },
     "types-html5lib": {
       "hashes": [
-        "sha256:22736b7299e605ec4ba539d48691e905fd0c61c3ea610acc59922232dc84cede",
-        "sha256:af5de0125cb0fe5667543b158db83849b22e25c0e36c9149836b095548bf1020"
+        "sha256:575c4fd84ba8eeeaa8520c7e4c7042b7791f5ec3e9c0a5d5c418124c42d9e7e4",
+        "sha256:8060dc98baf63d6796a765bbbc809fff9f7a383f6e3a9add526f814c086545ef"
       ],
       "markers": "python_version >= '3.8'",
-      "version": "==1.1.11.20240228"
+      "version": "==1.1.11.20240806"
     },
     "types-httplib2": {
       "hashes": [

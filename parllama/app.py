@@ -36,7 +36,7 @@ from textual.widgets import TextArea
 from parllama import __application_title__
 from parllama.chat_manager import chat_manager
 from parllama.chat_manager import ChatManager
-from parllama.check_for_updates import update_manager
+from parllama.update_manager import update_manager
 from parllama.data_manager import dm
 from parllama.dialogs.help_dialog import HelpDialog
 from parllama.dialogs.information import InformationDialog
@@ -173,9 +173,13 @@ class ParLlamaApp(App[None]):
 
     async def on_mount(self) -> None:
         """Display the main or locked screen."""
-        await self.push_screen(self.main_screen)
+        # self.notify(str(settings.use_last_tab_on_startup))
+        # self.notify(settings.last_tab)
+        # self.notify(settings.initial_tab)
 
-        await update_manager.check_for_updates()
+        await self.push_screen(self.main_screen)
+        if settings.check_for_updates:
+            await update_manager.check_for_updates()
 
         self.post_message_all(StatusMessage(f"Data folder: {settings.data_dir}"))
         self.post_message_all(StatusMessage(f"Chat folder: {settings.chat_dir}"))
@@ -232,12 +236,12 @@ class ParLlamaApp(App[None]):
             self.ps_timer = self.set_timer(1, self.update_ps)
 
         if settings.show_first_run:
+            settings.show_first_run = False
+            settings.save()
             self.set_timer(1, self.show_first_run)
 
     async def show_first_run(self) -> None:
         """Show first run screen"""
-        settings.show_first_run = False
-        settings.save()
         await self.app.push_screen(
             InformationDialog(
                 title="Welcome",

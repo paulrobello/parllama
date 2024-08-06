@@ -584,7 +584,7 @@ def get_args() -> Namespace:
     )
     parser.add_argument(
         "--use-last-tab-on-startup",
-        help="Use last tab on startup",
+        help="Use last tab on startup. Defaults to 1",
         choices=["0", "1"],
     )
 
@@ -598,7 +598,7 @@ def get_args() -> Namespace:
     parser.add_argument(
         "-a",
         "--auto-name-session",
-        help="Auto name session using LLM",
+        help="Auto name session using LLM. Defaults to 0",
         choices=["0", "1"],
     )
 

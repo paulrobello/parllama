@@ -9,7 +9,7 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Container
 from textual.containers import VerticalScroll
-from textual.events import Show
+from textual.events import Show, Focus
 from textual.widget import Widget
 from textual.widgets import Input
 from textual.widgets import TabbedContent
@@ -116,10 +116,11 @@ class LocalModelView(Container):
 
     def compose(self) -> ComposeResult:
         """Compose the Main screen."""
-        yield self.search_input
-        with VerticalScroll():
-            with self.grid:
-                yield from dm.models
+        with self.prevent(Focus, TabbedContent.TabActivated):
+            yield self.search_input
+            with VerticalScroll():
+                with self.grid:
+                    yield from dm.models
 
     async def on_mount(self) -> None:
         """Mount the view."""
