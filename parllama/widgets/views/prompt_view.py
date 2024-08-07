@@ -19,13 +19,13 @@ from textual.widgets import Select
 from parllama.chat_manager import chat_manager
 from parllama.chat_prompt import ChatPrompt
 from parllama.dialogs.edit_prompt_dialog import EditPromptDialog
+from parllama.dialogs.import_fabric_dialog import ImportFabricDialog
 from parllama.dialogs.yes_no_dialog import YesNoDialog
 from parllama.messages.messages import DeletePrompt
 from parllama.messages.messages import PromptDeleteRequested
 from parllama.messages.messages import PromptSelected
 from parllama.messages.messages import RegisterForUpdates
 from parllama.models.settings_data import settings
-from parllama.prompt_utils.import_fabric import import_fabric_manager
 from parllama.widgets.input_blur_submit import InputBlurSubmit
 from parllama.widgets.local_model_select import LocalModelSelect
 from parllama.widgets.prompt_list import PromptList
@@ -163,4 +163,4 @@ class PromptView(Container):
     def import_prompts(self, event: Message) -> None:
         """Handle import prompts"""
         event.stop()
-        import_fabric_manager.test_import()
+        self.app.push_screen(ImportFabricDialog())

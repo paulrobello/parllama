@@ -356,3 +356,8 @@ class LogIt(Message):
     notify: bool = False
     severity: SeverityLevel = "information"
     timeout: int = 5
+
+
+@dataclass
+class ImportReady(Message):
+    """Import ready message."""

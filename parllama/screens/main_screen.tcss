@@ -32,42 +32,29 @@ ListView:focus > SiteModelListItem.--highlight {
   }
 }
 
-    OptionsView {
-        width: 1fr;
-        height: 1fr;
-        overflow: auto;
 
-        Horizontal {
-            height: auto;
-            Label {
-                padding-top: 1;
-                height: 3;
-            }
-        }
+    ImportFabricDialog {
+        background: black 75%;
+        align: center middle;
 
-        .column {
-            width: 1fr;
-            height: auto;
-        }
-
-        .folder-item {
-            height: 1;
-            width: 1fr;
-            Label, Static {
-                height: 1;
-                padding: 0;
-                margin: 0;
-                width: 2fr;
-            }
-            Label {
-                width: 1fr;
-            }
-        }
-        .section {
-            background: $panel;
-            height: auto;
-            width: 1fr;
-            border: solid $primary;
+        &> VerticalScroll {
+            background: $surface;
+            width: 75%;
+            height: 90%;
+            min-width: 80;
+            border: thick $accent;
             border-title-color: $primary;
+            padding: 1;
+            &> Horizontal {
+                height: 3;
+                width: 1fr;
+                &> Checkbox {
+                    width: 35;
+                }
+                &> Label {
+                    height: 3;
+                    padding-top: 1;
+                }
+            }
         }
     }

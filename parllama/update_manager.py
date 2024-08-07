@@ -7,7 +7,6 @@ from datetime import timezone
 
 import httpx
 import requests
-from bs4 import BeautifulSoup
 from semver import Version
 
 from parllama import __version__
@@ -23,7 +22,7 @@ class UpdateManager(ParEventSystemBase):
     def __init__(self) -> None:
         """Initialize the update manager"""
         super().__init__(id="update_manager")
-        self.url = "https://pypi.org/project/parllama/"
+        self.url = "https://pypi.org/pypi/parllama/json"
 
     async def get_latest_version(self) -> Version:
         """Get project version"""
@@ -31,13 +30,9 @@ class UpdateManager(ParEventSystemBase):
 
         try:
             async with httpx.AsyncClient() as client:
-                response = await client.get(self.url, timeout=5)
-            soup = BeautifulSoup(response.text, "html.parser")
-            header = soup.find("h1", class_="package-header__name")
-            if not header:
-                raise ValueError("Could not locate header")
-            version = header.text.strip().split(" ")[-1]
-            return Version.parse(version)
+                response = await client.get(self.url, follow_redirects=True, timeout=5)
+                data = response.json()
+            return Version.parse(data["info"]["version"])
         except requests.exceptions.RequestException as e:
             raise ValueError("Could not fetch version info") from e
 

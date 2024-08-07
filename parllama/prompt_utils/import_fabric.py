@@ -16,16 +16,35 @@ from parllama.par_event_system import ParEventSystemBase
 class ImportFabricManager(ParEventSystemBase):
     """Import Fabric prompts from fabric repo."""
 
+    id_to_prompt: dict[str, ChatPrompt]
+    prompts: list[ChatPrompt]
+    import_ids: set[str]
+
     def __init__(self) -> None:
         """Initialize the import manager."""
         super().__init__(id="import_fabric_manager")
-
+        self.prompts = []
+        self.id_to_prompt = {}
+        self.import_ids = set()
         self.repo_zip_url = (
             "https://github.com/danielmiessler/fabric/archive/refs/heads/main.zip"
         )
 
     def import_patterns(self) -> None:
-        """Update the patterns by downloading the zip from GitHub and extracting it."""
+        """Import requested Fabric prompts."""
+        for prompt_id in self.import_ids:
+            prompt = self.id_to_prompt.get(prompt_id)
+            if not prompt:
+                continue
+            chat_manager.add_prompt(prompt)
+            prompt.is_dirty = True
+            prompt.save()
+
+    def fetch_patterns(self) -> list[ChatPrompt]:
+        """Create prompts from GitHub zip file."""
+        self.prompts.clear()
+        self.id_to_prompt.clear()
+        self.import_ids.clear()
         with tempfile.TemporaryDirectory() as temp_dir:
             zip_path = os.path.join(temp_dir, "repo.zip")
             self.download_zip(self.repo_zip_url, zip_path)
@@ -58,9 +77,9 @@ class ImportFabricManager(ParEventSystemBase):
                     prompt: ChatPrompt = self.markdown_to_prompt(
                         pattern_name, prompt_content
                     )
-                    chat_manager.add_prompt(prompt)
-                    prompt.is_dirty = True
-                    prompt.save()
+                    self.prompts.append(prompt)
+                    self.id_to_prompt[prompt.id] = prompt
+        return self.prompts
 
     def markdown_to_prompt(self, pattern_name: str, prompt_content: str) -> ChatPrompt:
         """Convert markdown to ChatPrompt."""
