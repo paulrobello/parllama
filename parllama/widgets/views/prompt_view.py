@@ -147,6 +147,19 @@ class PromptView(Container):
     def temperature_input_changed(self, event: Message) -> None:
         """Handle temperature input change"""
         event.stop()
+        try:
+            if self.temperature_input.value:
+                chat_manager.prompt_temperature = float(self.temperature_input.value)
+        except ValueError:
+            pass
+
+    @on(Select.Changed, "#model_name")
+    def model_name_changed(self, event: Select.Changed) -> None:
+        """Model name changed"""
+        if event.value == Select.BLANK:
+            chat_manager.prompt_llm_name = None
+        else:
+            chat_manager.prompt_llm_name = event.value  # type: ignore
 
     @on(PromptSelected)
     def on_prompt_selected(self, event: PromptSelected) -> None:
@@ -155,9 +168,11 @@ class PromptView(Container):
             if self.temperature_input.value:
                 event.temperature = float(self.temperature_input.value)
         except ValueError:
-            pass
+            event.temperature = None
         if self.model_select.value and self.model_select.value != Select.BLANK:
             event.llm_model_name = self.model_select.value  # type: ignore
+        else:
+            event.llm_model_name = None
 
     @on(Button.Pressed, "#import")
     def import_prompts(self, event: Message) -> None:

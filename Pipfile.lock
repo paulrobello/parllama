@@ -878,7 +878,7 @@
         "sha256:04e5ca0351e0f3f85c6853954072df659d0d13fac324d0072316b67d7794700d",
         "sha256:1a7ead55c7e559dd4dee8856e3a88b41225abfe1ce8df57b7c13915fe121ffb8"
       ],
-      "markers": "python_version < '3.13'",
+      "markers": "python_version >= '3.8'",
       "version": "==4.12.2"
     },
     "uc-micro-py": {
@@ -918,11 +918,11 @@
   "develop": {
     "aiohappyeyeballs": {
       "hashes": [
-        "sha256:40a16ceffcf1fc9e142fd488123b2e218abc4188cf12ac20c67200e1579baa42",
-        "sha256:7e1ae8399c320a8adec76f6c919ed5ceae6edd4c3672f4d9eae2b27e37c80ff6"
+        "sha256:4d6dea59215537dbc746e93e779caea8178c866856a721c9c660d7a5a7b8be03",
+        "sha256:6fa48b9f1317254f122a07a131a86b71ca6946ca989ce6326fff54a99a920105"
       ],
-      "markers": "python_version >= '3.8' and python_version < '4.0'",
-      "version": "==2.3.4"
+      "markers": "python_version >= '3.8'",
+      "version": "==2.3.5"
     },
     "aiohttp": {
       "hashes": [
@@ -1493,11 +1493,11 @@
     },
     "more-itertools": {
       "hashes": [
-        "sha256:e5d93ef411224fbcef366a6e8ddc4c5781bc6359d43412a65dd5964e46111463",
-        "sha256:ea6a02e24a9161e51faad17a8782b92a0df82c12c1c8886fec7f0c3fa1a1b320"
+        "sha256:0f7d9f83a0a8dcfa8a2694a770590d98a67ea943e3d9f5298309a484758c4e27",
+        "sha256:fe0e63c4ab068eac62410ab05cccca2dc71ec44ba8ef29916a0090df061cf923"
       ],
       "markers": "python_version >= '3.8'",
-      "version": "==10.3.0"
+      "version": "==10.4.0"
     },
     "msgpack": {
       "hashes": [
@@ -2061,7 +2061,7 @@
         "sha256:04e5ca0351e0f3f85c6853954072df659d0d13fac324d0072316b67d7794700d",
         "sha256:1a7ead55c7e559dd4dee8856e3a88b41225abfe1ce8df57b7c13915fe121ffb8"
       ],
-      "markers": "python_version < '3.13'",
+      "markers": "python_version >= '3.8'",
       "version": "==4.12.2"
     },
     "uc-micro-py": {

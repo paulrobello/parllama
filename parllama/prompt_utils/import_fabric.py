@@ -29,6 +29,7 @@ class ImportFabricManager(ParEventSystemBase):
         self.repo_zip_url = (
             "https://github.com/danielmiessler/fabric/archive/refs/heads/main.zip"
         )
+        self._last_folder: str | None = None
 
     def import_patterns(self) -> None:
         """Import requested Fabric prompts."""
@@ -46,6 +47,7 @@ class ImportFabricManager(ParEventSystemBase):
         self.id_to_prompt.clear()
         self.import_ids.clear()
         with tempfile.TemporaryDirectory() as temp_dir:
+            self._last_folder = temp_dir
             zip_path = os.path.join(temp_dir, "repo.zip")
             self.download_zip(self.repo_zip_url, zip_path)
             extracted_folder_path = self.extract_zip(zip_path, temp_dir)

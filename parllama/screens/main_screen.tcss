@@ -37,7 +37,7 @@ ListView:focus > SiteModelListItem.--highlight {
         background: black 75%;
         align: center middle;
 
-        &> VerticalScroll {
+        &> Vertical {
             background: $surface;
             width: 75%;
             height: 90%;
@@ -45,15 +45,19 @@ ListView:focus > SiteModelListItem.--highlight {
             border: thick $accent;
             border-title-color: $primary;
             padding: 1;
-            &> Horizontal {
-                height: 3;
-                width: 1fr;
-                &> Checkbox {
-                    width: 35;
-                }
-                &> Label {
+            &> VerticalScroll {
+                & > Horizontal {
                     height: 3;
-                    padding-top: 1;
+                    width: 1fr;
+
+                    & > Checkbox {
+                        width: 35;
+                    }
+
+                    & > Label {
+                        height: 3;
+                        padding-top: 1;
+                    }
                 }
             }
         }

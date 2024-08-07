@@ -22,9 +22,7 @@ class LocalModelSelect(Select[str]):
         opts = dm.get_model_select_options()
         if "value" in kwargs:
             if len(kwargs["value"]) == 0:
-                del kwargs[
-                    "value"
-                ]  # Remove the value from the kwargs to avoid conflicts with the Select widget's value attribute.
+                del kwargs["value"]  # Remove blank values
 
         if len(opts) == 0 and "value" in kwargs:
             if kwargs["value"]:
@@ -73,6 +71,6 @@ class LocalModelSelect(Select[str]):
             if found:
                 with self.prevent(Select.Changed):
                     self.set_options(opts)
-                    self.value = old_v
-                    return
+                self.value = old_v
+                return
         self.set_options(opts)

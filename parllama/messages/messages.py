@@ -269,8 +269,8 @@ class DeletePromptMessage(PromptMessage):
 class PromptSelected(PromptMessage):
     """Notify that a prompt has been selected."""
 
-    temperature: float = 0.5
-    llm_model_name: str = ""
+    temperature: float | None = None
+    llm_model_name: str | None = None
 
 
 @dataclass

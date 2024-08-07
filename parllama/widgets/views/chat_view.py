@@ -394,7 +394,13 @@ Chat Commands:
             if prompt is None:
                 self.notify(f"Prompt {v} not found", severity="error")
                 return
-            await self.active_tab.load_prompt(PromptSelected(prompt_id=prompt.id))
+            await self.active_tab.load_prompt(
+                PromptSelected(
+                    prompt_id=prompt.id,
+                    llm_model_name=None,
+                    temperature=None,
+                )
+            )
         else:
             self.notify(f"Unknown command: {cmd}", severity="error")
 

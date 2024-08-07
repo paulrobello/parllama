@@ -7,7 +7,7 @@ from typing import cast
 from textual import on, work
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import VerticalScroll, Horizontal
+from textual.containers import VerticalScroll, Horizontal, Vertical
 from textual.events import Focus
 from textual.screen import ModalScreen
 from textual.widgets import Button, Checkbox, Label
@@ -39,24 +39,27 @@ class ImportFabricDialog(ModalScreen[None]):
 
     def compose(self) -> ComposeResult:
         """Compose the content of the dialog."""
-        with VerticalScroll(id="prompts_container") as vs:
+        with Vertical() as vs:
             vs.border_title = "Import Fabric"
             yield Button("Import", id="import")
-            yield Checkbox(label="Select All", id="select_all", value=False)
-            for prompt in import_fabric_manager.prompts:
-                with Horizontal(classes="prompt_row"):
-                    yield Checkbox(
-                        label=prompt.name,
-                        id=f"prompt_{prompt.id}",
-                        classes="prompt_cb",
-                        value=False,
-                    )
-                    yield Label(str_ellipsis(prompt.description, 35))
+
+            with VerticalScroll(id="prompts_container"):
+                yield Checkbox(label="Select All", id="select_all", value=False)
+                for prompt in import_fabric_manager.prompts:
+                    with Horizontal(classes="prompt_row"):
+                        yield Checkbox(
+                            label=prompt.name,
+                            id=f"prompt_{prompt.id}",
+                            classes="prompt_cb",
+                            value=False,
+                        )
+                        yield Label(str_ellipsis(prompt.description, 35))
 
     def on_mount(self) -> None:
         """Mount the view."""
-        self.loading = True
-        self.fetch_patterns()
+        if len(import_fabric_manager.prompts) == 0:
+            self.loading = True
+            self.fetch_patterns()
 
     @work(thread=True)
     async def fetch_patterns(self) -> None:
@@ -91,6 +94,9 @@ class ImportFabricDialog(ModalScreen[None]):
     def on_import_pressed(self, event: Button.Pressed) -> None:
         """Copy model to create screen."""
         event.stop()
+        if len(import_fabric_manager.import_ids) == 0:
+            self.notify("No prompts selected", severity="error", timeout=5)
+            return
         import_fabric_manager.import_patterns()
         self.app.post_message(LogIt(import_fabric_manager.import_ids))
 

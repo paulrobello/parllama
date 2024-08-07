@@ -34,6 +34,8 @@ class ChatManager(ParEventSystemBase):
     _id_to_prompt: dict[str, ChatPrompt]
 
     options: OllamaOptions
+    prompt_temperature: float
+    prompt_llm_name: str | None
 
     def __init__(self) -> None:
         """Initialize the chat manager"""
@@ -41,6 +43,8 @@ class ChatManager(ParEventSystemBase):
         self._id_to_session = {}
         self._id_to_prompt = {}
         self.options = {}
+        self.prompt_temperature = 0.5
+        self.prompt_llm_name = None
 
     def set_app(self, app: App[Any]) -> None:
         """Set the app and load existing sessions and prompts from storage"""

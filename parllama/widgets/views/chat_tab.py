@@ -396,18 +396,24 @@ class ChatTab(TabPane):
     async def load_prompt(self, event: PromptSelected) -> None:
         """Load a session"""
         self.app.post_message(LogIt("load_prompt: " + event.prompt_id))
-        self.app.post_message(LogIt(event))
+        self.app.post_message(
+            LogIt(f"{event.prompt_id},{event.llm_model_name},{event.temperature}")
+        )
         prompt = chat_manager.get_prompt(event.prompt_id)
         if prompt is None:
             self.notify(f"Prompt not found: {event.prompt_id}", severity="error")
             return
         prompt.load()
+        self.app.post_message(LogIt(f"{prompt.id},{prompt.name}"))
         old_session = self.session
         old_session.remove_sub(self)
+        opts = old_session.options
+        if event.temperature is not None:
+            opts["temperature"] = event.temperature
         self.session = chat_manager.new_session(
             session_name=prompt.name or old_session.name,
             model_name=event.llm_model_name or old_session.llm_model_name,
-            options=old_session.options | {"temperature": event.temperature},
+            options=opts,  # type: ignore
             widget=self,
         )
         with self.prevent(Focus, Input.Changed, Select.Changed):
