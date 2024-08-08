@@ -1,3 +1,5 @@
+"""Import Fabric prompts from fabric repo."""
+
 from __future__ import annotations
 
 import hashlib
