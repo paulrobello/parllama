@@ -50,9 +50,9 @@ from parllama.utils import str_ellipsis
 from parllama.widgets.chat_message_list import ChatMessageList
 from parllama.widgets.chat_message_widget import ChatMessageWidget
 from parllama.widgets.input_blur_submit import InputBlurSubmit
-from parllama.widgets.input_tab_complete import InputTabComplete
 from parllama.widgets.local_model_select import LocalModelSelect
 from parllama.widgets.session_list import SessionList
+from parllama.widgets.user_input import UserInput
 
 
 class ChatTab(TabPane):
@@ -92,7 +92,7 @@ class ChatTab(TabPane):
     busy: Reactive[bool] = Reactive(False)
 
     def __init__(
-        self, user_input: InputTabComplete, session_list: SessionList, **kwargs
+        self, user_input: UserInput, session_list: SessionList, **kwargs
     ) -> None:
         """Initialise the view."""
         session_name = chat_manager.mk_session_name("New Chat")

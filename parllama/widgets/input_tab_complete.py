@@ -1,4 +1,4 @@
-"""Input widget with special tab completion."""
+"""Input widget with special tab completion and history."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from textual.widgets import Input
 
 
 class InputTabComplete(Input):
-    """Input widget with special tab completion."""
+    """Input widget with special tab completion and history."""
 
     submit_on_tab: bool = True
     submit_on_complete: bool = True

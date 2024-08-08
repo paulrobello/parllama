@@ -22,6 +22,35 @@ class ImportFabricDialog(ModalScreen[None]):
     """Fabric custom prompt import dialog."""
 
     DEFAULT_CSS = """
+    ImportFabricDialog {
+        background: black 75%;
+        align: center middle;
+
+        &> Vertical {
+            background: $surface;
+            width: 75%;
+            height: 90%;
+            min-width: 80;
+            border: thick $accent;
+            border-title-color: $primary;
+            padding: 1;
+            &> VerticalScroll {
+                & > Horizontal {
+                    height: 3;
+                    width: 1fr;
+
+                    & > Checkbox {
+                        width: 35;
+                    }
+
+                    & > Label {
+                        height: 3;
+                        padding-top: 1;
+                    }
+                }
+            }
+        }
+    }
 
     """
 

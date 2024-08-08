@@ -23,42 +23,51 @@ ListView > SiteModelListItem.--highlight {
 }
 
 ListView:focus > SiteModelListItem.--highlight {
-  background: $panel;
-  border: double $primary;
-  border-title-color: $primary-lighten-2;
+    background: $panel;
+    border: double $primary;
+    border-title-color: $primary-lighten-2;
 
-  & > Widget:hover {
-    background: $surface;
-  }
+    & > Widget:hover {
+        background: $surface;
+    }
 }
 
-
-    ImportFabricDialog {
-        background: black 75%;
-        align: center middle;
-
-        &> Vertical {
-            background: $surface;
-            width: 75%;
-            height: 90%;
-            min-width: 80;
-            border: thick $accent;
-            border-title-color: $primary;
-            padding: 1;
-            &> VerticalScroll {
-                & > Horizontal {
-                    height: 3;
-                    width: 1fr;
-
-                    & > Checkbox {
-                        width: 35;
-                    }
-
-                    & > Label {
-                        height: 3;
-                        padding-top: 1;
-                    }
-                }
+ChatView {
+    layers: left;
+    SessionList {
+        width: 40;
+        height: 1fr;
+        dock: left;
+        padding: 1;
+    }
+    #chat_tabs {
+        height: 1fr;
+    }
+    #send_bar {
+        height: auto;
+        min-height: 3;
+        max-height: 5;
+        background: $surface-darken-1;
+        #user_input {
+            width: 1fr;
+            height: auto;
+            min-height: 3;
+            max-height: 5;
+            .input--placeholder, .input--suggestion {
+                color: $text-disabled;
+            }
+            .text-area--cursor-line {
+                 background: $background 0%;
             }
         }
+        #send_button {
+            min-width: 7;
+            width: 7;
+            margin-right: 1;
+        }
+        #stop_button {
+            min-width: 6;
+            width: 6;
+        }
     }
+}

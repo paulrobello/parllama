@@ -10,11 +10,11 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal
 from textual.containers import Vertical
+from textual.events import Show
 from textual.message import Message
 from textual.suggester import SuggestFromList
-from textual.widgets import Button
+from textual.widgets import Button, TextArea
 from textual.widgets import ContentSwitcher
-from textual.widgets import Input
 from textual.widgets import Select
 from textual.widgets import TabbedContent
 
@@ -39,8 +39,9 @@ from parllama.messages.messages import SessionToPrompt
 from parllama.messages.messages import SessionUpdated
 from parllama.messages.messages import UpdateChatControlStates
 from parllama.messages.messages import UpdateTabLabel
-from parllama.widgets.input_tab_complete import InputTabComplete
 from parllama.widgets.session_list import SessionList
+from parllama.widgets.textarea_tab_complete import TextareaComplete
+from parllama.widgets.user_input import UserInput
 from parllama.widgets.views.chat_tab import ChatTab
 
 valid_commands: list[str] = [
@@ -78,7 +79,8 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         height: 1fr;
       }
       #send_bar {
-        height: 3;
+        min-height: 3;
+        max-height: 5;
         background: $surface-darken-1;
         #user_input {
           width: 1fr;
@@ -121,6 +123,7 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
             key="ctrl+delete",
             action="remove_tab",
             description="Remove Tab",
+            key_display="^del",
             show=True,
         ),
         Binding(
@@ -143,15 +146,12 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         self.session_list.display = False
 
         self.chat_tabs = TabbedContent(id="chat_tabs")
-        self.user_input: InputTabComplete = InputTabComplete(
+        self.user_input: UserInput = UserInput(
             id="user_input",
-            placeholder="Type a message...",
             suggester=SuggestFromList(
                 valid_commands,
                 case_sensitive=False,
             ),
-            submit_on_tab=False,
-            submit_on_complete=False,
         )
 
         self.send_button: Button = Button(
@@ -194,6 +194,10 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
             f"/prompt.load {prompt.name}" for prompt in chat_manager.sorted_prompts
         ]
 
+    def _on_show(self, event: Show) -> None:
+        """Handle show event"""
+        self.user_input.focus()
+
     @on(PromptListLoaded)
     def on_prompt_list_loaded(self, event: PromptListLoaded) -> None:
         """Prompt list changed"""
@@ -209,7 +213,7 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
             case_sensitive=False,
         )
 
-    @on(Input.Changed, "#user_input")
+    @on(TextArea.Changed, "#user_input")
     def on_user_input_changed(self) -> None:
         """Handle max lines input change"""
         self.update_control_states()
@@ -261,7 +265,7 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         # TODO Add new tab
 
     @on(Button.Pressed, "#send_button")
-    @on(Input.Submitted, "#user_input")
+    @on(TextareaComplete.Submitted, "#user_input")
     async def action_send_message(self, event: Message) -> None:
         """Send the message."""
         event.stop()
