@@ -46,20 +46,8 @@ ChatView {
     #send_bar {
         height: auto;
         min-height: 3;
-        max-height: 5;
+        max-height: 15;
         background: $surface-darken-1;
-        #user_input {
-            width: 1fr;
-            height: auto;
-            min-height: 3;
-            max-height: 5;
-            .input--placeholder, .input--suggestion {
-                color: $text-disabled;
-            }
-            .text-area--cursor-line {
-                 background: $background 0%;
-            }
-        }
         #send_button {
             min-width: 7;
             width: 7;
@@ -68,6 +56,23 @@ ChatView {
         #stop_button {
             min-width: 6;
             width: 6;
+        }
+    }
+}
+
+UserInput {
+    width: 1fr;
+    height: auto;
+    min-height: 3;
+    max-height: 15;
+    UserTextArea {
+        width: 1fr;
+        height: auto;
+        min-height: 3;
+        max-height: 15;
+
+        .text-area--cursor-line {
+            background: $background 0%;
         }
     }
 }

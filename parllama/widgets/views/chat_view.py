@@ -13,7 +13,7 @@ from textual.containers import Vertical
 from textual.events import Show
 from textual.message import Message
 from textual.suggester import SuggestFromList
-from textual.widgets import Button, TextArea
+from textual.widgets import Button
 from textual.widgets import ContentSwitcher
 from textual.widgets import Select
 from textual.widgets import TabbedContent
@@ -40,7 +40,6 @@ from parllama.messages.messages import SessionUpdated
 from parllama.messages.messages import UpdateChatControlStates
 from parllama.messages.messages import UpdateTabLabel
 from parllama.widgets.session_list import SessionList
-from parllama.widgets.textarea_tab_complete import TextareaComplete
 from parllama.widgets.user_input import UserInput
 from parllama.widgets.views.chat_tab import ChatTab
 
@@ -213,9 +212,10 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
             case_sensitive=False,
         )
 
-    @on(TextArea.Changed, "#user_input")
-    def on_user_input_changed(self) -> None:
+    @on(UserInput.Changed)
+    def on_user_input_changed(self, event: UserInput.Changed) -> None:
         """Handle max lines input change"""
+        event.stop()
         self.update_control_states()
 
     def update_control_states(self):
@@ -265,7 +265,7 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         # TODO Add new tab
 
     @on(Button.Pressed, "#send_button")
-    @on(TextareaComplete.Submitted, "#user_input")
+    @on(UserInput.Submitted)
     async def action_send_message(self, event: Message) -> None:
         """Send the message."""
         event.stop()

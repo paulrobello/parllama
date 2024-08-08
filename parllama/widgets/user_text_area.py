@@ -10,7 +10,7 @@ from textual.message import Message
 from textual.widgets import TextArea
 
 
-class TextareaComplete(TextArea):
+class UserTextArea(TextArea):
     """Input widget with special tab completion."""
 
     @dataclass
@@ -21,13 +21,13 @@ class TextareaComplete(TextArea):
         parent widget in the DOM.
         """
 
-        input: TextareaComplete
+        input: UserTextArea
         """The `Input` widget that is being submitted."""
         value: str
         """The value of the `Input` being submitted."""
 
         @property
-        def control(self) -> TextareaComplete:
+        def control(self) -> UserTextArea:
             """Alias for self.input."""
             return self.input
 
@@ -58,4 +58,6 @@ class TextareaComplete(TextArea):
     def action_submit(self) -> None:
         """Store the last input in history."""
         v: str = self.text.strip()
-        self.post_message(TextareaComplete.Submitted(self, value=v))
+        if not v:
+            return
+        self.post_message(UserTextArea.Submitted(self, value=v))
