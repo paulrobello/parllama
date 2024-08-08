@@ -2,19 +2,23 @@
 
 from __future__ import annotations
 
-import datetime
 import os
 import uuid
 from dataclasses import dataclass
+from datetime import datetime
+from datetime import timezone
 
-import simplejson as json
+import pytz
 import rich.repr
+import simplejson as json
 
 from parllama.chat_message import OllamaMessage
 from parllama.chat_message_container import ChatMessageContainer
-from parllama.messages.par_prompt_messages import ParPromptDelete, ParPromptUpdated
-from parllama.messages.shared import PromptChanges, prompt_change_list
-from parllama.models.settings_data import settings
+from parllama.messages.par_prompt_messages import ParPromptDelete
+from parllama.messages.par_prompt_messages import ParPromptUpdated
+from parllama.messages.shared import prompt_change_list
+from parllama.messages.shared import PromptChanges
+from parllama.settings_manager import settings
 
 
 @rich.repr.auto
@@ -24,7 +28,9 @@ class ChatPrompt(ChatMessageContainer):
 
     _description: str
     messages: list[OllamaMessage]
-    last_updated: datetime.datetime
+    last_updated: datetime
+    source: str | None
+
     _submit_on_load: bool
     _id_to_msg: dict[str, OllamaMessage]
 
@@ -37,12 +43,14 @@ class ChatPrompt(ChatMessageContainer):
         description: str,
         messages: list[OllamaMessage] | list[dict] | None = None,
         submit_on_load: bool = False,
-        last_updated: datetime.datetime | None = None,
+        last_updated: datetime | None = None,
+        source: str | None = None,
     ):
         """Initialize the chat prompt"""
         super().__init__(id=id, name=name, messages=messages, last_updated=last_updated)
         self._description = description
         self._submit_on_load = submit_on_load
+        self.source = source
 
     def load(self) -> None:
         """Load chat prompts from files"""
@@ -109,6 +117,7 @@ class ChatPrompt(ChatMessageContainer):
         self.id = uuid.uuid4().hex
         self._name = prompt_name
         self._description = ""
+        self.source = ""
         self.messages.clear()
         self._id_to_msg.clear()
         self._loaded = False
@@ -137,6 +146,7 @@ class ChatPrompt(ChatMessageContainer):
                 "description": self._description,
                 "submit_on_load": self._submit_on_load,
                 "messages": [m.__dict__() for m in self.messages],
+                "source": self.source,
             },
             default=str,
             indent=indent,
@@ -146,10 +156,14 @@ class ChatPrompt(ChatMessageContainer):
     def from_json(json_data: str, load_messages: bool = False) -> ChatPrompt:
         """Convert JSON to chat session"""
         data: dict = json.loads(json_data)
+        utc = pytz.UTC
+
         return ChatPrompt(
             id=data["id"],
             name=data["name"],
-            last_updated=datetime.datetime.fromisoformat(data["last_updated"]),
+            last_updated=datetime.fromisoformat(data["last_updated"]).replace(
+                tzinfo=utc
+            ),
             description=data.get("description", ""),
             messages=(
                 [OllamaMessage(**m) for m in data["messages"]]
@@ -157,6 +171,7 @@ class ChatPrompt(ChatMessageContainer):
                 else None
             ),
             submit_on_load=data.get("submit_on_load", False),
+            source=data.get("source"),
         )
 
     @staticmethod
@@ -185,7 +200,7 @@ class ChatPrompt(ChatMessageContainer):
         if not self.is_dirty:
             # self.log_it(f"CP is not dirty, not notifying: {self.name}")
             return False  # No need to save if no changes
-        self.last_updated = datetime.datetime.now()
+        self.last_updated = datetime.now(timezone.utc)
         nc: PromptChanges = PromptChanges()
         for change in self._changes:
             if change in prompt_change_list:

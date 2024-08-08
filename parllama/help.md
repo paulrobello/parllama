@@ -88,10 +88,12 @@ Chat with local LLMs and manage saved sessions
 | `ctrl+e`        | Export selected tab as Markdown         |
 
 ### Message Input keys
-| Key           | Command                                 |
-|---------------|-----------------------------------------|
-| `enter`       | Send chat to LLM                        |
-| `up` / `down` | Scroll through input history            |
+| Key           | Command                                         |
+|---------------|-------------------------------------------------|
+| `enter`       | Send chat to LLM                                |
+| `up` / `down` | Scroll through input history                    |
+| `ctrl+j`      | Toggle between single and multi line input mode |
+| `ctrl+g`      | Submit multi line edit content                  |
 
 ### Message List keys
 | Key      | Command                                 |
@@ -128,7 +130,7 @@ Chat Commands:
 * /prompt.load prompt_name - Load a custom prompt using current tabs model and temperature
 
 ## Prompts Tab
-Allows you to create, edit and execute custom prompts
+Allows you to create, edit, import and execute custom prompts
 
 ### Prompts Tab keys
 
@@ -158,8 +160,9 @@ If you have Ollama running on multiple machines you must import each machines ke
 
 ## Command line arguments
 ```
-usage: parllama [-h] [-v] [-d DATA_DIR] [-u OLLAMA_URL] [-t THEME_NAME] [-m {dark,light}] [-s {local,site,chat,prompts,tools,create,logs}]
-                [-p PS_POLL] [-a {0,1}] [--restore-defaults] [--clear-cache] [--purge-chats] [--purge-prompts] [--no-save] [--no-chat-save]
+usage: parllama [-h] [-v] [-d DATA_DIR] [-u OLLAMA_URL] [-t THEME_NAME] [-m {dark,light}]
+                [-s {local,site,chat,prompts,tools,create,options,logs}] [--use-last-tab-on-startup {0,1}] [-p PS_POLL] [-a {0,1}]
+                [--restore-defaults] [--purge-cache] [--purge-chats] [--purge-prompts] [--no-save] [--no-chat-save]
 
 PAR LLAMA -- Ollama TUI.
 
@@ -174,16 +177,18 @@ options:
                         Theme name. Defaults to par
   -m {dark,light}, --theme-mode {dark,light}
                         Dark / Light mode. Defaults to dark
-  -s {local,site,chat,prompts,tools,create,logs}, --starting-screen {local,site,chat,prompts,tools,create,logs}
-                        Starting screen. Defaults to local
+  -s {local,site,chat,prompts,tools,create,options,logs}, --starting-tab {local,site,chat,prompts,tools,create,options,logs}
+                        Starting tab. Defaults to local
+  --use-last-tab-on-startup {0,1}
+                        Use last tab on startup. Defaults to 1
   -p PS_POLL, --ps-poll PS_POLL
                         Interval in seconds to poll ollama ps command. 0 = disable. Defaults to 3
   -a {0,1}, --auto-name-session {0,1}
-                        Auto name session using LLM
+                        Auto name session using LLM. Defaults to 0
   --restore-defaults    Restore default settings and theme
-  --clear-cache         Clear cached data
+  --purge-cache         Purge cached data
   --purge-chats         Purge all chat history
   --purge-prompts       Purge all custom prompts
-  --no-save             Prevent saving settings for this session.
-  --no-chat-save        Prevent saving chats for this session.
+  --no-save             Prevent saving settings for this session
+  --no-chat-save        Prevent saving chats for this session
 ```

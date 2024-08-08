@@ -28,12 +28,14 @@ from textual.widgets import TabPane
 
 from parllama.chat_manager import chat_manager
 from parllama.chat_manager import ChatSession
+from parllama.chat_message import OllamaMessage
 from parllama.data_manager import dm
-from parllama.messages.messages import ChatMessage, LogIt, PromptSelected
+from parllama.messages.messages import ChatMessage
 from parllama.messages.messages import ChatMessageSent
 from parllama.messages.messages import DeleteSession
 from parllama.messages.messages import LocalModelDeleted
-from parllama.messages.messages import LocalModelListLoaded
+from parllama.messages.messages import LogIt
+from parllama.messages.messages import PromptSelected
 from parllama.messages.messages import RegisterForUpdates
 from parllama.messages.messages import SessionSelected
 from parllama.messages.messages import SessionUpdated
@@ -41,16 +43,16 @@ from parllama.messages.messages import UnRegisterForUpdates
 from parllama.messages.messages import UpdateChatControlStates
 from parllama.messages.messages import UpdateChatStatus
 from parllama.messages.messages import UpdateTabLabel
-from parllama.chat_message import OllamaMessage
 from parllama.models.ollama_data import FullModel
-from parllama.models.settings_data import settings
+from parllama.settings_manager import settings
 from parllama.screens.save_session import SaveSession
 from parllama.utils import str_ellipsis
-from parllama.widgets.chat_message_widget import ChatMessageWidget
 from parllama.widgets.chat_message_list import ChatMessageList
+from parllama.widgets.chat_message_widget import ChatMessageWidget
 from parllama.widgets.input_blur_submit import InputBlurSubmit
-from parllama.widgets.input_tab_complete import InputTabComplete
+from parllama.widgets.local_model_select import LocalModelSelect
 from parllama.widgets.session_list import SessionList
+from parllama.widgets.user_input import UserInput
 
 
 class ChatTab(TabPane):
@@ -90,7 +92,7 @@ class ChatTab(TabPane):
     busy: Reactive[bool] = Reactive(False)
 
     def __init__(
-        self, user_input: InputTabComplete, session_list: SessionList, **kwargs
+        self, user_input: UserInput, session_list: SessionList, **kwargs
     ) -> None:
         """Initialise the view."""
         session_name = chat_manager.mk_session_name("New Chat")
@@ -101,8 +103,8 @@ class ChatTab(TabPane):
         )
         self.session_list = session_list
         self.user_input = user_input
-        self.model_select: Select[str] = Select(
-            id="model_name", options=[], prompt="Select Model"
+        self.model_select: LocalModelSelect = LocalModelSelect(
+            id="model_name",
         )
         self.temperature_input: InputBlurSubmit = InputBlurSubmit(
             id="temperature_input",
@@ -207,7 +209,7 @@ class ChatTab(TabPane):
         except ValueError:
             return
         self.session.temperature = settings.last_chat_temperature
-        settings.save_settings_to_file()
+        settings.save()
         # chat_manager.notify_sessions_changed()
         self.user_input.focus()
 
@@ -224,7 +226,7 @@ class ChatTab(TabPane):
             self.session.name = chat_manager.mk_session_name(session_name)
         self.user_input.focus()
         settings.last_chat_session_id = self.session.id
-        settings.save_settings_to_file()
+        settings.save()
 
     def update_control_states(self):
         """Update disabled state of controls based on model and user input values"""
@@ -236,7 +238,7 @@ class ChatTab(TabPane):
         self.update_control_states()
         if self.model_select.value not in (Select.BLANK, settings.last_chat_model):
             settings.last_chat_model = str(self.model_select.value)
-            settings.save_settings_to_file()
+            settings.save()
         if self.model_select.value != Select.BLANK:
             self.session.llm_model_name = self.model_select.value  # type: ignore
         else:
@@ -250,22 +252,6 @@ class ChatTab(TabPane):
                 self.model_select.value = model_name
                 return
         self.model_select.value = Select.BLANK
-
-    @on(LocalModelListLoaded)
-    def on_local_model_list_loaded(self, evt: LocalModelListLoaded) -> None:
-        """Model list changed"""
-        evt.stop()
-        if self.model_select.value != Select.BLANK:
-            old_v = self.model_select.value
-        elif settings.last_chat_model:
-            old_v = settings.last_chat_model
-        else:
-            old_v = Select.BLANK
-        opts = dm.get_model_select_options()
-        self.model_select.set_options(opts)
-        for _, v in opts:
-            if v == old_v:
-                self.model_select.value = old_v
 
     @on(Button.Pressed, "#new_button")
     async def on_new_button_pressed(self, event: Button.Pressed) -> None:
@@ -344,7 +330,7 @@ class ChatTab(TabPane):
             else:
                 await self.vs.mount(msg_widget)
         msg_widget.loading = len(msg_widget.msg.content) == 0
-        if self.user_input.has_focus:
+        if self.user_input.child_has_focus:
             self.set_timer(0.1, self.scroll_to_bottom)
 
         # chat_manager.notify_sessions_changed()
@@ -410,18 +396,24 @@ class ChatTab(TabPane):
     async def load_prompt(self, event: PromptSelected) -> None:
         """Load a session"""
         self.app.post_message(LogIt("load_prompt: " + event.prompt_id))
-        self.app.post_message(LogIt(event))
+        self.app.post_message(
+            LogIt(f"{event.prompt_id},{event.llm_model_name},{event.temperature}")
+        )
         prompt = chat_manager.get_prompt(event.prompt_id)
         if prompt is None:
             self.notify(f"Prompt not found: {event.prompt_id}", severity="error")
             return
         prompt.load()
+        self.app.post_message(LogIt(f"{prompt.id},{prompt.name}"))
         old_session = self.session
         old_session.remove_sub(self)
+        opts = old_session.options
+        if event.temperature is not None:
+            opts["temperature"] = event.temperature
         self.session = chat_manager.new_session(
             session_name=prompt.name or old_session.name,
             model_name=event.llm_model_name or old_session.llm_model_name,
-            options=old_session.options | {"temperature": event.temperature},
+            options=opts,  # type: ignore
             widget=self,
         )
         with self.prevent(Focus, Input.Changed, Select.Changed):
@@ -557,8 +549,4 @@ class ChatTab(TabPane):
     def on_model_deleted(self, event: LocalModelDeleted) -> None:
         """Model deleted check if the currently selected model."""
         event.stop()
-
-        if event.model_name == self.model_select.value:
-            self.model_select.value = Select.BLANK
-            self.on_local_model_list_loaded(LocalModelListLoaded())
-            self.update_control_states()
+        self.update_control_states()

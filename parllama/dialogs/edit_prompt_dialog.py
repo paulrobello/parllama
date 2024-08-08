@@ -2,15 +2,24 @@
 
 from __future__ import annotations
 
-import datetime
+from datetime import datetime
+from datetime import timezone
 
 from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import VerticalScroll, Vertical, Horizontal
+from textual.containers import Horizontal
+from textual.containers import Vertical
+from textual.containers import VerticalScroll
 from textual.events import Event
 from textual.screen import ModalScreen
-from textual.widgets import Button, Input, Label, Checkbox, TextArea, Select, Static
+from textual.widgets import Button
+from textual.widgets import Checkbox
+from textual.widgets import Input
+from textual.widgets import Label
+from textual.widgets import Select
+from textual.widgets import Static
+from textual.widgets import TextArea
 
 from parllama.chat_message import OllamaMessage
 from parllama.chat_prompt import ChatPrompt
@@ -106,6 +115,10 @@ class EditPromptDialog(ModalScreen[bool]):
                     ),
                 )
                 yield FieldSet(
+                    "Source", Input(value=self.edit_prompt.source, id="source")
+                )
+
+                yield FieldSet(
                     "Last updated",
                     Label(str(self.edit_prompt.last_updated), id="last_updated"),
                 )
@@ -162,13 +175,16 @@ class EditPromptDialog(ModalScreen[bool]):
             self.notify("System prompt moved to the top", timeout=5)
 
         with self.prompt.batch_changes():
-            self.prompt.name = self.query_one("#name", Input).value
-            self.prompt.description = self.query_one("#description", Input).value
+            self.prompt.name = self.query_one("#name", Input).value.strip()
+            self.prompt.description = self.query_one(
+                "#description", Input
+            ).value.strip()
+            self.prompt.source = self.query_one("#source", Input).value.strip()
             self.prompt.submit_on_load = self.query_one(
                 "#submit_on_load", Checkbox
             ).value
             self.prompt.replace_messages(self.edit_prompt.messages)
-            self.prompt.last_updated = datetime.datetime.now()
+            self.prompt.last_updated = datetime.now(timezone.utc)
         # self.post_message(LogIt(self.prompt))
         self.dismiss(True)
 

@@ -2,18 +2,19 @@
 
 from __future__ import annotations
 
-import datetime
 import os
+from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
+from datetime import datetime
+from datetime import timezone
 from io import StringIO
-from typing import Generator
 
-import simplejson as json
 import rich.repr
+import simplejson as json
 
 from parllama.chat_message import OllamaMessage
-from parllama.models.settings_data import settings
+from parllama.settings_manager import settings
 from parllama.par_event_system import ParEventSystemBase
 
 
@@ -26,7 +27,7 @@ class ChatMessageContainer(ParEventSystemBase):
     """Name of the chat message container"""
     messages: list[OllamaMessage]
     """Messages in the chat message container"""
-    last_updated: datetime.datetime
+    last_updated: datetime
     """Last updated timestamp of the chat message container"""
 
     _id_to_msg: dict[str, OllamaMessage]
@@ -41,7 +42,7 @@ class ChatMessageContainer(ParEventSystemBase):
         id: str | None = None,  # pylint: disable=redefined-builtin
         name: str | None = None,
         messages: list[OllamaMessage] | list[dict] | None = None,
-        last_updated: datetime.datetime | None = None,
+        last_updated: datetime | None = None,
     ):
         """Initialize the chat prompt"""
         super().__init__(id=id)
@@ -60,7 +61,7 @@ class ChatMessageContainer(ParEventSystemBase):
             self.messages.append(msg)
             self._id_to_msg[msg.id] = msg
             self.mount(msg)
-        self.last_updated = last_updated or datetime.datetime.now()
+        self.last_updated = last_updated or datetime.now(timezone.utc)
         self._loaded = messages is not None
         self._batching = False
 
@@ -86,7 +87,7 @@ class ChatMessageContainer(ParEventSystemBase):
         else:
             self.messages.append(msg)
         self._id_to_msg[msg.id] = msg
-        self.last_updated = datetime.datetime.now()
+        self.last_updated = datetime.now(timezone.utc)
         self.mount(msg)
         self._changes.add("messages")
         self._loaded = True
@@ -125,7 +126,7 @@ class ChatMessageContainer(ParEventSystemBase):
             if msg.content == value.content:
                 return
             msg.content = value.content
-            self.last_updated = datetime.datetime.now()
+            self.last_updated = datetime.now(timezone.utc)
             self._changes.add("messages")
             self._changes.add("system_prompt")
             self.save()
@@ -166,7 +167,7 @@ class ChatMessageContainer(ParEventSystemBase):
             if msg.id == msg_id:
                 self._id_to_msg[msg_id] = value
                 self.messages[i] = value
-                self.last_updated = datetime.datetime.now()
+                self.last_updated = datetime.now(timezone.utc)
                 self._changes.add("messages")
                 self.save()
                 return
@@ -178,7 +179,7 @@ class ChatMessageContainer(ParEventSystemBase):
         for i, msg in enumerate(self.messages):
             if msg.id == key:
                 self.messages.pop(i)
-                self.last_updated = datetime.datetime.now()
+                self.last_updated = datetime.now(timezone.utc)
                 self._changes.add("messages")
                 self.save()
                 return
@@ -252,6 +253,14 @@ class ChatMessageContainer(ParEventSystemBase):
         """Check if there are any changes"""
         # self.log_it(",".join(self._changes))
         return len(self._changes) > 0
+
+    @is_dirty.setter
+    def is_dirty(self, value: bool) -> None:
+        """Set dirty status"""
+        if value:
+            self._changes.add("is_dirty")
+        else:
+            self.clear_changes()
 
     @contextmanager
     def batch_changes(self) -> Generator[None, None, None]:

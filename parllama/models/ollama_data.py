@@ -3,10 +3,15 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
+from collections.abc import Sequence
 from datetime import datetime
-from typing import cast, Sequence, Any, Mapping, Tuple
+from datetime import timezone
+from typing import Any
+from typing import cast
 from typing import Literal
 from typing import Optional
+from typing import Tuple
 from typing import TypeAlias
 
 import ollama
@@ -39,7 +44,7 @@ class SiteModelData(BaseModel):
     """Ollama Site Model Data."""
 
     models: list[SiteModel]
-    last_update: datetime = datetime.now()
+    last_update: datetime = datetime.now(timezone.utc)
 
 
 class ModelDetails(BaseModel):

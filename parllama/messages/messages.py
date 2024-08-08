@@ -5,14 +5,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
-from rich.console import RenderableType, ConsoleRenderable, RichCast
+from rich.console import ConsoleRenderable
+from rich.console import RenderableType
+from rich.console import RichCast
 from textual.message import Message
 from textual.message_pump import MessagePump
 from textual.notifications import SeverityLevel
 
 from parllama.messages.shared import SessionChanges
 from parllama.models.ollama_data import FullModel
-from parllama.utils import ScreenType
+from parllama.utils import TabType
 
 
 @dataclass
@@ -182,26 +184,6 @@ class ShowLocalModel(Message):
 
 
 @dataclass
-class NotifyMessage(Message):
-    """Message to toast info message."""
-
-    message: str
-    timeout: int = 3
-
-
-@dataclass
-class NotifyInfoMessage(NotifyMessage):
-    """Message to toast info message."""
-
-
-@dataclass
-class NotifyErrorMessage(NotifyMessage):
-    """Message to toast error message."""
-
-    timeout: int = 6
-
-
-@dataclass
 class SendToClipboard(Message):
     """Used to send a string to the clipboard."""
 
@@ -221,7 +203,7 @@ class SetModelNameLoading(Message):
 class ChangeTab(Message):
     """Change to requested tab."""
 
-    tab: ScreenType
+    tab: TabType
 
 
 @dataclass
@@ -287,8 +269,8 @@ class DeletePromptMessage(PromptMessage):
 class PromptSelected(PromptMessage):
     """Notify that a prompt has been selected."""
 
-    temperature: float = 0.5
-    llm_model_name: str = ""
+    temperature: float | None = None
+    llm_model_name: str | None = None
 
 
 @dataclass
@@ -373,3 +355,14 @@ class LogIt(Message):
     msg: ConsoleRenderable | RichCast | str | object
     notify: bool = False
     severity: SeverityLevel = "information"
+    timeout: int = 5
+
+
+@dataclass
+class ImportReady(Message):
+    """Import ready message."""
+
+
+@dataclass
+class ToggleInputMode(Message):
+    """Toggle between single and multi-line input mode."""

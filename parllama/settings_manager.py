@@ -6,18 +6,25 @@ import functools
 import os
 import shutil
 from argparse import Namespace
+from datetime import datetime
 
 import ollama
 import simplejson as json
 from pydantic import BaseModel
 
 from parllama.utils import get_args
-from parllama.utils import ScreenType
-from parllama.utils import valid_screens
+from parllama.utils import TabType
+from parllama.utils import valid_tabs
 
 
 class Settings(BaseModel):
     """Model for application settings."""
+
+    _shutting_down: bool = False
+    show_first_run: bool = True
+    check_for_updates: bool = False
+    last_version_check: datetime | None = None
+    new_version_notified: bool = False
 
     no_save: bool = False
     no_save_chat: bool = False
@@ -30,8 +37,9 @@ class Settings(BaseModel):
     chat_tab_max_length: int = 15
     settings_file: str = "settings.json"
     theme_name: str = "par"
-    starting_screen: ScreenType = "Local"
-    last_screen: ScreenType = "Local"
+    starting_tab: TabType = "Local"
+    last_tab: TabType = "Local"
+    use_last_tab_on_startup: bool = True
     last_chat_model: str = ""
     last_chat_temperature: float | None = None
     last_chat_session_id: str | None = None
@@ -42,6 +50,7 @@ class Settings(BaseModel):
     ollama_ps_poll_interval: int = 3
     auto_name_session: bool = False
     auto_name_session_llm: str = ""
+    return_to_single_line_on_submit: bool = True
 
     # pylint: disable=too-many-branches, too-many-statements
     def __init__(self) -> None:
@@ -82,20 +91,15 @@ class Settings(BaseModel):
             theme_file = os.path.join(self.data_dir, "themes", "par.json")
             if os.path.exists(theme_file):
                 os.unlink(theme_file)
-        if args.clear_cache:
-            if os.path.exists(self.cache_dir):
-                shutil.rmtree(self.cache_dir, ignore_errors=True)
-                os.makedirs(self.cache_dir, exist_ok=True)
+
+        if args.purge_cache:
+            self.purge_cache_folder()
 
         if args.purge_chats:
-            if os.path.exists(self.chat_dir):
-                shutil.rmtree(self.chat_dir, ignore_errors=True)
-                os.makedirs(self.chat_dir, exist_ok=True)
+            self.purge_chats_folder()
 
         if args.purge_prompts:
-            if os.path.exists(self.prompt_dir):
-                shutil.rmtree(self.prompt_dir, ignore_errors=True)
-                os.makedirs(self.prompt_dir, exist_ok=True)
+            self.purge_prompts_folder()
 
         self.load_from_file()
 
@@ -124,14 +128,35 @@ class Settings(BaseModel):
         if args.theme_mode:
             self.theme_mode = args.theme_mode
 
-        if args.starting_screen:
-            self.starting_screen = args.starting_screen.capitalize()
-            if self.starting_screen not in valid_screens:
-                self.starting_screen = "Local"
+        if args.starting_tab:
+            self.starting_tab = args.starting_tab.capitalize()
+            if self.starting_tab not in valid_tabs:
+                self.starting_tab = "Local"
+
+        if args.use_last_tab_on_startup is not None:
+            self.use_last_tab_on_startup = args.use_last_tab_on_startup == "1"
 
         if args.ps_poll:
             self.ollama_ps_poll_interval = args.ps_poll
-        self.save_settings_to_file()
+        self.save()
+
+    def purge_cache_folder(self) -> None:
+        """Purge cache folder."""
+        if os.path.exists(self.cache_dir):
+            shutil.rmtree(self.cache_dir, ignore_errors=True)
+            os.makedirs(self.cache_dir, exist_ok=True)
+
+    def purge_chats_folder(self) -> None:
+        """Purge chats folder."""
+        if os.path.exists(self.chat_dir):
+            shutil.rmtree(self.chat_dir, ignore_errors=True)
+            os.makedirs(self.chat_dir, exist_ok=True)
+
+    def purge_prompts_folder(self) -> None:
+        """Purge prompts folder."""
+        if os.path.exists(self.prompt_dir):
+            shutil.rmtree(self.prompt_dir, ignore_errors=True)
+            os.makedirs(self.prompt_dir, exist_ok=True)
 
     def load_from_file(self) -> None:
         """Load settings from file."""
@@ -147,13 +172,20 @@ class Settings(BaseModel):
                 self.theme_name = data.get("theme_name", self.theme_name)
                 self.theme_mode = data.get("theme_mode", self.theme_mode)
                 self.site_models_namespace = data.get("site_models_namespace", "")
-                self.starting_screen = data.get("starting_screen", "Local")
-                if self.starting_screen not in valid_screens:
-                    self.starting_screen = "Local"
+                self.starting_tab = data.get(
+                    "starting_tab", data.get("starting_screen", "Local")
+                )
+                if self.starting_tab not in valid_tabs:
+                    self.starting_tab = "Local"
 
-                self.last_screen = data.get("last_screen", "Local")
-                if self.last_screen not in valid_screens:
-                    self.last_screen = self.starting_screen
+                self.last_tab = data.get("last_tab", data.get("last_screen", "Local"))
+                if self.last_tab not in valid_tabs:
+                    self.last_tab = self.starting_tab
+
+                self.use_last_tab_on_startup = data.get(
+                    "use_last_tab_on_startup", self.use_last_tab_on_startup
+                )
+
                 self.last_chat_model = data.get("last_chat_model", self.last_chat_model)
                 self.last_chat_temperature = data.get("last_chat_temperature")
                 self.last_chat_session_id = data.get(
@@ -172,12 +204,31 @@ class Settings(BaseModel):
                 self.chat_tab_max_length = max(
                     8, data.get("chat_tab_max_length", self.chat_tab_max_length)
                 )
+                self.check_for_updates = data.get(
+                    "check_for_updates", self.check_for_updates
+                )
+                self.new_version_notified = data.get(
+                    "new_version_notified", self.new_version_notified
+                )
+                lvc = data.get("last_version_check")
+                if lvc:
+                    self.last_version_check = datetime.fromisoformat(lvc)
+                else:
+                    self.last_version_check = None
+
+                self.show_first_run = data.get("show_first_run", self.show_first_run)
+
+                self.return_to_single_line_on_submit = data.get(
+                    "return_to_single_line_on_submit",
+                    self.return_to_single_line_on_submit,
+                )
+
         except FileNotFoundError:
             pass  # If file does not exist, continue with default settings
 
     def save_settings_to_file(self) -> None:
         """Save settings to file."""
-        if self.no_save:
+        if self.no_save or self._shutting_down:
             return
         os.makedirs(self.data_dir, exist_ok=True)
         if not os.path.exists(self.data_dir):
@@ -197,6 +248,29 @@ class Settings(BaseModel):
     def ollama_client(self) -> ollama.Client:
         """Get the ollama client."""
         return ollama.Client(host=self.ollama_host)
+
+    def save(self) -> None:
+        """Persist settings"""
+        self.save_settings_to_file()
+
+    @property
+    def initial_tab(self) -> TabType:
+        """Return initial tab"""
+        if settings.show_first_run:
+            return "Options"
+        if settings.use_last_tab_on_startup:
+            return settings.last_tab
+        return settings.starting_tab
+
+    @property
+    def shutting_down(self) -> bool:
+        """Return whether Par Llama is shutting down"""
+        return self._shutting_down
+
+    @shutting_down.setter
+    def shutting_down(self, value: bool) -> None:
+        """Set whether Par Llama is shutting down"""
+        self._shutting_down = value
 
 
 settings = Settings()

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import datetime
+from datetime import datetime
 
 from pydantic import BaseModel
 
@@ -26,7 +26,7 @@ class OllamaPsModel(BaseModel):
     size: int
     digest: str
     details: OllamaPsModelDetails
-    expires_at: datetime.datetime
+    expires_at: datetime
     size_vram: int
 
 

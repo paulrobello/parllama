@@ -48,7 +48,7 @@ def convert_to_local(utc_dt: datetime | str | None) -> datetime | None:
             return None
         utc_dt = datetime.fromisoformat(utc_dt)
 
-    local_dt_now = datetime.now()
+    local_dt_now = datetime.now(timezone.utc)
     local_tz = local_dt_now.astimezone().tzinfo
     local_dt = utc_dt.astimezone(local_tz)
     return local_dt

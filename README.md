@@ -2,33 +2,38 @@
 
 ## Table of Contents
 
-1. [About](#about)
-   1. [Screenshots](#screenshots)
-2. [Prerequisites for running](#prerequisites-for-running)
-3. [Prerequisites for dev](#prerequisites-for-dev)
-4. [Prerequisites for huggingface model quantization](#prerequisites-for-huggingface-model-quantization)
-5. [Installing from mypi using pipx](#installing-from-mypi-using-pipx)
-6. [Installing from mypi using pip](#installing-from-mypi-using-pip)
-7. [Installing for dev mode](#installing-for-dev-mode)
-8. [Command line arguments](#command-line-arguments)
-9. [Environment Variables](#environment-variables)
-10. [Running PAR_LLAMA](#running-par_llama)
-    1. [with pipx installation](#with-pipx-installation)
-    2. [with pip installation](#with-pip-installation)
-11. [Running against a remote instance](#running-against-a-remote-instance)
-12. [Running under Windows WSL](#running-under-windows-wsl)
-    1. [Dev mode](#dev-mode)
-13. [Example workflow](#example-workflow)
-14. [Themes](#themes)
-15. [Contributing](#contributing)
-16. [Roadmap](#roadmap)
-    1. [Where we are](#where-we-are)
-    2. [Where we're going](#where-were-going)
-17. [What's new](#whats-new)
-    1. [v0.3.1](#v031)
-    2. [v0.3.0](#v030)
-    3. [v0.2.51](#v0251)
-    4. [v0.2.5](#v025)
+* [About](#about)
+   * [Screenshots](#screenshots)
+* [Prerequisites for running](#prerequisites-for-running)
+* [Prerequisites for dev](#prerequisites-for-dev)
+* [Prerequisites for huggingface model quantization](#prerequisites-for-huggingface-model-quantization)
+* [Installing from mypi using pipx](#installing-from-mypi-using-pipx)
+* [Installing from mypi using pip](#installing-from-mypi-using-pip)
+* [Installing for dev mode](#installing-for-dev-mode)
+* [Command line arguments](#command-line-arguments)
+* [Environment Variables](#environment-variables)
+* [Running PAR_LLAMA](#running-par_llama)
+    * [with pipx installation](#with-pipx-installation)
+    * [with pip installation](#with-pip-installation)
+* [Running against a remote instance](#running-against-a-remote-instance)
+* [Running under Windows WSL](#running-under-windows-wsl)
+    * [Dev mode](#dev-mode)
+* [Quick start chat workflow](#quick-start-chat-workflow)
+* [Custom Prompts](#Custom-Prompts)
+* [Themes](#themes)
+* [Contributing](#contributing)
+* [Roadmap](#roadmap)
+    * [Where we are](#where-we-are)
+    * [Where we're going](#where-were-going)
+* [What's new](#whats-new)
+    * [v0.3.5](#v035)
+    * [v0.3.4](#v034)
+    * [v0.3.3](#v033)
+    * [v0.3.2](#v032)
+    * [v0.3.1](#v031)
+    * [v0.3.0](#v030)
+    * [v0.2.51](#v0251)
+    * [v0.2.5](#v025)
 
 ## About
 PAR LLAMA is a TUI application designed for easy management and use of Ollama based LLMs.
@@ -45,6 +50,10 @@ Supports Dark and Light mode as well as custom themes.
 ![Site Models Dark](https://raw.githubusercontent.com/paulrobello/parllama/main/docs/site_models_dark_1.png)
 
 ![Chat Dark](https://raw.githubusercontent.com/paulrobello/parllama/main/docs/chat_dark_1.png)
+
+![Custom Prompt Dark](https://raw.githubusercontent.com/paulrobello/parllama/main/docs/custom_prompt_dark_1.png)
+
+![Options Dark](https://raw.githubusercontent.com/paulrobello/parllama/main/docs/options_dark_1.png)
 
 ![Local Models Light](https://raw.githubusercontent.com/paulrobello/parllama/main/docs/local_models_light_1.png)
 
@@ -107,8 +116,9 @@ make first-setup
 
 ## Command line arguments
 ```
-usage: parllama [-h] [-v] [-d DATA_DIR] [-u OLLAMA_URL] [-t THEME_NAME] [-m {dark,light}] [-s {local,site,chat,prompts,tools,create,logs}]
-                [-p PS_POLL] [-a {0,1}] [--restore-defaults] [--clear-cache] [--purge-chats] [--purge-prompts] [--no-save] [--no-chat-save]
+usage: parllama [-h] [-v] [-d DATA_DIR] [-u OLLAMA_URL] [-t THEME_NAME] [-m {dark,light}]
+                [-s {local,site,chat,prompts,tools,create,options,logs}] [--use-last-tab-on-startup {0,1}] [-p PS_POLL] [-a {0,1}]
+                [--restore-defaults] [--purge-cache] [--purge-chats] [--purge-prompts] [--no-save] [--no-chat-save]
 
 PAR LLAMA -- Ollama TUI.
 
@@ -123,18 +133,20 @@ options:
                         Theme name. Defaults to par
   -m {dark,light}, --theme-mode {dark,light}
                         Dark / Light mode. Defaults to dark
-  -s {local,site,chat,prompts,tools,create,logs}, --starting-screen {local,site,chat,prompts,tools,create,logs}
-                        Starting screen. Defaults to local
+  -s {local,site,chat,prompts,tools,create,options,logs}, --starting-tab {local,site,chat,prompts,tools,create,options,logs}
+                        Starting tab. Defaults to local
+  --use-last-tab-on-startup {0,1}
+                        Use last tab on startup. Defaults to 1
   -p PS_POLL, --ps-poll PS_POLL
                         Interval in seconds to poll ollama ps command. 0 = disable. Defaults to 3
   -a {0,1}, --auto-name-session {0,1}
-                        Auto name session using LLM
+                        Auto name session using LLM. Defaults to 0
   --restore-defaults    Restore default settings and theme
-  --clear-cache         Clear cached data
+  --purge-cache         Purge cached data
   --purge-chats         Purge all chat history
   --purge-prompts       Purge all custom prompts
-  --no-save             Prevent saving settings for this session.
-  --no-chat-save        Prevent saving chats for this session.
+  --no-save             Prevent saving settings for this session
+  --no-chat-save        Prevent saving chats for this session
 ```
 
 Unless you specify "--no-save" most flags such as -u, -t, -m, -s are sticky and will be used next time you start PAR_LLAMA.
@@ -194,7 +206,7 @@ From repo root:
 make dev
 ```
 
-## Example workflow
+## Quick start chat workflow
 * Start parllama.
 * Click the "Site" tab.
 * Use ^R to fetch the latest models from Ollama.com.
@@ -212,6 +224,11 @@ make dev
 * Jump between the tabs to compare responses by click the tabs or using slash commands `/tab.1` and `/tab.2`
 * Press ^S to see all your past and current sessions. You can recall any past session by selecting it and pressing Enter or ^N if you want to load it into a new tab.
 * Type "/help" or "/?" to see what other slash commands are available.
+
+## Custom Prompts
+You can create a library of custom prompts for easy starting of new chats.  
+You can set up system prompts and user messages to prime conversations with the option of sending immediately to the LLM upon loading of the prompt.  
+Currently, importing prompts from the popular Fabric project is supported with more on the way.  
 
 ## Themes
 Themes are json files stored in the themes folder in the data directory which defaults to **~/.parllama/themes**  
@@ -286,16 +303,23 @@ if anything remains to be fixed before the commit is allowed.
 * Connect to remote instances
 * Chat with history / conversation management
 * Chat tabs allow chat with multiple models at same time
-* Custom prompt library
+* Custom prompt library with import from Fabric
+* Auto complete of slash commands, input history, multi line edit
 
 ### Where we're going
-* Add config tab to help with settings management
-* Ability to import prompts from tools like fabric or langsmith hub
+* Expand ability to import custom prompts of other tools
 * Chat using embeddings for local documents
 * LLM tool use
 * Ability to use other AI providers like Open AI
 
 ## What's new
+
+### v0.3.5
+* Added first time launch welcome
+* Added Options tab which exposes more options than are available via command line switches
+* Added option to auto check for new versions
+* Added ability to import custom prompts from [fabric](https://github.com/danielmiessler/fabric)
+* Added toggle between single and multi line input (Note auto complete and command history features not available in multi line edit mode)
 
 ### v0.3.4
 * Added custom prompt library support  (Work in progress)

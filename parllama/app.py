@@ -38,16 +38,10 @@ from parllama.chat_manager import chat_manager
 from parllama.chat_manager import ChatManager
 from parllama.data_manager import dm
 from parllama.dialogs.help_dialog import HelpDialog
-from parllama.messages.messages import (
-    ChangeTab,
-    LogIt,
-    SessionToPrompt,
-    DeletePrompt,
-    PromptListChanged,
-    PromptSelected,
-    PromptListLoaded,
-)
+from parllama.dialogs.information import InformationDialog
+from parllama.messages.messages import ChangeTab
 from parllama.messages.messages import CreateModelFromExistingRequested
+from parllama.messages.messages import DeletePrompt
 from parllama.messages.messages import DeleteSession
 from parllama.messages.messages import LocalModelCopied
 from parllama.messages.messages import LocalModelCopyRequested
@@ -55,6 +49,7 @@ from parllama.messages.messages import LocalModelDelete
 from parllama.messages.messages import LocalModelDeleted
 from parllama.messages.messages import LocalModelListLoaded
 from parllama.messages.messages import LocalModelListRefreshRequested
+from parllama.messages.messages import LogIt
 from parllama.messages.messages import ModelCreated
 from parllama.messages.messages import ModelCreateRequested
 from parllama.messages.messages import ModelInteractRequested
@@ -62,13 +57,15 @@ from parllama.messages.messages import ModelPulled
 from parllama.messages.messages import ModelPullRequested
 from parllama.messages.messages import ModelPushed
 from parllama.messages.messages import ModelPushRequested
-from parllama.messages.messages import NotifyErrorMessage
-from parllama.messages.messages import NotifyInfoMessage
+from parllama.messages.messages import PromptListChanged
+from parllama.messages.messages import PromptListLoaded
+from parllama.messages.messages import PromptSelected
 from parllama.messages.messages import PsMessage
 from parllama.messages.messages import RegisterForUpdates
 from parllama.messages.messages import SendToClipboard
 from parllama.messages.messages import SessionListChanged
 from parllama.messages.messages import SessionSelected
+from parllama.messages.messages import SessionToPrompt
 from parllama.messages.messages import SetModelNameLoading
 from parllama.messages.messages import SiteModelsLoaded
 from parllama.messages.messages import SiteModelsRefreshRequested
@@ -79,9 +76,11 @@ from parllama.models.jobs import CreateModelJob
 from parllama.models.jobs import PullModelJob
 from parllama.models.jobs import PushModelJob
 from parllama.models.jobs import QueueJob
-from parllama.models.settings_data import settings
+from parllama.settings_manager import settings
+from parllama.prompt_utils.import_fabric import import_fabric_manager
 from parllama.screens.main_screen import MainScreen
 from parllama.theme_manager import theme_manager
+from parllama.update_manager import update_manager
 
 
 class ParLlamaApp(App[None]):
@@ -90,11 +89,11 @@ class ParLlamaApp(App[None]):
     TITLE = __application_title__
     BINDINGS = [
         Binding(key="f1", action="help", description="Help", show=True, priority=True),
-        Binding(key="ctrl+q", action="app.quit", description="Quit", show=True),
+        Binding(key="ctrl+q", action="app.shutdown", description="Quit", show=True),
         Binding(
             key="f10",
             action="toggle_dark",
-            description="Toggle Dark Mode",
+            description="Toggle Dark",
             show=True,
             priority=True,
         ),
@@ -109,9 +108,6 @@ class ParLlamaApp(App[None]):
         }
     ]
     CSS_PATH = "app.tcss"
-
-    # DEFAULT_CSS = """
-    # """
 
     notify_subs: dict[str, set[MessagePump]]
     main_screen: MainScreen
@@ -128,6 +124,9 @@ class ParLlamaApp(App[None]):
         self.notify_subs = {"*": set[MessagePump]()}
         dm.set_app(self)
         chat_manager.set_app(self)
+        theme_manager.set_app(self)
+        update_manager.set_app(self)
+        import_fabric_manager.set_app(self)
 
         self.job_timer = None
         self.ps_timer = None
@@ -143,7 +142,7 @@ class ParLlamaApp(App[None]):
     def _watch_dark(self, value: bool) -> None:
         """Watch the dark property and save pref to file."""
         settings.theme_mode = "dark" if value else "light"
-        settings.save_settings_to_file()
+        settings.save()
 
     def get_css_variables(self) -> dict[str, str]:
         """Get a mapping of variables used to pre-populate CSS.
@@ -157,56 +156,12 @@ class ParLlamaApp(App[None]):
             settings.theme_name, self.dark
         ).generate()
 
-    @on(NotifyInfoMessage)
-    def notify_info(self, event: NotifyInfoMessage) -> None:
-        """Show info toast message for 3 seconds"""
-        self.notify(event.message, timeout=event.timeout)
-
-    @on(NotifyErrorMessage)
-    def notify_error(self, event: NotifyErrorMessage) -> None:
-        """Show error toast message for 6 seconds"""
-        self.notify(event.message, severity="error", timeout=event.timeout)
-
     async def on_mount(self) -> None:
-        """Display the main or locked screen."""
+        """Display the screen."""
+
         await self.push_screen(self.main_screen)
-        self.post_message_all(StatusMessage(f"Data folder: {settings.data_dir}"))
-        self.post_message_all(StatusMessage(f"Chat folder: {settings.chat_dir}"))
-        self.post_message_all(StatusMessage(f"Prompt folder: {settings.prompt_dir}"))
-        self.post_message_all(
-            StatusMessage(f"MD export folder: {settings.export_md_dir}")
-        )
-
-        self.post_message_all(
-            StatusMessage(f"Using Ollama server url: {settings.ollama_host}")
-        )
-        if settings.ollama_ps_poll_interval:
-            self.post_message_all(
-                StatusMessage(
-                    f"Polling Ollama ps every: {settings.ollama_ps_poll_interval} seconds"
-                )
-            )
-        else:
-            self.post_message_all(StatusMessage("Polling Ollama ps disabled"))
-        self.post_message_all(
-            StatusMessage(f"Auto session naming: {settings.auto_name_session}")
-        )
-
-        self.post_message_all(
-            StatusMessage(
-                f"""Theme: "{settings.theme_name}" in {settings.theme_mode} mode"""
-            )
-        )
-        self.post_message_all(StatusMessage(f"Last screen: {settings.last_screen}"))
-        self.post_message_all(
-            StatusMessage(f"Last chat model: {settings.last_chat_model}")
-        )
-        self.post_message_all(
-            StatusMessage(f"Last model temp: {settings.last_chat_temperature}")
-        )
-        self.post_message_all(
-            StatusMessage(f"Last session id: {settings.last_chat_session_id}")
-        )
+        if settings.check_for_updates:
+            await update_manager.check_for_updates()
 
         self.app.post_message(
             RegisterForUpdates(
@@ -223,6 +178,27 @@ class ParLlamaApp(App[None]):
         self.job_timer = self.set_timer(1, self.do_jobs)
         if settings.ollama_ps_poll_interval > 0:
             self.ps_timer = self.set_timer(1, self.update_ps)
+
+        if settings.show_first_run:
+            settings.show_first_run = False
+            settings.save()
+            self.set_timer(1, self.show_first_run)
+
+    async def show_first_run(self) -> None:
+        """Show first run screen"""
+        await self.app.push_screen(
+            InformationDialog(
+                title="Welcome",
+                message="""
+Thank your for trying ParLlama!
+Please take a moment to familiarize yourself with the the various options.
+New options are being added all the time. Check out Whats New on the repo.
+[link]https://github.com/paulrobello/parllama?tab=readme-ov-file#whats-new[/link]
+By default ParLlama makes not attempt to connect to the internet.
+If you would like to auto check for updates, you can enable it in the Startup section of Options.
+                """,
+            )
+        )
 
     def action_noop(self) -> None:
         """Do nothing"""
@@ -285,7 +261,7 @@ class ParLlamaApp(App[None]):
         # works for local sessions
         pyperclip.copy(event.message)
         if event.notify:
-            self.post_message(NotifyInfoMessage("Copied to clipboard"))
+            self.notify("Copied to clipboard")
 
     @on(ModelPushRequested)
     def on_model_push_requested(self, event: ModelPushRequested) -> None:
@@ -322,9 +298,8 @@ class ParLlamaApp(App[None]):
 
     @on(LocalModelDeleted)
     def on_model_deleted(self, event: LocalModelDeleted) -> None:
-        """Local model deleted event"""
+        """Local model has been deleted event"""
         self.status_notify(f"Model {event.model_name} deleted.")
-        # chat_manager.notify_sessions_changed()
 
     @on(ModelPullRequested)
     def on_model_pull_requested(self, event: ModelPullRequested) -> None:
@@ -372,6 +347,8 @@ class ParLlamaApp(App[None]):
         try:
             last_status = ""
             for msg in res:
+                if settings.shutting_down:
+                    break
                 last_status = msg["status"]
                 pb: ProgressBar | None = None
                 if "total" in msg and "completed" in msg:
@@ -479,10 +456,8 @@ class ParLlamaApp(App[None]):
         """poll for queued jobs"""
         while True:
             try:
-                # asyncio.get_event_loop().run_until_complete(par_await_tasks())
-                # await par_await_tasks()
                 job: QueueJob = self.job_queue.get(block=True, timeout=1)
-                if self._exit:
+                if settings.shutting_down:
                     return
                 if not job:
                     continue
@@ -515,7 +490,6 @@ class ParLlamaApp(App[None]):
             self.status_notify(
                 f"Model {event.model_name} pulled.",
             )
-            # chat_manager.notify_sessions_changed()
         else:
             self.status_notify(
                 f"Model {event.model_name} failed to pull.",
@@ -530,7 +504,6 @@ class ParLlamaApp(App[None]):
                 f"Model {event.model_name} created.",
             )
             self.set_timer(1, self.action_refresh_models)
-            # chat_manager.notify_sessions_changed()
         else:
             self.status_notify(
                 f"Model {event.model_name} failed to create.",
@@ -556,16 +529,6 @@ class ParLlamaApp(App[None]):
             if event_name not in self.notify_subs:
                 self.notify_subs[event_name] = set()
             self.notify_subs[event_name].add(event.widget)
-
-    # @on(AppRequest)
-    # def on_app_request(self, event: AppRequest) -> None:
-    #     """Add any widget that requests an action to notify_subs"""
-    #     if not event.widget:
-    #         return
-    #     # self.notify_subs["*"].add(event.widget)
-    #     # if event.__class__.__name__ not in self.notify_subs:
-    #     #     self.notify_subs[event.__class__.__name__] = set()
-    #     # self.notify_subs[event.__class__.__name__].add(event.widget)
 
     @on(LocalModelListRefreshRequested)
     def on_model_list_refresh_requested(self) -> None:
@@ -641,7 +604,7 @@ class ParLlamaApp(App[None]):
     async def update_ps(self) -> None:
         """Update ps status bar msg"""
         was_blank = False
-        while self.is_running:
+        while not settings.shutting_down:
             if settings.ollama_ps_poll_interval < 1:
                 self.post_message_all(PsMessage(msg=""))
                 break
@@ -780,9 +743,14 @@ class ParLlamaApp(App[None]):
             self.notify(
                 event.msg,
                 severity=event.severity,
-                timeout=5 if event.severity != "information" else 3,
+                timeout=event.timeout or 5,
             )
 
     def log_it(self, msg: ConsoleRenderable | RichCast | str | object) -> None:
         """Log a message to the log view"""
         self.main_screen.log_view.richlog.write(msg)
+
+    async def action_shutdown(self) -> None:
+        """Quit the application"""
+        settings.shutting_down = True
+        await self.action_quit()

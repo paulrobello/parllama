@@ -2,36 +2,37 @@
 
 from __future__ import annotations
 
-import datetime
 import os
 import uuid
 from collections.abc import Iterator
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Optional
+from datetime import datetime
+from datetime import timezone
+from typing import Any
+from typing import Optional
 
+import pytz
+import rich.repr
 import simplejson as json
 from ollama import Options as OllamaOptions
 from textual.message_pump import MessagePump
-import rich.repr
 
+from parllama.chat_message import OllamaMessage
 from parllama.chat_message_container import ChatMessageContainer
 from parllama.messages.messages import ChatGenerationAborted
 from parllama.messages.messages import ChatMessage
 from parllama.messages.messages import SessionChanges
 from parllama.messages.messages import SessionMessage
 from parllama.messages.messages import SessionUpdated
-
-from parllama.chat_message import OllamaMessage
 from parllama.messages.par_chat_messages import ParChatUpdated
-from parllama.messages.par_session_messages import (
-    ParSessionDelete,
-    ParSessionUpdated,
-    ParSessionAutoName,
-)
+from parllama.messages.par_session_messages import ParSessionAutoName
+from parllama.messages.par_session_messages import ParSessionDelete
+from parllama.messages.par_session_messages import ParSessionUpdated
 from parllama.messages.shared import session_change_list
-from parllama.models.ollama_data import ChatChunk, TokenStats
-from parllama.models.settings_data import settings
+from parllama.models.ollama_data import ChatChunk
+from parllama.models.ollama_data import TokenStats
+from parllama.settings_manager import settings
 
 
 @rich.repr.auto
@@ -56,7 +57,7 @@ class ChatSession(ChatMessageContainer):
         llm_model_name: str,
         options: OllamaOptions | None = None,
         messages: list[OllamaMessage] | list[dict] | None = None,
-        last_updated: datetime.datetime | None = None,
+        last_updated: datetime | None = None,
     ):
         """Initialize the chat session"""
         super().__init__(id=id, name=name, messages=messages, last_updated=last_updated)
@@ -191,13 +192,13 @@ class ChatSession(ChatMessageContainer):
             self.post_message(ParChatUpdated(parent_id=self.id, message_id=msg.id))
 
             # num_tokens: int = 0
-            # start_time = datetime.datetime.now()
+            # start_time = datetime.now(timezone.utc)
             # ttft: float = 0.0
             for stream_chunk in stream:
                 chunk: ChatChunk = ChatChunk(**stream_chunk)
                 # self.log_it(chunk)
                 if chunk.message.content:
-                    # elapsed_time = datetime.datetime.now() - start_time
+                    # elapsed_time = datetime.now(timezone.utc) - start_time
                     # if num_tokens == 0:
                     #     ttft = elapsed_time.total_seconds()
                     # num_tokens += 1
@@ -304,10 +305,14 @@ class ChatSession(ChatMessageContainer):
             if "message_id" in m:
                 m["id"] = "message_id"
                 del m["message_id"]
+        utc = pytz.UTC
+
         session = ChatSession(
             id=data.get("id", data.get("id", data.get("session_id"))),
             name=data.get("name", data.get("name", data.get("session_name"))),
-            last_updated=datetime.datetime.fromisoformat(data["last_updated"]),
+            last_updated=datetime.fromisoformat(data["last_updated"]).replace(
+                tzinfo=utc
+            ),
             llm_model_name=data["llm_model_name"],
             options=data.get("options"),
             messages=[OllamaMessage(**m) for m in messages] if load_messages else None,
@@ -347,7 +352,7 @@ class ChatSession(ChatMessageContainer):
             # self.log_it(f"CS is not dirty, not notifying: {self.name}")
             return False  # No need to save if no changes
 
-        self.last_updated = datetime.datetime.now()
+        self.last_updated = datetime.now(timezone.utc)
         if "system_prompt" in self._changes:
             msg = self.system_prompt
             if msg is not None:

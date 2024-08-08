@@ -10,11 +10,10 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal
 from textual.containers import Vertical
-from textual.message import Message
+from textual.events import Show
 from textual.suggester import SuggestFromList
 from textual.widgets import Button
 from textual.widgets import ContentSwitcher
-from textual.widgets import Input
 from textual.widgets import Select
 from textual.widgets import TabbedContent
 
@@ -23,26 +22,24 @@ from parllama.chat_manager import ChatSession
 from parllama.chat_message import OllamaMessage
 from parllama.data_manager import dm
 from parllama.dialogs.information import InformationDialog
-from parllama.messages.messages import (
-    ChatGenerationAborted,
-    LogIt,
-    SessionToPrompt,
-    PromptSelected,
-    ChangeTab,
-    PromptListChanged,
-    PromptListLoaded,
-)
+from parllama.messages.messages import ChangeTab
+from parllama.messages.messages import ChatGenerationAborted
 from parllama.messages.messages import ChatMessage
 from parllama.messages.messages import ChatMessageSent
 from parllama.messages.messages import DeleteSession
 from parllama.messages.messages import LocalModelListLoaded
+from parllama.messages.messages import LogIt
+from parllama.messages.messages import PromptListChanged
+from parllama.messages.messages import PromptListLoaded
+from parllama.messages.messages import PromptSelected
 from parllama.messages.messages import RegisterForUpdates
 from parllama.messages.messages import SessionSelected
+from parllama.messages.messages import SessionToPrompt
 from parllama.messages.messages import SessionUpdated
 from parllama.messages.messages import UpdateChatControlStates
 from parllama.messages.messages import UpdateTabLabel
-from parllama.widgets.input_tab_complete import InputTabComplete
 from parllama.widgets.session_list import SessionList
+from parllama.widgets.user_input import UserInput
 from parllama.widgets.views.chat_tab import ChatTab
 
 valid_commands: list[str] = [
@@ -80,7 +77,8 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         height: 1fr;
       }
       #send_bar {
-        height: 3;
+        min-height: 3;
+        max-height: 5;
         background: $surface-darken-1;
         #user_input {
           width: 1fr;
@@ -123,6 +121,7 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
             key="ctrl+delete",
             action="remove_tab",
             description="Remove Tab",
+            key_display="^del",
             show=True,
         ),
         Binding(
@@ -145,15 +144,12 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         self.session_list.display = False
 
         self.chat_tabs = TabbedContent(id="chat_tabs")
-        self.user_input: InputTabComplete = InputTabComplete(
+        self.user_input: UserInput = UserInput(
             id="user_input",
-            placeholder="Type a message...",
             suggester=SuggestFromList(
                 valid_commands,
                 case_sensitive=False,
             ),
-            submit_on_tab=False,
-            submit_on_complete=False,
         )
 
         self.send_button: Button = Button(
@@ -183,19 +179,22 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
             RegisterForUpdates(
                 widget=self,
                 event_names=[
-                    "LocalModelDeleted",
                     "LocalModelListLoaded",
-                    "SessionSelected",
                     "DeleteSession",
+                    "SessionSelected",
                     "PromptListLoaded",
-                    "PromptSelected",
                     "PromptListChanged",
+                    "PromptSelected",
                 ],
             )
         )
         self.prompt_list_auto_complete_list = [
             f"/prompt.load {prompt.name}" for prompt in chat_manager.sorted_prompts
         ]
+
+    def _on_show(self, event: Show) -> None:
+        """Handle show event"""
+        self.user_input.focus()
 
     @on(PromptListLoaded)
     def on_prompt_list_loaded(self, event: PromptListLoaded) -> None:
@@ -212,9 +211,10 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
             case_sensitive=False,
         )
 
-    @on(Input.Changed, "#user_input")
-    def on_user_input_changed(self) -> None:
+    @on(UserInput.Changed)
+    def on_user_input_changed(self, event: UserInput.Changed) -> None:
         """Handle max lines input change"""
+        event.stop()
         self.update_control_states()
 
     def update_control_states(self):
@@ -232,8 +232,6 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
     def on_local_model_list_loaded(self, evt: LocalModelListLoaded) -> None:
         """Model list changed"""
         evt.stop()
-        for tab in self.chat_tabs.query(ChatTab):
-            tab.on_local_model_list_loaded(evt)
         self.model_list_auto_complete_list = [
             f"/session.model {m.model.name}" for m in dm.models
         ]
@@ -260,14 +258,19 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         )
 
     @on(Button.Pressed, "#new_button")
-    def on_new_button_pressed(self, event: Button.Pressed) -> None:
+    async def on_new_button_pressed(self, event: Button.Pressed) -> None:
         """New button pressed"""
         event.stop()
-        # TODO Add new tab
+        await self.action_new_tab()
 
     @on(Button.Pressed, "#send_button")
-    @on(Input.Submitted, "#user_input")
-    async def action_send_message(self, event: Message) -> None:
+    async def on_send_button_pressed(self, event: Button.Pressed) -> None:
+        """Send button pressed"""
+        event.stop()
+        self.user_input.submit()
+
+    @on(UserInput.Submitted)
+    async def action_send_message(self, event: UserInput.Submitted) -> None:
         """Send the message."""
         event.stop()
 
@@ -276,7 +279,7 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         if self.send_button.disabled:
             return
 
-        user_msg: str = self.user_input.value.strip()
+        user_msg: str = event.value.strip()
         if not user_msg:
             return
 
@@ -399,7 +402,13 @@ Chat Commands:
             if prompt is None:
                 self.notify(f"Prompt {v} not found", severity="error")
                 return
-            await self.active_tab.load_prompt(PromptSelected(prompt_id=prompt.id))
+            await self.active_tab.load_prompt(
+                PromptSelected(
+                    prompt_id=prompt.id,
+                    llm_model_name=None,
+                    temperature=None,
+                )
+            )
         else:
             self.notify(f"Unknown command: {cmd}", severity="error")
 
@@ -526,7 +535,6 @@ Chat Commands:
         """New tab action"""
         tab = ChatTab(user_input=self.user_input, session_list=self.session_list)
         await self.chat_tabs.add_pane(tab)
-        tab.on_local_model_list_loaded(LocalModelListLoaded())
         self.chat_tabs.active = str(tab.id)
 
     async def remove_active_tab(self) -> None:
@@ -566,3 +574,8 @@ Chat Commands:
         """Chat generation aborted event"""
         event.stop()
         self.notify("Chat Aborted", severity="warning")
+
+    @on(TabbedContent.TabActivated)
+    def on_tab_activated(self, msg: TabbedContent.TabActivated) -> None:
+        """Prevent Tab activated event bubble"""
+        msg.stop()

@@ -17,13 +17,14 @@ from textual.widgets import TabPane
 from parllama.messages.messages import ModelInteractRequested
 from parllama.messages.messages import PsMessage
 from parllama.messages.messages import StatusMessage
-from parllama.models.settings_data import ScreenType
-from parllama.models.settings_data import settings
+from parllama.settings_manager import settings
+from parllama.settings_manager import TabType
 from parllama.widgets.views.chat_view import ChatView
 from parllama.widgets.views.create_model_view import ModelCreateView
 from parllama.widgets.views.local_model_view import LocalModelView
 from parllama.widgets.views.log_view import LogView
 from parllama.widgets.views.model_tools_view import ModelToolsView
+from parllama.widgets.views.options_view import OptionsView
 from parllama.widgets.views.prompt_view import PromptView
 from parllama.widgets.views.site_model_view import SiteModelView
 
@@ -38,13 +39,14 @@ class MainScreen(Screen[None]):
     status_bar: Static
     ps_status_bar: Static
     tabbed_content: TabbedContent
-    log_view: LogView
     prompt_view: PromptView
     local_view: LocalModelView
     site_view: SiteModelView
+    chat_view: ChatView
     model_tools_view: ModelToolsView
     create_view: ModelCreateView
-    chat_view: ChatView
+    options_view: OptionsView
+    log_view: LogView
 
     def __init__(self, **kwargs) -> None:
         """Initialize the Main screen."""
@@ -59,6 +61,7 @@ class MainScreen(Screen[None]):
         self.prompt_view = PromptView(id="prompt_view")
         self.create_view = ModelCreateView(id="model_create")
         self.model_tools_view = ModelToolsView(id="model_tools")
+        self.options_view = OptionsView(id="options")
         self.log_view = LogView()
 
     async def on_mount(self) -> None:
@@ -72,11 +75,17 @@ class MainScreen(Screen[None]):
     def compose(self) -> ComposeResult:
         """Compose the Main screen."""
         yield Header(show_clock=True)
-        yield Footer()
+        f = Footer()
+        f.upper_case_keys = True
+        yield f
         yield self.status_bar
         yield self.ps_status_bar
 
-        with TabbedContent(id="tabbed_content", initial=settings.last_screen) as tc:
+        # with self.prevent(TabbedContent.TabActivated, Focus):
+        with TabbedContent(
+            id="tabbed_content",
+            initial=settings.initial_tab,
+        ) as tc:
             self.tabbed_content = tc
             tc.loading = True
 
@@ -92,6 +101,8 @@ class MainScreen(Screen[None]):
                 yield self.model_tools_view
             with TabPane("Create", id="Create"):
                 yield self.create_view
+            with TabPane("Options", id="Options"):
+                yield self.options_view
             with TabPane("Logs", id="Logs"):
                 yield self.log_view
 
@@ -100,8 +111,8 @@ class MainScreen(Screen[None]):
         """Tab activated event"""
         msg.stop()
         # self.notify(f"tab activated: {msg.tab.label.plain}")
-        settings.last_screen = cast(ScreenType, msg.tab.label.plain)
-        settings.save_settings_to_file()
+        settings.last_tab = cast(TabType, msg.tab.label.plain)
+        settings.save()
 
         self.log_view.richlog.write(f"Tab activated: {msg.tab.label.plain}")
 
@@ -128,8 +139,9 @@ class MainScreen(Screen[None]):
         self.ps_status_bar.update(msg)
         self.ps_status_bar.display = bool(msg)
 
-    def change_tab(self, tab: ScreenType) -> None:
+    def change_tab(self, tab: TabType) -> None:
         """Change active tab."""
+        self.log_view.richlog.write(f"Changing tab to: {tab}")
         self.tabbed_content.active = tab
 
     def action_site_tag_clicked(self, model_tag: str) -> None:

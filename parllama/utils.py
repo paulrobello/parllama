@@ -38,21 +38,23 @@ from textual.widgets.button import ButtonVariant
 from parllama import __application_binary__
 from parllama import __application_title__
 from parllama import __version__
-from parllama.icons import PENCIL_EMOJI, HEAVY_PLUS_SIGN_EMOJI
+from parllama.icons import HEAVY_PLUS_SIGN_EMOJI
+from parllama.icons import PENCIL_EMOJI
 from parllama.icons import TRASH_EMOJI
 
 DECIMAL_PRECESSION = 5
 
-ScreenType: TypeAlias = Literal[
-    "Local", "Site", "Chat", "Prompts", "Tools", "Create", "Logs"
+TabType: TypeAlias = Literal[
+    "Local", "Site", "Chat", "Prompts", "Tools", "Create", "Options", "Logs"
 ]
-valid_screens: list[ScreenType] = [
+valid_tabs: list[TabType] = [
     "Local",
     "Site",
     "Chat",
     "Prompts",
     "Tools",
     "Create",
+    "Options",
     "Logs",
 ]
 
@@ -577,9 +579,14 @@ def get_args() -> Namespace:
 
     parser.add_argument(
         "-s",
-        "--starting-screen",
-        help="Starting screen. Defaults to local",
-        choices=[s.lower() for s in valid_screens],
+        "--starting-tab",
+        help="Starting tab. Defaults to local",
+        choices=[s.lower() for s in valid_tabs],
+    )
+    parser.add_argument(
+        "--use-last-tab-on-startup",
+        help="Use last tab on startup. Defaults to 1",
+        choices=["0", "1"],
     )
 
     parser.add_argument(
@@ -592,7 +599,7 @@ def get_args() -> Namespace:
     parser.add_argument(
         "-a",
         "--auto-name-session",
-        help="Auto name session using LLM",
+        help="Auto name session using LLM. Defaults to 0",
         choices=["0", "1"],
     )
 
@@ -604,8 +611,8 @@ def get_args() -> Namespace:
     )
 
     parser.add_argument(
-        "--clear-cache",
-        help="Clear cached data",
+        "--purge-cache",
+        help="Purge cached data",
         default=False,
         action="store_true",
     )
@@ -626,14 +633,14 @@ def get_args() -> Namespace:
 
     parser.add_argument(
         "--no-save",
-        help="Prevent saving settings for this session.",
+        help="Prevent saving settings for this session",
         default=False,
         action="store_true",
     )
 
     parser.add_argument(
         "--no-chat-save",
-        help="Prevent saving chats for this session.",
+        help="Prevent saving chats for this session",
         default=False,
         action="store_true",
     )

@@ -1,6 +1,8 @@
 """Generate a session name from the given text using llm"""
 
-from parllama.models.settings_data import settings
+from __future__ import annotations
+
+from parllama.settings_manager import settings
 
 
 def llm_session_name(text: str, llm_model_name: str | None = None) -> str | None:

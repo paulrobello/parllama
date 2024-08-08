@@ -6,11 +6,13 @@ import uuid
 from collections.abc import Awaitable
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Callable, Any
+from typing import Any
+from typing import Callable
 from typing import ClassVar
 
 import rich.repr
-from rich.console import ConsoleRenderable, RichCast
+from rich.console import ConsoleRenderable
+from rich.console import RichCast
 from textual.app import App
 from textual.notifications import SeverityLevel
 
@@ -125,9 +127,12 @@ class ParEventSystemBase:
         msg: ConsoleRenderable | RichCast | str | object,
         notify: bool = False,
         severity: SeverityLevel = "information",
+        timeout: int = 5,
     ) -> None:
         """Log a message to the log view and optionally notify"""
-        self.post_message(ParLogIt(msg=msg, notify=notify, severity=severity))
+        self.post_message(
+            ParLogIt(msg=msg, notify=notify, severity=severity, timeout=timeout)
+        )
 
     def on_par_log_it(self, event: ParLogIt) -> None:
         """Handle a ParLogIt event"""
@@ -135,7 +140,12 @@ class ParEventSystemBase:
             return
         event.stop()
         self.app.post_message(
-            LogIt(event.msg, notify=event.notify, severity=event.severity)
+            LogIt(
+                event.msg,
+                notify=event.notify,
+                severity=event.severity,
+                timeout=event.timeout,
+            )
         )
 
 
@@ -146,3 +156,4 @@ class ParLogIt(ParEventBase):
     msg: ConsoleRenderable | RichCast | str | object
     notify: bool = False
     severity: SeverityLevel = "information"
+    timeout: int = 5

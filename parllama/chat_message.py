@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Optional, Sequence, Any
+from typing import Any
+from typing import Optional
 
 from ollama import Message as OMessage
 
 from parllama.messages.par_chat_messages import ParChatUpdated
-from parllama.models.ollama_data import MessageRoles, ToolCall
+from parllama.models.ollama_data import MessageRoles
+from parllama.models.ollama_data import ToolCall
 from parllama.par_event_system import ParEventSystemBase
 
 

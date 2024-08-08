@@ -9,8 +9,10 @@ from collections.abc import Generator
 from collections.abc import Iterator
 from collections.abc import Mapping
 from datetime import datetime
-from typing import Any, Optional
+from datetime import timezone
+from typing import Any
 from typing import Literal
+from typing import Optional
 
 import docker.errors  # type: ignore
 import docker.types  # type: ignore
@@ -28,7 +30,7 @@ from parllama.models.ollama_data import ModelShowPayload
 from parllama.models.ollama_data import SiteModel
 from parllama.models.ollama_data import SiteModelData
 from parllama.models.ollama_ps import OllamaPsResponse
-from parllama.models.settings_data import settings
+from parllama.settings_manager import settings
 from parllama.par_event_system import ParEventSystemBase
 from parllama.utils import output_to_dicts
 from parllama.utils import run_cmd
@@ -258,7 +260,7 @@ class DataManager(ParEventSystemBase):
             with open(file_name, "w", encoding="utf-8") as f:
                 f.write(
                     SiteModelData(
-                        models=models, last_update=datetime.now()
+                        models=models, last_update=datetime.now(timezone.utc)
                     ).model_dump_json(indent=4)
                 )
         self.site_models = [SiteModelListItem(m) for m in models]
