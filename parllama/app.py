@@ -76,7 +76,7 @@ from parllama.models.jobs import CreateModelJob
 from parllama.models.jobs import PullModelJob
 from parllama.models.jobs import PushModelJob
 from parllama.models.jobs import QueueJob
-from parllama.models.settings_data import settings
+from parllama.settings_manager import settings
 from parllama.prompt_utils.import_fabric import import_fabric_manager
 from parllama.screens.main_screen import MainScreen
 from parllama.theme_manager import theme_manager
@@ -93,7 +93,7 @@ class ParLlamaApp(App[None]):
         Binding(
             key="f10",
             action="toggle_dark",
-            description="Toggle Dark Mode",
+            description="Toggle Dark",
             show=True,
             priority=True,
         ),

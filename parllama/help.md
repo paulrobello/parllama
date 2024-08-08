@@ -88,10 +88,12 @@ Chat with local LLMs and manage saved sessions
 | `ctrl+e`        | Export selected tab as Markdown         |
 
 ### Message Input keys
-| Key           | Command                                 |
-|---------------|-----------------------------------------|
-| `enter`       | Send chat to LLM                        |
-| `up` / `down` | Scroll through input history            |
+| Key           | Command                                         |
+|---------------|-------------------------------------------------|
+| `enter`       | Send chat to LLM                                |
+| `up` / `down` | Scroll through input history                    |
+| `ctrl+j`      | Toggle between single and multi line input mode |
+| `ctrl+g`      | Submit multi line edit content                  |
 
 ### Message List keys
 | Key      | Command                                 |
@@ -128,7 +130,7 @@ Chat Commands:
 * /prompt.load prompt_name - Load a custom prompt using current tabs model and temperature
 
 ## Prompts Tab
-Allows you to create, edit and execute custom prompts
+Allows you to create, edit, import and execute custom prompts
 
 ### Prompts Tab keys
 
@@ -178,15 +180,15 @@ options:
   -s {local,site,chat,prompts,tools,create,options,logs}, --starting-tab {local,site,chat,prompts,tools,create,options,logs}
                         Starting tab. Defaults to local
   --use-last-tab-on-startup {0,1}
-                        Use last tab on startup
+                        Use last tab on startup. Defaults to 1
   -p PS_POLL, --ps-poll PS_POLL
                         Interval in seconds to poll ollama ps command. 0 = disable. Defaults to 3
   -a {0,1}, --auto-name-session {0,1}
-                        Auto name session using LLM
+                        Auto name session using LLM. Defaults to 0
   --restore-defaults    Restore default settings and theme
   --purge-cache         Purge cached data
   --purge-chats         Purge all chat history
   --purge-prompts       Purge all custom prompts
-  --no-save             Prevent saving settings for this session.
-  --no-chat-save        Prevent saving chats for this session.
+  --no-save             Prevent saving settings for this session
+  --no-chat-save        Prevent saving chats for this session
 ```

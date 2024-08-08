@@ -14,7 +14,7 @@ from textual.widgets import Label
 from textual.widgets import Select
 from textual.widgets import Static
 
-from parllama.models.settings_data import settings
+from parllama.settings_manager import settings
 from parllama.theme_manager import theme_manager
 from parllama.utils import valid_tabs
 from parllama.validators.http_validator import HttpValidator
@@ -159,9 +159,14 @@ OptionsView {
                         validators=[Integer(minimum=3, maximum=50)],
                         id="chat_tab_max_length",
                     )
+                    yield Checkbox(
+                        label="Return to single line after multi line submit",
+                        value=settings.return_to_single_line_on_submit,
+                        id="return_to_single_line_on_submit",
+                    )
 
-                    with Vertical(classes="section") as vs:
-                        vs.border_title = "Session Naming"
+                    with Vertical(classes="section") as vs2:
+                        vs2.border_title = "Session Naming"
                         yield Checkbox(
                             label="Auto LLM Name Session",
                             value=settings.auto_name_session,
@@ -243,6 +248,8 @@ OptionsView {
             settings.auto_name_session = bool(int(ctrl.value))
         elif ctrl.id == "show_first_run":
             settings.show_first_run = bool(int(ctrl.value))
+        elif ctrl.id == "return_to_single_line_on_submit":
+            settings.return_to_single_line_on_submit = bool(int(ctrl.value))
         else:
             self.notify(f"Unhandled input: {ctrl.id}", severity="error", timeout=8)
             return

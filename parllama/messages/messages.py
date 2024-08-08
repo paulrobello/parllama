@@ -361,3 +361,8 @@ class LogIt(Message):
 @dataclass
 class ImportReady(Message):
     """Import ready message."""
+
+
+@dataclass
+class ToggleInputMode(Message):
+    """Toggle between single and multi-line input mode."""

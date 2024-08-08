@@ -4,11 +4,20 @@ from __future__ import annotations
 
 from textual import events
 from textual import on
+from textual.binding import Binding
 from textual.widgets import Input
+
+from parllama.messages.messages import ToggleInputMode
 
 
 class InputTabComplete(Input):
     """Input widget with special tab completion and history."""
+
+    BINDINGS = [
+        Binding(
+            key="ctrl+j", action="toggle_mode", description="Multi Line", show=True
+        ),
+    ]
 
     submit_on_tab: bool = True
     submit_on_complete: bool = True
@@ -87,3 +96,7 @@ class InputTabComplete(Input):
             if len(self.input_history) > self.max_history_length:
                 self.input_history.pop()
         self.input_position = -1
+
+    def action_toggle_mode(self) -> None:
+        """Request input mode toggle"""
+        self.post_message(ToggleInputMode())

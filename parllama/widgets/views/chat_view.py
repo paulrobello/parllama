@@ -11,7 +11,6 @@ from textual.binding import Binding
 from textual.containers import Horizontal
 from textual.containers import Vertical
 from textual.events import Show
-from textual.message import Message
 from textual.suggester import SuggestFromList
 from textual.widgets import Button
 from textual.widgets import ContentSwitcher
@@ -259,14 +258,19 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         )
 
     @on(Button.Pressed, "#new_button")
-    def on_new_button_pressed(self, event: Button.Pressed) -> None:
+    async def on_new_button_pressed(self, event: Button.Pressed) -> None:
         """New button pressed"""
         event.stop()
-        # TODO Add new tab
+        await self.action_new_tab()
 
     @on(Button.Pressed, "#send_button")
+    async def on_send_button_pressed(self, event: Button.Pressed) -> None:
+        """Send button pressed"""
+        event.stop()
+        self.user_input.submit()
+
     @on(UserInput.Submitted)
-    async def action_send_message(self, event: Message) -> None:
+    async def action_send_message(self, event: UserInput.Submitted) -> None:
         """Send the message."""
         event.stop()
 
@@ -275,7 +279,7 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         if self.send_button.disabled:
             return
 
-        user_msg: str = self.user_input.value.strip()
+        user_msg: str = event.value.strip()
         if not user_msg:
             return
 

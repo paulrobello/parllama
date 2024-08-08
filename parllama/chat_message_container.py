@@ -14,7 +14,7 @@ import rich.repr
 import simplejson as json
 
 from parllama.chat_message import OllamaMessage
-from parllama.models.settings_data import settings
+from parllama.settings_manager import settings
 from parllama.par_event_system import ParEventSystemBase
 
 

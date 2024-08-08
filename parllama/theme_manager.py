@@ -13,7 +13,7 @@ from typing import TypeAlias
 import simplejson as json
 from textual.design import ColorSystem
 
-from parllama.models.settings_data import settings
+from parllama.settings_manager import settings
 from parllama.par_event_system import ParEventSystemBase
 
 ThemeMode: TypeAlias = Literal["dark", "light"]

@@ -9,6 +9,8 @@ from textual.binding import Binding
 from textual.message import Message
 from textual.widgets import TextArea
 
+from parllama.messages.messages import ToggleInputMode
+
 
 class UserTextArea(TextArea):
     """Input widget with special tab completion."""
@@ -32,8 +34,12 @@ class UserTextArea(TextArea):
             return self.input
 
     BINDINGS = [
-        Binding("ctrl+enter", "submit", "submit", show=True, priority=True),
+        Binding(key="ctrl+g", action="submit", description="Submit", show=True),
+        Binding(
+            key="ctrl+j", action="toggle_mode", description="Single Line", show=True
+        ),
     ]
+
     last_input: str = ""
 
     def __init__(
@@ -61,3 +67,7 @@ class UserTextArea(TextArea):
         if not v:
             return
         self.post_message(UserTextArea.Submitted(self, value=v))
+
+    def action_toggle_mode(self) -> None:
+        """Request input mode toggle"""
+        self.post_message(ToggleInputMode())

@@ -32,7 +32,7 @@ from parllama.messages.par_session_messages import ParSessionUpdated
 from parllama.messages.shared import session_change_list
 from parllama.models.ollama_data import ChatChunk
 from parllama.models.ollama_data import TokenStats
-from parllama.models.settings_data import settings
+from parllama.settings_manager import settings
 
 
 @rich.repr.auto

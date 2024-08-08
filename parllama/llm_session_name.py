@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from parllama.models.settings_data import settings
+from parllama.settings_manager import settings
 
 
 def llm_session_name(text: str, llm_model_name: str | None = None) -> str | None:

@@ -633,14 +633,14 @@ def get_args() -> Namespace:
 
     parser.add_argument(
         "--no-save",
-        help="Prevent saving settings for this session.",
+        help="Prevent saving settings for this session",
         default=False,
         action="store_true",
     )
 
     parser.add_argument(
         "--no-chat-save",
-        help="Prevent saving chats for this session.",
+        help="Prevent saving chats for this session",
         default=False,
         action="store_true",
     )

@@ -14,7 +14,7 @@ from textual.widgets import Input
 from textual.widgets import Label
 from textual.widgets import RichLog
 
-from parllama.models.settings_data import settings
+from parllama.settings_manager import settings
 
 
 class LogView(Container):

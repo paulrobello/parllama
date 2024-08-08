@@ -10,7 +10,7 @@ import requests
 from semver import Version
 
 from parllama import __version__
-from parllama.models.settings_data import settings
+from parllama.settings_manager import settings
 from parllama.par_event_system import ParEventSystemBase
 
 

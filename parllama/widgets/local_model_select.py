@@ -10,7 +10,7 @@ from parllama.data_manager import dm
 from parllama.messages.messages import LocalModelDeleted
 from parllama.messages.messages import LocalModelListLoaded
 from parllama.messages.messages import RegisterForUpdates
-from parllama.models.settings_data import settings
+from parllama.settings_manager import settings
 
 
 class LocalModelSelect(Select[str]):

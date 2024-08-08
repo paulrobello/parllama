@@ -17,8 +17,8 @@ from textual.widgets import TabPane
 from parllama.messages.messages import ModelInteractRequested
 from parllama.messages.messages import PsMessage
 from parllama.messages.messages import StatusMessage
-from parllama.models.settings_data import settings
-from parllama.models.settings_data import TabType
+from parllama.settings_manager import settings
+from parllama.settings_manager import TabType
 from parllama.widgets.views.chat_view import ChatView
 from parllama.widgets.views.create_model_view import ModelCreateView
 from parllama.widgets.views.local_model_view import LocalModelView
@@ -75,7 +75,9 @@ class MainScreen(Screen[None]):
     def compose(self) -> ComposeResult:
         """Compose the Main screen."""
         yield Header(show_clock=True)
-        yield Footer()
+        f = Footer()
+        f.upper_case_keys = True
+        yield f
         yield self.status_bar
         yield self.ps_status_bar
 

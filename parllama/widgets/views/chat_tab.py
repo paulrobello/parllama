@@ -44,7 +44,7 @@ from parllama.messages.messages import UpdateChatControlStates
 from parllama.messages.messages import UpdateChatStatus
 from parllama.messages.messages import UpdateTabLabel
 from parllama.models.ollama_data import FullModel
-from parllama.models.settings_data import settings
+from parllama.settings_manager import settings
 from parllama.screens.save_session import SaveSession
 from parllama.utils import str_ellipsis
 from parllama.widgets.chat_message_list import ChatMessageList
@@ -330,7 +330,7 @@ class ChatTab(TabPane):
             else:
                 await self.vs.mount(msg_widget)
         msg_widget.loading = len(msg_widget.msg.content) == 0
-        if self.user_input.has_focus:
+        if self.user_input.child_has_focus:
             self.set_timer(0.1, self.scroll_to_bottom)
 
         # chat_manager.notify_sessions_changed()

@@ -23,7 +23,7 @@ from parllama.messages.messages import ModelPullRequested
 from parllama.messages.messages import RegisterForUpdates
 from parllama.messages.messages import SiteModelsLoaded
 from parllama.messages.messages import SiteModelsRefreshRequested
-from parllama.models.settings_data import settings
+from parllama.settings_manager import settings
 from parllama.widgets.input_tab_complete import InputTabComplete
 from parllama.widgets.site_model_list_item import SiteModelListItem
 from parllama.widgets.views.site_model_list_view import SiteModelListView

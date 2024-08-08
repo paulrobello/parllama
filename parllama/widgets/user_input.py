@@ -7,13 +7,14 @@ from typing import Literal, Self
 
 from textual import on
 from textual.app import ComposeResult
-from textual.binding import Binding
 from textual.message import Message
 from textual.reactive import var
 from textual.suggester import Suggester
 from textual.widget import Widget
 from textual.widgets import Input, TextArea
 
+from parllama.messages.messages import ToggleInputMode
+from parllama.settings_manager import settings
 from parllama.widgets.input_tab_complete import InputTabComplete
 from parllama.widgets.user_text_area import UserTextArea
 
@@ -60,11 +61,11 @@ class UserInput(Widget, can_focus=False, can_focus_children=True):
             """Alias for self.input."""
             return self.input
 
-    BINDINGS = [
-        Binding(
-            key="ctrl+j", action="toggle_mode", description="Toggle Mode", show=True
-        ),
-    ]
+    # BINDINGS = [
+    #     Binding(
+    #         key="ctrl+j", action="toggle_mode", description="Multi Line", show=True
+    #     ),
+    # ]
     _input_mode = var[UserInputMode]("single_line")
     _input: InputTabComplete
     _text_area: UserTextArea
@@ -111,12 +112,37 @@ class UserInput(Widget, can_focus=False, can_focus_children=True):
         event.stop()
         self.post_message(self.Changed(input=event.control, value=event.value))
 
+    @on(UserTextArea.Changed)
+    def on_text_area_changed(self, event: UserTextArea.Changed) -> None:
+        """Handle the text area changed event."""
+        event.stop()
+        self.post_message(self.Changed(input=event.control, value=event.text_area.text))
+
     @on(Input.Submitted)
     def on_input_submitted(self, event: Input.Submitted) -> None:
         """Handle the input submitted event."""
         event.stop()
-        self.post_message(self.Submitted(input=event.control, value=event.value))
-        self._input_mode = "multi_line"
+        self.submit()
+
+    @on(UserTextArea.Submitted)
+    def on_text_area_submitted(self, event: UserTextArea.Submitted) -> None:
+        """Handle the text area submitted event."""
+        event.stop()
+        self.submit()
+
+    def submit(self) -> None:
+        """Submit the input."""
+        self.post_message(self.Submitted(input=self.control, value=self.value))
+        if settings.return_to_single_line_on_submit:
+            self._input_mode = "single_line"
+        self.focus()
+
+    @property
+    def control(self) -> Input | TextArea:
+        """Return the control for the input."""
+        if self._input_mode == "single_line":
+            return self._input
+        return self._text_area
 
     @property
     def value(self) -> str:
@@ -137,9 +163,9 @@ class UserInput(Widget, can_focus=False, can_focus_children=True):
         """Focus the input."""
         # super().focus()
         if self._input_mode == "single_line":
-            self._input.focus()
+            self._input.focus(False)
         else:
-            self._text_area.focus()
+            self._text_area.focus(False)
         return self
 
     @property
@@ -152,18 +178,23 @@ class UserInput(Widget, can_focus=False, can_focus_children=True):
         """Set the suggester for the input."""
         self._input.suggester = suggester
 
+    @on(ToggleInputMode)
     def action_toggle_mode(self) -> None:
         """Toggle the input mode."""
-        with self.prevent(
-            Input.Changed, Input.Submitted, TextArea.Changed, UserInput.Changed
-        ):
+        with self.prevent(Input.Changed, TextArea.Changed, UserInput.Changed):
             if self._input_mode == "single_line":
-                self._text_area.text = self._input.value + "\n"
+                v = self._input.value.strip()
+                if v:
+                    self._text_area.text = v + "\n"
+                else:
+                    self._text_area.text = ""
                 self._text_area.cursor_location = self._text_area.document.end
                 self._input_mode = "multi_line"
             else:
-                self.post_message(
-                    self.Submitted(input=self._text_area, value=self._text_area.text)
-                )
-                self._input.value = self._text_area.get_line(0).plain
+                self._input.value = self._text_area.get_line(0).plain.strip()
                 self._input_mode = "single_line"
+
+    @property
+    def child_has_focus(self) -> bool:
+        """return if input or text area has focus"""
+        return self._input.has_focus or self._text_area.has_focus

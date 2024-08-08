@@ -50,6 +50,7 @@ class Settings(BaseModel):
     ollama_ps_poll_interval: int = 3
     auto_name_session: bool = False
     auto_name_session_llm: str = ""
+    return_to_single_line_on_submit: bool = True
 
     # pylint: disable=too-many-branches, too-many-statements
     def __init__(self) -> None:
@@ -216,6 +217,11 @@ class Settings(BaseModel):
                     self.last_version_check = None
 
                 self.show_first_run = data.get("show_first_run", self.show_first_run)
+
+                self.return_to_single_line_on_submit = data.get(
+                    "return_to_single_line_on_submit",
+                    self.return_to_single_line_on_submit,
+                )
 
         except FileNotFoundError:
             pass  # If file does not exist, continue with default settings

@@ -33,6 +33,18 @@ clear_cache:	        # Clear application cache
 dev:	        # Run in dev mode
 	$(run) textual run --dev $(lib).app:ParLlamaApp
 
+.PHONY: keys
+keys:	        # Run in keyboard input tester
+	$(run) textual keys
+
+.PHONY: borders
+borders:	        # Run border sample display
+	$(run) textual borders
+
+.PHONY: colors
+colors:	        # Run color sample display
+	$(run) textual colors
+
 .PHONY: wsl-dev
 wsl-dev:	        # Run in dev mode
 	$(run) textual run --dev $(lib).app:ParLlamaApp -u "http://$(shell hostname).local:11434"

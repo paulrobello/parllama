@@ -58,7 +58,6 @@ class ImportFabricDialog(ModalScreen[None]):
         Binding("left,up", "app.focus_previous", "", show=False),
         Binding("right,down", "app.focus_next", "", show=False),
         Binding("escape, ctrl+q", "app.pop_screen", "", show=True),
-        Binding("ctrl+c", "app.copy_to_clipboard", "", show=True),
     ]
     model: FullModel
 
@@ -88,6 +87,7 @@ class ImportFabricDialog(ModalScreen[None]):
         """Mount the view."""
         if len(import_fabric_manager.prompts) == 0:
             self.loading = True
+            self.notify("Fetching data... This can take a few minutes.")
             self.fetch_patterns()
 
     @work(thread=True)

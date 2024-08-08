@@ -18,7 +18,7 @@ from parllama.messages.par_prompt_messages import ParPromptDelete
 from parllama.messages.par_prompt_messages import ParPromptUpdated
 from parllama.messages.shared import prompt_change_list
 from parllama.messages.shared import PromptChanges
-from parllama.models.settings_data import settings
+from parllama.settings_manager import settings
 
 
 @rich.repr.auto
