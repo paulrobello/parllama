@@ -28,6 +28,7 @@ youtube-transcript-api = "*"
 isodate2 = "*"
 pypdf = "*"
 semver = "*"
+pytz = "*"
 
 [dev-packages]
 mypy = "*"
