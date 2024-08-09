@@ -96,6 +96,7 @@ class SiteModelView(Container):
             placeholder="Namespace",
             value=settings.site_models_namespace or "",
             suggester=SuggestFromList(dm.list_cache_files(), case_sensitive=False),
+            enable_history=False,
         )
         self.namespace_input.BINDINGS.append(
             Binding("tab", "cursor_right", "tab complete", show=True),

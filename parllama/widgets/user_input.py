@@ -66,7 +66,27 @@ class UserInput(Widget, can_focus=False, can_focus_children=True):
     #         key="ctrl+j", action="toggle_mode", description="Multi Line", show=True
     #     ),
     # ]
-    _input_mode = var[UserInputMode]("single_line")
+
+    DEFAULT_CSS = """
+    UserInput {
+        width: 1fr;
+        height: auto;
+        min-height: 3;
+        max-height: 15;
+        UserTextArea {
+            width: 1fr;
+            height: auto;
+            min-height: 3;
+            max-height: 15;
+
+            .text-area--cursor-line {
+                background: $background 0%;
+            }
+        }
+    }
+    """
+
+    _input_mode = var[UserInputMode]("single_line", init=False)
     _input: InputTabComplete
     _text_area: UserTextArea
 

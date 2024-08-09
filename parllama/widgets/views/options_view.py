@@ -8,12 +8,13 @@ from textual.containers import Horizontal
 from textual.containers import Vertical
 from textual.events import Show
 from textual.validation import Integer
-from textual.widgets import Checkbox
+from textual.widgets import Checkbox, Button
 from textual.widgets import Input
 from textual.widgets import Label
 from textual.widgets import Select
 from textual.widgets import Static
 
+from parllama.messages.messages import ClearChatHistory
 from parllama.settings_manager import settings
 from parllama.theme_manager import theme_manager
 from parllama.utils import valid_tabs
@@ -26,7 +27,7 @@ class OptionsView(Horizontal):
     """Widget for setting application options."""
 
     DEFAULT_CSS = """
-OptionsView {
+    OptionsView {
         width: 1fr;
         height: 1fr;
         overflow: auto;
@@ -95,6 +96,9 @@ OptionsView {
                     with Horizontal(classes="folder-item"):
                         yield Label("Export MD Dir")
                         yield Static(settings.export_md_dir)
+                    with Horizontal(classes="folder-item"):
+                        yield Label("Chat history File")
+                        yield Static(settings.chat_history_file)
 
                 with Vertical(classes="section") as vs:
                     vs.border_title = "Startup"
@@ -159,14 +163,36 @@ OptionsView {
                         validators=[Integer(minimum=3, maximum=50)],
                         id="chat_tab_max_length",
                     )
-                    yield Checkbox(
-                        label="Return to single line after multi line submit",
-                        value=settings.return_to_single_line_on_submit,
-                        id="return_to_single_line_on_submit",
-                    )
 
                     with Vertical(classes="section") as vs2:
-                        vs2.border_title = "Session Naming"
+                        vs2.border_title = "User Input"
+                        yield Label("Chat input history length")
+                        yield InputBlurSubmit(
+                            value=str(settings.chat_input_history_length),
+                            max_length=5,
+                            type="integer",
+                            validators=[Integer(minimum=0, maximum=1000)],
+                            id="chat_input_history_length",
+                        )
+                        with Horizontal():
+                            yield Checkbox(
+                                label="Save user input history",
+                                value=settings.save_chat_input_history,
+                                id="save_chat_input_history",
+                            )
+                            yield Button(
+                                "Delete chat history",
+                                id="delete_chat_history",
+                                variant="warning",
+                            )
+                        yield Checkbox(
+                            label="Return to single line after multi line submit",
+                            value=settings.return_to_single_line_on_submit,
+                            id="return_to_single_line_on_submit",
+                        )
+
+                    with Vertical(classes="section") as vs3:
+                        vs3.border_title = "Session Naming"
                         yield Checkbox(
                             label="Auto LLM Name Session",
                             value=settings.auto_name_session,
@@ -202,6 +228,12 @@ OptionsView {
             "Options"
         )
         self.refresh(recompose=True)
+
+    @on(Button.Pressed, "#delete_chat_history")
+    def on_delete_chat_history_pressed(self, event: Button.Pressed) -> None:
+        """Handle delete chat history button pressed"""
+        event.stop()
+        self.app.post_message(ClearChatHistory())
 
     @on(Select.Changed)
     def on_select_changed(self, event: Select.Changed) -> None:
@@ -250,6 +282,8 @@ OptionsView {
             settings.show_first_run = bool(int(ctrl.value))
         elif ctrl.id == "return_to_single_line_on_submit":
             settings.return_to_single_line_on_submit = bool(int(ctrl.value))
+        elif ctrl.id == "save_chat_input_history":
+            settings.save_chat_input_history = bool(int(ctrl.value))
         else:
             self.notify(f"Unhandled input: {ctrl.id}", severity="error", timeout=8)
             return
@@ -273,6 +307,8 @@ OptionsView {
             settings.ollama_ps_poll_interval = int(ctrl.value)
         elif ctrl.id == "chat_tab_max_length":
             settings.chat_tab_max_length = int(ctrl.value)
+        elif ctrl.id == "chat_input_history_length":
+            settings.chat_input_history_length = int(ctrl.value)
         else:
             self.notify(f"Unhandled input: {ctrl.id}", severity="error", timeout=8)
             return

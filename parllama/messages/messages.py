@@ -366,3 +366,8 @@ class ImportReady(Message):
 @dataclass
 class ToggleInputMode(Message):
     """Toggle between single and multi-line input mode."""
+
+
+@dataclass
+class ClearChatHistory(Message):
+    """Clear chat history."""
