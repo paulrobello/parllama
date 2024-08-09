@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import shutil
 import tempfile
 import zipfile
 
@@ -13,6 +14,7 @@ from parllama.chat_manager import chat_manager
 from parllama.chat_message import OllamaMessage
 from parllama.chat_prompt import ChatPrompt
 from parllama.par_event_system import ParEventSystemBase
+from parllama.settings_manager import settings
 
 
 class ImportFabricManager(ParEventSystemBase):
@@ -31,6 +33,7 @@ class ImportFabricManager(ParEventSystemBase):
         self.repo_zip_url = (
             "https://github.com/danielmiessler/fabric/archive/refs/heads/main.zip"
         )
+        self._cache_folder = os.path.join(settings.cache_dir, "fabric_prompts")
         self._last_folder: str | None = None
 
     def import_patterns(self) -> None:
@@ -43,11 +46,15 @@ class ImportFabricManager(ParEventSystemBase):
             prompt.is_dirty = True
             prompt.save()
 
-    def fetch_patterns(self) -> list[ChatPrompt]:
+    def fetch_patterns(self, force: bool = False) -> None:
         """Create prompts from GitHub zip file."""
-        self.prompts.clear()
-        self.id_to_prompt.clear()
-        self.import_ids.clear()
+
+        if os.path.exists(self._cache_folder):
+            if force:
+                shutil.rmtree(self._cache_folder)
+            else:
+                return
+
         with tempfile.TemporaryDirectory() as temp_dir:
             self._last_folder = temp_dir
             zip_path = os.path.join(temp_dir, "repo.zip")
@@ -61,28 +68,45 @@ class ImportFabricManager(ParEventSystemBase):
                 raise FileNotFoundError(
                     "Patterns folder not found in the downloaded zip."
                 )
-            # list all folder in patterns_source_path
-            pattern_folder_list = os.listdir(patterns_source_path)
-            for pattern_name in pattern_folder_list:
-                src_prompt_path = os.path.join(
-                    patterns_source_path, pattern_name, "system.md"
+            shutil.copytree(patterns_source_path, self._cache_folder)
+
+    def read_patterns(self, force: bool = False) -> list[ChatPrompt]:
+        """Read prompts from cache."""
+
+        self.prompts.clear()
+        self.id_to_prompt.clear()
+        self.import_ids.clear()
+
+        try:
+            if not os.path.exists(self._cache_folder) or force:
+                self.fetch_patterns(force)
+        except FileNotFoundError:
+            return []
+
+        if not os.path.exists(self._cache_folder):
+            return []
+
+        pattern_folder_list = os.listdir(self._cache_folder)
+        for pattern_name in pattern_folder_list:
+            src_prompt_path = os.path.join(
+                self._cache_folder, pattern_name, "system.md"
+            )
+            if not os.path.exists(src_prompt_path):
+                continue
+            with open(src_prompt_path, "rt", encoding="utf-8") as f:
+                prompt_content = ""
+                for line in f.readlines():
+                    if line.upper().startswith("# INPUT") or line.upper().startswith(
+                        "INPUT:"
+                    ):
+                        break
+                    prompt_content += line + "\n"
+                prompt_content = prompt_content.strip()
+                prompt: ChatPrompt = self.markdown_to_prompt(
+                    pattern_name, prompt_content
                 )
-                if not os.path.exists(src_prompt_path):
-                    continue
-                with open(src_prompt_path, "rt", encoding="utf-8") as f:
-                    prompt_content = ""
-                    for line in f.readlines():
-                        if line.upper().startswith(
-                            "# INPUT"
-                        ) or line.upper().startswith("INPUT:"):
-                            break
-                        prompt_content += line + "\n"
-                    prompt_content = prompt_content.strip()
-                    prompt: ChatPrompt = self.markdown_to_prompt(
-                        pattern_name, prompt_content
-                    )
-                    self.prompts.append(prompt)
-                    self.id_to_prompt[prompt.id] = prompt
+                self.prompts.append(prompt)
+                self.id_to_prompt[prompt.id] = prompt
         return self.prompts
 
     def markdown_to_prompt(self, pattern_name: str, prompt_content: str) -> ChatPrompt:

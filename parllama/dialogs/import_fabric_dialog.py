@@ -34,6 +34,12 @@ class ImportFabricDialog(ModalScreen[None]):
             border: thick $accent;
             border-title-color: $primary;
             padding: 1;
+            &> Horizontal {
+                height: 3;
+                Button {
+                    margin-right: 1;
+                }
+            }
             &> VerticalScroll {
                 & > Horizontal {
                     height: 3;
@@ -69,7 +75,9 @@ class ImportFabricDialog(ModalScreen[None]):
         """Compose the content of the dialog."""
         with Vertical() as vs:
             vs.border_title = "Import Fabric"
-            yield Button("Import", id="import")
+            with Horizontal():
+                yield Button("Import", id="import")
+                yield Button("Refresh", id="refresh")
 
             with VerticalScroll(id="prompts_container"):
                 yield Checkbox(label="Select All", id="select_all", value=False)
@@ -91,9 +99,9 @@ class ImportFabricDialog(ModalScreen[None]):
             self.fetch_patterns()
 
     @work(thread=True)
-    async def fetch_patterns(self) -> None:
+    async def fetch_patterns(self, force: bool = False) -> None:
         """Fetch fabric patterns."""
-        import_fabric_manager.fetch_patterns()
+        import_fabric_manager.read_patterns(force)
         self.post_message(ImportReady())
 
     @on(ImportReady)
@@ -131,3 +139,11 @@ class ImportFabricDialog(ModalScreen[None]):
 
         with self.prevent(Focus):
             self.app.pop_screen()
+
+    @on(Button.Pressed, "#refresh")
+    def on_refresh_pressed(self, event: Button.Pressed) -> None:
+        """Re download fabric patterns."""
+        event.stop()
+        self.loading = True
+        self.notify("Fetching data... This can take a few minutes.")
+        self.fetch_patterns(True)
