@@ -22,6 +22,7 @@
 * [Custom Prompts](#Custom-Prompts)
 * [Themes](#themes)
 * [Contributing](#contributing)
+* [FAQ](#faq)
 * [Roadmap](#roadmap)
     * [Where we are](#where-we-are)
     * [Where we're going](#where-were-going)
@@ -295,6 +296,15 @@ pre-commit run --all-files
 After running the above all future commits will auto run pre-commit. pre-commit will fix what it can and show what
 if anything remains to be fixed before the commit is allowed.
 
+## FAQ
+* Q: Do I need Docker?
+  * A: Docker is only required if you want to Quantize models downloaded from Huggingface or similar llm repositories.
+* Q: Does ParLlama require internet access?
+  * A: ParLlama by default does not require any network / internet access unless you enable checking for updates or want to import / use data from an online source.
+* Q: Does ParLlama run on ARM?
+  * A: Short answer is yes. ParLlama should run any place python does. It has been tested on Windows 11 x64, Windows WSL x64, Mac OSX intel and silicon
+* Q: Does Parllama require Ollama be installed locally?
+  * A: No. ParLlama has options to connect to remote Ollama instances
 
 ## Roadmap
 
@@ -317,6 +327,7 @@ if anything remains to be fixed before the commit is allowed.
 ### v0.3.6
 * Added option to save chat input history and set its length
 * Fixed tab switch issue on startup
+* Added cache for Fabric import to speed up subsequent imports
 
 ### v0.3.5
 * Added first time launch welcome
