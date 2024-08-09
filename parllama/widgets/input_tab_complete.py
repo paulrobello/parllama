@@ -111,13 +111,14 @@ class InputTabComplete(Input):
     @on(Input.Submitted)
     def on_submitted(self) -> None:
         """Store the last input in history."""
-        v: str = self.value.strip()
-        if v and self.last_input != v:
-            self.last_input = v
-            self.input_history.insert(0, v)
-            if len(self.input_history) > self.max_history_length:
-                self.input_history.pop()
-            self.save()
+        if self._enable_history:
+            v: str = self.value.strip()
+            if v and self.last_input != v:
+                self.last_input = v
+                self.input_history.insert(0, v)
+                if len(self.input_history) > self.max_history_length:
+                    self.input_history.pop()
+                self.save()
         self._input_position = -1
 
     def action_toggle_mode(self) -> None:
