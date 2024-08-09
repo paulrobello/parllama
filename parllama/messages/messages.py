@@ -369,5 +369,5 @@ class ToggleInputMode(Message):
 
 
 @dataclass
-class ClearChatHistory(Message):
+class ClearChatInputHistory(Message):
     """Clear chat history."""

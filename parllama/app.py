@@ -39,7 +39,7 @@ from parllama.chat_manager import ChatManager
 from parllama.data_manager import dm
 from parllama.dialogs.help_dialog import HelpDialog
 from parllama.dialogs.information import InformationDialog
-from parllama.messages.messages import ChangeTab, ClearChatHistory
+from parllama.messages.messages import ChangeTab, ClearChatInputHistory
 from parllama.messages.messages import CreateModelFromExistingRequested
 from parllama.messages.messages import DeletePrompt
 from parllama.messages.messages import DeleteSession
@@ -684,8 +684,8 @@ If you would like to auto check for updates, you can enable it in the Startup se
         await self.main_screen.chat_view.active_tab.action_new_session()
         self.main_screen.chat_view.user_input.focus()
 
-    @on(ClearChatHistory)
-    def on_clear_chat_history(self, event: ClearChatHistory) -> None:
+    @on(ClearChatInputHistory)
+    def on_clear_chat_history(self, event: ClearChatInputHistory) -> None:
         """Clear chat history event"""
         event.stop()
         self.post_message_all(event)

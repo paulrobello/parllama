@@ -14,7 +14,7 @@ from textual.widgets import Label
 from textual.widgets import Select
 from textual.widgets import Static
 
-from parllama.messages.messages import ClearChatHistory
+from parllama.messages.messages import ClearChatInputHistory
 from parllama.settings_manager import settings
 from parllama.theme_manager import theme_manager
 from parllama.utils import valid_tabs
@@ -233,7 +233,7 @@ class OptionsView(Horizontal):
     def on_delete_chat_history_pressed(self, event: Button.Pressed) -> None:
         """Handle delete chat history button pressed"""
         event.stop()
-        self.app.post_message(ClearChatHistory())
+        self.app.post_message(ClearChatInputHistory())
 
     @on(Select.Changed)
     def on_select_changed(self, event: Select.Changed) -> None:

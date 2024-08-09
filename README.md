@@ -314,8 +314,9 @@ if anything remains to be fixed before the commit is allowed.
 
 ## What's new
 
-### v0.3.5
+### v0.3.6
 * Added option to save chat input history and set its length
+* Fixed tab switch issue on startup
 
 ### v0.3.5
 * Added first time launch welcome

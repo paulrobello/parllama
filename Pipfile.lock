@@ -721,11 +721,11 @@
         "syntax"
       ],
       "hashes": [
-        "sha256:3f0b53fe6119aa64853c7e60ced4d4e16fb23c83dee1e0fd19eddb3f2639c02e",
-        "sha256:7edb1196753feae79890daa2287bc3180ebba2cbf63f59f2a160991325b020f2"
+        "sha256:b12e8879d591090c0901b5cb8121d086e28e677353b368292d3865ec99b83b70",
+        "sha256:e2035609c889dba507d34a5d7b333f1c8c53a29fb170962cb92101507663517a"
       ],
       "markers": "python_full_version >= '3.8.1' and python_full_version < '4.0.0'",
-      "version": "==0.75.1"
+      "version": "==0.76.0"
     },
     "textual-fspicker": {
       "hashes": [
@@ -886,7 +886,7 @@
         "sha256:04e5ca0351e0f3f85c6853954072df659d0d13fac324d0072316b67d7794700d",
         "sha256:1a7ead55c7e559dd4dee8856e3a88b41225abfe1ce8df57b7c13915fe121ffb8"
       ],
-      "markers": "python_version >= '3.8'",
+      "markers": "python_version < '3.13'",
       "version": "==4.12.2"
     },
     "uc-micro-py": {
@@ -1980,11 +1980,11 @@
         "syntax"
       ],
       "hashes": [
-        "sha256:3f0b53fe6119aa64853c7e60ced4d4e16fb23c83dee1e0fd19eddb3f2639c02e",
-        "sha256:7edb1196753feae79890daa2287bc3180ebba2cbf63f59f2a160991325b020f2"
+        "sha256:b12e8879d591090c0901b5cb8121d086e28e677353b368292d3865ec99b83b70",
+        "sha256:e2035609c889dba507d34a5d7b333f1c8c53a29fb170962cb92101507663517a"
       ],
       "markers": "python_full_version >= '3.8.1' and python_full_version < '4.0.0'",
-      "version": "==0.75.1"
+      "version": "==0.76.0"
     },
     "textual-dev": {
       "hashes": [
@@ -2069,7 +2069,7 @@
         "sha256:04e5ca0351e0f3f85c6853954072df659d0d13fac324d0072316b67d7794700d",
         "sha256:1a7ead55c7e559dd4dee8856e3a88b41225abfe1ce8df57b7c13915fe121ffb8"
       ],
-      "markers": "python_version >= '3.8'",
+      "markers": "python_version < '3.13'",
       "version": "==4.12.2"
     },
     "uc-micro-py": {

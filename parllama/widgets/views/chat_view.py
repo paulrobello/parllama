@@ -22,7 +22,7 @@ from parllama.chat_manager import ChatSession
 from parllama.chat_message import OllamaMessage
 from parllama.data_manager import dm
 from parllama.dialogs.information import InformationDialog
-from parllama.messages.messages import ChangeTab
+from parllama.messages.messages import ChangeTab, ClearChatInputHistory
 from parllama.messages.messages import ChatGenerationAborted
 from parllama.messages.messages import ChatMessage
 from parllama.messages.messages import ChatMessageSent
@@ -57,6 +57,7 @@ valid_commands: list[str] = [
     "/session.export",
     "/session.system_prompt",
     "/session.to_prompt",
+    "/history.clear",
     "/prompt.load ",
 ]
 
@@ -316,6 +317,7 @@ Chat Commands:
 /session.system_prompt [system_prompt] - Set system prompt in current tab
 /session.to_prompt submit_on_load [prompt_name] - Copy current session to new custom prompt. submit_on_load = {0|1}
 /prompt.load prompt_name - Load a custom prompt using current tabs model and temperature
+/history.clear - Clear chat input history
                     """,
                 )
             )
@@ -407,6 +409,8 @@ Chat Commands:
                     temperature=None,
                 )
             )
+        elif cmd == "history.clear":
+            self.app.post_message(ClearChatInputHistory())
         else:
             self.notify(f"Unknown command: {cmd}", severity="error")
 
