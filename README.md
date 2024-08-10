@@ -317,8 +317,8 @@ if anything remains to be fixed before the commit is allowed.
 * Auto complete of slash commands, input history, multi line edit
 
 ### Where we're going
-* Expand ability to import custom prompts of other tools
 * Chat using embeddings for local documents
+* Expand ability to import custom prompts of other tools
 * LLM tool use
 * Ability to use other AI providers like Open AI
 

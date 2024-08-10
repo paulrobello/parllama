@@ -10,7 +10,7 @@ simplejson = "*"
 attrs = "*"
 certifi = "*"
 requests-file = "*"
-#textual = { version = "==0.74.0", extras = ["syntax"] }
+#textual = { version = "==0.75.0", extras = ["syntax"] }
 textual = { version = "*", extras = ["syntax"] }
 asyncio = "*"
 humanize = "*"
@@ -29,6 +29,11 @@ isodate2 = "*"
 pypdf = "*"
 semver = "*"
 pytz = "*"
+sqlalchemy = "*"
+jsonschema = "*"
+markdownify = "*"
+tiktoken = "*"
+
 
 [dev-packages]
 mypy = "*"
