@@ -33,7 +33,16 @@ sqlalchemy = "*"
 jsonschema = "*"
 markdownify = "*"
 tiktoken = "*"
-
+langchain = "*"
+langchain-core = "*"
+langchain-community = "*"
+langchain-text-splitters = "*"
+langchain-ollama = "*"
+langchainhub = "*"
+langgraph = "*"
+langsmith = "*"
+pymilvus = "*"
+langchain_milvus = "*"
 
 [dev-packages]
 mypy = "*"

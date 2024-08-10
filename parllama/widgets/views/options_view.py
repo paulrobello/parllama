@@ -14,6 +14,7 @@ from textual.widgets import Label
 from textual.widgets import Select
 from textual.widgets import Static
 
+import parllama
 from parllama.messages.messages import ClearChatInputHistory
 from parllama.settings_manager import settings
 from parllama.theme_manager import theme_manager
@@ -79,8 +80,15 @@ class OptionsView(Horizontal):
             Input.Changed, Input.Submitted, Select.Changed, Checkbox.Changed
         ):
             with Vertical(classes="column"):
-                with Vertical(classes="section") as vs:
-                    vs.border_title = "Folders"
+                with Vertical(classes="section") as vsa:
+                    vsa.border_title = "About"
+                    yield Static(
+                        f"ParLlama: v{parllama.__version__}  -  by Paul Robello "
+                        + "[@click=screen.open_mailto]probello@gmail.com[/]"
+                    )
+
+                with Vertical(classes="section") as vsf:
+                    vsf.border_title = "Folders"
                     with Horizontal(classes="folder-item"):
                         yield Label("Data Dir")
                         yield Static(settings.data_dir)
@@ -134,8 +142,8 @@ class OptionsView(Horizontal):
                         id="starting_tab",
                     )
 
-                with Vertical(classes="section") as vs:
-                    vs.border_title = "Ollama Endpoint"
+                with Vertical(classes="section") as vso:
+                    vso.border_title = "Ollama Endpoint"
                     yield Label("Ollama Host")
                     yield InputBlurSubmit(
                         value=settings.ollama_host,
@@ -153,8 +161,8 @@ class OptionsView(Horizontal):
                     )
 
             with Vertical(classes="column"):
-                with Vertical(classes="section") as vs:
-                    vs.border_title = "Chat"
+                with Vertical(classes="section") as vsc:
+                    vsc.border_title = "Chat"
                     yield Label("Chat Tab Max Length")
                     yield InputBlurSubmit(
                         value=str(settings.chat_tab_max_length),
@@ -164,8 +172,8 @@ class OptionsView(Horizontal):
                         id="chat_tab_max_length",
                     )
 
-                    with Vertical(classes="section") as vs2:
-                        vs2.border_title = "User Input"
+                    with Vertical(classes="section") as vsu:
+                        vsu.border_title = "User Input"
                         yield Label("Chat input history length")
                         yield InputBlurSubmit(
                             value=str(settings.chat_input_history_length),
@@ -191,8 +199,8 @@ class OptionsView(Horizontal):
                             id="return_to_single_line_on_submit",
                         )
 
-                    with Vertical(classes="section") as vs3:
-                        vs3.border_title = "Session Naming"
+                    with Vertical(classes="section") as vscs:
+                        vscs.border_title = "Session Naming"
                         yield Checkbox(
                             label="Auto LLM Name Session",
                             value=settings.auto_name_session,
@@ -204,8 +212,8 @@ class OptionsView(Horizontal):
                             id="auto_name_session_llm",
                         )
 
-                with Vertical(classes="section") as vs:
-                    vs.border_title = "Theme"
+                with Vertical(classes="section") as vst:
+                    vst.border_title = "Theme"
                     yield Label("Theme")
                     yield Select[str](
                         value=settings.theme_name,

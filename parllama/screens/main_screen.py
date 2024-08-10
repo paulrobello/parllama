@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import webbrowser
 from typing import cast
 
 from rich.console import RenderableType
@@ -26,6 +27,7 @@ from parllama.widgets.views.log_view import LogView
 from parllama.widgets.views.model_tools_view import ModelToolsView
 from parllama.widgets.views.options_view import OptionsView
 from parllama.widgets.views.prompt_view import PromptView
+from parllama.widgets.views.rag_view import RagView
 from parllama.widgets.views.site_model_view import SiteModelView
 
 
@@ -46,6 +48,7 @@ class MainScreen(Screen[None]):
     model_tools_view: ModelToolsView
     create_view: ModelCreateView
     options_view: OptionsView
+    rag_view: RagView
     log_view: LogView
 
     def __init__(self, **kwargs) -> None:
@@ -62,6 +65,7 @@ class MainScreen(Screen[None]):
         self.create_view = ModelCreateView(id="model_create")
         self.model_tools_view = ModelToolsView(id="model_tools")
         self.options_view = OptionsView(id="options")
+        self.rag_view = RagView(id="rag")
         self.log_view = LogView()
 
     async def on_mount(self) -> None:
@@ -103,6 +107,8 @@ class MainScreen(Screen[None]):
                 yield self.create_view
             with TabPane("Options", id="Options"):
                 yield self.options_view
+            with TabPane("Rag", id="Rag"):
+                yield self.rag_view
             with TabPane("Logs", id="Logs"):
                 yield self.log_view
 
@@ -152,3 +158,7 @@ class MainScreen(Screen[None]):
     def on_model_interact_requested(self, msg: ModelInteractRequested) -> None:
         """Model interact requested event"""
         msg.stop()
+
+    def action_open_mailto(self):
+        """Open mailto link."""
+        webbrowser.open("mailto:probello@gmail.com")
