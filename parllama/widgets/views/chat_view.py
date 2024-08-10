@@ -22,7 +22,7 @@ from parllama.chat_manager import ChatSession
 from parllama.chat_message import OllamaMessage
 from parllama.data_manager import dm
 from parllama.dialogs.information import InformationDialog
-from parllama.messages.messages import ChangeTab
+from parllama.messages.messages import ChangeTab, ClearChatInputHistory
 from parllama.messages.messages import ChatGenerationAborted
 from parllama.messages.messages import ChatMessage
 from parllama.messages.messages import ChatMessageSent
@@ -57,6 +57,7 @@ valid_commands: list[str] = [
     "/session.export",
     "/session.system_prompt",
     "/session.to_prompt",
+    "/history.clear",
     "/prompt.load ",
 ]
 
@@ -66,33 +67,31 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
 
     DEFAULT_CSS = """
     ChatView {
-      layers: left;
-      SessionList {
-        width: 40;
-        height: 1fr;
-        dock: left;
-        padding: 1;
-      }
-      #chat_tabs {
-        height: 1fr;
-      }
-      #send_bar {
-        min-height: 3;
-        max-height: 5;
-        background: $surface-darken-1;
-        #user_input {
-          width: 1fr;
+        layers: left;
+        SessionList {
+            width: 40;
+            height: 1fr;
+            dock: left;
+            padding: 1;
         }
-        #send_button {
-          min-width: 7;
-          width: 7;
-          margin-right: 1;
+        #chat_tabs {
+            height: 1fr;
         }
-        #stop_button {
-          min-width: 6;
-          width: 6;
+        #send_bar {
+            height: auto;
+            min-height: 3;
+            max-height: 15;
+            background: $surface-darken-1;
+            #send_button {
+                min-width: 7;
+                width: 7;
+                margin-right: 1;
+            }
+            #stop_button {
+                min-width: 6;
+                width: 6;
+            }
         }
-      }
     }
     """
 
@@ -318,6 +317,7 @@ Chat Commands:
 /session.system_prompt [system_prompt] - Set system prompt in current tab
 /session.to_prompt submit_on_load [prompt_name] - Copy current session to new custom prompt. submit_on_load = {0|1}
 /prompt.load prompt_name - Load a custom prompt using current tabs model and temperature
+/history.clear - Clear chat input history
                     """,
                 )
             )
@@ -409,6 +409,8 @@ Chat Commands:
                     temperature=None,
                 )
             )
+        elif cmd == "history.clear":
+            self.app.post_message(ClearChatInputHistory())
         else:
             self.notify(f"Unknown command: {cmd}", severity="error")
 

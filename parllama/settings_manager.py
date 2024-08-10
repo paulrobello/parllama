@@ -33,6 +33,9 @@ class Settings(BaseModel):
     chat_dir: str = ""
     prompt_dir: str = ""
     export_md_dir: str = ""
+    save_chat_input_history: bool = False
+    chat_input_history_length: int = 100
+    chat_history_file: str = ""
 
     chat_tab_max_length: int = 15
     settings_file: str = "settings.json"
@@ -73,6 +76,7 @@ class Settings(BaseModel):
         self.chat_dir = os.path.join(self.data_dir, "chats")
         self.prompt_dir = os.path.join(self.data_dir, "prompts")
         self.export_md_dir = os.path.join(self.data_dir, "md_exports")
+        self.chat_history_file = os.path.join(self.data_dir, "chat_history.json")
 
         os.makedirs(self.cache_dir, exist_ok=True)
         os.makedirs(self.chat_dir, exist_ok=True)
@@ -223,6 +227,13 @@ class Settings(BaseModel):
                     self.return_to_single_line_on_submit,
                 )
 
+                self.save_chat_input_history = data.get(
+                    "save_chat_input_history", self.save_chat_input_history
+                )
+                self.chat_input_history_length = data.get(
+                    "chat_input_history_length", self.chat_input_history_length
+                )
+
         except FileNotFoundError:
             pass  # If file does not exist, continue with default settings
 
@@ -271,6 +282,13 @@ class Settings(BaseModel):
     def shutting_down(self, value: bool) -> None:
         """Set whether Par Llama is shutting down"""
         self._shutting_down = value
+
+    def remove_chat_history_file(self) -> None:
+        """Remove the chat history file."""
+        try:
+            os.remove(self.chat_history_file)
+        except FileNotFoundError:
+            pass
 
 
 settings = Settings()

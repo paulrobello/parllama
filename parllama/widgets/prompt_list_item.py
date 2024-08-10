@@ -16,10 +16,14 @@ class PromptListItem(DblClickListItem, can_focus=False, can_focus_children=True)
 
     DEFAULT_CSS = """
     PromptListItem {
-      height: 4;
-      width: 1fr;
-      padding-left: 1;
-      padding-right: 1;
+        height: 6;
+        width: 1fr;
+        padding-left: 1;
+        padding-right: 1;
+        border: solid $secondary;
+        *:hover {
+            background: transparent;
+        }
     }
     """
     prompt: ChatPrompt

@@ -15,7 +15,7 @@ from textual.widgets import Input, TextArea
 
 from parllama.messages.messages import ToggleInputMode
 from parllama.settings_manager import settings
-from parllama.widgets.input_tab_complete import InputTabComplete
+from parllama.widgets.input_with_history import InputWithHistory
 from parllama.widgets.user_text_area import UserTextArea
 
 UserInputMode = Literal["single_line", "multi_line"]
@@ -66,8 +66,28 @@ class UserInput(Widget, can_focus=False, can_focus_children=True):
     #         key="ctrl+j", action="toggle_mode", description="Multi Line", show=True
     #     ),
     # ]
-    _input_mode = var[UserInputMode]("single_line")
-    _input: InputTabComplete
+
+    DEFAULT_CSS = """
+    UserInput {
+        width: 1fr;
+        height: auto;
+        min-height: 3;
+        max-height: 15;
+        UserTextArea {
+            width: 1fr;
+            height: auto;
+            min-height: 3;
+            max-height: 15;
+
+            .text-area--cursor-line {
+                background: $background 0%;
+            }
+        }
+    }
+    """
+
+    _input_mode = var[UserInputMode]("single_line", init=False)
+    _input: InputWithHistory
     _text_area: UserTextArea
 
     def __init__(
@@ -77,12 +97,13 @@ class UserInput(Widget, can_focus=False, can_focus_children=True):
     ) -> None:
         """Initialize the Input."""
         super().__init__(id=id)
-        self._input = InputTabComplete(
+        self._input = InputWithHistory(
             id="user_input_input",
             placeholder="Type a message...",
             submit_on_tab=False,
             submit_on_complete=False,
             suggester=suggester,
+            history_file=settings.chat_history_file,
         )
         self._text_area = UserTextArea(
             id="user_input_textarea",
