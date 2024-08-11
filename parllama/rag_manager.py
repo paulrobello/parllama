@@ -41,9 +41,9 @@ class RagManager(ParEventSystemBase):
 
     def save(self) -> None:
         """Save the RAG configuration."""
-        config = {"stores": [store.model_dump() for store in self.stores]}
+        config = {"stores": self.stores}
         with open(self._config_file, "wt", encoding="utf-8") as fh:
-            json.dump(config, fh, indent=2)
+            json.dump(config, fh, indent=2, default=str)
 
     def add_store(self, store: StoreBase) -> None:
         """Add store"""

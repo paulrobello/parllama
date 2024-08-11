@@ -5,24 +5,26 @@ from __future__ import annotations
 import abc
 import os
 from typing import Literal, Optional
-from uuid import uuid4
 
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 
-from pydantic import BaseModel
-from pydantic import Field
 from pymilvus import MilvusClient  # type: ignore
 
-
+from parllama.par_event_system import ParEventSystemBase
 from parllama.settings_manager import settings
 
 
-class RagBase(BaseModel):
+class RagBase(ParEventSystemBase):
     """Base class for rag related models."""
 
-    id: str = Field(default_factory=lambda: str(uuid4()))
-    name: str
+    name: str = ""
+
+    def __init__(
+        self, id: str | None = None, name: str = ""  # pylint: disable=redefined-builtin
+    ) -> None:
+        super().__init__(id=id)
+        self.name = name
 
 
 StoreType = Literal["Milvus"]
@@ -86,9 +88,30 @@ class VectorStoreMilvus(StoreBase):
                 id_type="str",
             )
 
-    def add_collection(self, collection: VectorCollection) -> None:
+    def add_collection(
+        self, collection: VectorCollection, actualize: bool = False
+    ) -> None:
         """Add a collection to the store."""
+        if actualize:
+            if collection.drop_if_exists:
+                if self.client.has_collection(collection_name=collection.name):
+                    self.client.drop_collection(collection_name=collection.name)
+            self.client.create_collection(
+                collection_name="demo_collection",
+                dimension=collection.dimension,
+            )
         self.collections.append(collection)
+
+    def remove_collection(self, collection_name: str, actualize: bool = False) -> None:
+        """Remove a collection from the store."""
+        self.collections = [
+            collection
+            for collection in self.collections
+            if collection.name != collection_name
+        ]
+        if actualize:
+            if self.client.has_collection(collection_name=collection_name):
+                self.client.drop_collection(collection_name=collection_name)
 
     @property
     def client(self) -> MilvusClient:
@@ -104,19 +127,14 @@ class VectorStoreMilvus(StoreBase):
 class CollectionBase(RagBase, abc.ABC):
     """Base class for collection."""
 
-    _store: Optional[StoreBase] = None
-    store_id: str
+    drop_if_exists: bool = False
 
     @property
     def store(self) -> Optional[StoreBase]:
         """Get the store."""
-        return self._store
-
-    @store.setter
-    def store(self, store: StoreBase) -> None:
-        """Set the store."""
-        self._store = store
-        self.store_id = store.id
+        if isinstance(self.parent, StoreBase):
+            return self.parent
+        return None
 
     def add_document(self, document: Document) -> None:
         """Add a document to the collection."""
@@ -136,7 +154,7 @@ class VectorCollection(CollectionBase):
     """Vector collection."""
 
     _embeddings: Optional[Embeddings] = None
-    dimension: int = 768
+    dimension: int = 0
 
     @property
     def embeddings(self) -> Optional[Embeddings]:
@@ -147,10 +165,10 @@ class VectorCollection(CollectionBase):
     def embeddings(self, embeddings: Embeddings) -> None:
         """Set the embeddings."""
         self._embeddings = embeddings
-        if self.embeddings is not None:
-            emb = self.embeddings.embed_documents(["test"])
-            if len(emb) > 0:
-                self.dimension = len(emb[0])
+        if self._embeddings is None:
+            self.dimension = 0
+            return
+        self.dimension = len(self._embeddings.embed_query("test"))
 
     def add_document(self, document: Document) -> None:
         """Add a document to the collection."""
