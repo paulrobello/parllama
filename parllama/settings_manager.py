@@ -260,6 +260,11 @@ class Settings(BaseModel):
         """Get the ollama client."""
         return ollama.Client(host=self.ollama_host)
 
+    @functools.cached_property
+    def ollama_aclient(self) -> ollama.AsyncClient:
+        """Get the async ollama client."""
+        return ollama.AsyncClient(host=self.ollama_host)
+
     def save(self) -> None:
         """Persist settings"""
         self.save_settings_to_file()

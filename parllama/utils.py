@@ -661,6 +661,8 @@ def output_to_dicts(output: str) -> list[dict[str, Any]]:
     for model in reader:
         mod = {}
         for key, value in model.items():
+            if not isinstance(key, str):
+                continue
             mod[key.strip().lower()] = value.strip()
         ret.append(mod)
     return ret
