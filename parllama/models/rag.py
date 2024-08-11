@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import abc
 import os
+import uuid
 from typing import Literal, Optional
 
 from langchain_core.documents import Document
@@ -12,6 +13,7 @@ from langchain_core.embeddings import Embeddings
 from pymilvus import MilvusClient  # type: ignore
 
 from parllama.par_event_system import ParEventSystemBase
+from parllama.par_ollama_embeddings import ParOllamaEmbeddings
 from parllama.settings_manager import settings
 
 
@@ -43,6 +45,12 @@ class StoreBase(RagBase, abc.ABC):
     username: Optional[str] = None
     password: Optional[str] = None
     token: Optional[str] = None
+
+    def __init__(
+        self, id: str | None = None, name: str = ""  # pylint: disable=redefined-builtin
+    ) -> None:
+        super().__init__(id=id)
+        self.name = name
 
     @staticmethod
     def get_class(class_name: str) -> type[StoreBase]:
@@ -92,15 +100,21 @@ class VectorStoreMilvus(StoreBase):
         self, collection: VectorCollection, actualize: bool = False
     ) -> None:
         """Add a collection to the store."""
-        if actualize:
-            if collection.drop_if_exists:
-                if self.client.has_collection(collection_name=collection.name):
-                    self.client.drop_collection(collection_name=collection.name)
-            self.client.create_collection(
-                collection_name="demo_collection",
-                dimension=collection.dimension,
-            )
         self.collections.append(collection)
+        self.mount(collection)
+
+        if actualize:
+            need_create = not self.client.has_collection(
+                collection_name=collection.name
+            )
+            if not need_create and collection.drop_if_exists:
+                self.client.drop_collection(collection_name=collection.name)
+                need_create = True
+            if need_create:
+                self.client.create_collection(
+                    collection_name="demo_collection",
+                    dimension=collection.dimension,
+                )
 
     def remove_collection(self, collection_name: str, actualize: bool = False) -> None:
         """Remove a collection from the store."""
@@ -154,24 +168,60 @@ class VectorCollection(CollectionBase):
     """Vector collection."""
 
     _embeddings: Optional[Embeddings] = None
-    dimension: int = 0
+    _dimension: int = 0
+    model: Optional[str] = None
+
+    def __init__(
+        self,
+        id: str | None = None,  # pylint: disable=redefined-builtin
+        name: str = "",
+        model: Optional[str] = None,
+        embeddings: Optional[Embeddings] = None,
+    ) -> None:
+        super().__init__(id=id, name=name)
+        if not self._embeddings and not model:
+            raise ValueError("embeddings or model must be provided")
+        self._embeddings = embeddings
+        if not self._embeddings and model:
+            self._embeddings = ParOllamaEmbeddings(model=model)
 
     @property
-    def embeddings(self) -> Optional[Embeddings]:
+    def store(self) -> VectorStoreMilvus:
+        """Get the store."""
+        if isinstance(self.parent, VectorStoreMilvus):
+            return self.parent
+        raise ValueError("parent not set or not a VectorStoreMilvus")
+
+    @property
+    def embeddings(self) -> Embeddings:
         """Get the embeddings."""
+        if self._embeddings is None:
+            raise ValueError("embeddings not set")
         return self._embeddings
 
     @embeddings.setter
     def embeddings(self, embeddings: Embeddings) -> None:
         """Set the embeddings."""
         self._embeddings = embeddings
-        if self._embeddings is None:
-            self.dimension = 0
-            return
-        self.dimension = len(self._embeddings.embed_query("test"))
+        self._dimension = 0
+
+    @property
+    def dimension(self) -> int:
+        """Get dimension of the collection."""
+        if self._dimension == 0:
+            if self._embeddings is None:
+                raise ValueError("embeddings not set")
+            self._dimension = len(self._embeddings.embed_query("test"))
+        return self._dimension
 
     def add_document(self, document: Document) -> None:
         """Add a document to the collection."""
+        data = {
+            "id": uuid.uuid4().hex,
+            "vector": self.embeddings.embed_query(document.page_content),
+            "text": document.page_content,
+        } | document.metadata
+        self.store.client.insert(collection_name=self.name, data=data)
 
 
 DataSourceType = Literal["File", "Folder"]

@@ -6,9 +6,8 @@ import os
 
 import simplejson as json
 
-from parllama.models.rag import StoreBase
+from parllama.models.rag import StoreBase, VectorStoreMilvus, VectorCollection
 from parllama.par_event_system import ParEventSystemBase
-from parllama.par_ollama_embeddings import ParOllamaEmbeddings
 from parllama.settings_manager import settings
 
 
@@ -56,16 +55,16 @@ rag_manager: RagManager = RagManager()
 
 if __name__ == "__main__":
     if len(rag_manager.stores) == 0:
-        ollama_emb = ParOllamaEmbeddings(
-            model="nomic-embed-text",
-            # model="mxbai-embed-large",
-        )
-        print(ollama_emb.get_dimension())
-        ollama_emb = ParOllamaEmbeddings(
-            # model="nomic-embed-text",
-            model="mxbai-embed-large",
-        )
-        print(ollama_emb.get_dimension())
+        # ollama_emb = ParOllamaEmbeddings(
+        #     model="nomic-embed-text",
+        #     # model="mxbai-embed-large",
+        # )
+        # print(ollama_emb.get_dimension())
+        # ollama_emb = ParOllamaEmbeddings(
+        #     # model="nomic-embed-text",
+        #     model="mxbai-embed-large",
+        # )
+        # print(ollama_emb.get_dimension())
         # print(
         #     len(
         #         settings.ollama_client.embed("nomic-embed-text", ["test"])[
@@ -74,7 +73,8 @@ if __name__ == "__main__":
         #     )
         # )
 
-        # new_store = VectorStoreMilvus(name="Milvus")
-        # new_collection = VectorCollection(dimension=768, name="remember")
-        # new_store.add_collection(new_collection)
-        # rag_manager.add_store(new_store)
+        new_store = VectorStoreMilvus(name="Milvus")
+        new_collection = VectorCollection(name="remember", model="mxbai-embed-large")
+        new_collection.drop_if_exists = False
+        new_store.add_collection(new_collection)
+        rag_manager.add_store(new_store)
