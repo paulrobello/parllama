@@ -27,6 +27,7 @@
     * [Where we are](#where-we-are)
     * [Where we're going](#where-were-going)
 * [What's new](#whats-new)
+    * [v0.3.8](#v038)
     * [v0.3.5](#v035)
     * [v0.3.4](#v034)
     * [v0.3.3](#v033)
@@ -324,7 +325,7 @@ if anything remains to be fixed before the commit is allowed.
 
 ## What's new
 
-### v0.3.7
+### v0.3.8
 * Add RAG system
 
 ### v0.3.6
