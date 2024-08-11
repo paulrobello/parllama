@@ -28,6 +28,8 @@
     * [Where we're going](#where-were-going)
 * [What's new](#whats-new)
     * [v0.3.8](#v038)
+    * [v0.3.7](#v037)
+    * [v0.3.6](#v036)
     * [v0.3.5](#v035)
     * [v0.3.4](#v034)
     * [v0.3.3](#v033)
@@ -325,8 +327,12 @@ if anything remains to be fixed before the commit is allowed.
 
 ## What's new
 
+
 ### v0.3.8
 * Add RAG system
+
+### v0.3.7
+* Fix for possible crash when there is more than one model loaded into ollama
 
 ### v0.3.6
 * Added option to save chat input history and set its length
