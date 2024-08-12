@@ -55,3 +55,7 @@ class ParOllamaEmbeddings(BaseModel, Embeddings):
     async def aembed_query(self, text: str) -> List[float]:
         """Embed query text."""
         return (await self.aembed_documents([text]))[0]
+
+    def __call__(self, user_input: List[str]):
+        """Embed input texts."""
+        return self.embed_documents(user_input)

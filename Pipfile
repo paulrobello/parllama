@@ -41,8 +41,8 @@ langchain-ollama = "*"
 langchainhub = "*"
 langgraph = "*"
 langsmith = "*"
-pymilvus = "*"
-langchain_milvus = "*"
+chromadb = "*"
+langchain_chroma = "*"
 
 [dev-packages]
 mypy = "*"

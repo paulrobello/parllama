@@ -5,8 +5,10 @@ from __future__ import annotations
 import os
 
 import simplejson as json
+from langchain_core.documents import Document
+from langchain_ollama import ChatOllama
 
-from parllama.models.rag import StoreBase, VectorStoreMilvus, VectorCollection
+from parllama.models.rag import StoreBase, VectorStoreChroma
 from parllama.par_event_system import ParEventSystemBase
 from parllama.settings_manager import settings
 
@@ -23,7 +25,7 @@ class RagManager(ParEventSystemBase):
         self._config_file = os.path.join(settings.data_dir, "rag_config.json")
         self.stores = []
         self._id_to_store = {}
-        self.load()
+        # self.load()
 
     def load(self) -> None:
         """Load the RAG configuration."""
@@ -73,8 +75,45 @@ if __name__ == "__main__":
         #     )
         # )
 
-        new_store = VectorStoreMilvus(name="Milvus")
-        new_collection = VectorCollection(name="remember", model="mxbai-embed-large")
-        new_collection.drop_if_exists = False
-        new_store.add_collection(new_collection)
+        new_store = VectorStoreChroma(
+            name="Chroma",
+            collection_name="remember",
+            embeddings_model="mxbai-embed-large",
+        )
         rag_manager.add_store(new_store)
+        new_store.retriever.add_documents(
+            [
+                Document(
+                    page_content="I like american cheese.", metadata={"source": "test1"}
+                ),
+                Document(
+                    page_content="I like hamburgers.", metadata={"source": "test2"}
+                ),
+                Document(
+                    page_content="I dont like liver.", metadata={"source": "test22"}
+                ),
+                Document(
+                    page_content="Red is my favorite color.",
+                    metadata={"source": "test3"},
+                ),
+                Document(
+                    page_content="The sky is blue because reasons.",
+                    metadata={"source": "test4"},
+                ),
+                Document(
+                    page_content="Lizards are cold blooded.",
+                    metadata={"source": "test5"},
+                ),
+            ]
+        )
+        llm = ChatOllama(
+            model="phi3:latest", temperature=0.25, base_url=settings.ollama_host
+        )
+        QUERY = "what are some warm blooded animals"
+        # docs = new_store.query(query)
+        # docs = new_store.query(query, k=2)
+        docs = new_store.llm_query(llm, QUERY)
+        # print(new_store.retriever.invoke(query))
+        print(f"query: {QUERY}")
+        for doc in docs:
+            print(doc)
