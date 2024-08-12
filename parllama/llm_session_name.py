@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import ollama
+
 from parllama.settings_manager import settings
 
 
@@ -10,7 +12,7 @@ def llm_session_name(text: str, llm_model_name: str | None = None) -> str | None
     model = llm_model_name or settings.auto_name_session_llm or ""
     if not model:
         return None
-    ret = settings.ollama_client.generate(
+    ret = ollama.Client(host=settings.ollama_host).generate(
         model=model,
         options={"temperature": 0.1},
         prompt=f"Summarize the following: {text}",

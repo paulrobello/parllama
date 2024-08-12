@@ -15,7 +15,9 @@ from typing import Optional
 import pytz
 import rich.repr
 import simplejson as json
+import ollama
 from ollama import Options as OllamaOptions
+
 from textual.message_pump import MessagePump
 
 from parllama.chat_message import OllamaMessage
@@ -178,7 +180,7 @@ class ChatSession(ChatMessageContainer):
                 self.save()
 
             # self.log_it(self.messages)
-            stream: Iterator[Mapping[str, Any]] = settings.ollama_client.chat(  # type: ignore
+            stream: Iterator[Mapping[str, Any]] = ollama.Client(host=settings.ollama_host).chat(  # type: ignore
                 model=self.llm_model_name,
                 messages=[m.to_ollama_native() for m in self.messages],
                 options=self.options,

@@ -77,6 +77,7 @@ from parllama.models.jobs import PullModelJob
 from parllama.models.jobs import PushModelJob
 from parllama.models.jobs import QueueJob
 from parllama.rag_manager import rag_manager
+from parllama.secrets_manager import secrets_manager
 from parllama.settings_manager import settings
 from parllama.prompt_utils.import_fabric import import_fabric_manager
 from parllama.screens.main_screen import MainScreen
@@ -123,6 +124,7 @@ class ParLlamaApp(App[None]):
         """Initialize the application."""
         super().__init__()
         self.notify_subs = {"*": set[MessagePump]()}
+        secrets_manager.set_app(self)
         dm.set_app(self)
         chat_manager.set_app(self)
         theme_manager.set_app(self)

@@ -69,6 +69,11 @@ debug:	        # Run in debug mode
 console:	        # Run textual dev console
 	$(run) textual console
 
+.PHONY: test
+test:	        # Run textual dev console
+	$(python) -m unittest discover -s tests
+
+
 ##############################################################################
 .PHONY: pip-lock
 pip-lock:

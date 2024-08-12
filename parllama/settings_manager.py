@@ -1,14 +1,12 @@
-"""Model for application settings."""
+"""Manager for application settings."""
 
 from __future__ import annotations
 
-import functools
 import os
 import shutil
 from argparse import Namespace
 from datetime import datetime
 
-import ollama
 import simplejson as json
 from pydantic import BaseModel
 
@@ -18,7 +16,7 @@ from parllama.utils import valid_tabs
 
 
 class Settings(BaseModel):
-    """Model for application settings."""
+    """Manager for application settings."""
 
     _shutting_down: bool = False
     show_first_run: bool = True
@@ -36,6 +34,7 @@ class Settings(BaseModel):
     save_chat_input_history: bool = False
     chat_input_history_length: int = 100
     chat_history_file: str = ""
+    secrets_file: str = ""
 
     chat_tab_max_length: int = 15
     settings_file: str = "settings.json"
@@ -57,7 +56,7 @@ class Settings(BaseModel):
 
     # pylint: disable=too-many-branches, too-many-statements
     def __init__(self) -> None:
-        """Initialize BwItemData."""
+        """Initialize Manager."""
         super().__init__()
         args: Namespace = get_args()
 
@@ -77,6 +76,7 @@ class Settings(BaseModel):
         self.prompt_dir = os.path.join(self.data_dir, "prompts")
         self.export_md_dir = os.path.join(self.data_dir, "md_exports")
         self.chat_history_file = os.path.join(self.data_dir, "chat_history.json")
+        self.secrets_file = os.path.join(self.data_dir, "secrets.json")
 
         os.makedirs(self.cache_dir, exist_ok=True)
         os.makedirs(self.chat_dir, exist_ok=True)
@@ -254,16 +254,6 @@ class Settings(BaseModel):
         """Ensure the cache folder exists."""
         if not os.path.exists(self.cache_dir):
             os.mkdir(self.cache_dir)
-
-    @functools.cached_property
-    def ollama_client(self) -> ollama.Client:
-        """Get the ollama client."""
-        return ollama.Client(host=self.ollama_host)
-
-    @functools.cached_property
-    def ollama_aclient(self) -> ollama.AsyncClient:
-        """Get the async ollama client."""
-        return ollama.AsyncClient(host=self.ollama_host)
 
     def save(self) -> None:
         """Persist settings"""

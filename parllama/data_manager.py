@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 import os.path
 import re
 import shutil
@@ -17,6 +18,7 @@ from typing import Optional
 import docker.errors  # type: ignore
 import docker.types  # type: ignore
 import httpx
+import ollama
 import requests
 import simplejson as json
 from bs4 import BeautifulSoup
@@ -102,7 +104,7 @@ class DataManager(ParEventSystemBase):
         """Enrich model details."""
         pattern = r"^(# Modelfile .*)\n(# To build.*)\n# (FROM .*\n)\n(FROM .*)\n(.*)$"
         replacement = r"\3\5"
-        model_data = settings.ollama_client.show(model.name)
+        model_data = ollama.Client(host=settings.ollama_host).show(model.name)
         msp = ModelShowPayload(**model_data)
         msp.modelfile = re.sub(
             pattern, replacement, msp.modelfile, flags=re.MULTILINE | re.IGNORECASE
@@ -117,7 +119,7 @@ class DataManager(ParEventSystemBase):
     def _get_all_model_data() -> list[LocalModelListItem]:
         """Get all model data."""
         all_models: list[LocalModelListItem] = []
-        res = ModelListPayload(**settings.ollama_client.list())
+        res = ModelListPayload(**ollama.Client(host=settings.ollama_host).list())
 
         for model in res.models:
             res3 = FullModel(**model.model_dump())
@@ -137,16 +139,20 @@ class DataManager(ParEventSystemBase):
     @staticmethod
     def pull_model(model_name: str) -> Iterator[dict[str, Any]]:
         """Pull a model."""
-        return settings.ollama_client.pull(model_name, stream=True)  # type: ignore
+        return ollama.Client(host=settings.ollama_host).pull(model_name, stream=True)  # type: ignore
 
     @staticmethod
     def push_model(model_name: str) -> Iterator[dict[str, Any]]:
         """Push a model."""
-        return settings.ollama_client.push(model_name, stream=True)  # type: ignore
+        return ollama.Client(host=settings.ollama_host).push(model_name, stream=True)  # type: ignore
 
     def delete_model(self, model_name: str) -> bool:
         """Delete a model."""
-        ret = settings.ollama_client.delete(model_name).get("status", False)
+        ret = (
+            ollama.Client(host=settings.ollama_host)
+            .delete(model_name)
+            .get("status", False)
+        )
         # ret = True
         if not ret:
             return False
@@ -273,7 +279,7 @@ class DataManager(ParEventSystemBase):
         quantize_level: str | None = None,
     ) -> Iterator[dict[str, Any]]:
         """Create a new model."""
-        return settings.ollama_client.create(
+        return ollama.Client(host=settings.ollama_host).create(
             model=model_name,
             modelfile=model_code,
             quantize=quantize_level,
@@ -283,7 +289,9 @@ class DataManager(ParEventSystemBase):
     @staticmethod
     def copy_model(src_name: str, dst_name: str) -> Mapping[str, Any]:
         """Copy local model to new name"""
-        return settings.ollama_client.copy(source=src_name, destination=dst_name)
+        return ollama.Client(host=settings.ollama_host).copy(
+            source=src_name, destination=dst_name
+        )
 
     @staticmethod
     def quantize_model(
@@ -333,6 +341,16 @@ class DataManager(ParEventSystemBase):
             return ret
 
         return ret.logs(stream=True)
+
+    @functools.cached_property
+    def ollama_client(self) -> ollama.Client:
+        """Get the ollama client."""
+        return ollama.Client(host=settings.ollama_host)
+
+    @functools.cached_property
+    def ollama_aclient(self) -> ollama.AsyncClient:
+        """Get the async ollama client."""
+        return ollama.AsyncClient(host=settings.ollama_host)
 
 
 dm: DataManager = DataManager()

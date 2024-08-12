@@ -2,6 +2,7 @@
 
 from typing import List
 
+import ollama
 from langchain_core.embeddings import Embeddings
 from langchain_core.pydantic_v1 import BaseModel, Extra
 
@@ -30,7 +31,9 @@ class ParOllamaEmbeddings(BaseModel, Embeddings):
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         """Embed search docs."""
-        embedded_docs = settings.ollama_client.embed(self.model, texts)["embeddings"]
+        embedded_docs = ollama.Client(host=settings.ollama_host).embed(
+            self.model, texts
+        )["embeddings"]
         return embedded_docs
 
     def embed_query(self, text: str) -> List[float]:
@@ -47,9 +50,9 @@ class ParOllamaEmbeddings(BaseModel, Embeddings):
 
     async def aembed_documents(self, texts: List[str]) -> List[List[float]]:
         """Embed search docs."""
-        embedded_docs = (await settings.ollama_aclient.embed(self.model, texts))[
-            "embeddings"
-        ]
+        embedded_docs = (
+            await ollama.AsyncClient(host=settings.ollama_host).embed(self.model, texts)
+        )["embeddings"]
         return embedded_docs
 
     async def aembed_query(self, text: str) -> List[float]:

@@ -72,7 +72,7 @@ if __name__ == "__main__":
         # print(ollama_emb.get_dimension())
         # print(
         #     len(
-        #         settings.ollama_client.embed("nomic-embed-text", ["test"])[
+        #         ollama.Client(host=settings.ollama_host).embed("nomic-embed-text", ["test"])[
         #             "embeddings"
         #         ][0]
         #     )
