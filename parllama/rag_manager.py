@@ -5,12 +5,15 @@ from __future__ import annotations
 import os
 
 import simplejson as json
+from dotenv import load_dotenv
 from langchain_core.documents import Document
 from langchain_ollama import ChatOllama
 
 from parllama.models.rag import StoreBase, VectorStoreChroma
 from parllama.par_event_system import ParEventSystemBase
 from parllama.settings_manager import settings
+
+load_dotenv(os.path.expanduser("~/.parllama/.env"))
 
 
 class RagManager(ParEventSystemBase):
@@ -107,9 +110,10 @@ if __name__ == "__main__":
             ]
         )
         llm = ChatOllama(
-            model="phi3:latest", temperature=0.25, base_url=settings.ollama_host
+            model="mistral:latest", temperature=0.1, base_url=settings.ollama_host
         )
-        QUERY = "what are some warm blooded animals"
+        # llm = ChatOpenAI(temperature=0.25)
+        QUERY = "what are some cold blooded animals"
         # docs = new_store.query(query)
         # docs = new_store.query(query, k=2)
         docs = new_store.llm_query(llm, QUERY)

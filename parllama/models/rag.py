@@ -6,7 +6,7 @@ import abc
 import os
 import warnings
 
-from typing import Literal, Optional
+from typing import Literal, Optional, Sequence
 
 import chromadb
 from chromadb import ClientAPI
@@ -200,7 +200,7 @@ class VectorStoreChroma(StoreBase):
         )
         return retriever_sim.invoke(query)
 
-    def llm_query(self, llm: BaseChatModel, query: str) -> list[Document]:
+    def llm_query(self, llm: BaseChatModel, query: str) -> Sequence[Document]:
         """Use the LLM to generate alternative versions of the user question."""
         prompt = PromptTemplate(
             input_variables=["question"],
@@ -224,6 +224,10 @@ class VectorStoreChroma(StoreBase):
             embeddings=self.embeddings, similarity_threshold=0.95
         )
         # reordering = LongContextReorder()
+        # reranker = LLMListwiseRerank.from_llm(
+        #     llm=llm,
+        #     top_n=2
+        # )
         pipeline = DocumentCompressorPipeline(
             # transformers=[filter_redundant, reordering]
             transformers=[filter_redundant]
@@ -233,7 +237,9 @@ class VectorStoreChroma(StoreBase):
             base_retriever=retriever_from_llm,
             base_compressor=pipeline,
         )
-        return compression_retriever.invoke(input=query)
+        docs = compression_retriever.invoke(input=query)
+        return docs
+        # return reranker.compress_documents(docs, query)
 
     def save(self) -> None:
         """Save the store to a file."""

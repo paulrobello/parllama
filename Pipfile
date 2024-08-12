@@ -43,6 +43,8 @@ langgraph = "*"
 langsmith = "*"
 chromadb = "*"
 langchain_chroma = "*"
+openai = "*"
+langchain-openai = "*"
 
 [dev-packages]
 mypy = "*"
