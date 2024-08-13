@@ -7,7 +7,7 @@
 * [Prerequisites for running](#prerequisites-for-running)
 * [Prerequisites for dev](#prerequisites-for-dev)
 * [Prerequisites for huggingface model quantization](#prerequisites-for-huggingface-model-quantization)
-* [Installing from mypi using pipx](#installing-from-mypi-using-pipx)
+* [Installing using pipx](#installing-from-mypi-using-pipx)
 * [Installing from mypi using pip](#installing-from-mypi-using-pip)
 * [Installing for dev mode](#installing-for-dev-mode)
 * [Command line arguments](#command-line-arguments)
@@ -85,14 +85,15 @@ Pull the docker image ollama/quantize
 docker pull ollama/quantize
 ```
 
-## Installing from mypi using pipx
+## Installing using pipx
 If you don't have pipx installed you can run the following:  
 ```bash
 pip install pipx
 pipx ensurepath
 ```
-Once pipx is installed, run the following:  
-```bash
+### MyPi install
+Once pipx is installed, run:  
+```shell
 pipx install parllama
 ```
 To upgrade an existing installation use the --force flag:
@@ -100,6 +101,15 @@ To upgrade an existing installation use the --force flag:
 pipx install parllama --force
 ```
 
+### GitHub install
+Once pipx is installed, run the following:
+```bash
+pipx install git+https://github.com/paulrobello/parllama
+```
+To upgrade an existing installation use the --force flag:
+```bash
+pipx install git+https://github.com/paulrobello/parllama --force
+```
 
 ## Installing from mypi using pip
 Create a virtual environment and install using pip
@@ -329,7 +339,8 @@ if anything remains to be fixed before the commit is allowed.
 
 
 ### v0.3.8
-* Add RAG system
+* Added secrets manager with encrypted storage
+* Added RAG system
 
 ### v0.3.7
 * Fix for possible crash when there is more than one model loaded into ollama

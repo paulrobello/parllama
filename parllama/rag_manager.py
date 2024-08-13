@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import os
+import time
 
 import simplejson as json
 from dotenv import load_dotenv
 from langchain_core.documents import Document
 from langchain_ollama import ChatOllama
 
-from parllama.models.rag import StoreBase, VectorStoreChroma
+from parllama.models.rag import StoreBase, VectorStoreChroma, DataSourceFile
 from parllama.par_event_system import ParEventSystemBase
 from parllama.settings_manager import settings
 
@@ -59,31 +60,45 @@ class RagManager(ParEventSystemBase):
 rag_manager: RagManager = RagManager()
 
 if __name__ == "__main__":
-    if len(rag_manager.stores) == 0:
-        # ollama_emb = ParOllamaEmbeddings(
-        #     model="nomic-embed-text",
-        #     # model="mxbai-embed-large",
-        # )
-        # print(ollama_emb.get_dimension())
-        # ollama_emb = ParOllamaEmbeddings(
-        #     # model="nomic-embed-text",
-        #     model="mxbai-embed-large",
-        # )
-        # print(ollama_emb.get_dimension())
-        # print(
-        #     len(
-        #         ollama.Client(host=settings.ollama_host).embed("nomic-embed-text", ["test"])[
-        #             "embeddings"
-        #         ][0]
-        #     )
-        # )
+    # if len(rag_manager.stores) == 0:
+    # ollama_emb = ParOllamaEmbeddings(
+    #     model="nomic-embed-text",
+    #     # model="mxbai-embed-large",
+    # )
+    # print(ollama_emb.get_dimension())
+    # ollama_emb = ParOllamaEmbeddings(
+    #     # model="nomic-embed-text",
+    #     model="mxbai-embed-large",
+    # )
+    # print(ollama_emb.get_dimension())
+    # print(
+    #     len(
+    #         ollama.Client(host=settings.ollama_host).embed("nomic-embed-text", ["test"])[
+    #             "embeddings"
+    #         ][0]
+    #     )
+    # )
 
-        new_store = VectorStoreChroma(
-            name="Chroma",
-            collection_name="remember",
-            embeddings_model="mxbai-embed-large",
+    new_store = VectorStoreChroma(
+        name="Chroma",
+        collection_name="remember",
+        # embeddings_model="mxbai-embed-large",
+        embeddings_model="snowflake-arctic-embed:latest",
+        purge_on_start=False,
+    )
+    rag_manager.add_store(new_store)
+    num_documents = new_store.num_documents
+    if num_documents == 0:
+        print("loading data...")
+        ds = DataSourceFile(
+            source="../rag_docs/war_and_peace.txt", source_format="text"
         )
-        rag_manager.add_store(new_store)
+        start_time = time.time()
+        new_store.retriever.add_documents(
+            ds.load_split(
+                embeddings=new_store.embeddings, chunk_size=100, chunk_overlap=3
+            )
+        )
         new_store.retriever.add_documents(
             [
                 Document(
@@ -109,15 +124,27 @@ if __name__ == "__main__":
                 ),
             ]
         )
-        llm = ChatOllama(
-            model="mistral:latest", temperature=0.1, base_url=settings.ollama_host
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        num_documents = new_store.num_documents
+        print(
+            f"Time taken to load data: {elapsed_time:.2f} seconds {num_documents / elapsed_time} dps"
         )
-        # llm = ChatOpenAI(temperature=0.25)
-        QUERY = "what are some cold blooded animals"
-        # docs = new_store.query(query)
-        # docs = new_store.query(query, k=2)
-        docs = new_store.llm_query(llm, QUERY)
-        # print(new_store.retriever.invoke(query))
-        print(f"query: {QUERY}")
-        for doc in docs:
-            print(doc)
+
+    print(f"Number of chunks: {num_documents}")
+    llm = ChatOllama(
+        model="mistral:latest", temperature=0.1, base_url=settings.ollama_host
+    )
+    # llm = ChatOpenAI(temperature=0.25)
+    # QUERY = "what are some cold blooded animals"
+    QUERY = "who was Napoleon accompanied by"
+    # docs = new_store.query(query)
+    # docs = new_store.query(query, k=2)
+    docs = new_store.llm_query(llm, QUERY, 5)
+    # print(new_store.retriever.invoke(query))
+
+    print(f"query: {QUERY}")
+    print("---------")
+    for doc in docs:
+        print(doc)
+        print("---------")

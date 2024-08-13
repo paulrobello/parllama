@@ -11,17 +11,38 @@ from typing import Literal, Optional, Sequence
 import chromadb
 from chromadb import ClientAPI
 from langchain._api import LangChainDeprecationWarning
-from langchain.retrievers import MultiQueryRetriever, ContextualCompressionRetriever
+from langchain.retrievers import (
+    MultiQueryRetriever,
+    ContextualCompressionRetriever,
+    MergerRetriever,
+)
 from langchain.retrievers.document_compressors import DocumentCompressorPipeline
 from langchain_chroma import Chroma
+from langchain_community.document_loaders import (
+    TextLoader,
+    DirectoryLoader,
+    CSVLoader,
+    # JSONLoader,
+    UnstructuredHTMLLoader,
+    UnstructuredMarkdownLoader,
+    PyPDFLoader,
+    UnstructuredFileLoader,
+)
 from langchain_community.document_transformers import (
     EmbeddingsRedundantFilter,
 )
-from langchain_core.documents import Document
+from langchain_core.document_loaders import BaseLoader
+from langchain_core.documents import Document, BaseDocumentTransformer
 from langchain_core.embeddings import Embeddings
 from langchain_core.language_models import BaseChatModel
 from langchain_core.prompts import PromptTemplate
 from langchain_core.vectorstores import VectorStoreRetriever
+from langchain_experimental.text_splitter import SemanticChunker
+from langchain_text_splitters import (
+    TokenTextSplitter,
+    RecursiveCharacterTextSplitter,
+    TextSplitter,
+)
 
 from parllama.par_event_system import ParEventSystemBase
 from parllama.par_ollama_embeddings import ParOllamaEmbeddings
@@ -90,6 +111,7 @@ class VectorStoreChroma(StoreBase):
     location: str = "chroma_db"
     collection_name: str
     embeddings_model: Optional[str] = None
+    purge_on_start: bool = False
     _client: Optional[ClientAPI] = None
     _chroma: Optional[Chroma] = None
     _vector_store: Optional[Chroma] = None
@@ -105,10 +127,12 @@ class VectorStoreChroma(StoreBase):
         collection_name: str = "",
         embeddings_model: Optional[str] = None,
         embeddings: Optional[Embeddings] = None,
+        purge_on_start: bool = False,
     ) -> None:
         super().__init__(id=id, name=name)
         if not self._embeddings and not embeddings_model:
             raise ValueError("embeddings or model must be provided")
+        self.purge_on_start = purge_on_start
         self._embeddings = embeddings
         self.embeddings_model = embeddings_model
         if not self._embeddings and embeddings_model:
@@ -128,6 +152,11 @@ class VectorStoreChroma(StoreBase):
                     allow_reset=False, anonymized_telemetry=False
                 ),
             )
+        if self.purge_on_start:
+            try:
+                self.client.delete_collection(self.collection_name)
+            except ValueError:
+                pass
 
     @property
     def client(self) -> ClientAPI:
@@ -140,10 +169,6 @@ class VectorStoreChroma(StoreBase):
     def vector_store(self) -> Chroma:
         """Get the chroma vector store."""
         if self._vector_store is None:
-            try:
-                self.client.delete_collection(self.collection_name)
-            except ValueError:
-                pass
             self._vector_store = Chroma(
                 collection_name=self.collection_name,
                 client=self.client,
@@ -151,6 +176,14 @@ class VectorStoreChroma(StoreBase):
                 create_collection_if_not_exists=True,
             )
         return self._vector_store
+
+    @property
+    def num_documents(self) -> int:
+        """Get the number of documents in the vector store."""
+        try:
+            return self.client.get_collection(self.collection_name).count()
+        except ValueError:
+            return 0
 
     @property
     def retriever(self) -> VectorStoreRetriever:
@@ -200,7 +233,9 @@ class VectorStoreChroma(StoreBase):
         )
         return retriever_sim.invoke(query)
 
-    def llm_query(self, llm: BaseChatModel, query: str) -> Sequence[Document]:
+    def llm_query(
+        self, llm: BaseChatModel, query: str, k: int = 5
+    ) -> Sequence[Document]:
         """Use the LLM to generate alternative versions of the user question."""
         prompt = PromptTemplate(
             input_variables=["question"],
@@ -220,8 +255,22 @@ class VectorStoreChroma(StoreBase):
             prompt=prompt,
             include_original=True,
         )
+        retriever_sim = self.vector_store.as_retriever(
+            search_type="similarity_score_threshold",
+            search_kwargs={"k": 5, "score_threshold": 0.75},
+        )
+        # retriever_sim = self.vector_store.as_retriever()
+
+        retriever_mmr = self.vector_store.as_retriever(
+            search_type="mmr", search_kwargs={"k": 5}
+        )
+        merger = MergerRetriever(
+            retrievers=[retriever_mmr, retriever_sim, retriever_from_llm]
+            # retrievers=[retriever_mmr, retriever_sim]
+        )
+
         filter_redundant = EmbeddingsRedundantFilter(
-            embeddings=self.embeddings, similarity_threshold=0.95
+            embeddings=self.embeddings, similarity_threshold=0.99
         )
         # reordering = LongContextReorder()
         # reranker = LLMListwiseRerank.from_llm(
@@ -233,12 +282,12 @@ class VectorStoreChroma(StoreBase):
             transformers=[filter_redundant]
         )
         compression_retriever = ContextualCompressionRetriever(
-            # base_retriever=merger,
-            base_retriever=retriever_from_llm,
+            base_retriever=merger,
+            # base_retriever=retriever_from_llm,
             base_compressor=pipeline,
         )
         docs = compression_retriever.invoke(input=query)
-        return docs
+        return docs[:k]
         # return reranker.compress_documents(docs, query)
 
     def save(self) -> None:
@@ -248,11 +297,62 @@ class VectorStoreChroma(StoreBase):
 DataSourceType = Literal["File", "Folder"]
 data_source_types: list[DataSourceType] = ["File", "Folder"]
 
+DateSourceFormatType = Literal["auto", "text", "csv", "json", "html", "markdown", "pdf"]
 
-class DataSourceBase(RagBase):
+SplitMode = Literal["text", "token", "semantic"]
+
+
+class DataSourceBase(RagBase, abc.ABC):
     """Base class for data source."""
 
+    source: str
     source_type: DataSourceType
+    source_format: DateSourceFormatType = "auto"
+    _loader: Optional[BaseLoader] = None
+
+    def __init__(
+        self,
+        id: str | None = None,  # pylint: disable=redefined-builtin
+        name: str = "",
+        *,
+        source: str,
+        source_format: DateSourceFormatType = "text",
+    ) -> None:
+        if not source:
+            raise ValueError("Source must be provided")
+        super().__init__(id=id, name=name)
+        self.source_format = source_format
+        self.source = source
+
+    def load(self) -> list[Document]:
+        """Get documents from the data source."""
+        raise NotImplementedError("Subclasses must implement this method")
+
+    def load_split(
+        self,
+        mode: SplitMode = "text",
+        embeddings: Optional[Embeddings] = None,
+        chunk_size: int = 100,
+        chunk_overlap: int = 3,
+    ) -> list[Document]:
+        """Load documents and chunk them."""
+        text_splitter: TextSplitter | BaseDocumentTransformer
+        if mode == "token":
+            text_splitter = TokenTextSplitter(
+                chunk_size=chunk_size, chunk_overlap=chunk_overlap
+            )
+        elif mode == "semantic":
+            if not embeddings:
+                raise ValueError("embeddings must be provided for semantic split mode")
+            text_splitter = SemanticChunker(embeddings=embeddings)
+        elif mode == "text":
+            text_splitter = RecursiveCharacterTextSplitter(
+                chunk_size=chunk_size, chunk_overlap=chunk_overlap
+            )
+        else:
+            raise ValueError(f"Invalid split mode: {mode}")
+
+        return text_splitter.split_documents(self.load())
 
 
 class DataSourceFile(DataSourceBase):
@@ -260,11 +360,61 @@ class DataSourceFile(DataSourceBase):
 
     source_type: DataSourceType = "File"
 
+    def __init__(
+        self,
+        id: str | None = None,  # pylint: disable=redefined-builtin
+        name: str = "",
+        *,
+        source: str,
+        source_format: DateSourceFormatType = "auto",
+    ) -> None:
+        if not name:
+            name = os.path.basename(source)
+        super().__init__(id=id, name=name, source=source, source_format=source_format)
+
+    def load(self) -> list[Document]:
+        """Get documents from the data source."""
+        if self.source_format == "auto":
+            self._loader = UnstructuredFileLoader(self.source)
+        elif self.source_format == "text":
+            self._loader = TextLoader(self.source, autodetect_encoding=True)
+        elif self.source_format == "csv":
+            self._loader = CSVLoader(self.source)
+        elif self.source_format == "json":
+            self._loader = TextLoader(self.source)
+            # self._loader = JSONLoader(self.source)
+        elif self.source_format == "html":
+            self._loader = UnstructuredHTMLLoader(self.source)
+        elif self.source_format == "markdown":
+            self._loader = UnstructuredMarkdownLoader(self.source)
+        elif self.source_format == "pdf":
+            self._loader = PyPDFLoader(self.source)
+        else:
+            raise ValueError(f"Unsupported source format: {self.source_format}")
+        return self._loader.load()
+
 
 class DataFolderSource(DataSourceBase):
     """Data source from a folder."""
 
     source_type: DataSourceType = "Folder"
+    glob: str = "*"
+
+    def __init__(
+        self,
+        id: str | None = None,  # pylint: disable=redefined-builtin
+        name: str = "",
+        *,
+        source: str,
+        glob: str = "*",
+    ) -> None:
+        super().__init__(id=id, name=name, source=source)
+        self.glob = glob
+
+    def load(self) -> list[Document]:
+        """Get documents from the data source."""
+        self._loader = DirectoryLoader(self.source, glob=self.glob)
+        return self._loader.load()
 
 
 class DataLink(RagBase):

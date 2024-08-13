@@ -46,6 +46,7 @@ chromadb = "*"
 langchain_chroma = "*"
 openai = "*"
 langchain-openai = "*"
+langchain_experimental = "*"
 
 [dev-packages]
 mypy = "*"
@@ -62,6 +63,8 @@ types-beautifulsoup4 = "*"
 pydevd_pycharm = "*"
 pre-commit = "*"
 google-api-python-client-stubs = "*"
+unstructured = { version = "*", extras = ["all-docs"] }
+python-libmagic = "*"
 
 [requires]
 python_version = "3.11"
