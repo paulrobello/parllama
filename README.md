@@ -44,6 +44,8 @@ PAR LLAMA is a TUI application designed for easy management and use of Ollama ba
 The application was built with [Textual](https://textual.textualize.io/) and [Rich](https://github.com/Textualize/rich?tab=readme-ov-file)
 and runs on all major OS's including but not limited to Windows, Windows WSL, Mac, and Linux.
 
+[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://buymeacoffee.com/probello3)
+
 ### Screenshots
 Supports Dark and Light mode as well as custom themes.
 

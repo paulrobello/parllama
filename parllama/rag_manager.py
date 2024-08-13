@@ -90,9 +90,7 @@ if __name__ == "__main__":
     num_documents = new_store.num_documents
     if num_documents == 0:
         print("loading data...")
-        ds = DataSourceFile(
-            source="../rag_docs/war_and_peace.txt", source_format="text"
-        )
+        ds = DataSourceFile(source="../rag_docs/plato.txt", source_format="text")
         start_time = time.time()
         new_store.retriever.add_documents(
             ds.load_split(
@@ -128,16 +126,16 @@ if __name__ == "__main__":
         elapsed_time = end_time - start_time
         num_documents = new_store.num_documents
         print(
-            f"Time taken to load data: {elapsed_time:.2f} seconds {num_documents / elapsed_time} dps"
+            f"Time taken to load data: {elapsed_time:.2f} seconds {(num_documents / elapsed_time):.2f} dps"
         )
 
     print(f"Number of chunks: {num_documents}")
     llm = ChatOllama(
-        model="mistral:latest", temperature=0.1, base_url=settings.ollama_host
+        model="llama3.1:8b", temperature=0.1, base_url=settings.ollama_host
     )
     # llm = ChatOpenAI(temperature=0.25)
     # QUERY = "what are some cold blooded animals"
-    QUERY = "who was Napoleon accompanied by"
+    QUERY = "What makes Plato’s writings distinctive"
     # docs = new_store.query(query)
     # docs = new_store.query(query, k=2)
     docs = new_store.llm_query(llm, QUERY, 5)
