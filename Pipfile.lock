@@ -1557,7 +1557,7 @@
         "sha256:f870204a840a60da0b12273ef34f7051e98c3b5961b61b0c2c1be6dfd64fbcd3",
         "sha256:ffa75af20b44f8dba823498024771d5ac50620e6915abac414251bd971b4529f"
       ],
-      "markers": "python_version < '3.12'",
+      "markers": "python_version >= '3.9'",
       "version": "==1.26.4"
     },
     "oauthlib": {
@@ -5386,7 +5386,7 @@
         "sha256:f870204a840a60da0b12273ef34f7051e98c3b5961b61b0c2c1be6dfd64fbcd3",
         "sha256:ffa75af20b44f8dba823498024771d5ac50620e6915abac414251bd971b4529f"
       ],
-      "markers": "python_version < '3.12'",
+      "markers": "python_version >= '3.9'",
       "version": "==1.26.4"
     },
     "olefile": {
@@ -6697,11 +6697,11 @@
     },
     "tomlkit": {
       "hashes": [
-        "sha256:08ad192699734149f5b97b45f1f18dad7eb1b6d16bc72ad0c2335772650d7b72",
-        "sha256:7075d3042d03b80f603482d69bf0c8f345c2b30e41699fd8883227f89972b264"
+        "sha256:1be06879860054a26faba7acf2af62b45c94aa43b00a5f87fc445c5f930ad754",
+        "sha256:fb12e89373b28f3cd6679035324770123d6df04488431e1c7bcecf17820ee2e4"
       ],
       "markers": "python_version >= '3.8'",
-      "version": "==0.13.0"
+      "version": "==0.13.1"
     },
     "torch": {
       "hashes": [

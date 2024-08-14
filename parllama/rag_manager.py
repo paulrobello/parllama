@@ -9,15 +9,16 @@ import warnings
 import simplejson as json
 from dotenv import load_dotenv
 from langchain.chains.retrieval_qa.base import RetrievalQA
-from langchain_community.llms.ollama import Ollama
 from langchain_ollama import ChatOllama
 
+from parllama.llm_config import LlmConfig
 from parllama.models.rag import (
     StoreBase,
     VectorStoreChroma,
     DataSourceFile,
     LoadSplitConfig,
     RagPipelineConfig,
+    VectorStoreConfig,
 )
 from parllama.par_event_system import ParEventSystemBase
 from parllama.settings_manager import settings
@@ -97,10 +98,15 @@ if __name__ == "__main__":
 
     new_store = VectorStoreChroma(
         name="Chroma",
-        collection_name="remember",
-        embeddings_model="snowflake-arctic-embed:latest",
-        # embeddings=embeddings,
-        purge_on_start=True,
+        config=VectorStoreConfig(
+            collection_name="remember",
+            embeddings_config=LlmConfig(
+                provider="Ollama",
+                mode="Embeddings",
+                model_name="snowflake-arctic-embed:latest",
+            ),
+            purge_on_start=True,
+        ),
     )
     rag_manager.add_store(new_store)
     num_documents = new_store.num_documents
@@ -178,12 +184,22 @@ if __name__ == "__main__":
     #     print("---------")
 
     chain = RetrievalQA.from_chain_type(
-        llm=Ollama(model="llama3.1:8b", temperature=0, base_url=settings.ollama_host),
+        llm=LlmConfig(
+            provider="Ollama",
+            mode="Base",
+            model_name="llama3.1:8b",
+            temperature=0,
+        ).build_llm_model(),
         retriever=new_store.rag_pipeline(
             RagPipelineConfig(
                 requested_retrievers={"LLM", "MMR", "SIM_THRESH"},
                 requested_filters={"REDUNDANT"},
-                llm=llm,
+                llm_config=LlmConfig(
+                    provider="Ollama",
+                    mode="Chat",
+                    model_name="llama3.1:8b",
+                    temperature=0,
+                ),
             )
         ),
     )

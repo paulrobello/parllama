@@ -63,6 +63,9 @@ Supports Dark and Light mode as well as custom themes.
 
 ![Local Models Light](https://raw.githubusercontent.com/paulrobello/parllama/main/docs/local_models_light_1.png)
 
+## Videos
+[V0.3.5 demo](https://www.youtube.com/watch?v=Genv46SKA5o)
+
 ## Prerequisites for running
 * Install and run [Ollama](https://ollama.com/download)
 * Install Python 3.11 or newer

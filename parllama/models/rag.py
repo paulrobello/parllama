@@ -6,6 +6,7 @@ import abc
 import os
 import re
 import warnings
+from dataclasses import dataclass, field
 
 from typing import Literal, Optional, Sequence, Set
 
@@ -45,7 +46,6 @@ from langchain_core.documents import (
     BaseDocumentCompressor,
 )
 from langchain_core.embeddings import Embeddings
-from langchain_core.language_models import BaseChatModel, BaseLanguageModel
 from langchain_core.prompts import PromptTemplate
 from langchain_core.retrievers import BaseRetriever
 from langchain_core.vectorstores import VectorStoreRetriever
@@ -55,14 +55,11 @@ from langchain_text_splitters import (
     RecursiveCharacterTextSplitter,
     TextSplitter,
 )
-from pydantic import ConfigDict, Field
-from pydantic.dataclasses import dataclass
 
+from parllama.llm_config import LlmConfig
 from parllama.par_event_system import ParEventSystemBase
-from parllama.par_ollama_embeddings import ParOllamaEmbeddings
 from parllama.passthrough_document_transformer import PassthroughDocumentTransformer
 from parllama.settings_manager import settings
-
 
 warnings.simplefilter("ignore", category=LangChainDeprecationWarning)
 
@@ -125,25 +122,32 @@ class StoreBase(RagBase, abc.ABC):
         raise NotImplementedError("save not implemented in base class")
 
 
-@dataclass(config=ConfigDict(arbitrary_types_allowed=True))
+@dataclass()
 class RagPipelineConfig:
     """Configuration for RagPipeline."""
 
     requested_retrievers: Set[RetrieverType]
     requested_filters: Optional[Set[RetrieverFilters]] = None
     k: int = 5
-    llm: Optional[BaseChatModel] = None
-    rerank_llm: Optional[BaseLanguageModel] = None
+    llm_config: Optional[LlmConfig] = None
+    rerank_llm_config: Optional[LlmConfig] = None
+
+
+@dataclass()
+class VectorStoreConfig:
+    """Configuration for VectorStore."""
+
+    collection_name: str
+    embeddings_config: LlmConfig
+    location: str = "chroma_db"
+    purge_on_start: bool = False
 
 
 class VectorStoreChroma(StoreBase):
     """Base class for vector store."""
 
+    config: VectorStoreConfig
     store_type: StoreType = "Chroma"
-    location: str = "chroma_db"
-    collection_name: str
-    embeddings_model: Optional[str] = None
-    purge_on_start: bool = False
     _client: Optional[ClientAPI] = None
     _chroma: Optional[Chroma] = None
     _vector_store: Optional[Chroma] = None
@@ -157,49 +161,37 @@ class VectorStoreChroma(StoreBase):
         id: str | None = None,  # pylint: disable=redefined-builtin
         name: str = "",
         *,
-        location: str = "chroma_db",
-        collection_name: str = "",
-        embeddings_model: Optional[str] = None,
-        embeddings: Optional[Embeddings] = None,
-        purge_on_start: bool = False,
+        config: VectorStoreConfig,
     ) -> None:
         super().__init__(id=id, name=name)
-        if not embeddings and not embeddings_model:
-            raise ValueError("embeddings or model must be provided")
-
-        self.collection_name = re.sub(r"[^a-zA-Z0-9_]+", "_", collection_name).replace(
-            "__", "_"
-        )
-        if not collection_name:
+        self.config = config
+        config.collection_name = re.sub(
+            r"[^a-zA-Z0-9_]+", "_", config.collection_name
+        ).replace("__", "_")
+        if not config.collection_name:
             raise ValueError("collection_name must be provided")
-        if not location:
-            location = collection_name
-        if not location:
+        if not config.location:
+            config.location = config.collection_name
+        if not config.location:
             raise ValueError("location must be provided")
-        self.location = location
-        self.purge_on_start = purge_on_start
-        self._embeddings = embeddings
-        self.embeddings_model = embeddings_model
-        if not self._embeddings and embeddings_model:
-            self._embeddings = ParOllamaEmbeddings(model=embeddings_model)
-        self.collection_name = collection_name
+        self._embeddings = config.embeddings_config.build_embeddings()
 
     def _instantiate_store(self) -> None:
         """Instantiate the store."""
         if self.location_type == "Local":
             self._client = chromadb.PersistentClient(
-                path=os.path.join(settings.data_dir, self.location)
+                path=os.path.join(settings.data_dir, self.config.location)
             )
         else:
             self._client = chromadb.chromadb.HttpClient(
-                host=self.location,
+                host=self.config.location,
                 settings=chromadb.Settings(
                     allow_reset=False, anonymized_telemetry=False
                 ),
             )
-        if self.purge_on_start:
+        if self.config.purge_on_start:
             try:
-                self.client.delete_collection(self.collection_name)
+                self.client.delete_collection(self.config.collection_name)
             except ValueError:
                 pass
 
@@ -215,7 +207,7 @@ class VectorStoreChroma(StoreBase):
         """Get the chroma vector store."""
         if self._vector_store is None:
             self._vector_store = Chroma(
-                collection_name=self.collection_name,
+                collection_name=self.config.collection_name,
                 client=self.client,
                 embedding_function=self.embeddings,
                 create_collection_if_not_exists=True,
@@ -226,7 +218,7 @@ class VectorStoreChroma(StoreBase):
     def num_documents(self) -> int:
         """Get the number of documents in the vector store."""
         try:
-            return self.client.get_collection(self.collection_name).count()
+            return self.client.get_collection(self.config.collection_name).count()
         except ValueError:
             return 0
 
@@ -301,11 +293,11 @@ class VectorStoreChroma(StoreBase):
 
         retrievers: list[BaseRetriever] = []
         if "LLM" in config.requested_retrievers:
-            if not config.llm:
-                raise ValueError("LLM model not provided.")
+            if not config.llm_config:
+                raise ValueError("LLM model config not provided.")
             retriever_from_llm = MultiQueryRetriever.from_llm(
                 retriever=self.vector_store.as_retriever(),
-                llm=config.llm,
+                llm=config.llm_config.build_llm_model(),
                 prompt=prompt,
                 include_original=True,
             )
@@ -344,9 +336,11 @@ class VectorStoreChroma(StoreBase):
             filters.append(reordering)
 
         if "RERANK" in config.requested_filters:
-            if not config.rerank_llm:
-                raise ValueError("Reranker LLM not provided")
-            reranker = LLMListwiseRerank.from_llm(llm=config.rerank_llm, top_n=5)
+            if not config.rerank_llm_config:
+                raise ValueError("Reranker LLM config not provided")
+            reranker = LLMListwiseRerank.from_llm(
+                llm=config.rerank_llm_config.build_llm_model(), top_n=5
+            )
             filters.append(reranker)
 
         if len(filters) == 0:
@@ -380,7 +374,7 @@ DateSourceFormatType = Literal["auto", "text", "csv", "json", "html", "markdown"
 SplitMode = Literal["text", "token", "semantic"]
 
 
-@dataclass(config=ConfigDict(arbitrary_types_allowed=True))
+@dataclass()
 class LoadSplitConfig:
     """Configuration for splitting data."""
 
@@ -388,7 +382,7 @@ class LoadSplitConfig:
     embeddings: Optional[Embeddings] = None
     chunk_size: Optional[int] = 500
     chunk_overlap: Optional[int] = 100
-    split_separators: Optional[list[str]] = Field(
+    split_separators: Optional[list[str]] = field(
         default_factory=lambda: ["\n", "\r\n", "\r"]
     )
 
