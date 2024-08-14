@@ -4,13 +4,21 @@ from __future__ import annotations
 
 import os
 import time
+import warnings
 
 import simplejson as json
 from dotenv import load_dotenv
-from langchain_core.documents import Document
+from langchain.chains.retrieval_qa.base import RetrievalQA
+from langchain_community.llms.ollama import Ollama
 from langchain_ollama import ChatOllama
 
-from parllama.models.rag import StoreBase, VectorStoreChroma, DataSourceFile
+from parllama.models.rag import (
+    StoreBase,
+    VectorStoreChroma,
+    DataSourceFile,
+    LoadSplitConfig,
+    RagPipelineConfig,
+)
 from parllama.par_event_system import ParEventSystemBase
 from parllama.settings_manager import settings
 
@@ -79,49 +87,65 @@ if __name__ == "__main__":
     #     )
     # )
 
+    # embeddings = HuggingFaceEmbeddings(
+    #     # model_kwargs={"device": "cuda", "trust_remote_code": True},
+    #     model_kwargs={"trust_remote_code": True},
+    #     encode_kwargs={"normalize_embeddings": False},
+    # )
+
+    # embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
+
     new_store = VectorStoreChroma(
         name="Chroma",
         collection_name="remember",
-        # embeddings_model="mxbai-embed-large",
         embeddings_model="snowflake-arctic-embed:latest",
-        purge_on_start=False,
+        # embeddings=embeddings,
+        purge_on_start=True,
     )
     rag_manager.add_store(new_store)
     num_documents = new_store.num_documents
     if num_documents == 0:
         print("loading data...")
-        ds = DataSourceFile(source="../rag_docs/plato.txt", source_format="text")
+        ds = DataSourceFile(
+            source="../rag_docs/ai_adoption_framework_whitepaper.pdf",
+            source_format="auto",
+        )
         start_time = time.time()
         new_store.retriever.add_documents(
             ds.load_split(
-                embeddings=new_store.embeddings, chunk_size=100, chunk_overlap=3
+                LoadSplitConfig(
+                    embeddings=new_store.embeddings,
+                    chunk_size=500,
+                    chunk_overlap=100,
+                    mode="token",
+                )
             )
         )
-        new_store.retriever.add_documents(
-            [
-                Document(
-                    page_content="I like american cheese.", metadata={"source": "test1"}
-                ),
-                Document(
-                    page_content="I like hamburgers.", metadata={"source": "test2"}
-                ),
-                Document(
-                    page_content="I dont like liver.", metadata={"source": "test22"}
-                ),
-                Document(
-                    page_content="Red is my favorite color.",
-                    metadata={"source": "test3"},
-                ),
-                Document(
-                    page_content="The sky is blue because reasons.",
-                    metadata={"source": "test4"},
-                ),
-                Document(
-                    page_content="Lizards are cold blooded.",
-                    metadata={"source": "test5"},
-                ),
-            ]
-        )
+        # new_store.retriever.add_documents(
+        #     [
+        #         Document(
+        #             page_content="I like american cheese.", metadata={"source": "test1"}
+        #         ),
+        #         Document(
+        #             page_content="I like hamburgers.", metadata={"source": "test2"}
+        #         ),
+        #         Document(
+        #             page_content="I dont like liver.", metadata={"source": "test22"}
+        #         ),
+        #         Document(
+        #             page_content="Red is my favorite color.",
+        #             metadata={"source": "test3"},
+        #         ),
+        #         Document(
+        #             page_content="The sky is blue because reasons.",
+        #             metadata={"source": "test4"},
+        #         ),
+        #         Document(
+        #             page_content="Lizards are cold blooded.",
+        #             metadata={"source": "test5"},
+        #         ),
+        #     ]
+        # )
         end_time = time.time()
         elapsed_time = end_time - start_time
         num_documents = new_store.num_documents
@@ -130,19 +154,51 @@ if __name__ == "__main__":
         )
 
     print(f"Number of chunks: {num_documents}")
-    llm = ChatOllama(
-        model="llama3.1:8b", temperature=0.1, base_url=settings.ollama_host
-    )
+    llm = ChatOllama(model="llama3.1:8b", temperature=0, base_url=settings.ollama_host)
     # llm = ChatOpenAI(temperature=0.25)
     # QUERY = "what are some cold blooded animals"
-    QUERY = "What makes Plato’s writings distinctive"
+    # QUERY = "Summarize the document"
+    QUERY = "what is 'Explainable AI'"
     # docs = new_store.query(query)
     # docs = new_store.query(query, k=2)
-    docs = new_store.llm_query(llm, QUERY, 5)
+    # docs = new_store.query_pipeline(
+    #     QUERY,
+    #     requested_retrievers={"LLM", "MMR", "SIM_THRESH"},
+    #     requested_filters={"REDUNDANT", "RERANK"},
+    #     llm=llm,
+    #     k=5,
+    #     rerank_llm=ChatOpenAI(model="gpt-4o", temperature=0.1),
+    # )
     # print(new_store.retriever.invoke(query))
 
-    print(f"query: {QUERY}")
-    print("---------")
-    for doc in docs:
-        print(doc)
-        print("---------")
+    # print(f"query: {QUERY}")
+    # print("---------")
+    # for doc in docs:
+    #     print(doc)
+    #     print("---------")
+
+    chain = RetrievalQA.from_chain_type(
+        llm=Ollama(model="llama3.1:8b", temperature=0, base_url=settings.ollama_host),
+        retriever=new_store.rag_pipeline(
+            RagPipelineConfig(
+                requested_retrievers={"LLM", "MMR", "SIM_THRESH"},
+                requested_filters={"REDUNDANT"},
+                llm=llm,
+            )
+        ),
+    )
+    # chain = RetrievalQA.from_chain_type(
+    #     llm=ChatOpenAI(model="gpt-4o", temperature=0),
+    #     retriever=new_store.rag_pipeline(
+    #         requested_retrievers={"LLM", "MMR", "SIM_THRESH"},
+    #         requested_filters={"REDUNDANT", "RERANK"},
+    #         llm=ChatOpenAI(model="gpt-4o", temperature=0),
+    #         rerank_llm=ChatOpenAI(model="gpt-4o", temperature=0),
+    #     ),
+    # )
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        result = chain.invoke({"query": QUERY})
+    print("--------- RESULT -------------")
+
+    print(result["result"])

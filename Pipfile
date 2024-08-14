@@ -39,6 +39,7 @@ langchain-core = "*"
 langchain-community = "*"
 langchain-text-splitters = "*"
 langchain-ollama = "*"
+langchain-huggingface = "*"
 langchainhub = "*"
 langgraph = "*"
 langsmith = "*"
@@ -63,7 +64,7 @@ types-beautifulsoup4 = "*"
 pydevd_pycharm = "*"
 pre-commit = "*"
 google-api-python-client-stubs = "*"
-unstructured = { version = "*", extras = ["all-docs"] }
+unstructured = { version = "*", extras = ["csv", "doc", "docx", "epub", "md", "msg", "odt", "org", "pdf", "ppt", "pptx", "rtf", "rst", "tsv", "xlsx"] }
 python-libmagic = "*"
 
 [requires]

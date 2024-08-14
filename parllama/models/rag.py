@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import abc
 import os
+import re
 import warnings
 
-from typing import Literal, Optional, Sequence
+from typing import Literal, Optional, Sequence, Set
 
 import chromadb
 from chromadb import ClientAPI
@@ -16,7 +17,10 @@ from langchain.retrievers import (
     ContextualCompressionRetriever,
     MergerRetriever,
 )
-from langchain.retrievers.document_compressors import DocumentCompressorPipeline
+from langchain.retrievers.document_compressors import (
+    DocumentCompressorPipeline,
+    LLMListwiseRerank,
+)
 from langchain_chroma import Chroma
 from langchain_community.document_loaders import (
     TextLoader,
@@ -26,16 +30,24 @@ from langchain_community.document_loaders import (
     UnstructuredHTMLLoader,
     UnstructuredMarkdownLoader,
     PyPDFLoader,
-    UnstructuredFileLoader,
+    # UnstructuredFileLoader,
+    WebBaseLoader,
 )
 from langchain_community.document_transformers import (
     EmbeddingsRedundantFilter,
+    LongContextReorder,
+    MarkdownifyTransformer,
 )
 from langchain_core.document_loaders import BaseLoader
-from langchain_core.documents import Document, BaseDocumentTransformer
+from langchain_core.documents import (
+    Document,
+    BaseDocumentTransformer,
+    BaseDocumentCompressor,
+)
 from langchain_core.embeddings import Embeddings
-from langchain_core.language_models import BaseChatModel
+from langchain_core.language_models import BaseChatModel, BaseLanguageModel
 from langchain_core.prompts import PromptTemplate
+from langchain_core.retrievers import BaseRetriever
 from langchain_core.vectorstores import VectorStoreRetriever
 from langchain_experimental.text_splitter import SemanticChunker
 from langchain_text_splitters import (
@@ -43,9 +55,12 @@ from langchain_text_splitters import (
     RecursiveCharacterTextSplitter,
     TextSplitter,
 )
+from pydantic import ConfigDict, Field
+from pydantic.dataclasses import dataclass
 
 from parllama.par_event_system import ParEventSystemBase
 from parllama.par_ollama_embeddings import ParOllamaEmbeddings
+from parllama.passthrough_document_transformer import PassthroughDocumentTransformer
 from parllama.settings_manager import settings
 
 
@@ -69,6 +84,12 @@ store_types: list[StoreType] = ["Chroma"]
 
 StoreLocationType = Literal["Local", "URL"]
 store_location_types: list[StoreLocationType] = ["Local", "URL"]
+
+RetrieverType = Literal["LLM", "MMR", "SIM", "SIM_THRESH"]
+retriever_types: list[RetrieverType] = ["LLM", "MMR", "SIM", "SIM_THRESH"]
+
+RetrieverFilters = Literal["REDUNDANT", "RERANK", "REORDER"]
+retriever_filters: list[RetrieverFilters] = ["REDUNDANT", "RERANK", "REORDER"]
 
 
 class StoreBase(RagBase, abc.ABC):
@@ -104,6 +125,17 @@ class StoreBase(RagBase, abc.ABC):
         raise NotImplementedError("save not implemented in base class")
 
 
+@dataclass(config=ConfigDict(arbitrary_types_allowed=True))
+class RagPipelineConfig:
+    """Configuration for RagPipeline."""
+
+    requested_retrievers: Set[RetrieverType]
+    requested_filters: Optional[Set[RetrieverFilters]] = None
+    k: int = 5
+    llm: Optional[BaseChatModel] = None
+    rerank_llm: Optional[BaseLanguageModel] = None
+
+
 class VectorStoreChroma(StoreBase):
     """Base class for vector store."""
 
@@ -124,14 +156,27 @@ class VectorStoreChroma(StoreBase):
         self,
         id: str | None = None,  # pylint: disable=redefined-builtin
         name: str = "",
+        *,
+        location: str = "chroma_db",
         collection_name: str = "",
         embeddings_model: Optional[str] = None,
         embeddings: Optional[Embeddings] = None,
         purge_on_start: bool = False,
     ) -> None:
         super().__init__(id=id, name=name)
-        if not self._embeddings and not embeddings_model:
+        if not embeddings and not embeddings_model:
             raise ValueError("embeddings or model must be provided")
+
+        self.collection_name = re.sub(r"[^a-zA-Z0-9_]+", "_", collection_name).replace(
+            "__", "_"
+        )
+        if not collection_name:
+            raise ValueError("collection_name must be provided")
+        if not location:
+            location = collection_name
+        if not location:
+            raise ValueError("location must be provided")
+        self.location = location
         self.purge_on_start = purge_on_start
         self._embeddings = embeddings
         self.embeddings_model = embeddings_model
@@ -213,12 +258,15 @@ class VectorStoreChroma(StoreBase):
         return self._dimension
 
     def query(self, query: str, k: int = 5) -> list[Document]:
-        """Search the vector store for documents."""
+        """Search the vector store for similar documents."""
+        return self.vector_store.similarity_search(query, k=k)
+
+    def query_with_score(self, query: str, k: int = 5) -> list[Document]:
+        """Search the vector store for documents. Return list with most relevant documents first."""
         docs, scores = zip(*self.vector_store.similarity_search_with_score(query, k=k))
         for doc, score in zip(docs, scores):
             doc.metadata["score"] = score
 
-        # sort by score
         ret = list(docs)
         ret.sort(key=lambda x: x.metadata["score"], reverse=True)
         return ret
@@ -233,10 +281,9 @@ class VectorStoreChroma(StoreBase):
         )
         return retriever_sim.invoke(query)
 
-    def llm_query(
-        self, llm: BaseChatModel, query: str, k: int = 5
-    ) -> Sequence[Document]:
-        """Use the LLM to generate alternative versions of the user question."""
+    def rag_pipeline(self, config: RagPipelineConfig) -> BaseRetriever:
+        """Create pipeline to retrieve and filter documents."""
+
         prompt = PromptTemplate(
             input_variables=["question"],
             template="""You are an AI language model assistant.\n
@@ -249,57 +296,101 @@ class VectorStoreChroma(StoreBase):
             Original question: {question}""",
         )
 
-        retriever_from_llm = MultiQueryRetriever.from_llm(
-            retriever=self.vector_store.as_retriever(),
-            llm=llm,
-            prompt=prompt,
-            include_original=True,
-        )
-        retriever_sim = self.vector_store.as_retriever(
-            search_type="similarity_score_threshold",
-            search_kwargs={"k": 5, "score_threshold": 0.75},
-        )
-        # retriever_sim = self.vector_store.as_retriever()
+        if config.requested_filters is None:
+            config.requested_filters = set()
 
-        retriever_mmr = self.vector_store.as_retriever(
-            search_type="mmr", search_kwargs={"k": 5}
-        )
-        merger = MergerRetriever(
-            retrievers=[retriever_mmr, retriever_sim, retriever_from_llm]
-            # retrievers=[retriever_mmr, retriever_sim]
-        )
+        retrievers: list[BaseRetriever] = []
+        if "LLM" in config.requested_retrievers:
+            if not config.llm:
+                raise ValueError("LLM model not provided.")
+            retriever_from_llm = MultiQueryRetriever.from_llm(
+                retriever=self.vector_store.as_retriever(),
+                llm=config.llm,
+                prompt=prompt,
+                include_original=True,
+            )
+            retrievers.append(retriever_from_llm)
 
-        filter_redundant = EmbeddingsRedundantFilter(
-            embeddings=self.embeddings, similarity_threshold=0.99
-        )
-        # reordering = LongContextReorder()
-        # reranker = LLMListwiseRerank.from_llm(
-        #     llm=llm,
-        #     top_n=2
-        # )
-        pipeline = DocumentCompressorPipeline(
-            # transformers=[filter_redundant, reordering]
-            transformers=[filter_redundant]
-        )
-        compression_retriever = ContextualCompressionRetriever(
+        if "SIM" in config.requested_retrievers:
+            retriever_sim = self.vector_store.as_retriever(
+                search_kwargs={"k": 5},
+            )
+            retrievers.append(retriever_sim)
+
+        if "SIM_THRESH" in config.requested_retrievers:
+            retriever_sim_thresh = self.vector_store.as_retriever(
+                search_type="similarity_score_threshold",
+                search_kwargs={"k": 5, "score_threshold": 0.75},
+            )
+            retrievers.append(retriever_sim_thresh)
+
+        if "MMR" in config.requested_retrievers:
+            retriever_mmr = self.vector_store.as_retriever(
+                search_type="mmr", search_kwargs={"k": 5}
+            )
+            retrievers.append(retriever_mmr)
+
+        merger = MergerRetriever(retrievers=retrievers)
+
+        filters: list[BaseDocumentTransformer | BaseDocumentCompressor] = []
+        if "REDUNDANT" in config.requested_filters:
+            filter_redundant = EmbeddingsRedundantFilter(
+                embeddings=self.embeddings, similarity_threshold=0.95
+            )
+            filters.append(filter_redundant)
+
+        if "REORDER" in config.requested_filters:
+            reordering = LongContextReorder()
+            filters.append(reordering)
+
+        if "RERANK" in config.requested_filters:
+            if not config.rerank_llm:
+                raise ValueError("Reranker LLM not provided")
+            reranker = LLMListwiseRerank.from_llm(llm=config.rerank_llm, top_n=5)
+            filters.append(reranker)
+
+        if len(filters) == 0:
+            filters.append(PassthroughDocumentTransformer())
+
+        pipeline = DocumentCompressorPipeline(transformers=list(filters))
+        return ContextualCompressionRetriever(
             base_retriever=merger,
-            # base_retriever=retriever_from_llm,
             base_compressor=pipeline,
         )
-        docs = compression_retriever.invoke(input=query)
-        return docs[:k]
-        # return reranker.compress_documents(docs, query)
+
+    def query_pipeline(
+        self, query: str, config: RagPipelineConfig
+    ) -> Sequence[Document]:
+        """Create pipeline to retrieve and filter documents."""
+        if not query:
+            raise ValueError("Query must be provided.")
+        retriever = self.rag_pipeline(config)
+        docs = retriever.invoke(input=query)
+        return docs[: config.k]
 
     def save(self) -> None:
         """Save the store to a file."""
 
 
-DataSourceType = Literal["File", "Folder"]
-data_source_types: list[DataSourceType] = ["File", "Folder"]
+DataSourceType = Literal["File", "Folder", "URL"]
+data_source_types: list[DataSourceType] = ["File", "Folder", "URL"]
 
 DateSourceFormatType = Literal["auto", "text", "csv", "json", "html", "markdown", "pdf"]
 
 SplitMode = Literal["text", "token", "semantic"]
+
+
+@dataclass(config=ConfigDict(arbitrary_types_allowed=True))
+class LoadSplitConfig:
+    """Configuration for splitting data."""
+
+    mode: SplitMode = "token"
+    embeddings: Optional[Embeddings] = None
+    chunk_size: Optional[int] = 500
+    chunk_overlap: Optional[int] = 100
+    split_separators: Optional[list[str]] = Field(
+        default_factory=lambda: ["\n", "\r\n", "\r"]
+    )
 
 
 class DataSourceBase(RagBase, abc.ABC):
@@ -328,29 +419,31 @@ class DataSourceBase(RagBase, abc.ABC):
         """Get documents from the data source."""
         raise NotImplementedError("Subclasses must implement this method")
 
-    def load_split(
-        self,
-        mode: SplitMode = "text",
-        embeddings: Optional[Embeddings] = None,
-        chunk_size: int = 100,
-        chunk_overlap: int = 3,
-    ) -> list[Document]:
+    def load_split(self, config: LoadSplitConfig) -> list[Document]:
         """Load documents and chunk them."""
         text_splitter: TextSplitter | BaseDocumentTransformer
-        if mode == "token":
+        if config.mode == "token":
             text_splitter = TokenTextSplitter(
-                chunk_size=chunk_size, chunk_overlap=chunk_overlap
+                strip_whitespace=True,
+                chunk_size=config.chunk_size,
+                chunk_overlap=config.chunk_overlap,
             )
-        elif mode == "semantic":
-            if not embeddings:
+        elif config.mode == "semantic":
+            if not config.embeddings:
                 raise ValueError("embeddings must be provided for semantic split mode")
-            text_splitter = SemanticChunker(embeddings=embeddings)
-        elif mode == "text":
+            text_splitter = SemanticChunker(
+                embeddings=config.embeddings,
+                breakpoint_threshold_type="interquartile",
+                breakpoint_threshold_amount=3.0,
+            )
+        elif config.mode == "text":
             text_splitter = RecursiveCharacterTextSplitter(
-                chunk_size=chunk_size, chunk_overlap=chunk_overlap
+                separators=config.split_separators,
+                chunk_size=config.chunk_size,
+                chunk_overlap=config.chunk_overlap,
             )
         else:
-            raise ValueError(f"Invalid split mode: {mode}")
+            raise ValueError(f"Invalid split mode: {config.mode}")
 
         return text_splitter.split_documents(self.load())
 
@@ -372,11 +465,28 @@ class DataSourceFile(DataSourceBase):
             name = os.path.basename(source)
         super().__init__(id=id, name=name, source=source, source_format=source_format)
 
-    def load(self) -> list[Document]:
+    def load(self) -> list[Document]:  # pylint: disable=too-many-branches
         """Get documents from the data source."""
+        # get file extension
+        _, ext = os.path.splitext(self.source)
+        ext = ext.lower()
+
         if self.source_format == "auto":
-            self._loader = UnstructuredFileLoader(self.source)
-        elif self.source_format == "text":
+            if ext == ".csv":
+                self.source_format = "csv"
+            elif ext == ".json":
+                self.source_format = "json"
+            elif ext == ".html":
+                self.source_format = "html"
+            elif ext in (".markdown", ".md"):
+                self.source_format = "markdown"
+            elif ext == ".pdf":
+                self.source_format = "pdf"
+            else:
+                self.source_format = "text"
+            print(f"Auto mode using format {self.source_format} for ext {ext}")
+
+        if self.source_format == "text":
             self._loader = TextLoader(self.source, autodetect_encoding=True)
         elif self.source_format == "csv":
             self._loader = CSVLoader(self.source)
@@ -415,6 +525,18 @@ class DataFolderSource(DataSourceBase):
         """Get documents from the data source."""
         self._loader = DirectoryLoader(self.source, glob=self.glob)
         return self._loader.load()
+
+
+class DataUrlSource(DataSourceBase):
+    """Data source from a folder."""
+
+    source_type: DataSourceType = "URL"
+
+    def load(self) -> list[Document]:
+        """Get documents from url and convert to markdown."""
+        self._loader = WebBaseLoader(web_path=self.source, continue_on_failure=True)
+        md = MarkdownifyTransformer()
+        return list(md.transform_documents(self._loader.load()))
 
 
 class DataLink(RagBase):
