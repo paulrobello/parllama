@@ -67,21 +67,21 @@ class RagManager(ParEventSystemBase):
         for store_config in config["stores"]:
             store_cls = StoreBase.get_class(store_config["class_name"])
             store = store_cls.from_json(store_config)
-            self.stores.append(store)
-            self._id_to_store[store.id] = store
+            self.add_store(store, False)
 
     def save(self) -> None:
         """Save the RAG configuration."""
         with open(self._config_file, "wt", encoding="utf-8") as fh:
             json.dump(self.to_json(), fh, indent=2, default=str)
 
-    def add_store(self, store: StoreBase) -> None:
+    def add_store(self, store: StoreBase, save: bool = True) -> None:
         """Add store"""
         self.stores.append(store)
         self._id_to_store[store.id] = store
         if isinstance(store, VectorStoreBase):
             self._vector_stores.append(store)
-        self.save()
+        if save:
+            self.save()
 
     def remove_store(self, store_id: str) -> None:
         """Remove store"""
