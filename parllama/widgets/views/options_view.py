@@ -8,7 +8,8 @@ from textual.containers import Horizontal
 from textual.containers import Vertical
 from textual.events import Show
 from textual.validation import Integer
-from textual.widgets import Checkbox, Button
+from textual.widgets import Button
+from textual.widgets import Checkbox
 from textual.widgets import Input
 from textual.widgets import Label
 from textual.widgets import Select

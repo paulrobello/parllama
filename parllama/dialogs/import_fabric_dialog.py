@@ -4,15 +4,21 @@ from __future__ import annotations
 
 from typing import cast
 
-from textual import on, work
+from textual import on
+from textual import work
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import VerticalScroll, Horizontal, Vertical
+from textual.containers import Horizontal
+from textual.containers import Vertical
+from textual.containers import VerticalScroll
 from textual.events import Focus
 from textual.screen import ModalScreen
-from textual.widgets import Button, Checkbox, Label
+from textual.widgets import Button
+from textual.widgets import Checkbox
+from textual.widgets import Label
 
-from parllama.messages.messages import ImportReady, LogIt
+from parllama.messages.messages import ImportReady
+from parllama.messages.messages import LogIt
 from parllama.models.ollama_data import FullModel
 from parllama.prompt_utils.import_fabric import import_fabric_manager
 from parllama.utils import str_ellipsis

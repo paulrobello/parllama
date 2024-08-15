@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal, Self
+from typing import Literal
+from typing import Self
 
 from textual import on
 from textual.app import ComposeResult
@@ -11,7 +12,8 @@ from textual.message import Message
 from textual.reactive import var
 from textual.suggester import Suggester
 from textual.widget import Widget
-from textual.widgets import Input, TextArea
+from textual.widgets import Input
+from textual.widgets import TextArea
 
 from parllama.messages.messages import ToggleInputMode
 from parllama.settings_manager import settings

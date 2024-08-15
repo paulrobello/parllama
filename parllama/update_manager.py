@@ -10,8 +10,8 @@ import requests
 from semver import Version
 
 from parllama import __version__
-from parllama.settings_manager import settings
 from parllama.par_event_system import ParEventSystemBase
+from parllama.settings_manager import settings
 
 
 class UpdateManager(ParEventSystemBase):

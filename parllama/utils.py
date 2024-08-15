@@ -713,3 +713,10 @@ def read_env_file(filename: str) -> dict[str, str]:
             except Exception as e:  # pylint: disable=broad-exception-caught
                 print(f"Error: {e} --- line {line}")
     return env_vars
+
+
+def all_subclasses(cls) -> set[type]:
+    """Return all subclasses of a given class."""
+    return set(cls.__subclasses__()).union(
+        [s for c in cls.__subclasses__() for s in all_subclasses(c)]
+    )

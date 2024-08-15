@@ -13,8 +13,8 @@ from typing import TypeAlias
 import simplejson as json
 from textual.design import ColorSystem
 
-from parllama.settings_manager import settings
 from parllama.par_event_system import ParEventSystemBase
+from parllama.settings_manager import settings
 
 ThemeMode: TypeAlias = Literal["dark", "light"]
 ThemeModes: list[ThemeMode] = ["dark", "light"]

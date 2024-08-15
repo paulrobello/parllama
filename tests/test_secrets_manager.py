@@ -1,9 +1,13 @@
 """Test secrets manager"""
 
+from __future__ import annotations
+
+import json
 import os.path
 import unittest
-from unittest.mock import patch, mock_open
-import json
+from unittest.mock import mock_open
+from unittest.mock import patch
+
 from parllama.secrets_manager import SecretsManager
 
 

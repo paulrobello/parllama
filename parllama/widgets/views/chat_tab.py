@@ -44,8 +44,8 @@ from parllama.messages.messages import UpdateChatControlStates
 from parllama.messages.messages import UpdateChatStatus
 from parllama.messages.messages import UpdateTabLabel
 from parllama.models.ollama_data import FullModel
-from parllama.settings_manager import settings
 from parllama.screens.save_session import SaveSession
+from parllama.settings_manager import settings
 from parllama.utils import str_ellipsis
 from parllama.widgets.chat_message_list import ChatMessageList
 from parllama.widgets.chat_message_widget import ChatMessageWidget

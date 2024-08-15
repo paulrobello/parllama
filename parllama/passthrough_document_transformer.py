@@ -1,8 +1,12 @@
 """Document transformation that does nothing."""
 
-from typing import Sequence, Any
+from __future__ import annotations
 
-from langchain_core.documents import BaseDocumentTransformer, Document
+from collections.abc import Sequence
+from typing import Any
+
+from langchain_core.documents import BaseDocumentTransformer
+from langchain_core.documents import Document
 from pydantic import BaseModel
 
 

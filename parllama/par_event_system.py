@@ -73,24 +73,20 @@ class ParEventSystemBase:
     def __init__(
         self, id: str | None = None  # pylint: disable=redefined-builtin
     ) -> None:
-        """Initialize the chat base"""
+        """Initialize the system base and generate a unique id if not provided."""
         if not id:
             id = uuid.uuid4().hex
         self.id = id
         self.parent = None
 
     def set_app(self, app: App[Any]) -> None:
-        """Set the app and load existing sessions and prompts from storage"""
+        """Set the app"""
         self.app = app
 
     def _get_dispatch_methods(
         self, method_name: str
     ) -> Iterable[tuple[type, Callable[[ParEventBase], Awaitable]]]:
-        """Gets handlers from the MRO
-
-        Args:
-            method_name: Handler method name.
-        """
+        """Gets handlers from MRO."""
         for cls in self.__class__.__mro__:
             method = cls.__dict__.get(f"_{method_name}") or cls.__dict__.get(
                 method_name

@@ -5,21 +5,21 @@ from __future__ import annotations
 import os
 import time
 import warnings
+from typing import Any
 
 import simplejson as json
 from dotenv import load_dotenv
 from langchain.chains.retrieval_qa.base import RetrievalQA
-from langchain_ollama import ChatOllama
+from textual.app import App
 
 from parllama.llm_config import LlmConfig
-from parllama.models.rag import (
-    StoreBase,
-    VectorStoreChroma,
-    DataSourceFile,
-    LoadSplitConfig,
-    RagPipelineConfig,
-    VectorStoreConfig,
-)
+from parllama.models.rag_datasource import DataSourceFile
+from parllama.models.rag_datasource import LoadSplitConfig
+from parllama.models.rag_stores import RagPipelineConfig
+from parllama.models.rag_stores import StoreBase
+from parllama.models.rag_stores import VectorStoreBase
+from parllama.models.rag_stores import VectorStoreChroma
+from parllama.models.rag_stores import VectorStoreConfig
 from parllama.par_event_system import ParEventSystemBase
 from parllama.settings_manager import settings
 
@@ -31,6 +31,7 @@ class RagManager(ParEventSystemBase):
 
     stores: list[StoreBase]
     _id_to_store: dict[str, StoreBase] = {}
+    _vector_stores: list[VectorStoreBase] = []
 
     def __init__(self):
         """Initialize the data manager."""
@@ -38,7 +39,23 @@ class RagManager(ParEventSystemBase):
         self._config_file = os.path.join(settings.data_dir, "rag_config.json")
         self.stores = []
         self._id_to_store = {}
-        # self.load()
+
+    @property
+    def vector_stores(self) -> list[VectorStoreBase]:
+        """Return vector stores"""
+        return self._vector_stores
+
+    def set_app(self, app: App[Any]) -> None:
+        """Set the app and load existing stores"""
+        self.app = app  # pylint: disable=attribute-defined-outside-init
+        self.load()
+
+    def to_json(self) -> dict:
+        """Return dict for use with json"""
+        return {
+            "id": self.id,
+            "stores": [store.to_json() for store in self.stores],
+        }
 
     def load(self) -> None:
         """Load the RAG configuration."""
@@ -48,67 +65,79 @@ class RagManager(ParEventSystemBase):
             config = json.load(fh)
 
         for store_config in config["stores"]:
-            store_cls = StoreBase.get_class(store_config["type"])
-            store = store_cls(**store_config)
+            store_cls = StoreBase.get_class(store_config["class_name"])
+            store = store_cls.from_json(store_config)
             self.stores.append(store)
             self._id_to_store[store.id] = store
 
     def save(self) -> None:
         """Save the RAG configuration."""
-        config = {"stores": self.stores}
         with open(self._config_file, "wt", encoding="utf-8") as fh:
-            json.dump(config, fh, indent=2, default=str)
+            json.dump(self.to_json(), fh, indent=2, default=str)
 
     def add_store(self, store: StoreBase) -> None:
         """Add store"""
         self.stores.append(store)
         self._id_to_store[store.id] = store
+        if isinstance(store, VectorStoreBase):
+            self._vector_stores.append(store)
         self.save()
+
+    def remove_store(self, store_id: str) -> None:
+        """Remove store"""
+        store = self._id_to_store.pop(store_id, None)
+        if store:
+            self.stores.remove(store)
+            if isinstance(store, VectorStoreBase):
+                self._vector_stores.remove(store)
+            self.save()
 
 
 rag_manager: RagManager = RagManager()
 
 if __name__ == "__main__":
-    # if len(rag_manager.stores) == 0:
-    # ollama_emb = ParOllamaEmbeddings(
-    #     model="nomic-embed-text",
-    #     # model="mxbai-embed-large",
-    # )
-    # print(ollama_emb.get_dimension())
-    # ollama_emb = ParOllamaEmbeddings(
-    #     # model="nomic-embed-text",
-    #     model="mxbai-embed-large",
-    # )
-    # print(ollama_emb.get_dimension())
-    # print(
-    #     len(
-    #         ollama.Client(host=settings.ollama_host).embed("nomic-embed-text", ["test"])[
-    #             "embeddings"
-    #         ][0]
-    #     )
-    # )
-
     # embeddings = HuggingFaceEmbeddings(
     #     # model_kwargs={"device": "cuda", "trust_remote_code": True},
     #     model_kwargs={"trust_remote_code": True},
     #     encode_kwargs={"normalize_embeddings": False},
     # )
+    rag_manager.load()
+    if len(rag_manager.vector_stores) == 0:
+        rag_manager.add_store(
+            VectorStoreChroma(
+                name="Chroma",
+                config=VectorStoreConfig(
+                    location_type="Local",
+                    location="chroma_db",
+                    collection_name="remember",
+                    embeddings_config=LlmConfig(
+                        provider="Ollama",
+                        mode="Embeddings",
+                        model_name="snowflake-arctic-embed:latest",
+                        temperature=0,
+                    ),
+                    purge_on_start=False,
+                ),
+            )
+        )
 
-    # embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
+        # new_store = VectorStoreChroma(
+        #     name="Chroma",
+        #     config=VectorStoreConfig(
+        #         location_type="Local",
+        #         location="chroma_db",
+        #         collection_name="remember",
+        #         embeddings_config=LlmConfig(
+        #             provider="OpenAI",
+        #             mode="Embeddings",
+        #             model_name="text-embedding-3-large",
+        #         ),
+        #         purge_on_start=True,
+        #     ),
+        # )
 
-    new_store = VectorStoreChroma(
-        name="Chroma",
-        config=VectorStoreConfig(
-            collection_name="remember",
-            embeddings_config=LlmConfig(
-                provider="Ollama",
-                mode="Embeddings",
-                model_name="snowflake-arctic-embed:latest",
-            ),
-            purge_on_start=True,
-        ),
-    )
-    rag_manager.add_store(new_store)
+    new_store = rag_manager.vector_stores[0]
+
     num_documents = new_store.num_documents
     if num_documents == 0:
         print("loading data...")
@@ -160,61 +189,85 @@ if __name__ == "__main__":
         )
 
     print(f"Number of chunks: {num_documents}")
-    llm = ChatOllama(model="llama3.1:8b", temperature=0, base_url=settings.ollama_host)
-    # llm = ChatOpenAI(temperature=0.25)
-    # QUERY = "what are some cold blooded animals"
-    # QUERY = "Summarize the document"
+    # # llm = ChatOllama(model="llama3.1:8b", temperature=0, base_url=settings.ollama_host)
+    # # llm = ChatOpenAI(temperature=0.25)
+    # # QUERY = "what are some cold blooded animals"
+    # # QUERY = "Summarize the document"
     QUERY = "what is 'Explainable AI'"
-    # docs = new_store.query(query)
-    # docs = new_store.query(query, k=2)
-    # docs = new_store.query_pipeline(
-    #     QUERY,
-    #     requested_retrievers={"LLM", "MMR", "SIM_THRESH"},
-    #     requested_filters={"REDUNDANT", "RERANK"},
-    #     llm=llm,
-    #     k=5,
-    #     rerank_llm=ChatOpenAI(model="gpt-4o", temperature=0.1),
-    # )
-    # print(new_store.retriever.invoke(query))
-
-    # print(f"query: {QUERY}")
-    # print("---------")
-    # for doc in docs:
-    #     print(doc)
-    #     print("---------")
-
+    # # docs = new_store.query(query)
+    # # docs = new_store.query(query, k=2)
+    # # docs = new_store.query_pipeline(
+    # #     QUERY,
+    # #     requested_retrievers={"LLM", "MMR", "SIM_THRESH"},
+    # #     requested_filters={"REDUNDANT", "RERANK"},
+    # #     llm=llm,
+    # #     k=5,
+    # #     rerank_llm=ChatOpenAI(model="gpt-4o", temperature=0.1),
+    # # )
+    # # print(new_store.retriever.invoke(query))
+    #
+    # # print(f"query: {QUERY}")
+    # # print("---------")
+    # # for doc in docs:
+    # #     print(doc)
+    # #     print("---------")
+    #
+    llm_config = LlmConfig(
+        provider="Ollama",
+        mode="Chat",
+        model_name="llama3.1:8b",
+        temperature=0,
+    )
     chain = RetrievalQA.from_chain_type(
-        llm=LlmConfig(
-            provider="Ollama",
-            mode="Base",
-            model_name="llama3.1:8b",
-            temperature=0,
-        ).build_llm_model(),
-        retriever=new_store.rag_pipeline(
+        llm=llm_config.build_chat_model(),
+        retriever=rag_manager.vector_stores[0].rag_pipeline(
             RagPipelineConfig(
                 requested_retrievers={"LLM", "MMR", "SIM_THRESH"},
                 requested_filters={"REDUNDANT"},
-                llm_config=LlmConfig(
-                    provider="Ollama",
-                    mode="Chat",
-                    model_name="llama3.1:8b",
-                    temperature=0,
-                ),
+                llm_config=llm_config,
             )
         ),
     )
-    # chain = RetrievalQA.from_chain_type(
-    #     llm=ChatOpenAI(model="gpt-4o", temperature=0),
-    #     retriever=new_store.rag_pipeline(
-    #         requested_retrievers={"LLM", "MMR", "SIM_THRESH"},
-    #         requested_filters={"REDUNDANT", "RERANK"},
-    #         llm=ChatOpenAI(model="gpt-4o", temperature=0),
-    #         rerank_llm=ChatOpenAI(model="gpt-4o", temperature=0),
-    #     ),
-    # )
+
+    # # chain = RetrievalQA.from_chain_type(
+    # #     llm=LlmConfig(
+    # #         provider="OpenAI",
+    # #         mode="Chat",
+    # #         model_name="gpt-4o",
+    # #         temperature=0,
+    # #     ).build_chat_model(),
+    # #     retriever=new_store.rag_pipeline(
+    # #         RagPipelineConfig(
+    # #             requested_retrievers={"LLM", "MMR", "SIM_THRESH"},
+    # #             requested_filters={"REDUNDANT", "RERANK"},
+    # #             llm_config=LlmConfig(
+    # #                 provider="OpenAI",
+    # #                 mode="Chat",
+    # #                 model_name="gpt-4o",
+    # #                 temperature=0,
+    # #             ),
+    # #             rerank_llm_config=LlmConfig(
+    # #                 provider="OpenAI",
+    # #                 mode="Chat",
+    # #                 model_name="gpt-4o",
+    # #                 temperature=0,
+    # #             ),
+    # #         )
+    # #     ),
+    # # )
+    #
+    # # chain = RetrievalQA.from_chain_type(
+    # #     llm=ChatOpenAI(model="gpt-4o", temperature=0),
+    # #     retriever=new_store.rag_pipeline(
+    # #         requested_retrievers={"LLM", "MMR", "SIM_THRESH"},
+    # #         requested_filters={"REDUNDANT", "RERANK"},
+    # #         llm=ChatOpenAI(model="gpt-4o", temperature=0),
+    # #         rerank_llm=ChatOpenAI(model="gpt-4o", temperature=0),
+    # #     ),
+    # # )
+
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         result = chain.invoke({"query": QUERY})
     print("--------- RESULT -------------")
-
     print(result["result"])

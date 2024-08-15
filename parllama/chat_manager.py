@@ -23,8 +23,8 @@ from parllama.messages.par_prompt_messages import ParPromptUpdated
 from parllama.messages.par_session_messages import ParSessionAutoName
 from parllama.messages.par_session_messages import ParSessionDelete
 from parllama.messages.par_session_messages import ParSessionUpdated
-from parllama.settings_manager import settings
 from parllama.par_event_system import ParEventSystemBase
+from parllama.settings_manager import settings
 
 
 class ChatManager(ParEventSystemBase):

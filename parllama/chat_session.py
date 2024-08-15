@@ -12,12 +12,11 @@ from datetime import timezone
 from typing import Any
 from typing import Optional
 
+import ollama
 import pytz
 import rich.repr
 import simplejson as json
-import ollama
 from ollama import Options as OllamaOptions
-
 from textual.message_pump import MessagePump
 
 from parllama.chat_message import OllamaMessage

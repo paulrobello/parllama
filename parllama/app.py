@@ -39,7 +39,8 @@ from parllama.chat_manager import ChatManager
 from parllama.data_manager import dm
 from parllama.dialogs.help_dialog import HelpDialog
 from parllama.dialogs.information import InformationDialog
-from parllama.messages.messages import ChangeTab, ClearChatInputHistory
+from parllama.messages.messages import ChangeTab
+from parllama.messages.messages import ClearChatInputHistory
 from parllama.messages.messages import CreateModelFromExistingRequested
 from parllama.messages.messages import DeletePrompt
 from parllama.messages.messages import DeleteSession
@@ -76,11 +77,11 @@ from parllama.models.jobs import CreateModelJob
 from parllama.models.jobs import PullModelJob
 from parllama.models.jobs import PushModelJob
 from parllama.models.jobs import QueueJob
+from parllama.prompt_utils.import_fabric import import_fabric_manager
 from parllama.rag_manager import rag_manager
+from parllama.screens.main_screen import MainScreen
 from parllama.secrets_manager import secrets_manager
 from parllama.settings_manager import settings
-from parllama.prompt_utils.import_fabric import import_fabric_manager
-from parllama.screens.main_screen import MainScreen
 from parllama.theme_manager import theme_manager
 from parllama.update_manager import update_manager
 

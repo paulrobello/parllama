@@ -22,10 +22,11 @@ from parllama.chat_manager import ChatSession
 from parllama.chat_message import OllamaMessage
 from parllama.data_manager import dm
 from parllama.dialogs.information import InformationDialog
-from parllama.messages.messages import ChangeTab, ClearChatInputHistory
+from parllama.messages.messages import ChangeTab
 from parllama.messages.messages import ChatGenerationAborted
 from parllama.messages.messages import ChatMessage
 from parllama.messages.messages import ChatMessageSent
+from parllama.messages.messages import ClearChatInputHistory
 from parllama.messages.messages import DeleteSession
 from parllama.messages.messages import LocalModelListLoaded
 from parllama.messages.messages import LogIt

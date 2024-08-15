@@ -32,8 +32,8 @@ from parllama.models.ollama_data import ModelShowPayload
 from parllama.models.ollama_data import SiteModel
 from parllama.models.ollama_data import SiteModelData
 from parllama.models.ollama_ps import OllamaPsResponse
-from parllama.settings_manager import settings
 from parllama.par_event_system import ParEventSystemBase
+from parllama.settings_manager import settings
 from parllama.utils import output_to_dicts
 from parllama.utils import run_cmd
 from parllama.widgets.local_model_list_item import LocalModelListItem

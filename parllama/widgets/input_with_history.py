@@ -3,18 +3,16 @@
 from __future__ import annotations
 
 import os
-import simplejson as json
 
+import simplejson as json
 from textual import events
 from textual import on
 from textual.binding import Binding
 from textual.widgets import Input
 
-from parllama.messages.messages import (
-    ToggleInputMode,
-    ClearChatInputHistory,
-    RegisterForUpdates,
-)
+from parllama.messages.messages import ClearChatInputHistory
+from parllama.messages.messages import RegisterForUpdates
+from parllama.messages.messages import ToggleInputMode
 from parllama.settings_manager import settings
 from parllama.widgets.input_tab_complete import InputTabComplete
 

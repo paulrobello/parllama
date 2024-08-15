@@ -1,10 +1,13 @@
 """Custom Ollama Embeddings."""
 
+from __future__ import annotations
+
 from typing import List
 
 import ollama
 from langchain_core.embeddings import Embeddings
-from langchain_core.pydantic_v1 import BaseModel, Extra
+from langchain_core.pydantic_v1 import BaseModel
+from langchain_core.pydantic_v1 import Extra
 
 from parllama.settings_manager import settings
 

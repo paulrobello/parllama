@@ -4,19 +4,17 @@ from __future__ import annotations
 
 import warnings
 from dataclasses import dataclass
-
 from typing import Literal
 
 from langchain._api import LangChainDeprecationWarning
-
 from langchain_community.llms.ollama import Ollama
-
 from langchain_core.embeddings import Embeddings
-from langchain_core.language_models import BaseChatModel, BaseLLM
-
+from langchain_core.language_models import BaseChatModel
+from langchain_core.language_models import BaseLanguageModel
 from langchain_ollama import ChatOllama
-from langchain_openai import OpenAI, ChatOpenAI, OpenAIEmbeddings
-
+from langchain_openai import ChatOpenAI
+from langchain_openai import OpenAI
+from langchain_openai import OpenAIEmbeddings
 
 from parllama.par_ollama_embeddings import ParOllamaEmbeddings
 from parllama.settings_manager import settings
@@ -39,7 +37,25 @@ class LlmConfig:
     mode: LlmMode = "Base"
     temperature: float = 0.5
 
-    def _build_llm(self) -> BaseLLM | BaseChatModel | Embeddings:
+    def to_json(self) -> dict:
+        """Return dict for use with json"""
+        return {
+            "class_name": self.__class__.__name__,
+            "model_name": self.model_name,
+            "provider": self.provider,
+            "mode": self.mode,
+            "temperature": self.temperature,
+        }
+
+    @staticmethod
+    def from_json(data: dict) -> LlmConfig:
+        """Create instance from json data"""
+        if data["class_name"] != "LlmConfig":
+            raise ValueError(f"Invalid config class: {data['class_name']}")
+        del data["class_name"]
+        return LlmConfig(**data)
+
+    def _build_llm(self) -> BaseLanguageModel | BaseChatModel | Embeddings:
         """Build the LLM."""
         if self.provider == "Ollama":
             if self.mode == "Base":
@@ -56,7 +72,7 @@ class LlmConfig:
                 )
             if self.mode == "Embeddings":
                 return ParOllamaEmbeddings(model=self.model_name)
-        if self.provider == "OpenAI":
+        elif self.provider == "OpenAI":
             if self.mode == "Base":
                 return OpenAI(model=self.model_name, temperature=self.temperature)
             if self.mode == "Chat":
@@ -67,10 +83,10 @@ class LlmConfig:
             f"Invalid LLM provider '{self.provider}' or mode '{self.mode}'"
         )
 
-    def build_llm_model(self) -> BaseLLM:
+    def build_llm_model(self) -> BaseLanguageModel:
         """Build the LLM model."""
         llm = self._build_llm()
-        if isinstance(llm, BaseLLM):
+        if isinstance(llm, BaseLanguageModel):
             return llm
         raise ValueError(f"LLM provider '{self.provider}' does not support base mode.")
 
