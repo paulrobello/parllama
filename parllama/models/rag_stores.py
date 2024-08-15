@@ -10,65 +10,53 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal
 from typing import Optional
-from typing import Set
 
 import chromadb
 from langchain._api import LangChainDeprecationWarning
-from langchain.retrievers import ContextualCompressionRetriever
-from langchain.retrievers import MergerRetriever
-from langchain.retrievers import MultiQueryRetriever
-from langchain.retrievers.document_compressors import DocumentCompressorPipeline
-from langchain.retrievers.document_compressors import LLMListwiseRerank
+
 from langchain_chroma import Chroma
-from langchain_community.document_transformers import EmbeddingsRedundantFilter
-from langchain_community.document_transformers import LongContextReorder
-from langchain_core.documents import BaseDocumentCompressor
-from langchain_core.documents import BaseDocumentTransformer
+
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
-from langchain_core.prompts import PromptTemplate
 from langchain_core.retrievers import BaseRetriever
 from langchain_core.vectorstores import VectorStore
 from langchain_core.vectorstores import VectorStoreRetriever
 
 from parllama.llm_config import LlmConfig
 from parllama.models.rag_base import RagBase
-from parllama.passthrough_document_transformer import PassthroughDocumentTransformer
+from parllama.models.rag_pipeline import rag_pipeline, RagPipelineConfig
 from parllama.settings_manager import settings
 from parllama.utils import all_subclasses
 
 warnings.simplefilter("ignore", category=LangChainDeprecationWarning)
 
-StoreType = Literal["Not Set", "Chroma"]
+StoreType = Literal["Chroma"]
 store_types: list[StoreType] = ["Chroma"]
 
 StoreLocationType = Literal["Local", "URL"]
 store_location_types: list[StoreLocationType] = ["Local", "URL"]
-
-RetrieverType = Literal["LLM", "MMR", "SIM", "SIM_THRESH"]
-retriever_types: list[RetrieverType] = ["LLM", "MMR", "SIM", "SIM_THRESH"]
-
-RetrieverFilters = Literal["REDUNDANT", "RERANK", "REORDER"]
-retriever_filters: list[RetrieverFilters] = ["REDUNDANT", "RERANK", "REORDER"]
 
 
 @dataclass()
 class StoreConfig:
     """Configuration for VectorStore."""
 
-    store_type: StoreType = "Not Set"
     location_type: StoreLocationType = "Local"
     location: str = ""
+    """Filename or URL of the store."""
     username: Optional[str] = None
+    """Store may require authentication."""
     password: Optional[str] = None
+    """Store may require authentication."""
     token: Optional[str] = None
+    """Store may require authentication."""
     purge_on_start: bool = False
+    """Purge the store on startup"""
 
     def to_json(self) -> dict:
         """Return dict for use with json"""
         return {
             "class_name": self.__class__.__name__,
-            "store_type": self.store_type,
             "location_type": self.location_type,
             "location": self.location,
             "username": self.username,
@@ -78,17 +66,16 @@ class StoreConfig:
         }
 
     @staticmethod
-    def from_json(data: dict) -> VectorStoreConfig:
+    def from_json(data: dict) -> StoreConfig:
         """Create instance from json data"""
-        if data["class_name"] != "VectorStoreConfig":
+        if data["class_name"] != "StoreConfig":
             raise ValueError(f"Invalid config class: {data['class_name']}")
         del data["class_name"]
-        data["embeddings_config"] = LlmConfig.from_json(data["embeddings_config"])
-        return VectorStoreConfig(**data)
+        return StoreConfig(**data)
 
 
 class StoreBase(RagBase, abc.ABC):
-    """Base class for vector store."""
+    """Base class for all stores."""
 
     config: StoreConfig
 
@@ -133,17 +120,6 @@ class StoreBase(RagBase, abc.ABC):
 
 
 @dataclass()
-class RagPipelineConfig:
-    """Configuration for RagPipeline."""
-
-    requested_retrievers: Set[RetrieverType]
-    requested_filters: Optional[Set[RetrieverFilters]] = None
-    k: int = 5
-    llm_config: Optional[LlmConfig] = None
-    rerank_llm_config: Optional[LlmConfig] = None
-
-
-@dataclass()
 class VectorStoreConfig(StoreConfig):
     """Configuration for VectorStore."""
 
@@ -172,7 +148,6 @@ class VectorStoreBase(StoreBase, abc.ABC):
     """Base class for vector store."""
 
     config: VectorStoreConfig
-    store_type: StoreType = "Not Set"
     _embeddings: Optional[Embeddings] = None
     _dimension: int = 0
 
@@ -185,7 +160,6 @@ class VectorStoreBase(StoreBase, abc.ABC):
         config: VectorStoreConfig,
     ) -> None:
         super().__init__(id=id, name=name, config=config)
-        config.store_type = "Chroma"
 
         config.collection_name = re.sub(
             r"[^a-zA-Z0-9_]+", "_", config.collection_name
@@ -273,80 +247,8 @@ class VectorStoreBase(StoreBase, abc.ABC):
 
     def rag_pipeline(self, config: RagPipelineConfig) -> BaseRetriever:
         """Create pipeline to retrieve and filter documents."""
-        prompt = PromptTemplate(
-            input_variables=["question"],
-            template="""You are an AI language model assistant.\n
-            Your task is to generate 3 different versions of the given user\n
-            question to retrieve relevant documents from a vector database.\n
-            By generating multiple perspectives on the user question,\n
-            your goal is to help the user overcome some of the limitations\n
-            of distance-based similarity search. Provide these alternative\n
-            questions each on their own line. Do not output blank lines.\n
-            Original question: {question}""",
-        )
-
-        if config.requested_filters is None:
-            config.requested_filters = set()
-
-        retrievers: list[BaseRetriever] = []
-        if "LLM" in config.requested_retrievers:
-            if not config.llm_config:
-                raise ValueError("LLM model config not provided.")
-            retriever_from_llm = MultiQueryRetriever.from_llm(
-                retriever=self.vector_store.as_retriever(),
-                llm=config.llm_config.build_llm_model(),
-                prompt=prompt,
-                include_original=True,
-            )
-            retrievers.append(retriever_from_llm)
-
-        if "SIM" in config.requested_retrievers:
-            retriever_sim = self.vector_store.as_retriever(
-                search_kwargs={"k": 5},
-            )
-            retrievers.append(retriever_sim)
-
-        if "SIM_THRESH" in config.requested_retrievers:
-            retriever_sim_thresh = self.vector_store.as_retriever(
-                search_type="similarity_score_threshold",
-                search_kwargs={"k": 5, "score_threshold": 0.75},
-            )
-            retrievers.append(retriever_sim_thresh)
-
-        if "MMR" in config.requested_retrievers:
-            retriever_mmr = self.vector_store.as_retriever(
-                search_type="mmr", search_kwargs={"k": 5}
-            )
-            retrievers.append(retriever_mmr)
-
-        merger = MergerRetriever(retrievers=retrievers)
-
-        filters: list[BaseDocumentTransformer | BaseDocumentCompressor] = []
-        if "REDUNDANT" in config.requested_filters:
-            filter_redundant = EmbeddingsRedundantFilter(
-                embeddings=self.embeddings, similarity_threshold=0.95
-            )
-            filters.append(filter_redundant)
-
-        if "REORDER" in config.requested_filters:
-            reordering = LongContextReorder()
-            filters.append(reordering)
-
-        if "RERANK" in config.requested_filters:
-            if not config.rerank_llm_config:
-                raise ValueError("Reranker LLM config not provided")
-            reranker = LLMListwiseRerank.from_llm(
-                llm=config.rerank_llm_config.build_chat_model(), top_n=5
-            )
-            filters.append(reranker)
-
-        if len(filters) == 0:
-            filters.append(PassthroughDocumentTransformer())
-
-        pipeline = DocumentCompressorPipeline(transformers=list(filters))
-        return ContextualCompressionRetriever(
-            base_retriever=merger,
-            base_compressor=pipeline,
+        return rag_pipeline(
+            vector_store=self.vector_store, embeddings=self.embeddings, config=config
         )
 
     def query_pipeline(
@@ -357,10 +259,7 @@ class VectorStoreBase(StoreBase, abc.ABC):
             raise ValueError("Query must be provided.")
         retriever = self.rag_pipeline(config)
         docs = retriever.invoke(input=query)
-        return docs[: config.k]
-
-    def save(self) -> None:
-        """Save the store to a file."""
+        return docs[: config.max_documents_to_return]
 
 
 class VectorStoreChroma(VectorStoreBase):
@@ -379,7 +278,6 @@ class VectorStoreChroma(VectorStoreBase):
         config: VectorStoreConfig,
     ) -> None:
         super().__init__(id=id, name=name, config=config)
-        config.store_type = "Chroma"
 
         config.collection_name = re.sub(
             r"[^a-zA-Z0-9_]+", "_", config.collection_name

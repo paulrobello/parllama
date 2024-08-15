@@ -116,7 +116,7 @@ if __name__ == "__main__":
                         model_name="snowflake-arctic-embed:latest",
                         temperature=0,
                     ),
-                    purge_on_start=False,
+                    purge_on_start=True,
                 ),
             )
         )
@@ -137,6 +137,8 @@ if __name__ == "__main__":
         # )
 
     new_store = rag_manager.vector_stores[0]
+
+    new_store.config.purge_on_start = True
 
     num_documents = new_store.num_documents
     if num_documents == 0:
