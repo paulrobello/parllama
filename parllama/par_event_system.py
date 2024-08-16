@@ -133,9 +133,10 @@ class ParEventSystemBase:
 
     def on_par_log_it(self, event: ParLogIt) -> None:
         """Handle a ParLogIt event"""
+        event.stop()
         if not self.app:
             return
-        event.stop()
+
         self.app.post_message(
             LogIt(
                 event.msg,

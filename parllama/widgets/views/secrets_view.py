@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 
+from rich.text import Text
 from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
@@ -72,8 +73,12 @@ class SecretsView(Vertical):
             Input.Changed, Input.Submitted, Select.Changed, Checkbox.Changed
         ):
             with Horizontal(classes="section") as vs:
-                vs.border_title = "Vault: " + (
-                    "Locked" if secrets_manager.locked else "Unlocked"
+                vs.border_title = Text.assemble(
+                    "Vault: ",
+                    (
+                        "Locked" if secrets_manager.locked else "Unlocked",
+                        "bold red" if secrets_manager.locked else "bold green",
+                    ),
                 )
                 if not secrets_manager.has_password:
                     with Vertical(classes="height-auto plr-1"):
@@ -113,7 +118,7 @@ class SecretsView(Vertical):
                             yield Label("OpenAI")
                             yield InputBlurSubmit(
                                 value=secrets_manager.get_secret(
-                                    "OPENAI_API_KEY", "", False
+                                    "OPENAI_API_KEY", "", True
                                 ),
                                 id="OPENAI_API_KEY",
                                 disabled=secrets_manager.locked,
@@ -124,7 +129,7 @@ class SecretsView(Vertical):
                             yield Label("Groq")
                             yield InputBlurSubmit(
                                 value=secrets_manager.get_secret(
-                                    "GROQ_API_KEY", "", False
+                                    "GROQ_API_KEY", "", True
                                 ),
                                 id="GROQ_API_KEY",
                                 disabled=secrets_manager.locked,
@@ -135,7 +140,7 @@ class SecretsView(Vertical):
                             yield Label("Anthropic")
                             yield InputBlurSubmit(
                                 value=secrets_manager.get_secret(
-                                    "ANTHROPIC_API_KEY", "", False
+                                    "ANTHROPIC_API_KEY", "", True
                                 ),
                                 id="ANTHROPIC_API_KEY",
                                 disabled=secrets_manager.locked,
@@ -146,7 +151,7 @@ class SecretsView(Vertical):
                             yield Label("GoogleAI")
                             yield InputBlurSubmit(
                                 value=secrets_manager.get_secret(
-                                    "GOOGLE_API_KEY", "", False
+                                    "GOOGLE_API_KEY", "", True
                                 ),
                                 id="GOOGLE_API_KEY",
                                 disabled=secrets_manager.locked,
@@ -157,7 +162,7 @@ class SecretsView(Vertical):
                             yield Label("LangFlow")
                             yield InputBlurSubmit(
                                 value=secrets_manager.get_secret(
-                                    "LANGFLOW_API_KEY", "", False
+                                    "LANGFLOW_API_KEY", "", True
                                 ),
                                 id="LANGFLOW_API_KEY",
                                 disabled=secrets_manager.locked,
@@ -167,7 +172,7 @@ class SecretsView(Vertical):
                         with Horizontal():
                             yield Label("HuggingFace")
                             yield InputBlurSubmit(
-                                value=secrets_manager.get_secret("HF_TOKEN", "", False),
+                                value=secrets_manager.get_secret("HF_TOKEN", "", True),
                                 id="HF_TOKEN",
                                 disabled=secrets_manager.locked,
                                 tooltip="HF_TOKEN",
@@ -180,7 +185,7 @@ class SecretsView(Vertical):
                         yield Label("Tavily")
                         yield InputBlurSubmit(
                             value=secrets_manager.get_secret(
-                                "TAVILY_API_KEY", "", False
+                                "TAVILY_API_KEY", "", True
                             ),
                             id="TAVILY_API_KEY",
                             disabled=secrets_manager.locked,
@@ -191,7 +196,7 @@ class SecretsView(Vertical):
                         yield Label("Serper")
                         yield InputBlurSubmit(
                             value=secrets_manager.get_secret(
-                                "SERPER_API_KEY", "", False
+                                "SERPER_API_KEY", "", True
                             ),
                             id="SERPER_API_KEY",
                             disabled=secrets_manager.locked,
@@ -201,9 +206,7 @@ class SecretsView(Vertical):
                     with Horizontal():
                         yield Label("Google Search")
                         yield InputBlurSubmit(
-                            value=secrets_manager.get_secret(
-                                "GOOGLE_CSE_ID", "", False
-                            ),
+                            value=secrets_manager.get_secret("GOOGLE_CSE_ID", "", True),
                             id="GOOGLE_CSE_ID",
                             disabled=secrets_manager.locked,
                             tooltip="GOOGLE_CSE_ID",
@@ -261,7 +264,6 @@ class SecretsView(Vertical):
         if not res:
             return
         secrets_manager.clear()
-        self.notify("Vault Cleared")
         await self.recompose()
 
     @on(Button.Pressed, "#set_password")
@@ -284,7 +286,7 @@ class SecretsView(Vertical):
 
         await self.recompose()
 
-    # pylint: disable=too-many-branches
+    # pylint: disable=too-many-branches,too-many-return-statements
     @on(Input.Submitted)
     async def on_input_submitted(self, event: Input.Submitted) -> None:
         """Handle input submission"""
@@ -318,6 +320,9 @@ class SecretsView(Vertical):
             return
         if ctrl.id == "new_password":
             if not self.password_input.value or not self.new_password_input.value:
+                return
+            if self.password_input.value == self.new_password_input.value:
+                self.notify("New password same as old", severity="error", timeout=8)
                 return
             try:
                 secrets_manager.change_password(

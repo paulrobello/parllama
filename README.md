@@ -177,6 +177,7 @@ Unless you specify "--no-save" most flags such as -u, -t, -m, -s are sticky and 
 * PARLLAMA_THEME_MODE - Used to set --theme-mode
 * OLLAMA_URL - Used to set --ollama-url
 * PARLLAMA_AUTO_NAME_SESSION - Set to 0 or 1 to disable / enable session auto naming using LLM
+* PARLLAMA_VAULT_KEY - password to unlock vault without manual entry. **Not Recommended**
 
 ## Running PAR_LLAMA
 
@@ -253,9 +254,10 @@ Currently, importing prompts from the popular Fabric project is supported with m
 ## Secrets
 Parllama has a built-in secrets manager to securely manage all your secrets such as API keys.  
 The secrets manager uses PBKDF2 with HMAC-SHA256 to derive a key from your password,
-then uses AES-GCM encryption with PKCS7 padding for storing secrets.  
+then uses AES-GCM encryption for storing secrets.  
 Secrets are never stored in plain text, and only decrypted when accessed.  
 Secrets are imported to the application environment and used by any providers that require them.  
+While it is not recommended for security reasons, you can specify the vault password using the environment variable `PARLLAMA_VAULT_KEY` to auto unlock the vault on app startup.
 ![Secrets Manager](https://raw.githubusercontent.com/paulrobello/parllama/main/docs/secrets_dark_1.png)
 
 

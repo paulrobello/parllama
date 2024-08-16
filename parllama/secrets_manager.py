@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import base64
 import os
-from typing import Optional
+from typing import Optional, Any
 import simplejson as json
+from cryptography.exceptions import InvalidTag
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
@@ -13,8 +14,8 @@ from cryptography.hazmat.primitives.ciphers import algorithms
 from cryptography.hazmat.primitives.ciphers import Cipher
 from cryptography.hazmat.primitives.ciphers import modes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.primitives.padding import PKCS7
 from simplejson import JSONDecodeError
+from textual.app import App
 
 from parllama.par_event_system import ParEventSystemBase
 from parllama.settings_manager import settings
@@ -24,7 +25,7 @@ class SecretsManager(ParEventSystemBase):
     """
     Manager for application secrets.
     Uses PBKDF2 with HMAC-SHA256 to derive a key from a password,
-    then uses AES-GCM encryption with PKCS7 padding for storing secrets.
+    then uses AES-GCM encryption for storing secrets.
     Secrets are never stored in plain text, and only decrypted when accessed.
     """
 
@@ -47,7 +48,14 @@ class SecretsManager(ParEventSystemBase):
         self._key_secure = None
         self._key = None
         self._secrets_file = secrets_file
+
+    def set_app(self, app: App[Any]) -> None:
+        """Set the app and load existing sessions and prompts from storage"""
+        super().set_app(app)
         self._load_secrets()
+        env_key = os.environ.get("PARLLAMA_VAULT_KEY")
+        if env_key:
+            self.unlock(env_key, True)
 
     def _load_secrets(self) -> None:
         """Load secrets from the secrets file."""
@@ -63,6 +71,7 @@ class SecretsManager(ParEventSystemBase):
             self._key_secure = None
         except JSONDecodeError as e:
             self.log_it(e)
+            self.log_it("Invalid secrets file format", notify=True, severity="error")
             raise ValueError("Invalid secrets file format") from e
 
     def _save_secrets(self) -> None:
@@ -102,15 +111,22 @@ class SecretsManager(ParEventSystemBase):
         """Checks if a password is set."""
         return self._key_secure is not None
 
-    def change_password(self, old_password: str, new_password: str) -> None:
+    def change_password(
+        self, old_password: str, new_password: str, no_raise: bool = False
+    ) -> None:
         """Changes the password and re-encrypts existing secrets."""
         if not self.has_password:
             self.unlock(new_password)
             return
 
         if not self.verify_password(old_password):
+            if no_raise:
+                self.log_it("Invalid old password.", notify=True, severity="error")
+                return
             raise ValueError("Invalid old password.")
-
+        if new_password == old_password:
+            return
+        self.unlock(old_password)
         new_key: bytes = self._derive_key(new_password)
         self._key_secure = self._encrypt(new_password, new_key)
 
@@ -133,101 +149,117 @@ class SecretsManager(ParEventSystemBase):
             self.log_it(e)
             return False
 
-    def unlock(self, password: str) -> None:
+    def unlock(self, password: str, no_raise: bool = False) -> bool:
         """Unlock the vault or set initial vault password."""
         if not self.verify_password(password):
             self.lock()
+            if no_raise:
+                self.log_it("Invalid password.", notify=True, severity="error")
+                return False
             raise ValueError("Invalid password.")
         self._key = self._derive_key(password)
         if self._key_secure is None:
             self._key_secure = self._encrypt(password, self._derive_key(password))
             self._save_secrets()
+        return True
 
     def _encrypt(self, plaintext: str, alt_key: bytes | None = None) -> str:
         key: bytes | None = alt_key or self._key
         if key is None:
-            raise ValueError("Password not set. Use set_password() before encrypting.")
+            raise ValueError("Password not set. Use unlock() before encrypting.")
 
-        iv = os.urandom(16)
-        cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
+        iv = os.urandom(12)
+        cipher = Cipher(algorithms.AES(key), modes.GCM(iv), backend=default_backend())
         encryptor = cipher.encryptor()
-        padder = PKCS7(algorithms.AES.block_size).padder()
-        padded_data = padder.update(plaintext.encode("utf-8")) + padder.finalize()
-        encrypted = encryptor.update(padded_data) + encryptor.finalize()
-        return base64.b64encode(iv + encrypted).decode("utf-8")
+        encrypted = encryptor.update(plaintext.encode("utf-8")) + encryptor.finalize()
+        return base64.b64encode(iv + encryptor.tag + encrypted).decode("utf-8")
 
     def _decrypt(self, ciphertext: str, alt_key: bytes | None = None) -> str:
         if self._key is None and alt_key is None:
-            raise ValueError("Password not set. Use set_password() before decrypting.")
+            raise ValueError("Vault locked. Use unlock() before decrypting.")
         try:
             decoded = base64.b64decode(ciphertext)
-            iv, encrypted = decoded[:16], decoded[16:]
+            iv, tag, encrypted = decoded[:12], decoded[12:28], decoded[28:]
             cipher = Cipher(
                 algorithms.AES(alt_key or self._key),  # type: ignore
-                modes.CBC(iv),
+                modes.GCM(iv, tag),
                 backend=default_backend(),
             )
             decryptor = cipher.decryptor()
-            padded_data = decryptor.update(encrypted) + decryptor.finalize()
-            unpadder = PKCS7(algorithms.AES.block_size).unpadder()
-            plaintext = unpadder.update(padded_data) + unpadder.finalize()
+            plaintext = decryptor.update(encrypted) + decryptor.finalize()
             return plaintext.decode("utf-8")
-        except (ValueError, TypeError) as e:
+        except (ValueError, TypeError, InvalidTag) as e:
             self.log_it(e)
             raise ValueError("Bad password, invalid or corrupted secret.") from e
 
-    def add_secret(self, key: str, value: str):
+    def add_secret(self, key: str, value: str, no_raise: bool = False):
         """Adds a new secret, encrypts it, and saves it to the file."""
         if not self._key:
-            raise ValueError(
-                "Password not set. Use set_password() before adding a secret."
-            )
+            if no_raise:
+                self.log_it("Password not set. Use unlock() before adding a secret.")
+                return
+            raise ValueError("Password not set. Use unlock() before adding a secret.")
 
         encrypted_value = self._encrypt(value)
         self._secrets[key] = encrypted_value
         self._save_secrets()
 
     def get_secret(
-        self, key: str, default: Optional[str] = None, raise_error: bool = True
+        self, key: str, default: Optional[str] = None, no_raise: bool = False
     ) -> str:
         """Decrypts and returns the secret associated with the given key."""
         if self.locked:
-            if raise_error:
-                raise ValueError("Vault is locked")
-            return "Vault is locked"
+            if no_raise:
+                return "Vault is locked"
+            raise ValueError("Vault is locked")
+
         encrypted_value = self._secrets.get(key)
         if encrypted_value is None:
             if default is None:
+                if no_raise:
+                    return ""
                 raise KeyError(f"No secret found for key: {key}")
             return default
         try:
             return self._decrypt(encrypted_value)
         except ValueError as e:
-            if raise_error:
-                raise e
-            return default or ""
+            if no_raise:
+                return default or ""
+            raise e
 
     def get_secret_with_pw(
-        self, key: str, password: str, raise_error: bool = False
+        self, key: str, password: str, no_raise: bool = False
     ) -> str:
         """Returns secret associated with the given key, using the provided password if vault is locked."""
         try:
             if self.locked:
                 if not password:
+                    if no_raise:
+                        self.log_it(
+                            "Password required to unlock the vault.",
+                            notify=True,
+                            severity="error",
+                        )
+                        return ""
                     raise ValueError("Password required to unlock the vault.")
                 self.unlock(password)
             return self.get_secret(key)
         except ValueError as e:
-            if raise_error:
-                raise e
-            return ""
+            if no_raise:
+                return ""
+            raise e
 
-    def remove_secret(self, key: str) -> None:
+    def remove_secret(self, key: str, no_raise: bool = False) -> None:
         """Removes the secret associated with the given key and saves the changes."""
         if key in self._secrets:
             del self._secrets[key]
             self._save_secrets()
         else:
+            if no_raise:
+                self.log_it(
+                    f"No secret found for key: {key}", notify=True, severity="warning"
+                )
+                return
             raise KeyError(f"No secret found for key: {key}")
 
     def clear(self) -> None:
@@ -237,6 +269,7 @@ class SecretsManager(ParEventSystemBase):
         self._key_secure = None
         self.lock()
         self._save_secrets()
+        self.log_it("Vault cleared and password removed.", notify=True)
 
     def import_to_env(self, no_raise: bool = False) -> None:
         """Imports secrets from the secrets file to the environment variables."""
@@ -248,6 +281,11 @@ class SecretsManager(ParEventSystemBase):
             v = self._decrypt(value)
             if v:
                 os.environ[key] = v
+
+    @property
+    def is_empty(self) -> bool:
+        """Checks if the secrets manager is empty."""
+        return len(self._secrets) == 0
 
     def __len__(self):
         """Returns the number of secrets stored."""
