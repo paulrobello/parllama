@@ -15,6 +15,8 @@ from textual.widgets import Checkbox
 from textual.widgets import Input
 from textual.widgets import Label
 from textual.widgets import Select
+
+from parllama.dialogs.yes_no_dialog import YesNoDialog
 from parllama.secrets_manager import secrets_manager
 from parllama.widgets.input_blur_submit import InputBlurSubmit
 
@@ -73,23 +75,35 @@ class SecretsView(Vertical):
                 vs.border_title = "Vault: " + (
                     "Locked" if secrets_manager.locked else "Unlocked"
                 )
+                if not secrets_manager.has_password:
+                    with Vertical(classes="height-auto plr-1"):
+                        yield Label("Set Password")
+                        yield self.password_input
+                        yield Label("Verify Password")
+                        yield self.new_password_input
+                        yield Button("Set Password", id="set_password")
+                else:
+                    with Vertical(classes="height-auto plr-1"):
+                        yield Label("Password")
+                        yield self.password_input
+                        yield Label("New Password")
+                        yield self.new_password_input
                 with Vertical(classes="height-auto plr-1"):
-                    yield Label("Password")
-                    yield self.password_input
-                    yield Label("New Password")
-                    yield self.new_password_input
-                with Vertical(classes="height-auto plr-1"):
-                    yield Button(
+                    with Button(
                         "Import from ENV",
                         id="import_env",
                         disabled=secrets_manager.locked,
-                    )
+                    ) as b:
+                        b.tooltip = "Import all matching environment variables from your environment."
                     yield Button("Clear Vault", id="clear_vault")
                     yield Static(
                         "Enter password and press enter to set password / unlock."
                     )
                     yield Static("Blank password locks vault.")
                     yield Static("Enter password and new password to change password.")
+                    yield Static(
+                        "Mouse over fields to see corresponding environment variables."
+                    )
 
             with Horizontal():
                 with Vertical(classes="column"):
@@ -230,17 +244,53 @@ class SecretsView(Vertical):
                 self.notify(f"Imported: {key}")
 
     @on(Button.Pressed, "#clear_vault")
-    async def clear_vault(self, event: Button.Pressed) -> None:
-        """Import env vars into secrets"""
+    def clear_vault(self, event: Button.Pressed) -> None:
+        """Prompt to purge vault"""
         event.stop()
+        self.app.push_screen(
+            YesNoDialog(
+                "Confirm Vault Purge",
+                "All secrets will be cleared. Are you sure?",
+                yes_first=False,
+            ),
+            self.confirm_clear_response,  # type: ignore
+        )
+
+    async def confirm_clear_response(self, res: bool) -> None:
+        """Purge vault"""
+        if not res:
+            return
         secrets_manager.clear()
         self.notify("Vault Cleared")
         await self.recompose()
 
+    @on(Button.Pressed, "#set_password")
+    async def set_password(self, event: Button.Pressed) -> None:
+        """Set vault password"""
+        event.stop()
+        p1: str = self.password_input.value.strip()
+        p2: str = self.new_password_input.value.strip()
+        if not p1 or not p2:
+            self.notify("Passwords cannot be blank", severity="error", timeout=8)
+            return
+        if p1 != p2:
+            self.notify("Passwords do not match", severity="error", timeout=8)
+            return
+        secrets_manager.unlock(p1)
+        self.notify("Password set")
+        with self.prevent(Input.Changed):
+            self.password_input.value = ""
+            self.new_password_input.value = ""
+
+        await self.recompose()
+
+    # pylint: disable=too-many-branches
     @on(Input.Submitted)
     async def on_input_submitted(self, event: Input.Submitted) -> None:
         """Handle input submission"""
         event.stop()
+        if not secrets_manager.has_password:
+            return
         ctrl: Input = event.control
         if event.validation_result is not None and not event.validation_result.is_valid:
             errors = ",".join(
@@ -250,7 +300,11 @@ class SecretsView(Vertical):
             return
         if ctrl.id == "password":
             try:
-                secrets_manager.set_password(ctrl.value.strip())
+                v: str = ctrl.value.strip()
+                if not v:
+                    secrets_manager.lock()
+                else:
+                    secrets_manager.unlock(v)
                 if secrets_manager.locked:
                     self.notify("Vault locked")
                 else:

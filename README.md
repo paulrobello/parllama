@@ -20,6 +20,7 @@
     * [Dev mode](#dev-mode)
 * [Quick start chat workflow](#quick-start-chat-workflow)
 * [Custom Prompts](#Custom-Prompts)
+* [Secrets](#Secrets)
 * [Themes](#themes)
 * [Contributing](#contributing)
 * [FAQ](#faq)
@@ -249,6 +250,15 @@ You can create a library of custom prompts for easy starting of new chats.
 You can set up system prompts and user messages to prime conversations with the option of sending immediately to the LLM upon loading of the prompt.  
 Currently, importing prompts from the popular Fabric project is supported with more on the way.  
 
+## Secrets
+Parllama has a built-in secrets manager to securely manage all your secrets such as API keys.  
+The secrets manager uses PBKDF2 with HMAC-SHA256 to derive a key from your password,
+then uses AES-GCM encryption with PKCS7 padding for storing secrets.  
+Secrets are never stored in plain text, and only decrypted when accessed.  
+Secrets are imported to the application environment and used by any providers that require them.  
+![Secrets Manager](https://raw.githubusercontent.com/paulrobello/parllama/main/docs/secrets_dark_1.png)
+
+
 ## Themes
 Themes are json files stored in the themes folder in the data directory which defaults to **~/.parllama/themes**  
 
@@ -333,15 +343,19 @@ if anything remains to be fixed before the commit is allowed.
 * Chat tabs allow chat with multiple models at same time
 * Custom prompt library with import from Fabric
 * Auto complete of slash commands, input history, multi line edit
+* Secure secrets management for API keys and other sensitive data
 
 ### Where we're going
+* Ability to use other AI providers like Open AI
 * Chat using embeddings for local documents
 * Expand ability to import custom prompts of other tools
 * LLM tool use
-* Ability to use other AI providers like Open AI
+
 
 ## What's new
 
+### v0.3.9
+* Added secrets manager
 
 ### v0.3.8
 * Added secrets manager with encrypted storage

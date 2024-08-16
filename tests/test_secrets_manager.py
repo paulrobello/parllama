@@ -20,7 +20,8 @@ class TestSecretsManager(unittest.TestCase):
         if os.path.exists(self.secrets_file):
             os.unlink(self.secrets_file)
         self.secrets_manager = SecretsManager(self.secrets_file)
-        self.secrets_manager.set_password("test_password")
+        with patch("builtins.open", mock_open()):
+            self.secrets_manager.unlock("test_password")
 
     def tearDown(self):
         """Cleanup test environment"""
@@ -68,7 +69,9 @@ class TestSecretsManager(unittest.TestCase):
         """Test that secrets cannot be accessed with an incorrect password"""
         with patch("builtins.open", mock_open()) as m:
             self.secrets_manager.add_secret("test_key", "test_value")
-            self.secrets_manager.set_password("wrong_password")
+            self.assertEqual(len(self.secrets_manager), 1)
+            with self.assertRaises(ValueError):
+                self.secrets_manager.unlock("wrong_password")
             with self.assertRaises(ValueError):
                 self.secrets_manager.get_secret("test_key")
             m.assert_called_once_with(self.secrets_file, "w", encoding="utf-8")
@@ -94,10 +97,9 @@ class TestSecretsManager(unittest.TestCase):
     def test_verify_password(self):
         """Test that verify_password returns True with the correct password and False with an incorrect password"""
         with patch("builtins.open", mock_open()) as m:
-            self.secrets_manager.add_secret("test_key", "test_value")
             self.assertTrue(self.secrets_manager.verify_password("test_password"))
             self.assertFalse(self.secrets_manager.verify_password("wrong_password"))
-            m.assert_called_once_with(self.secrets_file, "w", encoding="utf-8")
+            m.assert_not_called()
 
     def test_dunder_methods(self):
         """Test that secrets manager behaves as a dict"""
@@ -115,6 +117,12 @@ class TestSecretsManager(unittest.TestCase):
             del self.secrets_manager["test_key"]
             self.assertNotIn("test_key", self.secrets_manager)
             m.assert_called_once_with(self.secrets_file, "w", encoding="utf-8")
+
+    def test_lock(self):
+        """Test that secrets manager behaves as a dict"""
+        assert not self.secrets_manager.locked
+        self.secrets_manager.lock()
+        assert self.secrets_manager.locked
 
 
 if __name__ == "__main__":

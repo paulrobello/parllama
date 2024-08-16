@@ -168,7 +168,8 @@ class ChatManager(ParEventSystemBase):
     def notify_sessions_changed(self) -> None:
         """Notify changed"""
         # self.log_it("CM Notify session changed")
-        self.app.post_message(SessionListChanged())
+        if self.app:
+            self.app.post_message(SessionListChanged())
 
     def get_or_create_session(  # pylint: disable=too-many-arguments
         self,
@@ -278,7 +279,8 @@ class ChatManager(ParEventSystemBase):
         self.log_it(
             f"Session {session.name or session.id} copied to prompt", notify=True
         )
-        self.app.post_message(ChangeTab(tab="Prompts"))
+        if self.app:
+            self.app.post_message(ChangeTab(tab="Prompts"))
         return prompt
 
     ############ Prompts #################
@@ -328,7 +330,8 @@ class ChatManager(ParEventSystemBase):
                     # self.log_it(prompt)
             except Exception as e:  # pylint: disable=broad-exception-caught
                 self.log_it(f"Error loading prompt {e}", notify=True, severity="error")
-        self.app.post_message(PromptListLoaded())
+        if self.app:
+            self.app.post_message(PromptListLoaded())
 
     def add_prompt(self, prompt: ChatPrompt) -> None:
         """Add a custom prompt"""
@@ -351,7 +354,8 @@ class ChatManager(ParEventSystemBase):
     def notify_prompts_changed(self) -> None:
         """Notify changed"""
         # self.log_it("CM Notify prompts changed")
-        self.app.post_message(PromptListChanged())
+        if self.app:
+            self.app.post_message(PromptListChanged())
 
     def on_par_prompt_updated(self, event: ParPromptUpdated) -> None:
         """Handle a ParSessionUpdated event"""

@@ -6,7 +6,7 @@ import uuid
 from collections.abc import Awaitable
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Optional
 from typing import Callable
 from typing import ClassVar
 
@@ -68,7 +68,7 @@ class ParEventSystemBase:
 
     id: str
     parent: ParEventSystemBase | None
-    app: App[Any]
+    app: Optional[App[Any]]
 
     def __init__(
         self, id: str | None = None  # pylint: disable=redefined-builtin
@@ -78,6 +78,7 @@ class ParEventSystemBase:
             id = uuid.uuid4().hex
         self.id = id
         self.parent = None
+        self.app = None
 
     def set_app(self, app: App[Any]) -> None:
         """Set the app"""

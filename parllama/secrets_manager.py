@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import base64
-import json
 import os
 from typing import Optional
+import simplejson as json
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
@@ -14,24 +14,37 @@ from cryptography.hazmat.primitives.ciphers import Cipher
 from cryptography.hazmat.primitives.ciphers import modes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives.padding import PKCS7
+from simplejson import JSONDecodeError
 
 from parllama.par_event_system import ParEventSystemBase
 from parllama.settings_manager import settings
 
 
 class SecretsManager(ParEventSystemBase):
-    """Manager for application settings."""
+    """
+    Manager for application secrets.
+    Uses PBKDF2 with HMAC-SHA256 to derive a key from a password,
+    then uses AES-GCM encryption with PKCS7 padding for storing secrets.
+    Secrets are never stored in plain text, and only decrypted when accessed.
+    """
 
+    _key_secure: str | None = None
+    """Encrypted current vault password"""
     _key: bytes | None = None
+    """Decryption key derived from the password."""
     _salt: bytes
+    """Used with password to derive the en/decryption key."""
     _secrets: dict[str, str]
+    """Dict containing encrypted secrets."""
     _secrets_file: str
+    """JSON file containing encrypted secrets."""
 
     def __init__(self, secrets_file: str, **kwargs) -> None:
-        """Initialize Manager."""
+        """Initialize Manager and load vault."""
         super().__init__(**kwargs)
         self._secrets = {}
         self._salt = os.urandom(16)
+        self._key_secure = None
         self._key = None
         self._secrets_file = secrets_file
         self._load_secrets()
@@ -42,19 +55,27 @@ class SecretsManager(ParEventSystemBase):
             with open(self._secrets_file, "r", encoding="utf-8") as file:
                 data = json.load(file)
                 self._salt = base64.b64decode(data.get("__salt__"))
+                self._key_secure = data.get("__key__")
                 self._secrets = data.get("secrets", {})
         except FileNotFoundError:
             self._secrets = {}
-            self._salt = os.urandom(16)  # Generate a new salt if file doesn't exist
+            self._salt = os.urandom(16)
+            self._key_secure = None
+        except JSONDecodeError as e:
+            self.log_it(e)
+            raise ValueError("Invalid secrets file format") from e
 
     def _save_secrets(self) -> None:
         """Saves secrets to the secrets file."""
         data = {
             "__salt__": base64.b64encode(self._salt).decode("utf-8"),
+            "__key__": self._key_secure,
             "secrets": self._secrets,
         }
         with open(self._secrets_file, "w", encoding="utf-8") as file:
             json.dump(data, file, ensure_ascii=False, indent=2)
+
+        self.import_to_env(True)
 
     def _derive_key(self, password: str) -> bytes:
         """Derives a key from the given password and the stored salt."""
@@ -74,47 +95,53 @@ class SecretsManager(ParEventSystemBase):
 
     def lock(self) -> None:
         """Locks the secrets manager."""
-        self.set_password("")
+        self._key = None
+
+    @property
+    def has_password(self) -> bool:
+        """Checks if a password is set."""
+        return self._key_secure is not None
 
     def change_password(self, old_password: str, new_password: str) -> None:
-        """Changes the password and re-encrypts the secrets."""
-        if len(self) == 0:
-            self.set_password(new_password)
+        """Changes the password and re-encrypts existing secrets."""
+        if not self.has_password:
+            self.unlock(new_password)
             return
 
         if not self.verify_password(old_password):
             raise ValueError("Invalid old password.")
 
-        new_key: bytes | None = self._derive_key(new_password)
+        new_key: bytes = self._derive_key(new_password)
+        self._key_secure = self._encrypt(new_password, new_key)
+
         encrypted_secrets = {}
         for key, value in self._secrets.items():
             encrypted_secrets[key] = self._encrypt(self._decrypt(value), new_key)
         self._secrets = encrypted_secrets
+        self._key = new_key
         self._save_secrets()
-        self.set_password(new_password)
 
     def verify_password(self, password: str) -> bool:
-        """Verifies the given password."""
-        if len(self) == 0:
-            raise ValueError("Can't verify password without secrets.")
+        """Verifies the given password. Returns True if vault password is not set."""
         try:
-            values = list(self._secrets.values())
-            self._decrypt(values[0], self._derive_key(password))
+            if not self.has_password:
+                return True
+            return (
+                self._decrypt(self._key_secure, self._derive_key(password)) == password  # type: ignore
+            )
         except ValueError as e:
             self.log_it(e)
             return False
-        return True
 
-    def set_password(self, password: str) -> None:
-        """Sets the password and derives the AES key."""
-        if password:
-            if len(self):
-                if not self.verify_password(password):
-                    self.set_password("")
-                    raise ValueError("Invalid password.")
-            self._key = self._derive_key(password)
-        else:
-            self._key = None
+    def unlock(self, password: str) -> None:
+        """Unlock the vault or set initial vault password."""
+        if not self.verify_password(password):
+            self.lock()
+            raise ValueError("Invalid password.")
+        self._key = self._derive_key(password)
+        if self._key_secure is None:
+            self._key_secure = self._encrypt(password, self._derive_key(password))
+            self._save_secrets()
 
     def _encrypt(self, plaintext: str, alt_key: bytes | None = None) -> str:
         key: bytes | None = alt_key or self._key
@@ -188,7 +215,7 @@ class SecretsManager(ParEventSystemBase):
             if self.locked:
                 if not password:
                     raise ValueError("Password required to unlock the vault.")
-                self.set_password(password)
+                self.unlock(password)
             return self.get_secret(key)
         except ValueError as e:
             if raise_error:
@@ -204,11 +231,23 @@ class SecretsManager(ParEventSystemBase):
             raise KeyError(f"No secret found for key: {key}")
 
     def clear(self) -> None:
-        """Clear vault"""
+        """Clear vault and remove password"""
         self._secrets.clear()
         self._salt = os.urandom(16)
-        self.set_password("")
+        self._key_secure = None
+        self.lock()
         self._save_secrets()
+
+    def import_to_env(self, no_raise: bool = False) -> None:
+        """Imports secrets from the secrets file to the environment variables."""
+        if self.locked:
+            if no_raise:
+                return
+            raise ValueError("Vault is locked")
+        for key, value in self._secrets.items():
+            v = self._decrypt(value)
+            if v:
+                os.environ[key] = v
 
     def __len__(self):
         """Returns the number of secrets stored."""
