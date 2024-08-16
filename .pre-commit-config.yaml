@@ -16,7 +16,7 @@ repos:
     -   id: check-json
     -   id: pretty-format-json
         args: [--autofix, --no-sort-keys]
-        exclude: tests(/\w*)*/functional/|tests/input|tests(/.*)+/conftest.py|doc/data/messages|tests(/\w*)*data/
+        exclude: tests(/\w*)*/functional/|tests/input|tests(/.*)+/conftest.py|doc/data/messages|tests(/\w*)*data/|Pipfile.lock
 
 #-   repo: https://github.com/asottile/pyupgrade
 #    rev: v3.16.0

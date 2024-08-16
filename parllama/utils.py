@@ -45,7 +45,16 @@ from parllama.icons import TRASH_EMOJI
 DECIMAL_PRECESSION = 5
 
 TabType: TypeAlias = Literal[
-    "Local", "Site", "Chat", "Prompts", "Tools", "Create", "Options", "Rag", "Logs"
+    "Local",
+    "Site",
+    "Chat",
+    "Prompts",
+    "Tools",
+    "Create",
+    "Options",
+    "Secrets",
+    "Rag",
+    "Logs",
 ]
 valid_tabs: list[TabType] = [
     "Local",
@@ -55,6 +64,7 @@ valid_tabs: list[TabType] = [
     "Tools",
     "Create",
     "Options",
+    "Secrets",
     "Rag",
     "Logs",
 ]

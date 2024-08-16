@@ -28,6 +28,7 @@ from parllama.widgets.views.model_tools_view import ModelToolsView
 from parllama.widgets.views.options_view import OptionsView
 from parllama.widgets.views.prompt_view import PromptView
 from parllama.widgets.views.rag_view import RagView
+from parllama.widgets.views.secrets_view import SecretsView
 from parllama.widgets.views.site_model_view import SiteModelView
 
 
@@ -48,6 +49,7 @@ class MainScreen(Screen[None]):
     model_tools_view: ModelToolsView
     create_view: ModelCreateView
     options_view: OptionsView
+    secrets_view: SecretsView
     rag_view: RagView
     log_view: LogView
 
@@ -64,7 +66,9 @@ class MainScreen(Screen[None]):
         self.prompt_view = PromptView(id="prompt_view")
         self.create_view = ModelCreateView(id="model_create")
         self.model_tools_view = ModelToolsView(id="model_tools")
+        self.secrets_view = SecretsView(id="secrets")
         self.options_view = OptionsView(id="options")
+
         self.rag_view = RagView(id="rag")
         self.log_view = LogView()
 
@@ -107,6 +111,8 @@ class MainScreen(Screen[None]):
                 yield self.create_view
             with TabPane("Options", id="Options"):
                 yield self.options_view
+            with TabPane("Secrets", id="Secrets"):
+                yield self.secrets_view
             with TabPane("Rag", id="Rag"):
                 yield self.rag_view
             with TabPane("Logs", id="Logs"):

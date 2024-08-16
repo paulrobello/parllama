@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import json
 import os
+from typing import Optional
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
@@ -52,7 +53,7 @@ class SecretsManager(ParEventSystemBase):
             "secrets": self._secrets,
         }
         with open(self._secrets_file, "w", encoding="utf-8") as file:
-            json.dump(data, file, ensure_ascii=False)
+            json.dump(data, file, ensure_ascii=False, indent=2)
 
     def _derive_key(self, password: str) -> bytes:
         """Derives a key from the given password and the stored salt."""
@@ -98,13 +99,18 @@ class SecretsManager(ParEventSystemBase):
         try:
             values = list(self._secrets.values())
             self._decrypt(values[0], self._derive_key(password))
-        except ValueError:
+        except ValueError as e:
+            self.log_it(e)
             return False
         return True
 
     def set_password(self, password: str) -> None:
         """Sets the password and derives the AES key."""
         if password:
+            if len(self):
+                if not self.verify_password(password):
+                    self.set_password("")
+                    raise ValueError("Invalid password.")
             self._key = self._derive_key(password)
         else:
             self._key = None
@@ -123,13 +129,13 @@ class SecretsManager(ParEventSystemBase):
         return base64.b64encode(iv + encrypted).decode("utf-8")
 
     def _decrypt(self, ciphertext: str, alt_key: bytes | None = None) -> str:
-        if self._key is None:
+        if self._key is None and alt_key is None:
             raise ValueError("Password not set. Use set_password() before decrypting.")
         try:
             decoded = base64.b64decode(ciphertext)
             iv, encrypted = decoded[:16], decoded[16:]
             cipher = Cipher(
-                algorithms.AES(alt_key or self._key),
+                algorithms.AES(alt_key or self._key),  # type: ignore
                 modes.CBC(iv),
                 backend=default_backend(),
             )
@@ -139,6 +145,7 @@ class SecretsManager(ParEventSystemBase):
             plaintext = unpadder.update(padded_data) + unpadder.finalize()
             return plaintext.decode("utf-8")
         except (ValueError, TypeError) as e:
+            self.log_it(e)
             raise ValueError("Bad password, invalid or corrupted secret.") from e
 
     def add_secret(self, key: str, value: str):
@@ -152,12 +159,40 @@ class SecretsManager(ParEventSystemBase):
         self._secrets[key] = encrypted_value
         self._save_secrets()
 
-    def get_secret(self, key: str) -> str:
+    def get_secret(
+        self, key: str, default: Optional[str] = None, raise_error: bool = True
+    ) -> str:
         """Decrypts and returns the secret associated with the given key."""
+        if self.locked:
+            if raise_error:
+                raise ValueError("Vault is locked")
+            return "Vault is locked"
         encrypted_value = self._secrets.get(key)
         if encrypted_value is None:
-            raise KeyError(f"No secret found for key: {key}")
-        return self._decrypt(encrypted_value)
+            if default is None:
+                raise KeyError(f"No secret found for key: {key}")
+            return default
+        try:
+            return self._decrypt(encrypted_value)
+        except ValueError as e:
+            if raise_error:
+                raise e
+            return default or ""
+
+    def get_secret_with_pw(
+        self, key: str, password: str, raise_error: bool = False
+    ) -> str:
+        """Returns secret associated with the given key, using the provided password if vault is locked."""
+        try:
+            if self.locked:
+                if not password:
+                    raise ValueError("Password required to unlock the vault.")
+                self.set_password(password)
+            return self.get_secret(key)
+        except ValueError as e:
+            if raise_error:
+                raise e
+            return ""
 
     def remove_secret(self, key: str) -> None:
         """Removes the secret associated with the given key and saves the changes."""
