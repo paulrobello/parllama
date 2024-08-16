@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+import os
+
 from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal
 from textual.containers import Vertical
 from textual.events import Show
-from textual.widgets import Button
+from textual.widgets import Button, Static
 from textual.widgets import Checkbox
 from textual.widgets import Input
 from textual.widgets import Label
@@ -50,6 +52,9 @@ class SecretsView(Vertical):
             border: solid $primary;
             border-title-color: $primary;
         }
+        InputBlurSubmit {
+            width: 1fr;
+        }
     }
     """
 
@@ -68,13 +73,23 @@ class SecretsView(Vertical):
                 vs.border_title = "Vault: " + (
                     "Locked" if secrets_manager.locked else "Unlocked"
                 )
-                with Vertical(classes="height-auto p1"):
+                with Vertical(classes="height-auto plr-1"):
                     yield Label("Password")
                     yield self.password_input
                     yield Label("New Password")
                     yield self.new_password_input
-                with Vertical(classes="height-auto p1"):
-                    yield Button("Import from ENV", id="import_env")
+                with Vertical(classes="height-auto plr-1"):
+                    yield Button(
+                        "Import from ENV",
+                        id="import_env",
+                        disabled=secrets_manager.locked,
+                    )
+                    yield Button("Clear Vault", id="clear_vault")
+                    yield Static(
+                        "Enter password and press enter to set password / unlock."
+                    )
+                    yield Static("Blank password locks vault.")
+                    yield Static("Enter password and new password to change password.")
 
             with Horizontal():
                 with Vertical(classes="column"):
@@ -88,6 +103,8 @@ class SecretsView(Vertical):
                                 ),
                                 id="OPENAI_API_KEY",
                                 disabled=secrets_manager.locked,
+                                tooltip="OPENAI_API_KEY",
+                                classes="env-var",
                             )
                         with Horizontal():
                             yield Label("Groq")
@@ -97,6 +114,8 @@ class SecretsView(Vertical):
                                 ),
                                 id="GROQ_API_KEY",
                                 disabled=secrets_manager.locked,
+                                tooltip="GROQ_API_KEY",
+                                classes="env-var",
                             )
                         with Horizontal():
                             yield Label("Anthropic")
@@ -106,6 +125,8 @@ class SecretsView(Vertical):
                                 ),
                                 id="ANTHROPIC_API_KEY",
                                 disabled=secrets_manager.locked,
+                                tooltip="ANTHROPIC_API_KEY",
+                                classes="env-var",
                             )
                         with Horizontal():
                             yield Label("GoogleAI")
@@ -115,6 +136,8 @@ class SecretsView(Vertical):
                                 ),
                                 id="GOOGLE_API_KEY",
                                 disabled=secrets_manager.locked,
+                                tooltip="GOOGLE_API_KEY",
+                                classes="env-var",
                             )
                         with Horizontal():
                             yield Label("LangFlow")
@@ -124,6 +147,8 @@ class SecretsView(Vertical):
                                 ),
                                 id="LANGFLOW_API_KEY",
                                 disabled=secrets_manager.locked,
+                                tooltip="LANGFLOW_API_KEY",
+                                classes="env-var",
                             )
                         with Horizontal():
                             yield Label("HuggingFace")
@@ -131,6 +156,8 @@ class SecretsView(Vertical):
                                 value=secrets_manager.get_secret("HF_TOKEN", "", False),
                                 id="HF_TOKEN",
                                 disabled=secrets_manager.locked,
+                                tooltip="HF_TOKEN",
+                                classes="env-var",
                             )
 
                 with Vertical(classes="section") as vs:
@@ -143,6 +170,8 @@ class SecretsView(Vertical):
                             ),
                             id="TAVILY_API_KEY",
                             disabled=secrets_manager.locked,
+                            tooltip="TAVILY_API_KEY",
+                            classes="env-var",
                         )
                     with Horizontal():
                         yield Label("Serper")
@@ -152,6 +181,8 @@ class SecretsView(Vertical):
                             ),
                             id="SERPER_API_KEY",
                             disabled=secrets_manager.locked,
+                            tooltip="SERPER_API_KEY",
+                            classes="env-var",
                         )
                     with Horizontal():
                         yield Label("Google Search")
@@ -161,6 +192,8 @@ class SecretsView(Vertical):
                             ),
                             id="GOOGLE_CSE_ID",
                             disabled=secrets_manager.locked,
+                            tooltip="GOOGLE_CSE_ID",
+                            classes="env-var",
                         )
 
     def _on_show(self, event: Show) -> None:
@@ -181,6 +214,28 @@ class SecretsView(Vertical):
         """Handle checkbox changed"""
         event.stop()
         # ctrl: Checkbox = event.control
+
+    @on(Button.Pressed, "#import_env")
+    async def import_env(self, event: Button.Pressed) -> None:
+        """Import env vars into secrets"""
+        event.stop()
+        for env_input in self.query(".env-var"):
+            if not isinstance(env_input, InputBlurSubmit):
+                continue
+            key: str = env_input.id or ""
+            v = os.environ.get(key)
+            if v:
+                env_input.value = v
+                await env_input.action_submit()
+                self.notify(f"Imported: {key}")
+
+    @on(Button.Pressed, "#clear_vault")
+    async def clear_vault(self, event: Button.Pressed) -> None:
+        """Import env vars into secrets"""
+        event.stop()
+        secrets_manager.clear()
+        self.notify("Vault Cleared")
+        await self.recompose()
 
     @on(Input.Submitted)
     async def on_input_submitted(self, event: Input.Submitted) -> None:
@@ -208,6 +263,20 @@ class SecretsView(Vertical):
                 await self.recompose()
             return
         if ctrl.id == "new_password":
+            if not self.password_input.value or not self.new_password_input.value:
+                return
+            try:
+                secrets_manager.change_password(
+                    self.password_input.value, self.new_password_input.value
+                )
+                self.notify("Password Changed")
+            except ValueError as e:
+                self.notify(str(e), severity="error", timeout=8)
+            finally:
+                with self.prevent(Input.Changed):
+                    self.password_input.value = ""
+                    self.new_password_input.value = ""
+                await self.recompose()
             return
         if secrets_manager.locked:
             return

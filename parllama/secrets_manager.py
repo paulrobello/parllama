@@ -23,7 +23,7 @@ class SecretsManager(ParEventSystemBase):
     """Manager for application settings."""
 
     _key: bytes | None = None
-    _salt: bytes | None = None
+    _salt: bytes
     _secrets: dict[str, str]
     _secrets_file: str
 
@@ -31,6 +31,7 @@ class SecretsManager(ParEventSystemBase):
         """Initialize Manager."""
         super().__init__(**kwargs)
         self._secrets = {}
+        self._salt = os.urandom(16)
         self._key = None
         self._secrets_file = secrets_file
         self._load_secrets()
@@ -40,16 +41,16 @@ class SecretsManager(ParEventSystemBase):
         try:
             with open(self._secrets_file, "r", encoding="utf-8") as file:
                 data = json.load(file)
-                self.salt = base64.b64decode(data.get("__salt__"))
+                self._salt = base64.b64decode(data.get("__salt__"))
                 self._secrets = data.get("secrets", {})
         except FileNotFoundError:
             self._secrets = {}
-            self.salt = os.urandom(16)  # Generate a new salt if file doesn't exist
+            self._salt = os.urandom(16)  # Generate a new salt if file doesn't exist
 
     def _save_secrets(self) -> None:
         """Saves secrets to the secrets file."""
         data = {
-            "__salt__": base64.b64encode(self.salt).decode("utf-8"),
+            "__salt__": base64.b64encode(self._salt).decode("utf-8"),
             "secrets": self._secrets,
         }
         with open(self._secrets_file, "w", encoding="utf-8") as file:
@@ -60,7 +61,7 @@ class SecretsManager(ParEventSystemBase):
         kdf = PBKDF2HMAC(
             algorithm=hashes.SHA256(),
             length=32,
-            salt=self.salt,
+            salt=self._salt,
             iterations=100000,
             backend=default_backend(),
         )
@@ -201,6 +202,13 @@ class SecretsManager(ParEventSystemBase):
             self._save_secrets()
         else:
             raise KeyError(f"No secret found for key: {key}")
+
+    def clear(self) -> None:
+        """Clear vault"""
+        self._secrets.clear()
+        self._salt = os.urandom(16)
+        self.set_password("")
+        self._save_secrets()
 
     def __len__(self):
         """Returns the number of secrets stored."""

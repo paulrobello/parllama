@@ -91,8 +91,21 @@
     margin-top: 2;
 }
 
-.p1 {
+.p-1 {
     padding: 1;
+}
+
+.pl-1 {
+    padding-left: 1;
+}
+
+.pr-1 {
+    padding-right: 1;
+}
+
+.plr-1 {
+    padding-left: 1;
+    padding-right: 1;
 }
 
 .align-right-middle {

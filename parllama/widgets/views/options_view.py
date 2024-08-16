@@ -108,7 +108,9 @@ class OptionsView(Horizontal):
                     with Horizontal(classes="folder-item"):
                         yield Label("Chat history File")
                         yield Static(settings.chat_history_file)
-
+                    with Horizontal(classes="folder-item"):
+                        yield Label("Secrets File")
+                        yield Static(settings.secrets_file)
                 with Vertical(classes="section") as vs:
                     vs.border_title = "Startup"
                     yield Checkbox(
