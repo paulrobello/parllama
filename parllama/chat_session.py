@@ -5,22 +5,20 @@ from __future__ import annotations
 import os
 import uuid
 from collections.abc import Iterator
-from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from datetime import timezone
-from typing import Any
 from typing import Optional
 
-import ollama
 import pytz
 import rich.repr
 import simplejson as json
-from ollama import Options as OllamaOptions
+from langchain_core.messages import BaseMessageChunk
 from textual.message_pump import MessagePump
 
-from parllama.chat_message import OllamaMessage
+from parllama.chat_message import ParllamaChatMessage
 from parllama.chat_message_container import ChatMessageContainer
+from parllama.llm_config import LlmConfig
 from parllama.messages.messages import ChatGenerationAborted
 from parllama.messages.messages import ChatMessage
 from parllama.messages.messages import SessionChanges
@@ -31,7 +29,6 @@ from parllama.messages.par_session_messages import ParSessionAutoName
 from parllama.messages.par_session_messages import ParSessionDelete
 from parllama.messages.par_session_messages import ParSessionUpdated
 from parllama.messages.shared import session_change_list
-from parllama.models.ollama_data import ChatChunk
 from parllama.models.ollama_data import TokenStats
 from parllama.settings_manager import settings
 
@@ -41,13 +38,12 @@ from parllama.settings_manager import settings
 class ChatSession(ChatMessageContainer):
     """Chat session class"""
 
-    _llm_model_name: str
-    options: OllamaOptions
     _subs: set[MessagePump]
     name_generated: bool
     _abort: bool
     _generating: bool
     _stream_stats: Optional[TokenStats]
+    _llm_config: LlmConfig
 
     # pylint: disable=too-many-arguments
     def __init__(
@@ -55,9 +51,8 @@ class ChatSession(ChatMessageContainer):
         *,
         id: str | None = None,  # pylint: disable=redefined-builtin
         name: str,
-        llm_model_name: str,
-        options: OllamaOptions | None = None,
-        messages: list[OllamaMessage] | list[dict] | None = None,
+        llm_config: LlmConfig,
+        messages: list[ParllamaChatMessage] | list[dict] | None = None,
         last_updated: datetime | None = None,
     ):
         """Initialize the chat session"""
@@ -67,10 +62,14 @@ class ChatSession(ChatMessageContainer):
         self._abort = False
         self._generating = False
         self._subs = set()
-        self._llm_model_name = llm_model_name
-        self.options = options or {}
         self._stream_stats = None
         self._batching = False
+        self._llm_config = llm_config
+
+    @property
+    def llm_config(self) -> LlmConfig:
+        """Return the LLM configuration"""
+        return self._llm_config
 
     def load(self) -> None:
         """Load chat sessions from files"""
@@ -94,7 +93,7 @@ class ChatSession(ChatMessageContainer):
                     m["id"] = "message_id"
                     del m["message_id"]
             for m in msgs:
-                self.add_message(OllamaMessage(**m))
+                self.add_message(ParllamaChatMessage(**m))
             self._loaded = True
         except Exception as e:  # pylint: disable=broad-exception-caught
             self.log_it(f"Error loading session {e}", notify=True, severity="error")
@@ -134,35 +133,28 @@ class ChatSession(ChatMessageContainer):
     @property
     def llm_model_name(self) -> str:
         """Get the LLM model name"""
-        return self._llm_model_name
+        return self._llm_config.model_name
 
     @llm_model_name.setter
     def llm_model_name(self, value: str) -> None:
         """Set the LLM model name"""
         value = value.strip()
-        if self._llm_model_name == value:
+        if self._llm_config.model_name == value:
             return
-        self._llm_model_name = value
+        self._llm_config.model_name = value
         self._stream_stats = None
         self._changes.add("model")
         self.save()
 
     @property
-    def temperature(self) -> float | None:
+    def temperature(self) -> float:
         """Get the temperature"""
-        return self.options.get("temperature")
+        return self._llm_config.temperature
 
     @temperature.setter
-    def temperature(self, value: float | None) -> None:
+    def temperature(self, value: float) -> None:
         """Set the temperature"""
-        if value is not None:
-            if "temperature" in self.options and self.options["temperature"] == value:
-                return
-            self.options["temperature"] = value
-        else:
-            if "temperature" not in self.options:
-                return
-            del self.options["temperature"]
+        self._llm_config.temperature = value
         self._changes.add("temperature")
         self.save()
 
@@ -172,22 +164,23 @@ class ChatSession(ChatMessageContainer):
         try:
             if from_user:
                 # self.log_it("CM adding user message")
-                msg: OllamaMessage = OllamaMessage(role="user", content=from_user)
+                msg: ParllamaChatMessage = ParllamaChatMessage(
+                    role="user", content=from_user
+                )
                 self.add_message(msg)
                 self._notify_subs(ChatMessage(parent_id=self.id, message_id=msg.id))
                 self.post_message(ParChatUpdated(parent_id=self.id, message_id=msg.id))
                 self.save()
 
             # self.log_it(self.messages)
-            stream: Iterator[Mapping[str, Any]] = ollama.Client(host=settings.ollama_host).chat(  # type: ignore
-                model=self.llm_model_name,
-                messages=[m.to_ollama_native() for m in self.messages],
-                options=self.options,
-                stream=True,
+            stream: Iterator[
+                BaseMessageChunk
+            ] = self._llm_config.build_chat_model().stream(
+                [m.to_langchain_native() for m in self.messages]
             )
             is_aborted = False
             # self.log_it("CM adding assistant message")
-            msg = OllamaMessage(role="assistant")
+            msg = ParllamaChatMessage(role="assistant")
             self.add_message(msg)
             self._notify_subs(ChatMessage(parent_id=self.id, message_id=msg.id))
             self.post_message(ParChatUpdated(parent_id=self.id, message_id=msg.id))
@@ -195,18 +188,17 @@ class ChatSession(ChatMessageContainer):
             # num_tokens: int = 0
             # start_time = datetime.now(timezone.utc)
             # ttft: float = 0.0
-            for stream_chunk in stream:
-                chunk: ChatChunk = ChatChunk(**stream_chunk)
-                # self.log_it(chunk)
-                if chunk.message.content:
+            for chunk in stream:
+                self.log_it(chunk)
+                if chunk.content:
                     # elapsed_time = datetime.now(timezone.utc) - start_time
                     # if num_tokens == 0:
                     #     ttft = elapsed_time.total_seconds()
                     # num_tokens += 1
+                    if isinstance(chunk.content, str):
+                        msg.content += chunk.content
 
-                    msg.content += chunk.message.content
-
-                if not chunk.done and self._abort:
+                if self._abort:
                     is_aborted = True
                     try:
                         msg.content += "\n\nAborted..."
@@ -219,18 +211,16 @@ class ChatSession(ChatMessageContainer):
                     break
                 self._notify_subs(ChatMessage(parent_id=self.id, message_id=msg.id))
                 self.post_message(ParChatUpdated(parent_id=self.id, message_id=msg.id))
-                if chunk.done:
-                    self._stream_stats = TokenStats(
-                        model=chunk.model,
-                        created_at=chunk.created_at,
-                        total_duration=chunk.total_duration or 0,
-                        load_duration=chunk.load_duration or 0,
-                        prompt_eval_count=chunk.prompt_eval_count or 0,
-                        prompt_eval_duration=chunk.prompt_eval_duration or 0,
-                        eval_count=chunk.eval_count or 0,
-                        eval_duration=chunk.eval_duration or 0,
-                    )
-                    break
+            # self._stream_stats = TokenStats(
+            #     model=chunk.model,
+            #     created_at=chunk.created_at,
+            #     total_duration=chunk.total_duration or 0,
+            #     load_duration=chunk.load_duration or 0,
+            #     prompt_eval_count=chunk.prompt_eval_count or 0,
+            #     prompt_eval_duration=chunk.prompt_eval_duration or 0,
+            #     eval_count=chunk.eval_count or 0,
+            #     eval_duration=chunk.eval_duration or 0,
+            # )
 
             self._changes.add("messages")
             self.save()
@@ -289,8 +279,7 @@ class ChatSession(ChatMessageContainer):
                 "name": self.name,
                 "name_generated": self.name_generated,
                 "last_updated": self.last_updated.isoformat(),
-                "llm_model_name": self.llm_model_name,
-                "options": self.options,
+                "llm_config": self._llm_config.to_json(),
                 "messages": [m.__dict__() for m in self.messages],
             },
             default=str,
@@ -303,20 +292,29 @@ class ChatSession(ChatMessageContainer):
         data: dict = json.loads(json_data)
         messages = data["messages"]
         for m in messages:
+            # convert old format
             if "message_id" in m:
                 m["id"] = "message_id"
                 del m["message_id"]
         utc = pytz.UTC
-
+        lc = data.get("llm_config")
+        # adapt old format session
+        if not lc:
+            lc = LlmConfig(
+                provider="Ollama",
+                model_name=data["llm_model_name"],
+                temperature=data.get("options", {}).get("temperature", 0.5),
+            ).to_json()
         session = ChatSession(
             id=data.get("id", data.get("id", data.get("session_id"))),
             name=data.get("name", data.get("name", data.get("session_name"))),
             last_updated=datetime.fromisoformat(data["last_updated"]).replace(
                 tzinfo=utc
             ),
-            llm_model_name=data["llm_model_name"],
-            options=data.get("options"),
-            messages=[OllamaMessage(**m) for m in messages] if load_messages else None,
+            messages=(
+                [ParllamaChatMessage(**m) for m in messages] if load_messages else None
+            ),
+            llm_config=LlmConfig.from_json(lc),
         )
         session.name_generated = True
         return session

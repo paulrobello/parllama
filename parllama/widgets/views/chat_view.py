@@ -19,7 +19,7 @@ from textual.widgets import TabbedContent
 
 from parllama.chat_manager import chat_manager
 from parllama.chat_manager import ChatSession
-from parllama.chat_message import OllamaMessage
+from parllama.chat_message import ParllamaChatMessage
 from parllama.data_manager import dm
 from parllama.dialogs.information import InformationDialog
 from parllama.messages.messages import ChangeTab
@@ -395,7 +395,7 @@ Chat Commands:
             if not v:
                 self.notify("System prompt cannot be empty", severity="error")
                 return
-            self.session.system_prompt = OllamaMessage(role="system", content=v)
+            self.session.system_prompt = ParllamaChatMessage(role="system", content=v)
         elif cmd.startswith("prompt.load "):
             (_, v) = cmd.split(" ", 1)
             v = v.strip()

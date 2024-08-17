@@ -11,7 +11,7 @@ import zipfile
 import requests
 
 from parllama.chat_manager import chat_manager
-from parllama.chat_message import OllamaMessage
+from parllama.chat_message import ParllamaChatMessage
 from parllama.chat_prompt import ChatPrompt
 from parllama.par_event_system import ParEventSystemBase
 from parllama.settings_manager import settings
@@ -116,7 +116,7 @@ class ImportFabricManager(ParEventSystemBase):
             id=hashlib.md5(prompt_content.encode()).hexdigest(),
             name=pattern_name,
             description=description,
-            messages=[OllamaMessage(role="system", content=prompt_content)],
+            messages=[ParllamaChatMessage(role="system", content=prompt_content)],
             source="fabric",
         )
         return prompt

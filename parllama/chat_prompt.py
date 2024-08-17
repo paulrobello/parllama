@@ -12,7 +12,7 @@ import pytz
 import rich.repr
 import simplejson as json
 
-from parllama.chat_message import OllamaMessage
+from parllama.chat_message import ParllamaChatMessage
 from parllama.chat_message_container import ChatMessageContainer
 from parllama.messages.par_prompt_messages import ParPromptDelete
 from parllama.messages.par_prompt_messages import ParPromptUpdated
@@ -27,12 +27,12 @@ class ChatPrompt(ChatMessageContainer):
     """Chat prompt class"""
 
     _description: str
-    messages: list[OllamaMessage]
+    messages: list[ParllamaChatMessage]
     last_updated: datetime
     source: str | None
 
     _submit_on_load: bool
-    _id_to_msg: dict[str, OllamaMessage]
+    _id_to_msg: dict[str, ParllamaChatMessage]
 
     # pylint: disable=too-many-arguments
     def __init__(
@@ -41,7 +41,7 @@ class ChatPrompt(ChatMessageContainer):
         id: str | None = None,  # pylint: disable=redefined-builtin
         name: str,
         description: str,
-        messages: list[OllamaMessage] | list[dict] | None = None,
+        messages: list[ParllamaChatMessage] | list[dict] | None = None,
         submit_on_load: bool = False,
         last_updated: datetime | None = None,
         source: str | None = None,
@@ -68,7 +68,7 @@ class ChatPrompt(ChatMessageContainer):
             self.clear_messages()
             msgs = data["messages"] or []
             for m in msgs:
-                self.add_message(OllamaMessage(**m))
+                self.add_message(ParllamaChatMessage(**m))
             self._loaded = True
         except Exception as e:  # pylint: disable=broad-exception-caught
             self.log_it(f"Error loading prompt {e}", notify=True, severity="error")
@@ -166,7 +166,7 @@ class ChatPrompt(ChatMessageContainer):
             ),
             description=data.get("description", ""),
             messages=(
-                [OllamaMessage(**m) for m in data["messages"]]
+                [ParllamaChatMessage(**m) for m in data["messages"]]
                 if load_messages
                 else None
             ),
@@ -223,7 +223,7 @@ class ChatPrompt(ChatMessageContainer):
         except (OSError, IOError):
             return False
 
-    def replace_messages(self, new_messages: list[OllamaMessage]) -> None:
+    def replace_messages(self, new_messages: list[ParllamaChatMessage]) -> None:
         """Replace all messages with new ones"""
         self.messages = new_messages
         self._id_to_msg = {m.id: m for m in new_messages}

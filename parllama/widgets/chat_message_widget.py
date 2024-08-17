@@ -10,7 +10,7 @@ from textual.widgets import Markdown
 from textual.widgets import TextArea
 
 from parllama.chat_manager import ChatSession
-from parllama.chat_message import OllamaMessage
+from parllama.chat_message import ParllamaChatMessage
 from parllama.messages.messages import SendToClipboard
 
 
@@ -47,12 +47,14 @@ class ChatMessageWidget(Vertical, can_focus=True):
         }
     }
     """
-    msg: OllamaMessage
+    msg: ParllamaChatMessage
     markdown: Markdown
     editor: TextArea | None = None
     session: ChatSession
 
-    def __init__(self, msg: OllamaMessage, session: ChatSession, **kwargs) -> None:
+    def __init__(
+        self, msg: ParllamaChatMessage, session: ChatSession, **kwargs
+    ) -> None:
         """Initialise the widget."""
         super().__init__(**kwargs)
         self.session = session
@@ -104,7 +106,9 @@ class ChatMessageWidget(Vertical, can_focus=True):
         return self.msg.content or ""
 
     @staticmethod
-    def mk_msg_widget(msg: OllamaMessage, session: ChatSession) -> ChatMessageWidget:
+    def mk_msg_widget(
+        msg: ParllamaChatMessage, session: ChatSession
+    ) -> ChatMessageWidget:
         """Create a chat message widget."""
         if msg.role == "user":
             return UserChatMessage(msg=msg, session=session)

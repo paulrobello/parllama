@@ -10,9 +10,10 @@ from ollama import Options as OllamaOptions
 from textual.app import App
 from textual.message_pump import MessagePump
 
-from parllama.chat_message import OllamaMessage
+from parllama.chat_message import ParllamaChatMessage
 from parllama.chat_prompt import ChatPrompt
 from parllama.chat_session import ChatSession
+from parllama.llm_config import LlmConfig
 from parllama.llm_session_name import llm_session_name
 from parllama.messages.messages import ChangeTab
 from parllama.messages.messages import PromptListChanged
@@ -106,8 +107,7 @@ class ChatManager(ParEventSystemBase):
         self,
         *,
         session_name: str,
-        model_name: str,
-        options: OllamaOptions | None,
+        llm_config: LlmConfig,
         widget: MessagePump,
     ) -> ChatSession:
         """Create a new chat session"""
@@ -115,9 +115,8 @@ class ChatManager(ParEventSystemBase):
 
         session = ChatSession(
             name=self.mk_session_name(session_name),
-            llm_model_name=model_name,
-            options=options or self.options,
             messages=[],
+            llm_config=llm_config,
         )
         self._id_to_session[session.id] = session
         self.mount(session)
@@ -176,8 +175,7 @@ class ChatManager(ParEventSystemBase):
         *,
         session_id: str | None,
         session_name: str | None,
-        model_name: str,
-        options: OllamaOptions | None,
+        llm_config: LlmConfig,
         widget: MessagePump,
     ) -> ChatSession:
         """Get or create a chat session"""
@@ -189,8 +187,7 @@ class ChatManager(ParEventSystemBase):
                 session_name = self.mk_session_name("New Chat")
             session = self.new_session(
                 session_name=session_name,
-                model_name=model_name,
-                options=options,
+                llm_config=llm_config,
                 widget=widget,
             )
         session.add_sub(widget)
@@ -260,7 +257,7 @@ class ChatManager(ParEventSystemBase):
             return None
         prompt_name = prompt_name or session.name
         messages = [
-            OllamaMessage(
+            ParllamaChatMessage(
                 role=m.role, content=m.content, images=m.images, tool_calls=m.tool_calls
             )
             for m in session.messages

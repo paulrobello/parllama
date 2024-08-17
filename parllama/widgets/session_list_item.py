@@ -33,12 +33,7 @@ class SessionListItem(DblClickListItem, can_focus=False, can_focus_children=True
         """Compose the content of the view."""
         with Vertical():
             yield Label(self.session.name)
-            temp = (
-                f"{self.session.options['temperature']:.2f}"
-                if self.session.options.get("temperature") is not None
-                else "Default"
-            )
-
+            temp = f"{self.session.temperature:.2f}"
             yield Label(
                 Text.assemble(self.session.llm_model_name, " ", f"Temp: {temp}")
             )

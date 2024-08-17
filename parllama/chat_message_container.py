@@ -13,7 +13,7 @@ from io import StringIO
 import rich.repr
 import simplejson as json
 
-from parllama.chat_message import OllamaMessage
+from parllama.chat_message import ParllamaChatMessage
 from parllama.par_event_system import ParEventSystemBase
 from parllama.settings_manager import settings
 
@@ -25,12 +25,12 @@ class ChatMessageContainer(ParEventSystemBase):
 
     _name: str
     """Name of the chat message container"""
-    messages: list[OllamaMessage]
+    messages: list[ParllamaChatMessage]
     """Messages in the chat message container"""
     last_updated: datetime
     """Last updated timestamp of the chat message container"""
 
-    _id_to_msg: dict[str, OllamaMessage]
+    _id_to_msg: dict[str, ParllamaChatMessage]
     _changes: set[str]
     _batching: bool
     _loaded: bool
@@ -41,7 +41,7 @@ class ChatMessageContainer(ParEventSystemBase):
         *,
         id: str | None = None,  # pylint: disable=redefined-builtin
         name: str | None = None,
-        messages: list[OllamaMessage] | list[dict] | None = None,
+        messages: list[ParllamaChatMessage] | list[dict] | None = None,
         last_updated: datetime | None = None,
     ):
         """Initialize the chat prompt"""
@@ -53,11 +53,11 @@ class ChatMessageContainer(ParEventSystemBase):
         self.messages = []
         msgs = messages or []
         for m in msgs:
-            msg: OllamaMessage
-            if isinstance(m, OllamaMessage):
+            msg: ParllamaChatMessage
+            if isinstance(m, ParllamaChatMessage):
                 msg = m
             else:
-                msg = OllamaMessage(**m)
+                msg = ParllamaChatMessage(**m)
             self.messages.append(msg)
             self._id_to_msg[msg.id] = msg
             self.mount(msg)
@@ -80,7 +80,7 @@ class ChatMessageContainer(ParEventSystemBase):
         """Set the loading state"""
         self._batching = value
 
-    def add_message(self, msg: OllamaMessage, prepend: bool = False) -> None:
+    def add_message(self, msg: ParllamaChatMessage, prepend: bool = False) -> None:
         """Add a message"""
         if prepend:
             self.messages.insert(0, msg)
@@ -111,7 +111,7 @@ class ChatMessageContainer(ParEventSystemBase):
         self.save()
 
     @property
-    def system_prompt(self) -> OllamaMessage | None:
+    def system_prompt(self) -> ParllamaChatMessage | None:
         """Get the system message"""
         if len(self.messages) > 0 and self.messages[0].role == "system":
             return self.messages[0]
@@ -119,10 +119,10 @@ class ChatMessageContainer(ParEventSystemBase):
 
     # system prompt setter
     @system_prompt.setter
-    def system_prompt(self, value: OllamaMessage) -> None:
+    def system_prompt(self, value: ParllamaChatMessage) -> None:
         """Set system prompt"""
         if len(self.messages) > 0 and self.messages[0].role == "system":
-            msg: OllamaMessage = self.messages[0]
+            msg: ParllamaChatMessage = self.messages[0]
             if msg.content == value.content:
                 return
             msg.content = value.content
@@ -133,14 +133,14 @@ class ChatMessageContainer(ParEventSystemBase):
         else:
             self.add_message(value, True)
 
-    def get_first_user_message(self) -> OllamaMessage | None:
+    def get_first_user_message(self) -> ParllamaChatMessage | None:
         """Get the first user message"""
         for msg in self.messages:
             if msg.role == "user":
                 return msg
         return None
 
-    def get_last_user_message(self) -> OllamaMessage | None:
+    def get_last_user_message(self) -> ParllamaChatMessage | None:
         """Get the last user message"""
         if len(self.messages) == 0:
             return None
@@ -157,11 +157,11 @@ class ChatMessageContainer(ParEventSystemBase):
         """Get the number of messages"""
         return len(self.messages)
 
-    def __getitem__(self, msg_id: str) -> OllamaMessage:
+    def __getitem__(self, msg_id: str) -> ParllamaChatMessage:
         """Get a message"""
         return self._id_to_msg[msg_id]
 
-    def __setitem__(self, msg_id: str, value: OllamaMessage) -> None:
+    def __setitem__(self, msg_id: str, value: ParllamaChatMessage) -> None:
         """Set a message"""
         for i, msg in enumerate(self.messages):
             if msg.id == msg_id:
@@ -184,11 +184,11 @@ class ChatMessageContainer(ParEventSystemBase):
                 self.save()
                 return
 
-    def __contains__(self, item: OllamaMessage) -> bool:
+    def __contains__(self, item: ParllamaChatMessage) -> bool:
         """Check if a message exists"""
         return item.id in self._id_to_msg
 
-    def __iadd__(self, other: OllamaMessage) -> ChatMessageContainer:
+    def __iadd__(self, other: ParllamaChatMessage) -> ChatMessageContainer:
         """Add a message to the chat"""
         self.add_message(other)
         return self

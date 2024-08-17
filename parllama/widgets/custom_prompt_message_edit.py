@@ -13,7 +13,7 @@ from textual.widgets import Button
 from textual.widgets import Select
 from textual.widgets import TextArea
 
-from parllama.chat_message import OllamaMessage
+from parllama.chat_message import ParllamaChatMessage
 from parllama.messages.messages import DeletePromptMessage
 from parllama.models.ollama_data import MessageRoles
 from parllama.models.ollama_data import MessageRoleSelectOptions
@@ -44,9 +44,9 @@ class CustomPromptMessageEdit(Vertical):
     """
     role: Select[MessageRoles]
     content: TextArea
-    msg: OllamaMessage
+    msg: ParllamaChatMessage
 
-    def __init__(self, msg: OllamaMessage, **kwargs) -> None:
+    def __init__(self, msg: ParllamaChatMessage, **kwargs) -> None:
         """Initialize the widget."""
         super().__init__(**kwargs)
         self.msg = msg

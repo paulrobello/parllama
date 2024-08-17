@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Tuple
 from typing import Optional
 
 from ollama import Message as OMessage
@@ -17,7 +17,7 @@ from parllama.par_event_system import ParEventSystemBase
 
 
 @dataclass
-class OllamaMessage(ParEventSystemBase):
+class ParllamaChatMessage(ParEventSystemBase):
     """Chat message."""
 
     role: MessageRoles
@@ -77,16 +77,23 @@ class OllamaMessage(ParEventSystemBase):
         """Convert a message to Ollama native format"""
         return OMessage(role=self.role, content=self.content)
 
+    def to_langchain_native(self) -> Tuple[str, str]:
+        """Convert a message to Langchain native format"""
+        return (
+            self.role,
+            self.content,
+        )
+
     def notify_changes(self) -> None:
         """Notify changes to the chat message"""
         if self.parent is None:
             return
         self.post_message(ParChatUpdated(parent_id=self.parent.id, message_id=self.id))
 
-    def clone(self, new_id: bool = False) -> OllamaMessage:
+    def clone(self, new_id: bool = False) -> ParllamaChatMessage:
         """Clone the chat message"""
 
-        return OllamaMessage(
+        return ParllamaChatMessage(
             id=uuid.uuid4().hex if new_id else self.id,
             role=self.role,
             content=self.content,

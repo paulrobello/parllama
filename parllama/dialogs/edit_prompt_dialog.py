@@ -21,7 +21,7 @@ from textual.widgets import Select
 from textual.widgets import Static
 from textual.widgets import TextArea
 
-from parllama.chat_message import OllamaMessage
+from parllama.chat_message import ParllamaChatMessage
 from parllama.chat_prompt import ChatPrompt
 from parllama.messages.messages import DeletePromptMessage
 from parllama.widgets.custom_prompt_message_edit import CustomPromptMessageEdit
@@ -137,7 +137,7 @@ class EditPromptDialog(ModalScreen[bool]):
     async def add_message(self, event: Button.Pressed) -> None:
         """Add a new message to the prompt."""
         event.stop()
-        msg = OllamaMessage(content="", role="user")
+        msg = ParllamaChatMessage(content="", role="user")
         self.edit_prompt.add_message(msg)
         me: CustomPromptMessageEdit = CustomPromptMessageEdit(msg)
         await self.message_container.mount(me)

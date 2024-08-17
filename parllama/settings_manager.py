@@ -43,7 +43,7 @@ class Settings(BaseModel):
     last_tab: TabType = "Local"
     use_last_tab_on_startup: bool = True
     last_chat_model: str = ""
-    last_chat_temperature: float | None = None
+    last_chat_temperature: float = 0.5
     last_chat_session_id: str | None = None
     theme_mode: str = "dark"
     site_models_namespace: str = ""
@@ -191,7 +191,7 @@ class Settings(BaseModel):
                 )
 
                 self.last_chat_model = data.get("last_chat_model", self.last_chat_model)
-                self.last_chat_temperature = data.get("last_chat_temperature")
+                self.last_chat_temperature = data.get("last_chat_temperature", 0.5)
                 self.last_chat_session_id = data.get(
                     "last_chat_session_id", self.last_chat_session_id
                 )

@@ -41,17 +41,17 @@ llm_modes: list[LlmMode] = ["Base", "Chat", "Embeddings"]
 class LlmConfig:
     """Configuration for Llm."""
 
+    provider: LlmProviderType
     model_name: str
-    provider: LlmProviderType = "Ollama"
-    mode: LlmMode = "Base"
+    mode: LlmMode = "Chat"
     temperature: float = 0.5
 
     def to_json(self) -> dict:
         """Return dict for use with json"""
         return {
             "class_name": self.__class__.__name__,
-            "model_name": self.model_name,
             "provider": self.provider,
+            "model_name": self.model_name,
             "mode": self.mode,
             "temperature": self.temperature,
         }
@@ -63,6 +63,15 @@ class LlmConfig:
             raise ValueError(f"Invalid config class: {data['class_name']}")
         del data["class_name"]
         return LlmConfig(**data)
+
+    def clone(self) -> LlmConfig:
+        """Create a clone of the LlmConfig."""
+        return LlmConfig(
+            provider=self.provider,
+            model_name=self.model_name,
+            mode=self.mode,
+            temperature=self.temperature,
+        )
 
     # pylint: disable=too-many-return-statements,too-many-branches
     def _build_llm(self) -> BaseLanguageModel | BaseChatModel | Embeddings:

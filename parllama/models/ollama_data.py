@@ -223,7 +223,7 @@ class OllamaChunkMessage(BaseModel):
     """
 
 
-class ChatChunk(BaseModel):
+class OllamaChatChunk(BaseModel):
     """Ollama Streaming Chat Chunk."""
 
     model: str

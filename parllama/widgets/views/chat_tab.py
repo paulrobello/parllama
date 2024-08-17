@@ -7,7 +7,6 @@ from functools import partial
 from typing import cast
 
 import humanize
-from ollama import Options
 from rich.text import Text
 from textual import on
 from textual import work
@@ -28,8 +27,9 @@ from textual.widgets import TabPane
 
 from parllama.chat_manager import chat_manager
 from parllama.chat_manager import ChatSession
-from parllama.chat_message import OllamaMessage
+from parllama.chat_message import ParllamaChatMessage
 from parllama.data_manager import dm
+from parllama.llm_config import LlmConfig
 from parllama.messages.messages import ChatMessage
 from parllama.messages.messages import ChatMessageSent
 from parllama.messages.messages import DeleteSession
@@ -129,8 +129,11 @@ class ChatTab(TabPane):
         self.session = chat_manager.get_or_create_session(
             session_id=None,
             session_name=session_name,
-            model_name=str(self.model_select.value),
-            options=self.get_session_options(),
+            llm_config=LlmConfig(
+                provider="Ollama",
+                model_name=str(self.model_select.value),
+                temperature=self.get_temperature(),
+            ),
             widget=self,
         )
 
@@ -201,11 +204,10 @@ class ChatTab(TabPane):
     def temperature_input_changed(self, event: Message) -> None:
         """Handle temperature input change"""
         event.stop()
+        if not self.temperature_input.value:
+            return
         try:
-            if self.temperature_input.value:
-                settings.last_chat_temperature = float(self.temperature_input.value)
-            else:
-                settings.last_chat_temperature = None
+            settings.last_chat_temperature = float(self.temperature_input.value)
         except ValueError:
             return
         self.session.temperature = settings.last_chat_temperature
@@ -259,11 +261,12 @@ class ChatTab(TabPane):
         event.stop()
         await self.action_new_session()
 
-    def get_session_options(self) -> Options | None:
-        """Get session options"""
-        if not self.temperature_input.value:
-            return None
-        return {"temperature": (float(self.temperature_input.value))}
+    def get_temperature(self) -> float:
+        """Get temperature from input field"""
+        try:
+            return float(self.temperature_input.value)
+        except ValueError:
+            return settings.last_chat_temperature
 
     async def action_new_session(self, session_name: str = "New Chat") -> None:
         """Start new session"""
@@ -273,8 +276,11 @@ class ChatTab(TabPane):
             old_session.remove_sub(self)
             self.session = chat_manager.new_session(
                 session_name=session_name,
-                model_name=str(self.model_select.value),
-                options=self.get_session_options(),
+                llm_config=LlmConfig(
+                    provider="Ollama",
+                    model_name=str(self.model_select.value),
+                    temperature=self.get_temperature(),
+                ),
                 widget=self,
             )
             self.session_name_input.value = self.session.name
@@ -287,7 +293,7 @@ class ChatTab(TabPane):
         #     msgs = model.get_messages()
         #     for msg in msgs:
         #         self.session.add_message(
-        #             OllamaMessage(
+        #             ParllamaChatMessage(
         #                 role=msg["role"],
         #                 content=msg["content"],
         #             )
@@ -312,7 +318,7 @@ class ChatTab(TabPane):
         if self.session.id != event.parent_id:
             self.notify("Chat session id missmatch", severity="error")
             return
-        msg: OllamaMessage | None = self.session[event.message_id]
+        msg: ParllamaChatMessage | None = self.session[event.message_id]
         if not msg:
             self.notify("Chat message not found", severity="error")
             return
@@ -383,9 +389,7 @@ class ChatTab(TabPane):
                 self.notify(
                     "Model defined in session is not installed", severity="warning"
                 )
-            self.temperature_input.value = str(
-                self.session.options.get("temperature", "")
-            )
+            self.temperature_input.value = str(self.session.temperature)
             self.session_name_input.value = self.session.name
         self.set_timer(0.25, partial(self.scroll_to_bottom, False))
         self.update_control_states()
@@ -407,13 +411,14 @@ class ChatTab(TabPane):
         self.app.post_message(LogIt(f"{prompt.id},{prompt.name}"))
         old_session = self.session
         old_session.remove_sub(self)
-        opts = old_session.options
+        llm_config: LlmConfig = old_session.llm_config.clone()
         if event.temperature is not None:
-            opts["temperature"] = event.temperature
+            llm_config.temperature = event.temperature
+        if event.llm_model_name:
+            llm_config.model_name = event.llm_model_name
         self.session = chat_manager.new_session(
             session_name=prompt.name or old_session.name,
-            model_name=event.llm_model_name or old_session.llm_model_name,
-            options=opts,  # type: ignore
+            llm_config=llm_config,
             widget=self,
         )
         with self.prevent(Focus, Input.Changed, Select.Changed):
@@ -422,7 +427,7 @@ class ChatTab(TabPane):
         with self.session.batch_changes():
             for m in prompt.messages:
                 self.session.add_message(
-                    OllamaMessage(
+                    ParllamaChatMessage(
                         role=m.role,
                         content=m.content,
                         images=m.images,
@@ -442,9 +447,7 @@ class ChatTab(TabPane):
                 self.notify(
                     "Model defined in session is not installed", severity="warning"
                 )
-            self.temperature_input.value = str(
-                self.session.options.get("temperature", "")
-            )
+            self.temperature_input.value = str(self.session.temperature)
             self.session_name_input.value = self.session.name
         self.set_timer(0.25, partial(self.scroll_to_bottom, False))
         self.update_control_states()
