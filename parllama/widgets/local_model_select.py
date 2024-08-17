@@ -24,12 +24,16 @@ class LocalModelSelect(Select[str]):
             if len(kwargs["value"]) == 0:
                 del kwargs["value"]  # Remove blank values
 
-        if len(opts) == 0 and "value" in kwargs:
-            if kwargs["value"]:
-                self._deferred_value = kwargs["value"]
-            del kwargs[
-                "value"
-            ]  # Remove the value from the kwargs to avoid conflicts with the Select widget's value attribute.
+        if "value" in kwargs:
+            if len(opts) == 0:
+                if kwargs["value"]:
+                    self._deferred_value = kwargs["value"]
+                del kwargs[
+                    "value"
+                ]  # Remove the value from the kwargs to avoid conflicts with the Select widget's value attribute.
+            else:
+                if kwargs["value"] not in dm.get_model_names():
+                    del kwargs["value"]
 
         super().__init__(prompt="Select Model", options=opts, **kwargs)
 

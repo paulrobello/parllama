@@ -136,6 +136,10 @@ class DataManager(ParEventSystemBase):
         """Get select options."""
         return [(model.model.name, model.model.name) for model in self.models]
 
+    def get_model_names(self) -> list[str]:
+        """Return list of model names"""
+        return [model.model.name for model in self.models]
+
     @staticmethod
     def pull_model(model_name: str) -> Iterator[dict[str, Any]]:
         """Pull a model."""

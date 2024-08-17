@@ -189,7 +189,7 @@ class ChatSession(ChatMessageContainer):
             # start_time = datetime.now(timezone.utc)
             # ttft: float = 0.0
             for chunk in stream:
-                self.log_it(chunk)
+                # self.log_it(chunk)
                 if chunk.content:
                     # elapsed_time = datetime.now(timezone.utc) - start_time
                     # if num_tokens == 0:
@@ -209,18 +209,33 @@ class ChatSession(ChatMessageContainer):
                     finally:
                         self._abort = False
                     break
+
+                if hasattr(chunk, "response_metadata"):
+                    if "model" in chunk.response_metadata:
+                        self.log_it(chunk.response_metadata)
+
+                        self._stream_stats = TokenStats(
+                            model=chunk.response_metadata.get("model") or "?",
+                            created_at=chunk.response_metadata.get("created_at")
+                            or datetime.now(),
+                            total_duration=chunk.response_metadata.get("total_duration")
+                            or 0,
+                            load_duration=chunk.response_metadata.get("load_duration")
+                            or 0,
+                            prompt_eval_count=chunk.response_metadata.get(
+                                "prompt_eval_count"
+                            )
+                            or 0,
+                            prompt_eval_duration=chunk.response_metadata.get(
+                                "prompt_eval_duration"
+                            )
+                            or 0,
+                            eval_count=chunk.response_metadata.get("eval_count") or 0,
+                            eval_duration=chunk.response_metadata.get("eval_duration")
+                            or 0,
+                        )
                 self._notify_subs(ChatMessage(parent_id=self.id, message_id=msg.id))
                 self.post_message(ParChatUpdated(parent_id=self.id, message_id=msg.id))
-            # self._stream_stats = TokenStats(
-            #     model=chunk.model,
-            #     created_at=chunk.created_at,
-            #     total_duration=chunk.total_duration or 0,
-            #     load_duration=chunk.load_duration or 0,
-            #     prompt_eval_count=chunk.prompt_eval_count or 0,
-            #     prompt_eval_duration=chunk.prompt_eval_duration or 0,
-            #     eval_count=chunk.eval_count or 0,
-            #     eval_duration=chunk.eval_duration or 0,
-            # )
 
             self._changes.add("messages")
             self.save()
