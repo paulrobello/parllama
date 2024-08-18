@@ -228,7 +228,7 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         """Update disabled state of controls based on model and user input values"""
         self.send_button.disabled = (
             self.active_tab.busy
-            or self.active_tab.model_select.value == Select.BLANK
+            or self.active_tab.session_config.model_select.value == Select.BLANK
             or len(self.user_input.value.strip()) == 0
         )
         self.stop_button.disabled = (
@@ -355,7 +355,8 @@ Chat Commands:
         elif cmd == "session.delete":
             self.app.post_message(DeleteSession(session_id=self.session.id))
         elif cmd == "session.model":
-            self.set_timer(0.1, self.active_tab.model_select.focus)
+            self.set_timer(0.1, self.active_tab.session_config.model_select.focus)
+            self.active_tab.session_config.display = True
             return
         elif cmd.startswith("session.model "):
             (_, v) = cmd.split(" ", 1)
@@ -363,22 +364,25 @@ Chat Commands:
             if v not in [m.model.name for m in dm.models]:
                 self.notify(f"Model {v} not found", severity="error")
                 return
-            self.active_tab.model_select.value = v
+            self.active_tab.session_config.model_select.value = v
             self.set_timer(0.1, self.user_input.focus)
         elif cmd == "session.temp":
-            self.set_timer(0.1, self.active_tab.temperature_input.focus)
+            self.set_timer(0.1, self.active_tab.session_config.temperature_input.focus)
+            self.active_tab.session_config.display = True
         elif cmd.startswith("session.temp "):
             (_, v) = cmd.split(" ", 1)
             v = v.strip()
-            self.active_tab.temperature_input.value = v
+            self.active_tab.session_config.temperature_input.value = v
             self.set_timer(0.1, self.user_input.focus)
+            self.active_tab.session_config.display = True
         elif cmd == "session.name":
-            self.set_timer(0.1, self.active_tab.session_name_input.focus)
+            self.set_timer(0.1, self.active_tab.session_config.session_name_input.focus)
+            self.active_tab.session_config.display = True
         elif cmd.startswith("session.name "):
             (_, v) = cmd.split(" ", 1)
             v = v.strip()
-            self.active_tab.session_name_input.value = v
-            await self.active_tab.session_name_input.action_submit()
+            self.active_tab.session_config.session_name_input.value = v
+            await self.active_tab.session_config.session_name_input.action_submit()
         elif cmd.startswith("session.to_prompt "):
             vs: list[str] = cmd.split(" ", 2)
             if len(vs) == 2:

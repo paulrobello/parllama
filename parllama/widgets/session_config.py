@@ -17,6 +17,9 @@ from parllama.messages.messages import (
     SessionSelected,
     UnRegisterForUpdates,
     SessionUpdated,
+    UpdateChatStatus,
+    LogIt,
+    PromptSelected,
 )
 from parllama.settings_manager import settings
 from parllama.widgets.input_blur_submit import InputBlurSubmit
@@ -27,12 +30,6 @@ class SessionConfig(VerticalScroll):
     """Session configuration widget."""
 
     DEFAULT_CSS = """
-    #temperature_input {
-        width: 12;
-    }
-    #session_name_input {
-        width: 1fr;
-    }
     """
     BINDINGS = []
     session: ChatSession
@@ -90,17 +87,17 @@ class SessionConfig(VerticalScroll):
 
     def compose(self) -> ComposeResult:
         """Compose the content of the view."""
-        with Horizontal():
+        with Horizontal(classes="height-auto"):
             yield Static("Session Config", classes="width-fr-1 pt-1")
-            yield Button(
-                "New", id="new_button", variant="warning", classes="width-fr-1"
-            )
+            yield Button("New", id="new_button", variant="warning")
         yield Rule()
-        yield Label("Session Name")
-        yield self.session_name_input
+        with Horizontal(classes="height-auto"):
+            yield Label("Name")
+            yield self.session_name_input
         yield self.model_select
-        yield Label("Temperature")
-        yield self.temperature_input
+        with Horizontal():
+            yield Label("Temperature")
+            yield self.temperature_input
 
     async def action_new_session(self, session_name: str = "New Chat") -> None:
         """Start new session"""
@@ -183,6 +180,7 @@ class SessionConfig(VerticalScroll):
             self.session.llm_model_name = self.model_select.value  # type: ignore
         else:
             self.session.llm_model_name = ""
+        self.post_message(UpdateChatStatus())
 
     @on(SessionUpdated)
     def session_updated(self, event: SessionUpdated) -> None:
@@ -191,3 +189,58 @@ class SessionConfig(VerticalScroll):
         if "name" in event.changed:
             with self.prevent(Input.Changed, Input.Submitted):
                 self.session_name_input.value = self.session.name
+
+    async def load_session(self, session_id: str) -> bool:
+        """Load a session"""
+        self.app.post_message(LogIt("SC load_session: " + session_id))
+        session = chat_manager.get_session(session_id, self)
+        if session is None:
+            self.notify(f"Chat session not found: {session_id}", severity="error")
+            return False
+        session.load()
+        old_session = self.session
+        old_session.remove_sub(self)
+        self.session = session
+
+        with self.prevent(Input.Changed, Select.Changed):
+            self.set_model_name(self.session.llm_model_name)
+            if self.model_select.value == Select.BLANK:
+                self.notify(
+                    "Model defined in session is not installed", severity="warning"
+                )
+            self.temperature_input.value = str(self.session.temperature)
+            self.session_name_input.value = self.session.name
+        return True
+
+    async def load_prompt(self, event: PromptSelected) -> bool:
+        """Load a session"""
+        self.app.post_message(LogIt("SC load_prompt: " + event.prompt_id))
+        self.app.post_message(
+            LogIt(f"{event.prompt_id},{event.llm_model_name},{event.temperature}")
+        )
+        prompt = chat_manager.get_prompt(event.prompt_id)
+        if prompt is None:
+            self.notify(f"Prompt not found: {event.prompt_id}", severity="error")
+            return False
+        prompt.load()
+        self.app.post_message(LogIt(f"{prompt.id},{prompt.name}"))
+        old_session = self.session
+        old_session.remove_sub(self)
+        llm_config: LlmConfig = old_session.llm_config.clone()
+        if event.temperature is not None:
+            llm_config.temperature = event.temperature
+        if event.llm_model_name:
+            llm_config.model_name = event.llm_model_name
+        self.session = chat_manager.new_session(
+            session_name=prompt.name or old_session.name,
+            llm_config=llm_config,
+            widget=self,
+        )
+        self.set_model_name(self.session.llm_model_name)
+        if self.model_select.value == Select.BLANK:
+            self.notify("Model defined in session is not installed", severity="warning")
+        with self.prevent(Input.Changed, Select.Changed):
+            self.temperature_input.value = str(self.session.temperature)
+            self.session_name_input.value = self.session.name
+
+        return True

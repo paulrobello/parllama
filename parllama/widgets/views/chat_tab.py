@@ -12,16 +12,10 @@ from textual import on
 from textual import work
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal
 from textual.containers import Vertical
-from textual.events import Focus
 from textual.events import Show
 from textual.message import Message
 from textual.reactive import Reactive
-from textual.widgets import Button
-from textual.widgets import Input
-from textual.widgets import Label
-from textual.widgets import Select
 from textual.widgets import Static
 from textual.widgets import TabbedContent
 from textual.widgets import TabPane
@@ -30,12 +24,10 @@ from parllama.chat_manager import chat_manager
 from parllama.chat_manager import ChatSession
 from parllama.chat_message import ParllamaChatMessage
 from parllama.data_manager import dm
-from parllama.llm_config import LlmConfig
 from parllama.messages.messages import ChatMessage
 from parllama.messages.messages import ChatMessageSent
 from parllama.messages.messages import DeleteSession
 from parllama.messages.messages import LocalModelDeleted
-from parllama.messages.messages import LogIt
 from parllama.messages.messages import PromptSelected
 from parllama.messages.messages import RegisterForUpdates
 from parllama.messages.messages import SessionSelected
@@ -51,8 +43,6 @@ from parllama.utils import str_ellipsis
 from parllama.widgets.session_config import SessionConfig
 from parllama.widgets.chat_message_list import ChatMessageList
 from parllama.widgets.chat_message_widget import ChatMessageWidget
-from parllama.widgets.input_blur_submit import InputBlurSubmit
-from parllama.widgets.local_model_select import LocalModelSelect
 from parllama.widgets.session_list import SessionList
 from parllama.widgets.user_input import UserInput
 
@@ -73,16 +63,15 @@ class ChatTab(TabPane):
 
     """
 
-    session: ChatSession
     busy: Reactive[bool] = Reactive(False)
 
     def __init__(
         self, user_input: UserInput, session_list: SessionList, **kwargs
     ) -> None:
         """Initialise the view."""
-        self.session_config_panel = SessionConfig(id="session_config")
+        self.session_config = SessionConfig(id="session_config")
 
-        session_name = self.session_config_panel.session.name
+        session_name = self.session_config.session.name
         super().__init__(
             id=f"tp_{uuid.uuid4().hex}",
             title=str_ellipsis(session_name, settings.chat_tab_max_length),
@@ -91,32 +80,15 @@ class ChatTab(TabPane):
         self.session_list = session_list
         self.user_input = user_input
 
-        self.model_select: LocalModelSelect = LocalModelSelect(
-            id="model_name",
-        )
-        self.temperature_input: InputBlurSubmit = InputBlurSubmit(
-            id="temperature_input",
-            value=(
-                f"{settings.last_chat_temperature:.2f}"
-                if settings.last_chat_temperature
-                else ""
-            ),
-            max_length=4,
-            restrict=r"^\d?\.?\d?\d?$",
-            valid_empty=False,
-        )
-        self.session_name_input: InputBlurSubmit = InputBlurSubmit(
-            id="session_name_input",
-            value=session_name,
-            valid_empty=False,
-        )
-
         self.vs: ChatMessageList = ChatMessageList(id="messages")
         self.busy = False
 
-        self.session = self.session_config_panel.session
-
         self.session_status_bar = Static("", id="SessionStatusBar")
+
+    @property
+    def session(self) -> ChatSession:
+        """Get the current session"""
+        return self.session_config.session
 
     def _watch_busy(self, value: bool) -> None:
         """Update controls when busy changes"""
@@ -132,16 +104,9 @@ class ChatTab(TabPane):
 
     def compose(self) -> ComposeResult:
         """Compose the content of the view."""
-        yield self.session_config_panel
+        yield self.session_config
         with Vertical(id="main"):
             yield self.session_status_bar
-            with Horizontal(id="tool_bar"):
-                yield self.model_select
-                yield Label("Temp")
-                yield self.temperature_input
-                yield Label("Session")
-                yield self.session_name_input
-                yield Button("New", id="new_button", variant="warning")
             with self.vs:
                 yield from [
                     ChatMessageWidget.mk_msg_widget(msg=m, session=self.session)
@@ -168,10 +133,7 @@ class ChatTab(TabPane):
         """Handle show event"""
         self._watch_busy(self.busy)
         with self.screen.prevent(TabbedContent.TabActivated):
-            if self.model_select.value == Select.BLANK:
-                self.model_select.focus()
-            else:
-                self.user_input.focus()
+            self.user_input.focus()
         self.set_timer(0.1, self.update_session_select)
         self.update_control_states()
 
@@ -179,98 +141,20 @@ class ChatTab(TabPane):
         """Update session select on show"""
         self.session_list.post_message(SessionSelected(session_id=self.session.id))
 
-    @on(Input.Submitted, "#temperature_input")
-    def temperature_input_changed(self, event: Message) -> None:
-        """Handle temperature input change"""
-        event.stop()
-        if not self.temperature_input.value:
-            return
-        try:
-            settings.last_chat_temperature = float(self.temperature_input.value)
-        except ValueError:
-            return
-        self.session.temperature = settings.last_chat_temperature
-        settings.save()
-        # chat_manager.notify_sessions_changed()
-        self.user_input.focus()
-
-    @on(Input.Submitted, "#session_name_input")
-    def session_name_input_changed(self, event: Input.Submitted) -> None:
-        """Handle session name input change"""
-        event.stop()
-        event.prevent_default()
-        # self.app.post_message(LogIt("CT session_name_input_changed"))
-        session_name: str = self.session_name_input.value.strip()
-        if not session_name:
-            return
-        with self.prevent(Input.Changed, Input.Submitted):
-            self.session.name = chat_manager.mk_session_name(session_name)
-        self.user_input.focus()
-        settings.last_chat_session_id = self.session.id
-        settings.save()
-
     def update_control_states(self):
         """Update disabled state of controls based on model and user input values"""
         self.post_message(UpdateChatControlStates())
 
-    @on(Select.Changed, "#model_name")
-    def model_select_changed(self) -> None:
-        """Model select changed, update control states and save model name"""
-        self.update_control_states()
-        if self.model_select.value not in (Select.BLANK, settings.last_chat_model):
-            settings.last_chat_model = str(self.model_select.value)
-            settings.save()
-        if self.model_select.value != Select.BLANK:
-            self.session.llm_model_name = self.model_select.value  # type: ignore
-        else:
-            self.session.llm_model_name = ""
-        self.on_update_chat_status()
-
     def set_model_name(self, model_name: str) -> None:
         """Set model names"""
-        for _, v in dm.get_model_select_options():
-            if v == model_name:
-                self.model_select.value = model_name
-                return
-        self.model_select.value = Select.BLANK
-
-    @on(Button.Pressed, "#new_button")
-    async def on_new_button_pressed(self, event: Button.Pressed) -> None:
-        """New button pressed"""
-        event.stop()
-        await self.action_new_session()
-
-    def get_temperature(self) -> float:
-        """Get temperature from input field"""
-        try:
-            return float(self.temperature_input.value)
-        except ValueError:
-            return settings.last_chat_temperature
+        self.session_config.set_model_name(model_name)
 
     async def action_new_session(self, session_name: str = "New Chat") -> None:
         """Start new session"""
         # self.notify("New session")
-        with self.prevent(Input.Changed):
-            old_session = self.session
-            old_session.remove_sub(self)
-            await self.session_config_panel.action_new_session(session_name)
-            self.session = self.session_config_panel.session
-            self.session_name_input.value = self.session.name
-
-            # self.session.batching = False
-
+        await self.session_config.action_new_session(session_name)
         await self.vs.remove_children(ChatMessageWidget)
         self.update_control_states()
-        # model = dm.get_model_by_name(str(self.model_select.value))
-        # if model:
-        #     msgs = model.get_messages()
-        #     for msg in msgs:
-        #         self.session.add_message(
-        #             ParllamaChatMessage(
-        #                 role=msg["role"],
-        #                 content=msg["content"],
-        #             )
-        #         )
         self.on_update_chat_status()
         self.user_input.focus()
 
@@ -340,16 +224,8 @@ class ChatTab(TabPane):
 
     async def load_session(self, session_id: str) -> None:
         """Load a session"""
-        # TODO adapt to new session config
-        self.app.post_message(LogIt("load_session: " + session_id))
-        session = chat_manager.get_session(session_id, self)
-        if session is None:
-            self.notify(f"Chat session not found: {session_id}", severity="error")
+        if not self.session_config.load_session(session_id):
             return
-        session.load()
-        old_session = self.session
-        old_session.remove_sub(self)
-        self.session = session
         await self.vs.remove_children(ChatMessageWidget)
         await self.vs.mount(
             *[
@@ -357,14 +233,6 @@ class ChatTab(TabPane):
                 for m in self.session.messages
             ]
         )
-        with self.prevent(Focus, Input.Changed, Select.Changed):
-            self.set_model_name(self.session.llm_model_name)
-            if self.model_select.value == Select.BLANK:
-                self.notify(
-                    "Model defined in session is not installed", severity="warning"
-                )
-            self.temperature_input.value = str(self.session.temperature)
-            self.session_name_input.value = self.session.name
         self.set_timer(0.25, partial(self.scroll_to_bottom, False))
         self.update_control_states()
         self.notify_tab_label_changed()
@@ -373,31 +241,12 @@ class ChatTab(TabPane):
 
     async def load_prompt(self, event: PromptSelected) -> None:
         """Load a session"""
-        # TODO adapt to new session config
-        self.app.post_message(LogIt("load_prompt: " + event.prompt_id))
-        self.app.post_message(
-            LogIt(f"{event.prompt_id},{event.llm_model_name},{event.temperature}")
-        )
-        prompt = chat_manager.get_prompt(event.prompt_id)
-        if prompt is None:
-            self.notify(f"Prompt not found: {event.prompt_id}", severity="error")
+        if not self.session_config.load_prompt(event):
             return
-        prompt.load()
-        self.app.post_message(LogIt(f"{prompt.id},{prompt.name}"))
-        old_session = self.session
-        old_session.remove_sub(self)
-        llm_config: LlmConfig = old_session.llm_config.clone()
-        if event.temperature is not None:
-            llm_config.temperature = event.temperature
-        if event.llm_model_name:
-            llm_config.model_name = event.llm_model_name
-        self.session = chat_manager.new_session(
-            session_name=prompt.name or old_session.name,
-            llm_config=llm_config,
-            widget=self,
-        )
-        with self.prevent(Focus, Input.Changed, Select.Changed):
-            self.set_model_name(self.session.llm_model_name)
+
+        prompt = chat_manager.get_prompt(event.prompt_id)
+        if not prompt:
+            return
 
         with self.session.batch_changes():
             for m in prompt.messages:
@@ -416,14 +265,7 @@ class ChatTab(TabPane):
                 for m in self.session.messages
             ]
         )
-        with self.prevent(Focus, Input.Changed, Select.Changed):
-            self.set_model_name(self.session.llm_model_name)
-            if self.model_select.value == Select.BLANK:
-                self.notify(
-                    "Model defined in session is not installed", severity="warning"
-                )
-            self.temperature_input.value = str(self.session.temperature)
-            self.session_name_input.value = self.session.name
+
         self.set_timer(0.25, partial(self.scroll_to_bottom, False))
         self.update_control_states()
         self.notify_tab_label_changed()
@@ -455,9 +297,7 @@ class ChatTab(TabPane):
         #     LogIt(f"CT session updated [{','.join([*event.changed])}]")
         # )
         if "name" in event.changed:
-            with self.prevent(Input.Changed, Input.Submitted):
-                self.session_name_input.value = self.session.name
-                self.notify_tab_label_changed()
+            self.notify_tab_label_changed()
         if "model_name" in event.changed or "messages" in event.changed:
             self.on_update_chat_status()
 
@@ -531,4 +371,4 @@ class ChatTab(TabPane):
 
     def action_toggle_session_config(self) -> None:
         """Toggle session configuration panel"""
-        self.session_config_panel.display = not self.session_config_panel.display
+        self.session_config.display = not self.session_config.display

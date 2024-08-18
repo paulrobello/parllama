@@ -686,7 +686,9 @@ If you would like to auto check for updates, you can enable it in the Startup se
     async def on_model_interact_requested(self, event: ModelInteractRequested) -> None:
         """Model interact requested event"""
         self.main_screen.change_tab("Chat")
-        self.main_screen.chat_view.active_tab.model_select.value = event.model_name
+        self.main_screen.chat_view.active_tab.session_config.model_select.value = (
+            event.model_name
+        )
         await self.main_screen.chat_view.active_tab.action_new_session()
         self.main_screen.chat_view.user_input.focus()
 
