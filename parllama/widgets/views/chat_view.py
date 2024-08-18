@@ -131,6 +131,13 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
             show=True,
             priority=True,
         ),
+        Binding(
+            key="ctrl+p",
+            action="toggle_session_config",
+            description="Config",
+            show=True,
+            priority=True,
+        ),
     ]
     chat_tabs: TabbedContent
     model_list_auto_complete_list: list[str]
@@ -582,3 +589,7 @@ Chat Commands:
     def on_tab_activated(self, msg: TabbedContent.TabActivated) -> None:
         """Prevent Tab activated event bubble"""
         msg.stop()
+
+    def action_toggle_session_config(self) -> None:
+        """Toggle session configuration panel"""
+        self.active_tab.action_toggle_session_config()

@@ -1,0 +1,193 @@
+"""Session configuration widget."""
+
+from __future__ import annotations
+
+from textual import on
+from textual.app import ComposeResult
+from textual.containers import VerticalScroll, Horizontal
+from textual.message import Message
+from textual.widgets import Rule, Static, Label, Button, Input, Select
+
+from parllama.chat_manager import chat_manager
+from parllama.chat_session import ChatSession
+from parllama.data_manager import dm
+from parllama.llm_config import LlmConfig
+from parllama.messages.messages import (
+    RegisterForUpdates,
+    SessionSelected,
+    UnRegisterForUpdates,
+    SessionUpdated,
+)
+from parllama.settings_manager import settings
+from parllama.widgets.input_blur_submit import InputBlurSubmit
+from parllama.widgets.local_model_select import LocalModelSelect
+
+
+class SessionConfig(VerticalScroll):
+    """Session configuration widget."""
+
+    DEFAULT_CSS = """
+    #temperature_input {
+        width: 12;
+    }
+    #session_name_input {
+        width: 1fr;
+    }
+    """
+    BINDINGS = []
+    session: ChatSession
+
+    def __init__(self, **kwargs) -> None:
+        """Initialise the view."""
+        super().__init__(**kwargs)
+        session_name = chat_manager.mk_session_name("New Chat")
+
+        self.model_select: LocalModelSelect = LocalModelSelect(
+            id="model_name",
+        )
+        self.temperature_input: InputBlurSubmit = InputBlurSubmit(
+            id="temperature_input",
+            value=(
+                f"{settings.last_chat_temperature:.2f}"
+                if settings.last_chat_temperature
+                else ""
+            ),
+            max_length=4,
+            restrict=r"^\d?\.?\d?\d?$",
+            valid_empty=False,
+        )
+        self.session_name_input: InputBlurSubmit = InputBlurSubmit(
+            id="session_name_input",
+            value=session_name,
+            valid_empty=False,
+        )
+        self.session = chat_manager.get_or_create_session(
+            session_id=None,
+            session_name=session_name,
+            llm_config=LlmConfig(
+                provider="Ollama",
+                model_name=str(self.model_select.value),
+                temperature=self.get_temperature(),
+            ),
+            widget=self,
+        )
+
+    async def on_mount(self) -> None:
+        """Set up the dialog once the DOM is ready."""
+        self.app.post_message(
+            RegisterForUpdates(
+                widget=self,
+                event_names=[
+                    "SessionSelected",
+                    "SessionUpdated",
+                ],
+            )
+        )
+
+    async def on_unmount(self) -> None:
+        """Remove dialog from updates when unmounted."""
+        self.app.post_message(UnRegisterForUpdates(widget=self))
+
+    def compose(self) -> ComposeResult:
+        """Compose the content of the view."""
+        with Horizontal():
+            yield Static("Session Config", classes="width-fr-1 pt-1")
+            yield Button(
+                "New", id="new_button", variant="warning", classes="width-fr-1"
+            )
+        yield Rule()
+        yield Label("Session Name")
+        yield self.session_name_input
+        yield self.model_select
+        yield Label("Temperature")
+        yield self.temperature_input
+
+    async def action_new_session(self, session_name: str = "New Chat") -> None:
+        """Start new session"""
+        # self.notify("New session")
+        with self.prevent(Input.Changed):
+            old_session = self.session
+            old_session.remove_sub(self)
+            self.session = chat_manager.new_session(
+                session_name=session_name,
+                llm_config=LlmConfig(
+                    provider="Ollama",
+                    model_name=str(self.model_select.value),
+                    temperature=self.get_temperature(),
+                ),
+                widget=self,
+            )
+            self.session_name_input.value = self.session.name
+            # self.session.batching = False
+
+    def set_model_name(self, model_name: str) -> None:
+        """Set model names"""
+        for _, v in dm.get_model_select_options():
+            if v == model_name:
+                self.model_select.value = model_name
+                return
+        self.model_select.value = Select.BLANK
+
+    @on(Button.Pressed, "#new_button")
+    async def on_new_button_pressed(self, event: Button.Pressed) -> None:
+        """New button pressed"""
+        event.stop()
+        await self.action_new_session()
+
+    def get_temperature(self) -> float:
+        """Get temperature from input field"""
+        try:
+            return float(self.temperature_input.value)
+        except ValueError:
+            return settings.last_chat_temperature
+
+    @on(SessionSelected)
+    def on_session_selected(self, event: SessionSelected) -> None:
+        """Handle session selected event."""
+        event.stop()
+
+    @on(Input.Submitted, "#temperature_input")
+    def temperature_input_changed(self, event: Message) -> None:
+        """Handle temperature input change"""
+        event.stop()
+        if not self.temperature_input.value:
+            return
+        try:
+            settings.last_chat_temperature = float(self.temperature_input.value)
+        except ValueError:
+            return
+        self.session.temperature = settings.last_chat_temperature
+        settings.save()
+
+    @on(Input.Submitted, "#session_name_input")
+    def session_name_input_changed(self, event: Input.Submitted) -> None:
+        """Handle session name input change"""
+        event.stop()
+        event.prevent_default()
+        # self.app.post_message(LogIt("CT session_name_input_changed"))
+        session_name: str = self.session_name_input.value.strip()
+        if not session_name:
+            return
+        with self.prevent(Input.Changed, Input.Submitted):
+            self.session.name = chat_manager.mk_session_name(session_name)
+        settings.last_chat_session_id = self.session.id
+        settings.save()
+
+    @on(Select.Changed, "#model_name")
+    def model_select_changed(self) -> None:
+        """Model select changed, update control states and save model name"""
+        if self.model_select.value not in (Select.BLANK, settings.last_chat_model):
+            settings.last_chat_model = str(self.model_select.value)
+            settings.save()
+        if self.model_select.value != Select.BLANK:
+            self.session.llm_model_name = self.model_select.value  # type: ignore
+        else:
+            self.session.llm_model_name = ""
+
+    @on(SessionUpdated)
+    def session_updated(self, event: SessionUpdated) -> None:
+        """Handle a session updated event"""
+        event.stop()
+        if "name" in event.changed:
+            with self.prevent(Input.Changed, Input.Submitted):
+                self.session_name_input.value = self.session.name

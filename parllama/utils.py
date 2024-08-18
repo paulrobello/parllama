@@ -601,6 +601,12 @@ def get_args() -> Namespace:
     )
 
     parser.add_argument(
+        "--load-local-models-on-startup",
+        help="Load local models on startup. Defaults to 1",
+        choices=["0", "1"],
+    )
+
+    parser.add_argument(
         "-p",
         "--ps-poll",
         type=int,

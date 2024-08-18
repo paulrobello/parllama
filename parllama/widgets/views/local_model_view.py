@@ -33,6 +33,7 @@ from parllama.messages.messages import ModelPushRequested
 from parllama.messages.messages import RegisterForUpdates
 from parllama.messages.messages import SetModelNameLoading
 from parllama.messages.messages import ShowLocalModel
+from parllama.settings_manager import settings
 from parllama.widgets.filter_input import FilterInput
 from parllama.widgets.local_model_grid_list import LocalModelGridList
 from parllama.widgets.local_model_list_item import LocalModelListItem
@@ -138,7 +139,8 @@ class LocalModelView(Container):
                 ],
             )
         )
-        self.action_refresh_models()
+        if settings.load_local_models_on_startup:
+            self.action_refresh_models()
 
     def action_refresh_models(self):
         """Refresh the models."""

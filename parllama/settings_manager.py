@@ -27,29 +27,35 @@ class Settings(BaseModel):
     no_save: bool = False
     no_save_chat: bool = False
     data_dir: str = os.path.expanduser("~/.parllama")
+    settings_file: str = "settings.json"
     cache_dir: str = ""
     chat_dir: str = ""
     prompt_dir: str = ""
     export_md_dir: str = ""
+    secrets_file: str = ""
+    chat_history_file: str = ""
     save_chat_input_history: bool = False
     chat_input_history_length: int = 100
-    chat_history_file: str = ""
-    secrets_file: str = ""
+
+    theme_name: str = "par"
+    theme_mode: str = "dark"
 
     chat_tab_max_length: int = 15
-    settings_file: str = "settings.json"
-    theme_name: str = "par"
     starting_tab: TabType = "Local"
     last_tab: TabType = "Local"
     use_last_tab_on_startup: bool = True
+
     last_chat_model: str = ""
     last_chat_temperature: float = 0.5
     last_chat_session_id: str | None = None
-    theme_mode: str = "dark"
-    site_models_namespace: str = ""
+
     max_log_lines: int = 1000
+
+    site_models_namespace: str = ""
     ollama_host: str = "http://localhost:11434"
     ollama_ps_poll_interval: int = 3
+    load_local_models_on_startup: bool = True
+
     auto_name_session: bool = False
     auto_name_session_llm: str = ""
     return_to_single_line_on_submit: bool = True
@@ -139,6 +145,9 @@ class Settings(BaseModel):
 
         if args.use_last_tab_on_startup is not None:
             self.use_last_tab_on_startup = args.use_last_tab_on_startup == "1"
+
+        if args.load_local_models_on_startup is not None:
+            self.load_local_models_on_startup = args.load_local_models_on_startup == "1"
 
         if args.ps_poll:
             self.ollama_ps_poll_interval = args.ps_poll
@@ -232,6 +241,10 @@ class Settings(BaseModel):
                 )
                 self.chat_input_history_length = data.get(
                     "chat_input_history_length", self.chat_input_history_length
+                )
+
+                self.load_local_models_on_startup = data.get(
+                    "load_local_models_on_startup", self.load_local_models_on_startup
                 )
 
         except FileNotFoundError:

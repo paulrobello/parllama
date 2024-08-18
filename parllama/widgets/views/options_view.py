@@ -125,7 +125,6 @@ class OptionsView(Horizontal):
                             value=settings.use_last_tab_on_startup,
                             id="use_last_tab_on_startup",
                         )
-                        # yield Label(f"Last Tab Used: {settings.last_tab}")
                     with Horizontal():
                         yield Checkbox(
                             label="Check for updates on startup",
@@ -144,6 +143,12 @@ class OptionsView(Horizontal):
                         options=[(vs, vs) for vs in valid_tabs],
                         id="starting_tab",
                     )
+                    with Horizontal():
+                        yield Checkbox(
+                            label="Load local models on startup",
+                            value=settings.load_local_models_on_startup,
+                            id="load_local_models_on_startup",
+                        )
 
                 with Vertical(classes="section") as vso:
                     vso.border_title = "Ollama Endpoint"
@@ -295,6 +300,8 @@ class OptionsView(Horizontal):
             settings.return_to_single_line_on_submit = bool(int(ctrl.value))
         elif ctrl.id == "save_chat_input_history":
             settings.save_chat_input_history = bool(int(ctrl.value))
+        elif ctrl.id == "load_local_models_on_startup":
+            settings.load_local_models_on_startup = bool(int(ctrl.value))
         else:
             self.notify(f"Unhandled input: {ctrl.id}", severity="error", timeout=8)
             return

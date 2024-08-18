@@ -95,6 +95,12 @@
     padding: 1;
 }
 
+.pt-1 {
+    padding-top: 1;
+}
+.pb-1 {
+    padding-bottom: 1;
+}
 .pl-1 {
     padding-left: 1;
 }

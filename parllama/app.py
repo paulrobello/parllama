@@ -483,9 +483,10 @@ If you would like to auto check for updates, you can enable it in the Startup se
             except Empty:
                 if self._exit:
                     return
-                if self.is_busy:
-                    self.post_message(LocalModelListRefreshRequested(widget=None))
-                    self.is_busy = False
+                # TODO figure this out
+                # if self.is_busy:
+                #     self.post_message(LocalModelListRefreshRequested(widget=None))
+                #     self.is_busy = False
                 continue
 
     @on(ModelPulled)

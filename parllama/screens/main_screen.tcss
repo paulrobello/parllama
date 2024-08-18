@@ -31,3 +31,39 @@ ListView:focus > SiteModelListItem.--highlight {
         background: $surface;
     }
 }
+
+ChatTab {
+    layers: right;
+    SessionConfig {
+        width: 40;
+        height: 1fr;
+        dock: right;
+        padding: 1;
+    }
+    #tool_bar {
+        height: 3;
+        background: $surface-darken-1;
+        #model_name {
+            max-width: 40;
+        }
+    }
+    #temperature_input {
+        width: 12;
+    }
+    #session_name_input {
+        min-width: 15;
+        max-width: 40;
+        width: auto;
+    }
+    #new_button {
+        margin-left: 2;
+        min-width: 9;
+        background: $warning-darken-2;
+        border-top: tall $warning-lighten-1;
+    }
+    Label {
+        margin: 1;
+        background: transparent;
+    }
+
+}

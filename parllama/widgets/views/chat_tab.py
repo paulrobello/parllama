@@ -11,6 +11,7 @@ from rich.text import Text
 from textual import on
 from textual import work
 from textual.app import ComposeResult
+from textual.binding import Binding
 from textual.containers import Horizontal
 from textual.containers import Vertical
 from textual.events import Focus
@@ -47,6 +48,7 @@ from parllama.models.ollama_data import FullModel
 from parllama.screens.save_session import SaveSession
 from parllama.settings_manager import settings
 from parllama.utils import str_ellipsis
+from parllama.widgets.session_config import SessionConfig
 from parllama.widgets.chat_message_list import ChatMessageList
 from parllama.widgets.chat_message_widget import ChatMessageWidget
 from parllama.widgets.input_blur_submit import InputBlurSubmit
@@ -58,34 +60,17 @@ from parllama.widgets.user_input import UserInput
 class ChatTab(TabPane):
     """Chat tab"""
 
+    BINDINGS = [
+        Binding(
+            key="ctrl+p",
+            action="toggle_session_config",
+            description="Config",
+            show=True,
+            priority=True,
+        ),
+    ]
     DEFAULT_CSS = """
-    ChatTab {
-        #tool_bar {
-            height: 3;
-            background: $surface-darken-1;
-            #model_name {
-                max-width: 40;
-            }
-        }
-        #temperature_input {
-            width: 12;
-        }
-        #session_name_input {
-            min-width: 15;
-            max-width: 40;
-            width: auto;
-        }
-        #new_button {
-            margin-left: 2;
-            min-width: 9;
-            background: $warning-darken-2;
-            border-top: tall $warning-lighten-1;
-        }
-        Label {
-            margin: 1;
-            background: transparent;
-        }
-    }
+
     """
 
     session: ChatSession
@@ -95,7 +80,9 @@ class ChatTab(TabPane):
         self, user_input: UserInput, session_list: SessionList, **kwargs
     ) -> None:
         """Initialise the view."""
-        session_name = chat_manager.mk_session_name("New Chat")
+        self.session_config_panel = SessionConfig(id="session_config")
+
+        session_name = self.session_config_panel.session.name
         super().__init__(
             id=f"tp_{uuid.uuid4().hex}",
             title=str_ellipsis(session_name, settings.chat_tab_max_length),
@@ -103,6 +90,7 @@ class ChatTab(TabPane):
         )
         self.session_list = session_list
         self.user_input = user_input
+
         self.model_select: LocalModelSelect = LocalModelSelect(
             id="model_name",
         )
@@ -126,16 +114,7 @@ class ChatTab(TabPane):
         self.vs: ChatMessageList = ChatMessageList(id="messages")
         self.busy = False
 
-        self.session = chat_manager.get_or_create_session(
-            session_id=None,
-            session_name=session_name,
-            llm_config=LlmConfig(
-                provider="Ollama",
-                model_name=str(self.model_select.value),
-                temperature=self.get_temperature(),
-            ),
-            widget=self,
-        )
+        self.session = self.session_config_panel.session
 
         self.session_status_bar = Static("", id="SessionStatusBar")
 
@@ -153,6 +132,7 @@ class ChatTab(TabPane):
 
     def compose(self) -> ComposeResult:
         """Compose the content of the view."""
+        yield self.session_config_panel
         with Vertical(id="main"):
             yield self.session_status_bar
             with Horizontal(id="tool_bar"):
@@ -175,7 +155,6 @@ class ChatTab(TabPane):
                 widget=self,
                 event_names=[
                     "LocalModelDeleted",
-                    "LocalModelListLoaded",
                     "SessionUpdated",
                 ],
             )
@@ -248,7 +227,7 @@ class ChatTab(TabPane):
         self.on_update_chat_status()
 
     def set_model_name(self, model_name: str) -> None:
-        """ "Set model names"""
+        """Set model names"""
         for _, v in dm.get_model_select_options():
             if v == model_name:
                 self.model_select.value = model_name
@@ -274,16 +253,10 @@ class ChatTab(TabPane):
         with self.prevent(Input.Changed):
             old_session = self.session
             old_session.remove_sub(self)
-            self.session = chat_manager.new_session(
-                session_name=session_name,
-                llm_config=LlmConfig(
-                    provider="Ollama",
-                    model_name=str(self.model_select.value),
-                    temperature=self.get_temperature(),
-                ),
-                widget=self,
-            )
+            await self.session_config_panel.action_new_session(session_name)
+            self.session = self.session_config_panel.session
             self.session_name_input.value = self.session.name
+
             # self.session.batching = False
 
         await self.vs.remove_children(ChatMessageWidget)
@@ -367,6 +340,7 @@ class ChatTab(TabPane):
 
     async def load_session(self, session_id: str) -> None:
         """Load a session"""
+        # TODO adapt to new session config
         self.app.post_message(LogIt("load_session: " + session_id))
         session = chat_manager.get_session(session_id, self)
         if session is None:
@@ -399,6 +373,7 @@ class ChatTab(TabPane):
 
     async def load_prompt(self, event: PromptSelected) -> None:
         """Load a session"""
+        # TODO adapt to new session config
         self.app.post_message(LogIt("load_prompt: " + event.prompt_id))
         self.app.post_message(
             LogIt(f"{event.prompt_id},{event.llm_model_name},{event.temperature}")
@@ -553,3 +528,7 @@ class ChatTab(TabPane):
         """Model deleted check if the currently selected model."""
         event.stop()
         self.update_control_states()
+
+    def action_toggle_session_config(self) -> None:
+        """Toggle session configuration panel"""
+        self.session_config_panel.display = not self.session_config_panel.display
