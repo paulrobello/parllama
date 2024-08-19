@@ -44,7 +44,7 @@ class SecretsManager(ParEventSystemBase):
         """Initialize Manager and load vault."""
         super().__init__(**kwargs)
         self._secrets = {}
-        self._salt = os.urandom(16)
+        self._salt = gen_salt()
         self._key_secure = None
         self._key = None
         self._secrets_file = secrets_file
@@ -67,7 +67,7 @@ class SecretsManager(ParEventSystemBase):
                 self._secrets = data.get("secrets", {})
         except FileNotFoundError:
             self._secrets = {}
-            self._salt = os.urandom(16)
+            self._salt = gen_salt()
             self._key_secure = None
         except JSONDecodeError as e:
             self.log_it(e)
@@ -249,7 +249,7 @@ class SecretsManager(ParEventSystemBase):
     def clear(self) -> None:
         """Clear vault and remove password"""
         self._secrets.clear()
-        self._salt = os.urandom(16)
+        self._salt = gen_salt()
         self._key_secure = None
         self.lock()
         self._save_secrets()
@@ -305,16 +305,19 @@ def derive_key(password: str, salt: bytes) -> bytes:
 
 
 def encrypt(plaintext: str, key: bytes) -> str:
-    """Encrypts plaintext with the given key."""
-    iv = os.urandom(12)
-    cipher = Cipher(algorithms.AES(key), modes.GCM(iv), backend=default_backend())
-    encryptor = cipher.encryptor()
-    encrypted = encryptor.update(plaintext.encode("utf-8")) + encryptor.finalize()
-    return base64.b64encode(iv + encryptor.tag + encrypted).decode("utf-8")
+    """Encrypts plaintext with the given key bytes."""
+    try:
+        iv = os.urandom(12)
+        cipher = Cipher(algorithms.AES(key), modes.GCM(iv), backend=default_backend())
+        encryptor = cipher.encryptor()
+        encrypted = encryptor.update(plaintext.encode("utf-8")) + encryptor.finalize()
+        return base64.b64encode(iv + encryptor.tag + encrypted).decode("utf-8")
+    except (TypeError, ValueError, AttributeError) as e:
+        raise ValueError(f"An error occurred: {e}") from e
 
 
 def decrypt(ciphertext: str, key: bytes) -> str:
-    """Decrypts ciphertext with the given key."""
+    """Decrypts ciphertext with the given key bytes."""
     try:
         decoded = base64.b64decode(ciphertext)
         iv, tag, encrypted = decoded[:12], decoded[12:28], decoded[28:]
@@ -327,17 +330,28 @@ def decrypt(ciphertext: str, key: bytes) -> str:
         plaintext = decryptor.update(encrypted) + decryptor.finalize()
         return plaintext.decode("utf-8")
     except (ValueError, TypeError, InvalidTag) as e:
-        raise ValueError("Bad key, invalid or corrupted ciphertext.") from e
+        raise ValueError("Bad key or invalid / corrupted ciphertext.") from e
 
 
-def encrypt_with_password(plaintext: str, password: str, salt: str) -> str:
+def encrypt_with_password(plaintext: str, password: str, salt: str | bytes) -> str:
     """Encrypts plaintext with the provided password."""
-    return encrypt(plaintext, derive_key(password, base64.b64decode(salt)))
+    return encrypt(
+        plaintext,
+        derive_key(password, base64.b64decode(salt) if isinstance(salt, str) else salt),
+    )
 
 
-def decrypt_with_password(ciphertext: str, password: str, salt: str) -> str:
-    """Decrypts ciphertext with the provided password."""
-    return decrypt(ciphertext, derive_key(password, base64.b64decode(salt)))
+def decrypt_with_password(ciphertext: str, password: str, salt: str | bytes) -> str:
+    """Decrypts ciphertext with the provided password and salt."""
+    return decrypt(
+        ciphertext,
+        derive_key(password, base64.b64decode(salt) if isinstance(salt, str) else salt),
+    )
+
+
+def gen_salt() -> bytes:
+    """Generates random salt bytes."""
+    return os.urandom(16)
 
 
 secrets_manager = SecretsManager(settings.secrets_file)

@@ -947,11 +947,11 @@
         },
         "huggingface-hub": {
             "hashes": [
-                "sha256:7b45d6744dd53ce9cbf9880957de00e9d10a9ae837f1c9b7255fc8fa4e8264f3",
-                "sha256:d93fb63b1f1a919a22ce91a14518974e81fc4610bf344dfe7572343ce8d3aced"
+                "sha256:a990f3232aa985fe749bc9474060cbad75e8b2f115f6665a9fda5b9c97818970",
+                "sha256:cc2579e761d070713eaa9c323e3debe39d5b464ae3a7261c39a9195b27bb8000"
             ],
             "markers": "python_full_version >= '3.8.0'",
-            "version": "==0.24.5"
+            "version": "==0.24.6"
         },
         "humanfriendly": {
             "hashes": [
@@ -4637,11 +4637,11 @@
         },
         "huggingface-hub": {
             "hashes": [
-                "sha256:7b45d6744dd53ce9cbf9880957de00e9d10a9ae837f1c9b7255fc8fa4e8264f3",
-                "sha256:d93fb63b1f1a919a22ce91a14518974e81fc4610bf344dfe7572343ce8d3aced"
+                "sha256:a990f3232aa985fe749bc9474060cbad75e8b2f115f6665a9fda5b9c97818970",
+                "sha256:cc2579e761d070713eaa9c323e3debe39d5b464ae3a7261c39a9195b27bb8000"
             ],
             "markers": "python_full_version >= '3.8.0'",
-            "version": "==0.24.5"
+            "version": "==0.24.6"
         },
         "humanfriendly": {
             "hashes": [

@@ -121,6 +121,7 @@ class ChatTab(TabPane):
                 ],
             )
         )
+        self.notify_tab_label_changed()
 
     async def on_unmount(self) -> None:
         """Remove dialog from updates when unmounted."""
@@ -240,7 +241,7 @@ class ChatTab(TabPane):
 
     async def load_prompt(self, event: PromptSelected) -> None:
         """Load a session"""
-        if not self.session_config.load_prompt(event):
+        if not await self.session_config.load_prompt(event):
             return
 
         prompt = chat_manager.get_prompt(event.prompt_id)
@@ -310,7 +311,6 @@ class ChatTab(TabPane):
         if max_context_length:
             self.post_message(UpdateChatStatus())
 
-    # @on(UpdateChatStatus)
     def on_update_chat_status(self, event: Message | None = None) -> None:
         """Update session status bar"""
         if event:
@@ -336,6 +336,7 @@ class ChatTab(TabPane):
                 )
 
         self.session_status_bar.update(Text.assemble(*parts))
+        self.update_control_states()
 
     async def action_delete_msg(self) -> None:
         """Handle the delete message action."""

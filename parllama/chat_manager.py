@@ -220,7 +220,7 @@ class ChatManager(ParEventSystemBase):
         # )
         if (
             "name" in event.changed
-            or "model_name" in event.changed
+            or "model" in event.changed
             or "temperature" in event.changed
         ):
             self.notify_sessions_changed()

@@ -161,7 +161,7 @@ class SessionConfig(VerticalScroll):
         """Handle session name input change"""
         event.stop()
         event.prevent_default()
-        # self.app.post_message(LogIt("CT session_name_input_changed"))
+        self.app.post_message(LogIt("CT session_name_input_changed"))
         session_name: str = self.session_name_input.value.strip()
         if not session_name:
             return
@@ -185,10 +185,14 @@ class SessionConfig(VerticalScroll):
     @on(SessionUpdated)
     def session_updated(self, event: SessionUpdated) -> None:
         """Handle a session updated event"""
-        event.stop()
+        # Allow event to propagate to parent
         if "name" in event.changed:
             with self.prevent(Input.Changed, Input.Submitted):
                 self.session_name_input.value = self.session.name
+
+        if "temperature" in event.changed:
+            with self.prevent(Input.Changed, Input.Submitted):
+                self.temperature_input.value = str(self.session.temperature)
 
     async def load_session(self, session_id: str) -> bool:
         """Load a session"""
