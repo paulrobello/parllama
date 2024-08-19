@@ -192,7 +192,7 @@ class SessionConfig(VerticalScroll):
 
     async def load_session(self, session_id: str) -> bool:
         """Load a session"""
-        self.app.post_message(LogIt("SC load_session: " + session_id))
+        # self.app.post_message(LogIt("SC load_session: " + session_id))
         session = chat_manager.get_session(session_id, self)
         if session is None:
             self.notify(f"Chat session not found: {session_id}", severity="error")

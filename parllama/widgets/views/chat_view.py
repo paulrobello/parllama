@@ -22,7 +22,7 @@ from parllama.chat_manager import ChatSession
 from parllama.chat_message import ParllamaChatMessage
 from parllama.data_manager import dm
 from parllama.dialogs.information import InformationDialog
-from parllama.messages.messages import ChangeTab
+from parllama.messages.messages import ChangeTab, LocalModelDeleted
 from parllama.messages.messages import ChatGenerationAborted
 from parllama.messages.messages import ChatMessage
 from parllama.messages.messages import ChatMessageSent
@@ -187,6 +187,7 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
                 widget=self,
                 event_names=[
                     "LocalModelListLoaded",
+                    "LocalModelDeleted",
                     "DeleteSession",
                     "SessionSelected",
                     "PromptListLoaded",
@@ -597,3 +598,9 @@ Chat Commands:
     def action_toggle_session_config(self) -> None:
         """Toggle session configuration panel"""
         self.active_tab.action_toggle_session_config()
+
+    @on(LocalModelDeleted)
+    def on_model_deleted(self, event: LocalModelDeleted) -> None:
+        """Model deleted check if the currently selected model."""
+        event.stop()
+        self.update_control_states()

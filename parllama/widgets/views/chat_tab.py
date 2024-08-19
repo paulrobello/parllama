@@ -27,7 +27,6 @@ from parllama.data_manager import dm
 from parllama.messages.messages import ChatMessage
 from parllama.messages.messages import ChatMessageSent
 from parllama.messages.messages import DeleteSession
-from parllama.messages.messages import LocalModelDeleted
 from parllama.messages.messages import PromptSelected
 from parllama.messages.messages import RegisterForUpdates
 from parllama.messages.messages import SessionSelected
@@ -60,7 +59,6 @@ class ChatTab(TabPane):
         ),
     ]
     DEFAULT_CSS = """
-
     """
 
     busy: Reactive[bool] = Reactive(False)
@@ -119,7 +117,6 @@ class ChatTab(TabPane):
             RegisterForUpdates(
                 widget=self,
                 event_names=[
-                    "LocalModelDeleted",
                     "SessionUpdated",
                 ],
             )
@@ -224,7 +221,9 @@ class ChatTab(TabPane):
 
     async def load_session(self, session_id: str) -> None:
         """Load a session"""
-        if not self.session_config.load_session(session_id):
+        # self.app.post_message(LogIt("CT load_session: " + session_id))
+
+        if not await self.session_config.load_session(session_id):
             return
         await self.vs.remove_children(ChatMessageWidget)
         await self.vs.mount(
@@ -362,12 +361,6 @@ class ChatTab(TabPane):
     def on_chat_message_sent(self) -> None:
         """Handle a chat message sent"""
         self.busy = False
-
-    @on(LocalModelDeleted)
-    def on_model_deleted(self, event: LocalModelDeleted) -> None:
-        """Model deleted check if the currently selected model."""
-        event.stop()
-        self.update_control_states()
 
     def action_toggle_session_config(self) -> None:
         """Toggle session configuration panel"""
