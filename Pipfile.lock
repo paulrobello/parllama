@@ -241,11 +241,11 @@
         },
         "cachetools": {
             "hashes": [
-                "sha256:3ae3b49a3d5e28a77a0be2b37dbcb89005058959cb2323858c2657c4a8cab474",
-                "sha256:b8adc2e7c07f105ced7bc56dbb6dfbe7c4a00acce20e2227b3f355be89bc6827"
+                "sha256:02134e8439cdc2ffb62023ce1debca2944c3f289d66bb17ead3ab3dede74b292",
+                "sha256:2cc24fb4cbe39633fb7badd9db9ca6295d766d9c2995f245725a46715d050f2a"
             ],
             "markers": "python_version >= '3.7'",
-            "version": "==5.4.0"
+            "version": "==5.5.0"
         },
         "certifi": {
             "hashes": [
@@ -711,11 +711,11 @@
         },
         "google-auth": {
             "hashes": [
-                "sha256:8eff47d0d4a34ab6265c50a106a3362de6a9975bb08998700e389f857e4d39df",
-                "sha256:d6a52342160d7290e334b4d47ba390767e4438ad0d45b7630774533e82655b95"
+                "sha256:72fd4733b80b6d777dcde515628a9eb4a577339437012874ea286bca7261ee65",
+                "sha256:8eb87396435c19b20d32abd2f984e31c191a15284af72eb922f10e5bde9c04cc"
             ],
             "markers": "python_version >= '3.7'",
-            "version": "==2.33.0"
+            "version": "==2.34.0"
         },
         "google-auth-httplib2": {
             "hashes": [
@@ -3938,11 +3938,11 @@
         },
         "cachetools": {
             "hashes": [
-                "sha256:3ae3b49a3d5e28a77a0be2b37dbcb89005058959cb2323858c2657c4a8cab474",
-                "sha256:b8adc2e7c07f105ced7bc56dbb6dfbe7c4a00acce20e2227b3f355be89bc6827"
+                "sha256:02134e8439cdc2ffb62023ce1debca2944c3f289d66bb17ead3ab3dede74b292",
+                "sha256:2cc24fb4cbe39633fb7badd9db9ca6295d766d9c2995f245725a46715d050f2a"
             ],
             "markers": "python_version >= '3.7'",
-            "version": "==5.4.0"
+            "version": "==5.5.0"
         },
         "certifi": {
             "hashes": [
@@ -4516,11 +4516,11 @@
         },
         "google-auth": {
             "hashes": [
-                "sha256:8eff47d0d4a34ab6265c50a106a3362de6a9975bb08998700e389f857e4d39df",
-                "sha256:d6a52342160d7290e334b4d47ba390767e4438ad0d45b7630774533e82655b95"
+                "sha256:72fd4733b80b6d777dcde515628a9eb4a577339437012874ea286bca7261ee65",
+                "sha256:8eb87396435c19b20d32abd2f984e31c191a15284af72eb922f10e5bde9c04cc"
             ],
             "markers": "python_version >= '3.7'",
-            "version": "==2.33.0"
+            "version": "==2.34.0"
         },
         "google-auth-httplib2": {
             "hashes": [
@@ -5438,11 +5438,11 @@
         },
         "nltk": {
             "hashes": [
-                "sha256:1834da3d0682cba4f2cede2f9aad6b0fafb6461ba451db0efb6f9c39798d64d3",
-                "sha256:fd5c9109f976fa86bcadba8f91e47f5e9293bd034474752e92a520f81c93dda5"
+                "sha256:4fa26829c5b00715afe3061398a8989dc643b92ce7dd93fb4585a70930d168a1",
+                "sha256:87d127bd3de4bd89a4f81265e5fa59cb1b199b27440175370f7417d2bc7ae868"
             ],
-            "markers": "python_version >= '3.7'",
-            "version": "==3.8.1"
+            "markers": "python_version >= '3.8'",
+            "version": "==3.9.1"
         },
         "nodeenv": {
             "hashes": [

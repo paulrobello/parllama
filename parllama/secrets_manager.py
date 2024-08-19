@@ -86,16 +86,9 @@ class SecretsManager(ParEventSystemBase):
 
         self.import_to_env(True)
 
-    def _derive_key(self, password: str) -> bytes:
+    def _derive_key(self, password: str, alt_salt: bytes | None = None) -> bytes:
         """Derives a key from the given password and the stored salt."""
-        kdf = PBKDF2HMAC(
-            algorithm=hashes.SHA256(),
-            length=32,
-            salt=self._salt,
-            iterations=100000,
-            backend=default_backend(),
-        )
-        return kdf.derive(password.encode("utf-8"))
+        return derive_key(password, alt_salt or self._salt)
 
     @property
     def locked(self) -> bool:
@@ -167,30 +160,13 @@ class SecretsManager(ParEventSystemBase):
         key: bytes | None = alt_key or self._key
         if key is None:
             raise ValueError("Password not set. Use unlock() before encrypting.")
-
-        iv = os.urandom(12)
-        cipher = Cipher(algorithms.AES(key), modes.GCM(iv), backend=default_backend())
-        encryptor = cipher.encryptor()
-        encrypted = encryptor.update(plaintext.encode("utf-8")) + encryptor.finalize()
-        return base64.b64encode(iv + encryptor.tag + encrypted).decode("utf-8")
+        return encrypt(plaintext, key)
 
     def _decrypt(self, ciphertext: str, alt_key: bytes | None = None) -> str:
+        """decrypt ciphertext with the provided key"""
         if self._key is None and alt_key is None:
             raise ValueError("Vault locked. Use unlock() before decrypting.")
-        try:
-            decoded = base64.b64decode(ciphertext)
-            iv, tag, encrypted = decoded[:12], decoded[12:28], decoded[28:]
-            cipher = Cipher(
-                algorithms.AES(alt_key or self._key),  # type: ignore
-                modes.GCM(iv, tag),
-                backend=default_backend(),
-            )
-            decryptor = cipher.decryptor()
-            plaintext = decryptor.update(encrypted) + decryptor.finalize()
-            return plaintext.decode("utf-8")
-        except (ValueError, TypeError, InvalidTag) as e:
-            self.log_it(e)
-            raise ValueError("Bad password, invalid or corrupted secret.") from e
+        return decrypt(ciphertext, alt_key or self._key)  # type: ignore
 
     def add_secret(self, key: str, value: str, no_raise: bool = False):
         """Adds a new secret, encrypts it, and saves it to the file."""
@@ -249,6 +225,14 @@ class SecretsManager(ParEventSystemBase):
                 return ""
             raise e
 
+    def encrypt_with_password(self, plaintext: str, password: str) -> str:
+        """Encrypts plaintext with the provided password."""
+        return self._encrypt(plaintext, self._derive_key(password))
+
+    def decrypt_with_password(self, ciphertext: str, password: str) -> str:
+        """Decrypts ciphertext with the provided password."""
+        return self._decrypt(ciphertext, self._derive_key(password))
+
     def remove_secret(self, key: str, no_raise: bool = False) -> None:
         """Removes the secret associated with the given key and saves the changes."""
         if key in self._secrets:
@@ -306,6 +290,54 @@ class SecretsManager(ParEventSystemBase):
     def __contains__(self, key: str) -> bool:
         """Allows checking if a key exists using the `in` keyword."""
         return key in self._secrets
+
+
+def derive_key(password: str, salt: bytes) -> bytes:
+    """Derives a key from the given password and salt."""
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=100000,
+        backend=default_backend(),
+    )
+    return kdf.derive(password.encode("utf-8"))
+
+
+def encrypt(plaintext: str, key: bytes) -> str:
+    """Encrypts plaintext with the given key."""
+    iv = os.urandom(12)
+    cipher = Cipher(algorithms.AES(key), modes.GCM(iv), backend=default_backend())
+    encryptor = cipher.encryptor()
+    encrypted = encryptor.update(plaintext.encode("utf-8")) + encryptor.finalize()
+    return base64.b64encode(iv + encryptor.tag + encrypted).decode("utf-8")
+
+
+def decrypt(ciphertext: str, key: bytes) -> str:
+    """Decrypts ciphertext with the given key."""
+    try:
+        decoded = base64.b64decode(ciphertext)
+        iv, tag, encrypted = decoded[:12], decoded[12:28], decoded[28:]
+        cipher = Cipher(
+            algorithms.AES(key),
+            modes.GCM(iv, tag),
+            backend=default_backend(),
+        )
+        decryptor = cipher.decryptor()
+        plaintext = decryptor.update(encrypted) + decryptor.finalize()
+        return plaintext.decode("utf-8")
+    except (ValueError, TypeError, InvalidTag) as e:
+        raise ValueError("Bad key, invalid or corrupted ciphertext.") from e
+
+
+def encrypt_with_password(plaintext: str, password: str, salt: str) -> str:
+    """Encrypts plaintext with the provided password."""
+    return encrypt(plaintext, derive_key(password, base64.b64decode(salt)))
+
+
+def decrypt_with_password(ciphertext: str, password: str, salt: str) -> str:
+    """Decrypts ciphertext with the provided password."""
+    return decrypt(ciphertext, derive_key(password, base64.b64decode(salt)))
 
 
 secrets_manager = SecretsManager(settings.secrets_file)
