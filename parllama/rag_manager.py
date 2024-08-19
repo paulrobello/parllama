@@ -5,14 +5,14 @@ from __future__ import annotations
 import os
 import time
 import warnings
-from typing import Any
+from typing import Any, Optional
 
 import simplejson as json
 from dotenv import load_dotenv
 from langchain.chains.retrieval_qa.base import RetrievalQA
 from textual.app import App
 
-from parllama.llm_config import LlmConfig
+from parllama.llm_config import LlmConfig, LlmProvider
 from parllama.models.rag_datasource import DataSourceFile
 from parllama.models.rag_datasource import LoadSplitConfig
 from parllama.models.rag_stores import RagPipelineConfig
@@ -45,7 +45,7 @@ class RagManager(ParEventSystemBase):
         """Return vector stores"""
         return self._vector_stores
 
-    def set_app(self, app: App[Any]) -> None:
+    def set_app(self, app: Optional[App[Any]]) -> None:
         """Set the app and load existing stores"""
         self.app = app  # pylint: disable=attribute-defined-outside-init
         self.load()
@@ -111,7 +111,7 @@ if __name__ == "__main__":
                     location="chroma_db",
                     collection_name="remember",
                     embeddings_config=LlmConfig(
-                        provider="Ollama",
+                        provider=LlmProvider.OLLAMA,
                         mode="Embeddings",
                         model_name="snowflake-arctic-embed:latest",
                         temperature=0,
@@ -215,7 +215,7 @@ if __name__ == "__main__":
     # #     print("---------")
     #
     llm_config = LlmConfig(
-        provider="Ollama",
+        provider=LlmProvider.OLLAMA,
         mode="Chat",
         model_name="llama3.1:8b",
         temperature=0,

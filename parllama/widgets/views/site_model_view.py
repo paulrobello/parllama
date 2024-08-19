@@ -18,7 +18,7 @@ from textual.widgets import ListView
 from textual.widgets import Static
 from textual.widgets import TabbedContent
 
-from parllama.data_manager import dm
+from parllama.ollama_data_manager import ollama_dm
 from parllama.messages.messages import ModelPullRequested
 from parllama.messages.messages import RegisterForUpdates
 from parllama.messages.messages import SiteModelsLoaded
@@ -95,7 +95,9 @@ class SiteModelView(Container):
             id="namespace",
             placeholder="Namespace",
             value=settings.site_models_namespace or "",
-            suggester=SuggestFromList(dm.list_cache_files(), case_sensitive=False),
+            suggester=SuggestFromList(
+                ollama_dm.list_cache_files(), case_sensitive=False
+            ),
         )
         self.namespace_input.BINDINGS.append(
             Binding("tab", "cursor_right", "tab complete", show=True),
@@ -220,8 +222,8 @@ class SiteModelView(Container):
         """Update list, turn off loading indicator and update namespace suggester"""
         event.stop()
         self.lv.remove_children()
-        self.lv.mount(*dm.site_models)
+        self.lv.mount(*ollama_dm.site_models)
         self.lv.loading = False
         self.namespace_input.suggester = SuggestFromList(
-            dm.list_cache_files(), case_sensitive=False
+            ollama_dm.list_cache_files(), case_sensitive=False
         )

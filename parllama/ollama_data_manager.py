@@ -13,7 +13,6 @@ from datetime import datetime
 from datetime import timezone
 from typing import Any
 from typing import Literal
-from typing import Optional
 
 import docker.errors  # type: ignore
 import docker.types  # type: ignore
@@ -43,9 +42,9 @@ from parllama.widgets.site_model_list_item import SiteModelListItem
 def api_model_ps() -> OllamaPsResponse:
     """Get model ps."""
     # fetch data from self.ollama_host as json
-    res: Optional[Response] = None
+
     try:
-        res = httpx.get(f"{settings.ollama_host}/api/ps", timeout=5)
+        res: Response = httpx.get(f"{settings.ollama_host}/api/ps", timeout=5)
         if res.status_code != 200:
             return OllamaPsResponse()
 
@@ -58,7 +57,7 @@ def api_model_ps() -> OllamaPsResponse:
         return OllamaPsResponse()
 
 
-class DataManager(ParEventSystemBase):
+class OllamaDataManager(ParEventSystemBase):
     """Data manager for Par Llama."""
 
     ollama_site_categories: list[str] = ["popular", "featured", "newest"]
@@ -67,7 +66,7 @@ class DataManager(ParEventSystemBase):
     ollama_bin: str | None
 
     def __init__(self):
-        """ "Initialize the data manager."""
+        """Initialize the data manager."""
         super().__init__(id="data_manager")
 
         self.models = []
@@ -172,13 +171,13 @@ class DataManager(ParEventSystemBase):
     @staticmethod
     def list_cache_files() -> list[str]:
         """List cache files."""
-        if not os.path.exists(settings.cache_dir):
+        if not os.path.exists(settings.ollama_cache_dir):
             return []
 
         return [
             f.split("-")[1].split(".")[0]
-            for f in os.listdir(settings.cache_dir)
-            if os.path.isfile(os.path.join(settings.cache_dir, f))
+            for f in os.listdir(settings.ollama_cache_dir)
+            if os.path.isfile(os.path.join(settings.ollama_cache_dir, f))
             and f.lower().endswith(".json")
         ]
 
@@ -197,7 +196,9 @@ class DataManager(ParEventSystemBase):
             namespace = "library"
         namespace = os.path.basename(namespace)
 
-        file_name = os.path.join(settings.cache_dir, f"site_models-{namespace}.json")
+        file_name = os.path.join(
+            settings.ollama_cache_dir, f"site_models-{namespace}.json"
+        )
         if not force and os.path.exists(file_name):
             try:
                 with open(file_name, encoding="utf-8") as f:
@@ -357,4 +358,4 @@ class DataManager(ParEventSystemBase):
         return ollama.AsyncClient(host=settings.ollama_host)
 
 
-dm: DataManager = DataManager()
+ollama_dm: OllamaDataManager = OllamaDataManager()

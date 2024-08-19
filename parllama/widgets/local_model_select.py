@@ -6,7 +6,7 @@ from textual import on
 from textual.message import Message
 from textual.widgets import Select
 
-from parllama.data_manager import dm
+from parllama.ollama_data_manager import ollama_dm
 from parllama.messages.messages import LocalModelDeleted
 from parllama.messages.messages import LocalModelListLoaded
 from parllama.messages.messages import RegisterForUpdates
@@ -19,7 +19,7 @@ class LocalModelSelect(Select[str]):
     def __init__(self, **kwargs) -> None:
         """Initialise the widget."""
         self._deferred_value = None  # No deferred value.
-        opts = dm.get_model_select_options()
+        opts = ollama_dm.get_model_select_options()
         if "value" in kwargs:
             if len(kwargs["value"]) == 0:
                 del kwargs["value"]  # Remove blank values
@@ -32,7 +32,7 @@ class LocalModelSelect(Select[str]):
                     "value"
                 ]  # Remove the value from the kwargs to avoid conflicts with the Select widget's value attribute.
             else:
-                if kwargs["value"] not in dm.get_model_names():
+                if kwargs["value"] not in ollama_dm.get_model_names():
                     del kwargs["value"]
 
         super().__init__(prompt="Select Model", options=opts, **kwargs)
@@ -64,7 +64,7 @@ class LocalModelSelect(Select[str]):
         else:
             old_v = None
 
-        opts = dm.get_model_select_options()
+        opts = ollama_dm.get_model_select_options()
 
         if old_v is not None:
             found = False

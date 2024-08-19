@@ -29,10 +29,12 @@ class Settings(BaseModel):
     data_dir: str = os.path.expanduser("~/.parllama")
     settings_file: str = "settings.json"
     cache_dir: str = ""
+    ollama_cache_dir: str = ""
     chat_dir: str = ""
     prompt_dir: str = ""
     export_md_dir: str = ""
     secrets_file: str = ""
+    provider_models_file: str = ""
     chat_history_file: str = ""
     save_chat_input_history: bool = False
     chat_input_history_length: int = 100
@@ -78,13 +80,16 @@ class Settings(BaseModel):
             or os.path.expanduser("~/.parllama")
         )
         self.cache_dir = os.path.join(self.data_dir, "cache")
+        self.ollama_cache_dir = os.path.join(self.cache_dir, "ollama")
         self.chat_dir = os.path.join(self.data_dir, "chats")
         self.prompt_dir = os.path.join(self.data_dir, "prompts")
         self.export_md_dir = os.path.join(self.data_dir, "md_exports")
         self.chat_history_file = os.path.join(self.data_dir, "chat_history.json")
         self.secrets_file = os.path.join(self.data_dir, "secrets.json")
+        self.provider_models_file = os.path.join(self.data_dir, "provider_models.json")
 
         os.makedirs(self.cache_dir, exist_ok=True)
+        os.makedirs(self.ollama_cache_dir, exist_ok=True)
         os.makedirs(self.chat_dir, exist_ok=True)
         os.makedirs(self.prompt_dir, exist_ok=True)
         os.makedirs(self.export_md_dir, exist_ok=True)
@@ -267,6 +272,8 @@ class Settings(BaseModel):
         """Ensure the cache folder exists."""
         if not os.path.exists(self.cache_dir):
             os.mkdir(self.cache_dir)
+        if not os.path.exists(self.ollama_cache_dir):
+            os.mkdir(self.ollama_cache_dir)
 
     def save(self) -> None:
         """Persist settings"""

@@ -97,6 +97,9 @@ class OptionsView(Horizontal):
                         yield Label("Cache Dir")
                         yield Static(settings.cache_dir)
                     with Horizontal(classes="folder-item"):
+                        yield Label("Ollama Cache Dir")
+                        yield Static(settings.ollama_cache_dir)
+                    with Horizontal(classes="folder-item"):
                         yield Label("Chat Session Dir")
                         yield Static(settings.chat_dir)
                     with Horizontal(classes="folder-item"):

@@ -80,7 +80,7 @@ class ParEventSystemBase:
         self.parent = None
         self.app = None
 
-    def set_app(self, app: App[Any]) -> None:
+    def set_app(self, app: Optional[App[Any]]) -> None:
         """Set the app"""
         self.app = app
 

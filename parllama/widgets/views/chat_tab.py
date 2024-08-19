@@ -23,7 +23,7 @@ from textual.widgets import TabPane
 from parllama.chat_manager import chat_manager
 from parllama.chat_manager import ChatSession
 from parllama.chat_message import ParllamaChatMessage
-from parllama.data_manager import dm
+from parllama.ollama_data_manager import ollama_dm
 from parllama.messages.messages import ChatMessage
 from parllama.messages.messages import ChatMessageSent
 from parllama.messages.messages import DeleteSession
@@ -304,7 +304,7 @@ class ChatTab(TabPane):
     @work(group="get_details", thread=True)
     async def get_model_details(self, model: FullModel) -> None:
         """Fetch model details"""
-        dm.enrich_model_details(model)
+        ollama_dm.enrich_model_details(model)
         if not model.model_info:
             return
         max_context_length = model.model_info.llama_context_length
@@ -315,7 +315,9 @@ class ChatTab(TabPane):
         """Update session status bar"""
         if event:
             event.stop()
-        model: FullModel | None = dm.get_model_by_name(self.session.llm_model_name)
+        model: FullModel | None = ollama_dm.get_model_by_name(
+            self.session.llm_model_name
+        )
         max_context_length = 0
         if model:
             if not model.model_info:

@@ -49,7 +49,7 @@ class SecretsManager(ParEventSystemBase):
         self._key = None
         self._secrets_file = secrets_file
 
-    def set_app(self, app: App[Any]) -> None:
+    def set_app(self, app: Optional[App[Any]]) -> None:
         """Set the app and load existing sessions and prompts from storage"""
         super().set_app(app)
         self._load_secrets()

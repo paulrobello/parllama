@@ -36,7 +36,7 @@ from textual.widgets import TextArea
 from parllama import __application_title__
 from parllama.chat_manager import chat_manager
 from parllama.chat_manager import ChatManager
-from parllama.data_manager import dm
+from parllama.ollama_data_manager import ollama_dm
 from parllama.dialogs.help_dialog import HelpDialog
 from parllama.dialogs.information import InformationDialog
 from parllama.messages.messages import ChangeTab
@@ -126,7 +126,7 @@ class ParLlamaApp(App[None]):
         super().__init__()
         self.notify_subs = {"*": set[MessagePump]()}
         secrets_manager.set_app(self)
-        dm.set_app(self)
+        ollama_dm.set_app(self)
         chat_manager.set_app(self)
         theme_manager.set_app(self)
         update_manager.set_app(self)
@@ -291,7 +291,7 @@ If you would like to auto check for updates, you can enable it in the Startup se
     @on(LocalModelDelete)
     def on_local_model_delete(self, event: LocalModelDelete) -> None:
         """Delete local model event"""
-        if not dm.delete_model(event.model_name):
+        if not ollama_dm.delete_model(event.model_name):
             self.main_screen.local_view.post_message(
                 SetModelNameLoading(event.model_name, False)
             )
@@ -325,7 +325,7 @@ If you would like to auto check for updates, you can enable it in the Startup se
 
     async def do_copy_local_model(self, event: CopyModelJob) -> None:
         """Copy local model"""
-        ret = dm.copy_model(event.modelName, event.dstModelName)
+        ret = ollama_dm.copy_model(event.modelName, event.dstModelName)
         self.main_screen.local_view.post_message(
             LocalModelCopied(
                 src_model_name=event.modelName,
@@ -409,7 +409,7 @@ If you would like to auto check for updates, you can enable it in the Startup se
     async def do_pull(self, job: PullModelJob) -> None:
         """Pull a model from ollama.com"""
         try:
-            res = dm.pull_model(job.modelName)
+            res = ollama_dm.pull_model(job.modelName)
             last_status = await self.do_progress(job, res)
 
             self.post_message_all(
@@ -422,7 +422,7 @@ If you would like to auto check for updates, you can enable it in the Startup se
     async def do_push(self, job: PushModelJob) -> None:
         """Push a model to ollama.com"""
         try:
-            res = dm.push_model(job.modelName)
+            res = ollama_dm.push_model(job.modelName)
             last_status = await self.do_progress(job, res)
 
             self.post_message_all(
@@ -435,7 +435,9 @@ If you would like to auto check for updates, you can enable it in the Startup se
         """Create a new local model"""
         try:
             self.main_screen.log_view.richlog.write(job.modelCode)
-            res = dm.create_model(job.modelName, job.modelCode, job.quantizationLevel)
+            res = ollama_dm.create_model(
+                job.modelName, job.modelCode, job.quantizationLevel
+            )
             last_status = await self.do_progress(job, res)
 
             self.main_screen.local_view.post_message(
@@ -550,7 +552,7 @@ If you would like to auto check for updates, you can enable it in the Startup se
         self.is_refreshing = True
         try:
             self.post_message_all(StatusMessage("Local model list refreshing..."))
-            dm.refresh_models()
+            ollama_dm.refresh_models()
             self.post_message_all(StatusMessage("Local model list refreshed"))
             self.post_message_all(LocalModelListLoaded())
         except ConnectError as e:
@@ -593,7 +595,7 @@ If you would like to auto check for updates, you can enable it in the Startup se
                     f"Site models for {msg.ollama_namespace or 'models'} refreshing... force={msg.force}"
                 )
             )
-            dm.refresh_site_models(msg.ollama_namespace, None, msg.force)
+            ollama_dm.refresh_site_models(msg.ollama_namespace, None, msg.force)
             self.main_screen.site_view.post_message(
                 SiteModelsLoaded(ollama_namespace=msg.ollama_namespace)
             )
@@ -615,7 +617,7 @@ If you would like to auto check for updates, you can enable it in the Startup se
                 self.post_message_all(PsMessage(msg=""))
                 break
             await asyncio.sleep(settings.ollama_ps_poll_interval)
-            ret = dm.model_ps()
+            ret = ollama_dm.model_ps()
             if len(ret.models) < 1:
                 if not was_blank:
                     self.post_message_all(PsMessage(msg=""))

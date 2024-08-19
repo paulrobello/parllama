@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import warnings
 from dataclasses import dataclass
+from enum import Enum
 from typing import Literal
 
 from langchain._api import LangChainDeprecationWarning
@@ -24,13 +25,24 @@ from parllama.settings_manager import settings
 
 warnings.simplefilter("ignore", category=LangChainDeprecationWarning)
 
-LlmProviderType = Literal["Ollama", "OpenAI", "Groq", "Anthropic", "Google"]
-llm_provider_types: list[LlmProviderType] = [
-    "Ollama",
-    "OpenAI",
-    "Groq",
-    "Anthropic",
-    "Google",
+
+class LlmProvider(str, Enum):
+    """Llm provider types."""
+
+    OLLAMA = "Ollama"
+    OPENAI = "OpenAI"
+    GROQ = "Groq"
+    ANTHROPIC = "Anthropic"
+    GOOGLE = "Google"
+
+
+llm_provider_types: list[LlmProvider] = list(LlmProvider)
+llm_select_options: list[tuple[str, str]] = [
+    (
+        p,
+        p,
+    )
+    for p in llm_provider_types
 ]
 
 LlmMode = Literal["Base", "Chat", "Embeddings"]
@@ -41,7 +53,7 @@ llm_modes: list[LlmMode] = ["Base", "Chat", "Embeddings"]
 class LlmConfig:
     """Configuration for Llm."""
 
-    provider: LlmProviderType
+    provider: LlmProvider
     model_name: str
     mode: LlmMode = "Chat"
     temperature: float = 0.5
@@ -76,7 +88,7 @@ class LlmConfig:
     # pylint: disable=too-many-return-statements,too-many-branches
     def _build_llm(self) -> BaseLanguageModel | BaseChatModel | Embeddings:
         """Build the LLM."""
-        if self.provider == "Ollama":
+        if self.provider == LlmProvider.OLLAMA:
             if self.mode == "Base":
                 return Ollama(
                     model=self.model_name,
@@ -91,14 +103,14 @@ class LlmConfig:
                 )
             if self.mode == "Embeddings":
                 return ParOllamaEmbeddings(model=self.model_name)
-        elif self.provider == "OpenAI":
+        elif self.provider == LlmProvider.OPENAI:
             if self.mode == "Base":
                 return OpenAI(model=self.model_name, temperature=self.temperature)
             if self.mode == "Chat":
                 return ChatOpenAI(model=self.model_name, temperature=self.temperature)
             if self.mode == "Embeddings":
                 return OpenAIEmbeddings(model=self.model_name)
-        elif self.provider == "Groq":
+        elif self.provider == LlmProvider.GROQ:
             if self.mode == "Base":
                 raise ValueError(
                     f"{self.provider} provider does not support mode {self.mode}"
@@ -109,7 +121,7 @@ class LlmConfig:
                 raise ValueError(
                     f"{self.provider} provider does not support mode {self.mode}"
                 )
-        elif self.provider == "Anthropic":
+        elif self.provider == LlmProvider.ANTHROPIC:
             if self.mode == "Base":
                 raise ValueError(
                     f"{self.provider} provider does not support mode {self.mode}"
@@ -122,7 +134,7 @@ class LlmConfig:
                 raise ValueError(
                     f"{self.provider} provider does not support mode {self.mode}"
                 )
-        elif self.provider == "google":
+        elif self.provider == LlmProvider.GOOGLE:
             if self.mode == "Base":
                 return GoogleGenerativeAI(
                     model=self.model_name, temperature=self.temperature

@@ -47,7 +47,7 @@ class ChatManager(ParEventSystemBase):
         self.prompt_temperature = 0.5
         self.prompt_llm_name = None
 
-    def set_app(self, app: App[Any]) -> None:
+    def set_app(self, app: Optional[App[Any]]) -> None:
         """Set the app and load existing sessions and prompts from storage"""
         super().set_app(app)
         self.load_sessions()

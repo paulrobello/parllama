@@ -10,8 +10,8 @@ from textual.widgets import Rule, Static, Label, Button, Input, Select
 
 from parllama.chat_manager import chat_manager
 from parllama.chat_session import ChatSession
-from parllama.data_manager import dm
-from parllama.llm_config import LlmConfig
+from parllama.ollama_data_manager import ollama_dm
+from parllama.llm_config import LlmConfig, LlmProvider
 from parllama.messages.messages import (
     RegisterForUpdates,
     SessionSelected,
@@ -62,7 +62,7 @@ class SessionConfig(VerticalScroll):
             session_id=None,
             session_name=session_name,
             llm_config=LlmConfig(
-                provider="Ollama",
+                provider=LlmProvider.OLLAMA,
                 model_name=str(self.model_select.value),
                 temperature=self.get_temperature(),
             ),
@@ -108,7 +108,7 @@ class SessionConfig(VerticalScroll):
             self.session = chat_manager.new_session(
                 session_name=session_name,
                 llm_config=LlmConfig(
-                    provider="Ollama",
+                    provider=LlmProvider.OLLAMA,
                     model_name=str(self.model_select.value),
                     temperature=self.get_temperature(),
                 ),
@@ -119,7 +119,7 @@ class SessionConfig(VerticalScroll):
 
     def set_model_name(self, model_name: str) -> None:
         """Set model names"""
-        for _, v in dm.get_model_select_options():
+        for _, v in ollama_dm.get_model_select_options():
             if v == model_name:
                 self.model_select.value = model_name
                 return

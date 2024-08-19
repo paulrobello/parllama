@@ -20,7 +20,7 @@ from textual.widgets import TabbedContent
 from parllama.chat_manager import chat_manager
 from parllama.chat_manager import ChatSession
 from parllama.chat_message import ParllamaChatMessage
-from parllama.data_manager import dm
+from parllama.ollama_data_manager import ollama_dm
 from parllama.dialogs.information import InformationDialog
 from parllama.messages.messages import ChangeTab, LocalModelDeleted
 from parllama.messages.messages import ChatGenerationAborted
@@ -241,7 +241,7 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         """Model list changed"""
         evt.stop()
         self.model_list_auto_complete_list = [
-            f"/session.model {m.model.name}" for m in dm.models
+            f"/session.model {m.model.name}" for m in ollama_dm.models
         ]
         self.user_input.suggester = SuggestFromList(
             valid_commands
@@ -362,7 +362,7 @@ Chat Commands:
         elif cmd.startswith("session.model "):
             (_, v) = cmd.split(" ", 1)
             v = v.strip()
-            if v not in [m.model.name for m in dm.models]:
+            if v not in [m.model.name for m in ollama_dm.models]:
                 self.notify(f"Model {v} not found", severity="error")
                 return
             self.active_tab.session_config.model_select.value = v

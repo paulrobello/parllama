@@ -15,7 +15,7 @@ from textual.widget import Widget
 from textual.widgets import Input
 from textual.widgets import TabbedContent
 
-from parllama.data_manager import dm
+from parllama.ollama_data_manager import ollama_dm
 from parllama.dialogs.input_dialog import InputDialog
 from parllama.dialogs.model_details_dialog import ModelDetailsDialog
 from parllama.dialogs.yes_no_dialog import YesNoDialog
@@ -122,7 +122,7 @@ class LocalModelView(Container):
             yield self.search_input
             with VerticalScroll():
                 with self.grid:
-                    yield from dm.models
+                    yield from ollama_dm.models
 
     async def on_mount(self) -> None:
         """Mount the view."""
@@ -191,7 +191,7 @@ class LocalModelView(Container):
         for child in to_remove:
             child.remove()
 
-        self.grid.mount(*dm.models)
+        self.grid.mount(*ollama_dm.models)
         self.grid.loading = False
         if self.search_input.value:
             self.grid.filter(self.search_input.value)

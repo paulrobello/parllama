@@ -16,7 +16,7 @@ from textual.widgets import Pretty
 from textual.widgets import Static
 from textual.widgets import TextArea
 
-from parllama.data_manager import dm
+from parllama.ollama_data_manager import ollama_dm
 from parllama.messages.messages import CreateModelFromExistingRequested
 from parllama.models.ollama_data import FullModel
 from parllama.widgets.field_set import FieldSet
@@ -69,7 +69,7 @@ class ModelDetailsDialog(ModalScreen[None]):
     def __init__(self, model: FullModel) -> None:
         super().__init__()
         if not model.model_info:
-            dm.enrich_model_details(model)
+            ollama_dm.enrich_model_details(model)
         self.model = model
 
     def compose(self) -> ComposeResult:

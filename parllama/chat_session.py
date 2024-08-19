@@ -19,7 +19,7 @@ from textual.message_pump import MessagePump
 
 from parllama.chat_message import ParllamaChatMessage
 from parllama.chat_message_container import ChatMessageContainer
-from parllama.llm_config import LlmConfig
+from parllama.llm_config import LlmConfig, LlmProvider
 from parllama.messages.messages import ChatGenerationAborted
 from parllama.messages.messages import ChatMessage
 from parllama.messages.messages import SessionChanges
@@ -338,7 +338,7 @@ class ChatSession(ChatMessageContainer):
         # adapt old format session
         if not lc:
             lc = LlmConfig(
-                provider="Ollama",
+                provider=LlmProvider.OLLAMA,
                 model_name=data["llm_model_name"],
                 temperature=data.get("options", {}).get("temperature", 0.5),
             ).to_json()
