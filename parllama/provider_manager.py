@@ -24,6 +24,26 @@ from parllama.settings_manager import settings
 
 load_dotenv(os.path.expanduser("~/.parllama/.env"))
 
+openai_model_context_windows = {
+    "gpt-4o-mini": 128000,
+    "gpt-4o-mini-2024-07-18": 128000,
+    "gpt-4-turbo": 128000,
+    "gpt-4-turbo-2024-04-09": 128000,
+    "gpt-4-turbo-preview": 128000,
+    "gpt-4-0125-preview": 128000,
+    "gpt-4-1106-preview": 128000,
+    "gpt-4": 8192,
+    "gpt-4-0613": 8192,
+    "gpt-4-0314": 8192,
+    "gpt-3.5-turbo-0125": 16385,
+    "gpt-3.5-turbo": 16385,
+    "gpt-3.5-turbo-1106": 16385,
+    "gpt-3.5-turbo-instruct": 4096,
+    "text-moderation-latest": 32768,
+    "text-moderation-stable": 32768,
+    "text-moderation-007": 32768,
+}
+
 
 class ProviderManager(ParEventSystemBase):
     """Manages providers and their models"""
@@ -80,6 +100,13 @@ class ProviderManager(ParEventSystemBase):
                 print(f"Error: {e}")
                 continue
         self.save_models()
+
+    def get_model_context_length(self, provider: LlmProvider, model_name: str) -> int:
+        """Get model cntext length. Return 0 if unknown."""
+        if provider == LlmProvider.OPENAI:
+            if model_name in openai_model_context_windows:
+                return openai_model_context_windows[model_name]
+        return 0
 
     def save_models(self):
         """Save the models."""
