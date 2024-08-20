@@ -13,7 +13,11 @@ from openai import OpenAI
 import google.generativeai as genai  # type: ignore
 from textual.app import App
 
-from parllama.llm_config import LlmProvider, llm_provider_types
+from parllama.llm_providers import LlmProvider, llm_provider_types
+from parllama.messages.messages import (
+    ProviderModelsChanged,
+    RefreshProviderModelsRequested,
+)
 from parllama.ollama_data_manager import ollama_dm
 from parllama.par_event_system import ParEventSystemBase
 from parllama.settings_manager import settings
@@ -37,11 +41,11 @@ class ProviderManager(ParEventSystemBase):
     def set_app(self, app: Optional[App[Any]]) -> None:
         """Set the app."""
         super().set_app(app)
-        if os.path.exists(self.cache_file):
-            self.load_models()
+        self.load_models()
 
     def refresh_models(self):
         """Refresh the models."""
+        self.log_it("Refreshing provider models")
         for p in llm_provider_types:
             try:
                 new_list = []
@@ -81,18 +85,28 @@ class ProviderManager(ParEventSystemBase):
         """Save the models."""
         with open(self.cache_file, "w", encoding="utf-8") as f:
             json.dump(self.provider_models, f, indent=4)
+        if self.app:
+            self.app.post_message(ProviderModelsChanged())
 
-    def load_models(self):
+    def load_models(self, refresh: bool = False) -> None:
         """Load the models."""
+        if not os.path.exists(self.cache_file):
+            if self.app:
+                self.app.post_message(RefreshProviderModelsRequested(None))
+            return
+        if refresh:
+            self.refresh_models()
+            return
         with open(self.cache_file, "r", encoding="utf-8") as f:
             self.provider_models = json.load(f)
+        if self.app:
+            self.app.post_message(ProviderModelsChanged())
 
     def get_model_select_options(self, provider: LlmProvider) -> list[tuple[str, str]]:
         """Get select options."""
+        if provider == LlmProvider.OLLAMA:
+            return ollama_dm.get_model_select_options()
         return [(m, m) for m in self.provider_models[provider]]
 
 
 provider_manager = ProviderManager()
-
-if __name__ == "__main__":
-    provider_manager.refresh_models()

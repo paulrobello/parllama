@@ -7,11 +7,12 @@ from textual.app import ComposeResult
 from textual.containers import VerticalScroll, Horizontal
 from textual.message import Message
 from textual.widgets import Rule, Static, Label, Button, Input, Select
+from textual.widgets._select import NoSelection
 
 from parllama.chat_manager import chat_manager
 from parllama.chat_session import ChatSession
-from parllama.ollama_data_manager import ollama_dm
-from parllama.llm_config import LlmConfig, LlmProvider
+from parllama.llm_config import LlmConfig
+from parllama.llm_providers import LlmProvider, provider_select_options
 from parllama.messages.messages import (
     RegisterForUpdates,
     SessionSelected,
@@ -20,10 +21,11 @@ from parllama.messages.messages import (
     UpdateChatStatus,
     LogIt,
     PromptSelected,
+    ProviderModelsChanged,
 )
+from parllama.provider_manager import provider_manager
 from parllama.settings_manager import settings
 from parllama.widgets.input_blur_submit import InputBlurSubmit
-from parllama.widgets.local_model_select import LocalModelSelect
 
 
 class SessionConfig(VerticalScroll):
@@ -33,14 +35,46 @@ class SessionConfig(VerticalScroll):
     """
     BINDINGS = []
     session: ChatSession
+    _deferred_model_value: str | NoSelection
 
     def __init__(self, **kwargs) -> None:
         """Initialise the view."""
         super().__init__(**kwargs)
         session_name = chat_manager.mk_session_name("New Chat")
 
-        self.model_select: LocalModelSelect = LocalModelSelect(
+        lp: LlmProvider = (
+            settings.last_chat_provider
+            if settings.last_chat_provider
+            else LlmProvider.OLLAMA
+        )
+        self.provider_select: Select[LlmProvider] = Select[LlmProvider](
+            id="provider_name",
+            options=provider_select_options,
+            allow_blank=False,
+            value=lp,
+        )
+
+        opts = provider_manager.get_model_select_options(lp)
+        v: NoSelection | str
+        if settings.last_chat_model not in provider_manager.provider_models[lp]:
+            self._deferred_model_value = settings.last_chat_model
+            v = Select.BLANK
+        else:
+            self._deferred_model_value = settings.last_chat_model
+            # self._deferred_model_value = Select.BLANK
+            v = settings.last_chat_model
+
+        # self.app.post_message(
+        #     LogIt(
+        #         f"dv={self._deferred_model_value}, cv={settings.last_chat_model}, v={v}"
+        #     )
+        # )
+
+        self.model_select: Select[str] = Select(
             id="model_name",
+            options=opts,
+            allow_blank=True,
+            value=v,
         )
         self.temperature_input: InputBlurSubmit = InputBlurSubmit(
             id="temperature_input",
@@ -62,8 +96,8 @@ class SessionConfig(VerticalScroll):
             session_id=None,
             session_name=session_name,
             llm_config=LlmConfig(
-                provider=LlmProvider.OLLAMA,
-                model_name=str(self.model_select.value),
+                provider=lp,
+                model_name=str(v),
                 temperature=self.get_temperature(),
             ),
             widget=self,
@@ -75,6 +109,7 @@ class SessionConfig(VerticalScroll):
             RegisterForUpdates(
                 widget=self,
                 event_names=[
+                    "ProviderModelsChanged",
                     "SessionSelected",
                     "SessionUpdated",
                 ],
@@ -94,6 +129,7 @@ class SessionConfig(VerticalScroll):
         with Horizontal(classes="height-auto"):
             yield Label("Name")
             yield self.session_name_input
+        yield self.provider_select
         yield self.model_select
         with Horizontal():
             yield Label("Temperature")
@@ -108,7 +144,11 @@ class SessionConfig(VerticalScroll):
             self.session = chat_manager.new_session(
                 session_name=session_name,
                 llm_config=LlmConfig(
-                    provider=LlmProvider.OLLAMA,
+                    provider=(
+                        self.provider_select.value  # type: ignore
+                        if self.provider_select.value != Select.BLANK
+                        else LlmProvider.OLLAMA
+                    ),
                     model_name=str(self.model_select.value),
                     temperature=self.get_temperature(),
                 ),
@@ -119,7 +159,12 @@ class SessionConfig(VerticalScroll):
 
     def set_model_name(self, model_name: str) -> None:
         """Set model names"""
-        for _, v in ollama_dm.get_model_select_options():
+        if self.provider_select.value == Select.BLANK:
+            self.notify("Please select a provider first")
+            return
+        for _, v in provider_manager.get_model_select_options(
+            self.provider_select.value  # type: ignore
+        ):
             if v == model_name:
                 self.model_select.value = model_name
                 return
@@ -170,12 +215,26 @@ class SessionConfig(VerticalScroll):
         settings.last_chat_session_id = self.session.id
         settings.save()
 
+    @on(Select.Changed, "#provider_name")
+    def provider_select_changed(self) -> None:
+        """Provider select changed, update control states and save provider name"""
+        if self.provider_select.value != Select.BLANK:
+            settings.last_chat_provider = self.provider_select.value  # type: ignore
+            settings.save()
+            self.session.llm_provider_name = self.provider_select.value  # type: ignore
+            self.model_select.set_options(
+                provider_manager.get_model_select_options(self.provider_select.value)  # type: ignore
+            )
+        else:
+            self.model_select.set_options([])
+
     @on(Select.Changed, "#model_name")
     def model_select_changed(self) -> None:
         """Model select changed, update control states and save model name"""
         if self.model_select.value not in (Select.BLANK, settings.last_chat_model):
             settings.last_chat_model = str(self.model_select.value)
             settings.save()
+
         if self.model_select.value != Select.BLANK:
             self.session.llm_model_name = self.model_select.value  # type: ignore
         else:
@@ -248,3 +307,37 @@ class SessionConfig(VerticalScroll):
             self.session_name_input.value = self.session.name
 
         return True
+
+    @on(ProviderModelsChanged)
+    def on_provider_models_refreshed(self, event: ProviderModelsChanged) -> None:
+        """Handle provider models refreshed event"""
+        event.stop()
+        self.app.post_message(LogIt("ProviderModelsChanged", notify=True))
+        if self.provider_select.value == Select.BLANK:
+            self.post_message(
+                LogIt("Got refresh with no provider selected", notify=True)
+            )
+            return
+        opts = provider_manager.get_model_select_options(self.provider_select.value)  # type: ignore
+        old_value = self.model_select.value
+        # self.app.post_message(LogIt(f"dv={self._deferred_model_value}, ov={old_value}"))
+
+        if (
+            old_value == Select.BLANK
+            or old_value
+            not in provider_manager.provider_models[self.provider_select.value]  # type: ignore
+        ):
+            old_value = Select.BLANK
+        if (
+            self._deferred_model_value != Select.BLANK
+            and self._deferred_model_value
+            in provider_manager.provider_models[self.provider_select.value]  # type: ignore
+        ):
+            old_value = self._deferred_model_value
+            self._deferred_model_value = Select.BLANK
+
+        self.model_select.set_options(opts)
+        if old_value != Select.BLANK:
+            with self.prevent(Select.Changed):
+                self.model_select.value = old_value
+            self.session.llm_model_name = old_value  # type: ignore

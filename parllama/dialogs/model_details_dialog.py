@@ -17,7 +17,7 @@ from textual.widgets import Static
 from textual.widgets import TextArea
 
 from parllama.ollama_data_manager import ollama_dm
-from parllama.messages.messages import CreateModelFromExistingRequested
+from parllama.messages.messages import LocalCreateModelFromExistingRequested
 from parllama.models.ollama_data import FullModel
 from parllama.widgets.field_set import FieldSet
 
@@ -156,7 +156,7 @@ class ModelDetailsDialog(ModalScreen[None]):
         with self.prevent(Focus):
             self.app.pop_screen()
         self.app.post_message(
-            CreateModelFromExistingRequested(
+            LocalCreateModelFromExistingRequested(
                 widget=None,
                 model_name=self.model.name,
                 model_code=self.model.modelfile,

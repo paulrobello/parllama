@@ -12,7 +12,8 @@ from dotenv import load_dotenv
 from langchain.chains.retrieval_qa.base import RetrievalQA
 from textual.app import App
 
-from parllama.llm_config import LlmConfig, LlmProvider
+from parllama.llm_config import LlmConfig, LlmMode
+from parllama.llm_providers import LlmProvider
 from parllama.models.rag_datasource import DataSourceFile
 from parllama.models.rag_datasource import LoadSplitConfig
 from parllama.models.rag_stores import RagPipelineConfig
@@ -112,7 +113,7 @@ if __name__ == "__main__":
                     collection_name="remember",
                     embeddings_config=LlmConfig(
                         provider=LlmProvider.OLLAMA,
-                        mode="Embeddings",
+                        mode=LlmMode.EMBEDDINGS,
                         model_name="snowflake-arctic-embed:latest",
                         temperature=0,
                     ),
@@ -216,7 +217,7 @@ if __name__ == "__main__":
     #
     llm_config = LlmConfig(
         provider=LlmProvider.OLLAMA,
-        mode="Chat",
+        mode=LlmMode.CHAT,
         model_name="llama3.1:8b",
         temperature=0,
     )

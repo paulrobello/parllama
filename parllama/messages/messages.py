@@ -92,7 +92,7 @@ class LocalModelListLoaded(Message):
 
 
 @dataclass
-class ModelPulled(Message):
+class LocalModelPulled(Message):
     """Message to notify screen that a model has been pulled."""
 
     model_name: str
@@ -100,7 +100,7 @@ class ModelPulled(Message):
 
 
 @dataclass
-class ModelPushed(Message):
+class LocalModelPushed(Message):
     """Message to notify screen that a model has been pushed."""
 
     model_name: str
@@ -108,7 +108,7 @@ class ModelPushed(Message):
 
 
 @dataclass
-class ModelCreateRequested(AppRequest):
+class LocalModelCreateRequested(AppRequest):
     """Message to notify that a model create has been requested."""
 
     model_name: str
@@ -117,7 +117,7 @@ class ModelCreateRequested(AppRequest):
 
 
 @dataclass
-class CreateModelFromExistingRequested(AppRequest):
+class LocalCreateModelFromExistingRequested(AppRequest):
     """Message to open create model screen with current model file as starting point."""
 
     model_name: str
@@ -126,7 +126,7 @@ class CreateModelFromExistingRequested(AppRequest):
 
 
 @dataclass
-class ModelCreated(Message):
+class LocalModelCreated(Message):
     """Message to notify that a model has been created."""
 
     model_name: str
@@ -136,7 +136,7 @@ class ModelCreated(Message):
 
 
 @dataclass
-class ModelPullRequested(AppRequest):
+class LocalModelPullRequested(AppRequest):
     """Message to notify that a model pull has been requested."""
 
     model_name: str
@@ -144,7 +144,7 @@ class ModelPullRequested(AppRequest):
 
 
 @dataclass
-class ModelPushRequested(AppRequest):
+class LocalModelPushRequested(AppRequest):
     """Message to notify that a model pull has been requested."""
 
     model_name: str
@@ -371,3 +371,12 @@ class ToggleInputMode(Message):
 @dataclass
 class ClearChatInputHistory(Message):
     """Clear chat history."""
+
+
+# ---------- Provider Related Messages ---------- #
+class RefreshProviderModelsRequested(AppRequest):
+    """Refresh provider models."""
+
+
+class ProviderModelsChanged(Message):
+    """Provider models refreshed."""

@@ -22,7 +22,6 @@ from parllama.theme_manager import theme_manager
 from parllama.utils import valid_tabs
 from parllama.validators.http_validator import HttpValidator
 from parllama.widgets.input_blur_submit import InputBlurSubmit
-from parllama.widgets.local_model_select import LocalModelSelect
 
 
 class OptionsView(Horizontal):
@@ -108,6 +107,9 @@ class OptionsView(Horizontal):
                     with Horizontal(classes="folder-item"):
                         yield Label("Export MD Dir")
                         yield Static(settings.export_md_dir)
+                    with Horizontal(classes="folder-item"):
+                        yield Label("Provider Models File")
+                        yield Static(settings.provider_models_file)
                     with Horizontal(classes="folder-item"):
                         yield Label("Chat history File")
                         yield Static(settings.chat_history_file)
@@ -218,10 +220,11 @@ class OptionsView(Horizontal):
                             id="auto_name_session",
                         )
                         yield Label("LLM used for auto name")
-                        yield LocalModelSelect(
-                            value=settings.auto_name_session_llm,
-                            id="auto_name_session_llm",
-                        )
+                        # TODO: Add support for multiple LLMs
+                        # yield LocalModelSelect(
+                        #     value=settings.auto_name_session_llm,
+                        #     id="auto_name_session_llm",
+                        # )
 
                 with Vertical(classes="section") as vst:
                     vst.border_title = "Theme"

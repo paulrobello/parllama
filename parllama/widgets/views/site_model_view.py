@@ -19,7 +19,7 @@ from textual.widgets import Static
 from textual.widgets import TabbedContent
 
 from parllama.ollama_data_manager import ollama_dm
-from parllama.messages.messages import ModelPullRequested
+from parllama.messages.messages import LocalModelPullRequested
 from parllama.messages.messages import RegisterForUpdates
 from parllama.messages.messages import SiteModelsLoaded
 from parllama.messages.messages import SiteModelsRefreshRequested
@@ -158,7 +158,7 @@ class SiteModelView(Container):
             return
         if self.namespace_input.value:
             self.app.post_message(
-                ModelPullRequested(
+                LocalModelPullRequested(
                     widget=self,
                     model_name=self.namespace_input.value
                     + "/"
@@ -167,7 +167,7 @@ class SiteModelView(Container):
             )
         else:
             self.app.post_message(
-                ModelPullRequested(widget=self, model_name=self.search_input.value)
+                LocalModelPullRequested(widget=self, model_name=self.search_input.value)
             )
 
     def action_browser(self) -> None:

@@ -27,9 +27,9 @@ from parllama.messages.messages import LocalModelDeleteRequested
 from parllama.messages.messages import LocalModelListLoaded
 from parllama.messages.messages import LocalModelListRefreshRequested
 from parllama.messages.messages import ModelInteractRequested
-from parllama.messages.messages import ModelPulled
-from parllama.messages.messages import ModelPullRequested
-from parllama.messages.messages import ModelPushRequested
+from parllama.messages.messages import LocalModelPulled
+from parllama.messages.messages import LocalModelPullRequested
+from parllama.messages.messages import LocalModelPushRequested
 from parllama.messages.messages import RegisterForUpdates
 from parllama.messages.messages import SetModelNameLoading
 from parllama.messages.messages import ShowLocalModel
@@ -134,8 +134,8 @@ class LocalModelView(Container):
                     "LocalModelListLoaded",
                     "LocalModelDeleted",
                     "SetModelNameLoading",
-                    "ModelPulled",
-                    "ModelPushed",
+                    "LocalModelPulled",
+                    "LocalModelPushed",
                 ],
             )
         )
@@ -153,7 +153,7 @@ class LocalModelView(Container):
             return
         model_name: str = self.grid.selected.model.name
         self.grid.selected.loading = True
-        self.post_message(ModelPullRequested(widget=self, model_name=model_name))
+        self.post_message(LocalModelPullRequested(widget=self, model_name=model_name))
 
     def action_pull_all_models(self) -> None:
         """Pull all local models"""
@@ -161,7 +161,7 @@ class LocalModelView(Container):
         for item in self.grid.query(LocalModelListItem):
             item.loading = True
             self.post_message(
-                ModelPullRequested(
+                LocalModelPullRequested(
                     widget=self, model_name=item.model.name, notify=False
                 )
             )
@@ -172,7 +172,7 @@ class LocalModelView(Container):
             return
         model_name: str = self.grid.selected.model.name
         self.grid.selected.loading = True
-        self.post_message(ModelPushRequested(widget=self, model_name=model_name))
+        self.post_message(LocalModelPushRequested(widget=self, model_name=model_name))
 
     @on(LocalModelListLoaded)
     def on_model_data_loaded(self, event: LocalModelListLoaded) -> None:
@@ -233,8 +233,8 @@ class LocalModelView(Container):
         event.stop()
         self.app.push_screen(ModelDetailsDialog(event.model))
 
-    @on(ModelPulled)
-    def on_model_pulled(self, event: ModelPulled) -> None:
+    @on(LocalModelPulled)
+    def on_model_pulled(self, event: LocalModelPulled) -> None:
         """Model pulled turn off loading indicator."""
         event.stop()
         self.grid.set_item_loading(event.model_name, False)

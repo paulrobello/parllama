@@ -39,9 +39,13 @@ from parllama.chat_manager import ChatManager
 from parllama.ollama_data_manager import ollama_dm
 from parllama.dialogs.help_dialog import HelpDialog
 from parllama.dialogs.information import InformationDialog
-from parllama.messages.messages import ChangeTab
+from parllama.messages.messages import (
+    ChangeTab,
+    RefreshProviderModelsRequested,
+    ProviderModelsChanged,
+)
 from parllama.messages.messages import ClearChatInputHistory
-from parllama.messages.messages import CreateModelFromExistingRequested
+from parllama.messages.messages import LocalCreateModelFromExistingRequested
 from parllama.messages.messages import DeletePrompt
 from parllama.messages.messages import DeleteSession
 from parllama.messages.messages import LocalModelCopied
@@ -51,13 +55,13 @@ from parllama.messages.messages import LocalModelDeleted
 from parllama.messages.messages import LocalModelListLoaded
 from parllama.messages.messages import LocalModelListRefreshRequested
 from parllama.messages.messages import LogIt
-from parllama.messages.messages import ModelCreated
-from parllama.messages.messages import ModelCreateRequested
+from parllama.messages.messages import LocalModelCreated
+from parllama.messages.messages import LocalModelCreateRequested
 from parllama.messages.messages import ModelInteractRequested
-from parllama.messages.messages import ModelPulled
-from parllama.messages.messages import ModelPullRequested
-from parllama.messages.messages import ModelPushed
-from parllama.messages.messages import ModelPushRequested
+from parllama.messages.messages import LocalModelPulled
+from parllama.messages.messages import LocalModelPullRequested
+from parllama.messages.messages import LocalModelPushed
+from parllama.messages.messages import LocalModelPushRequested
 from parllama.messages.messages import PromptListChanged
 from parllama.messages.messages import PromptListLoaded
 from parllama.messages.messages import PromptSelected
@@ -78,6 +82,7 @@ from parllama.models.jobs import PullModelJob
 from parllama.models.jobs import PushModelJob
 from parllama.models.jobs import QueueJob
 from parllama.prompt_utils.import_fabric import import_fabric_manager
+from parllama.provider_manager import provider_manager
 from parllama.rag_manager import rag_manager
 from parllama.screens.main_screen import MainScreen
 from parllama.secrets_manager import secrets_manager
@@ -125,6 +130,7 @@ class ParLlamaApp(App[None]):
         """Initialize the application."""
         super().__init__()
         self.notify_subs = {"*": set[MessagePump]()}
+        provider_manager.set_app(self)
         secrets_manager.set_app(self)
         ollama_dm.set_app(self)
         chat_manager.set_app(self)
@@ -172,9 +178,9 @@ class ParLlamaApp(App[None]):
             RegisterForUpdates(
                 widget=self,
                 event_names=[
-                    "ModelPulled",
-                    "ModelPushed",
-                    "ModelCreated",
+                    "LocalModelPulled",
+                    "LocalModelPushed",
+                    "LocalModelCreated",
                     "LocalModelDeleted",
                     "LocalModelCopied",
                 ],
@@ -188,6 +194,8 @@ class ParLlamaApp(App[None]):
             settings.show_first_run = False
             settings.save()
             self.set_timer(1, self.show_first_run)
+
+        self.post_message(RefreshProviderModelsRequested(None))
 
     async def show_first_run(self) -> None:
         """Show first run screen"""
@@ -268,8 +276,8 @@ If you would like to auto check for updates, you can enable it in the Startup se
         if event.notify:
             self.notify("Copied to clipboard")
 
-    @on(ModelPushRequested)
-    def on_model_push_requested(self, event: ModelPushRequested) -> None:
+    @on(LocalModelPushRequested)
+    def on_model_push_requested(self, event: LocalModelPushRequested) -> None:
         """Push requested model event"""
         self.job_queue.put(PushModelJob(modelName=event.model_name))
         self.main_screen.local_view.post_message(
@@ -277,8 +285,8 @@ If you would like to auto check for updates, you can enable it in the Startup se
         )
         # self.notify(f"Model push {msg.model_name} requested")
 
-    @on(ModelCreateRequested)
-    def on_model_create_requested(self, event: ModelCreateRequested) -> None:
+    @on(LocalModelCreateRequested)
+    def on_model_create_requested(self, event: LocalModelCreateRequested) -> None:
         """Create model requested event"""
         self.job_queue.put(
             CreateModelJob(
@@ -306,8 +314,8 @@ If you would like to auto check for updates, you can enable it in the Startup se
         """Local model has been deleted event"""
         self.status_notify(f"Model {event.model_name} deleted.")
 
-    @on(ModelPullRequested)
-    def on_model_pull_requested(self, event: ModelPullRequested) -> None:
+    @on(LocalModelPullRequested)
+    def on_model_pull_requested(self, event: LocalModelPullRequested) -> None:
         """Pull requested model event"""
         if event.notify:
             self.notify(f"Model pull {event.model_name} queued")
@@ -413,11 +421,15 @@ If you would like to auto check for updates, you can enable it in the Startup se
             last_status = await self.do_progress(job, res)
 
             self.post_message_all(
-                ModelPulled(model_name=job.modelName, success=last_status == "success")
+                LocalModelPulled(
+                    model_name=job.modelName, success=last_status == "success"
+                )
             )
         except ollama.ResponseError as e:
             self.log_it(e)
-            self.post_message_all(ModelPulled(model_name=job.modelName, success=False))
+            self.post_message_all(
+                LocalModelPulled(model_name=job.modelName, success=False)
+            )
 
     async def do_push(self, job: PushModelJob) -> None:
         """Push a model to ollama.com"""
@@ -426,10 +438,14 @@ If you would like to auto check for updates, you can enable it in the Startup se
             last_status = await self.do_progress(job, res)
 
             self.post_message_all(
-                ModelPushed(model_name=job.modelName, success=last_status == "success")
+                LocalModelPushed(
+                    model_name=job.modelName, success=last_status == "success"
+                )
             )
         except ollama.ResponseError:
-            self.post_message_all(ModelPushed(model_name=job.modelName, success=False))
+            self.post_message_all(
+                LocalModelPushed(model_name=job.modelName, success=False)
+            )
 
     async def do_create_model(self, job: CreateModelJob) -> None:
         """Create a new local model"""
@@ -441,7 +457,7 @@ If you would like to auto check for updates, you can enable it in the Startup se
             last_status = await self.do_progress(job, res)
 
             self.main_screen.local_view.post_message(
-                ModelCreated(
+                LocalModelCreated(
                     model_name=job.modelName,
                     model_code=job.modelCode,
                     quantization_level=job.quantizationLevel,
@@ -450,7 +466,7 @@ If you would like to auto check for updates, you can enable it in the Startup se
             )
         except ollama.ResponseError:
             self.main_screen.local_view.post_message(
-                ModelCreated(
+                LocalModelCreated(
                     model_name=job.modelName,
                     model_code=job.modelCode,
                     quantization_level=job.quantizationLevel,
@@ -491,8 +507,8 @@ If you would like to auto check for updates, you can enable it in the Startup se
                 #     self.is_busy = False
                 continue
 
-    @on(ModelPulled)
-    def on_model_pulled(self, event: ModelPulled) -> None:
+    @on(LocalModelPulled)
+    def on_model_pulled(self, event: LocalModelPulled) -> None:
         """Model pulled event"""
         if event.success:
             self.status_notify(
@@ -504,8 +520,8 @@ If you would like to auto check for updates, you can enable it in the Startup se
                 severity="error",
             )
 
-    @on(ModelCreated)
-    def on_model_created(self, event: ModelCreated) -> None:
+    @on(LocalModelCreated)
+    def on_model_created(self, event: LocalModelCreated) -> None:
         """Model created event"""
         if event.success:
             self.status_notify(
@@ -671,9 +687,9 @@ If you would like to auto check for updates, you can enable it in the Startup se
         event.stop()
         self.main_screen.change_tab(event.tab)
 
-    @on(CreateModelFromExistingRequested)
+    @on(LocalCreateModelFromExistingRequested)
     def on_create_model_from_existing_requested(
-        self, msg: CreateModelFromExistingRequested
+        self, msg: LocalCreateModelFromExistingRequested
     ) -> None:
         """Create model from existing event"""
         self.main_screen.create_view.name_input.value = f"my-{msg.model_name}"
@@ -770,3 +786,20 @@ If you would like to auto check for updates, you can enable it in the Startup se
         """Quit the application"""
         settings.shutting_down = True
         await self.action_quit()
+
+    @work(exclusive=True)
+    async def refresh_provider_models(self) -> None:
+        """Refresh provider models"""
+        provider_manager.refresh_models()
+
+    @on(RefreshProviderModelsRequested)
+    def on_refresh_provider_models(self, event: RefreshProviderModelsRequested) -> None:
+        """Refresh provider models event"""
+        event.stop()
+        self.refresh_provider_models()
+
+    @on(ProviderModelsChanged)
+    def on_provider_models_refreshed(self, event: ProviderModelsChanged) -> None:
+        """Provider models refreshed event"""
+        event.stop()
+        self.post_message_all(event)

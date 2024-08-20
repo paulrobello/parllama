@@ -10,6 +10,7 @@ from datetime import datetime
 import simplejson as json
 from pydantic import BaseModel
 
+from parllama.llm_providers import LlmProvider
 from parllama.utils import get_args
 from parllama.utils import TabType
 from parllama.utils import valid_tabs
@@ -47,6 +48,7 @@ class Settings(BaseModel):
     last_tab: TabType = "Local"
     use_last_tab_on_startup: bool = True
 
+    last_chat_provider: LlmProvider = LlmProvider.OLLAMA
     last_chat_model: str = ""
     last_chat_temperature: float = 0.5
     last_chat_session_id: str | None = None
@@ -86,7 +88,7 @@ class Settings(BaseModel):
         self.export_md_dir = os.path.join(self.data_dir, "md_exports")
         self.chat_history_file = os.path.join(self.data_dir, "chat_history.json")
         self.secrets_file = os.path.join(self.data_dir, "secrets.json")
-        self.provider_models_file = os.path.join(self.data_dir, "provider_models.json")
+        self.provider_models_file = os.path.join(self.cache_dir, "provider_models.json")
 
         os.makedirs(self.cache_dir, exist_ok=True)
         os.makedirs(self.ollama_cache_dir, exist_ok=True)
@@ -204,6 +206,9 @@ class Settings(BaseModel):
                     "use_last_tab_on_startup", self.use_last_tab_on_startup
                 )
 
+                self.last_chat_provider = LlmProvider(
+                    data.get("last_chat_provider", self.last_chat_provider.value)
+                )
                 self.last_chat_model = data.get("last_chat_model", self.last_chat_model)
                 self.last_chat_temperature = data.get("last_chat_temperature", 0.5)
                 self.last_chat_session_id = data.get(

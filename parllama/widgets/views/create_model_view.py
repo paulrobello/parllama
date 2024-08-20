@@ -16,7 +16,7 @@ from textual.widgets import TextArea
 
 from parllama.dialogs.error_dialog import ErrorDialog
 from parllama.messages.messages import ChangeTab
-from parllama.messages.messages import ModelCreateRequested
+from parllama.messages.messages import LocalModelCreateRequested
 
 
 class ModelCreateView(Container):
@@ -110,7 +110,7 @@ class ModelCreateView(Container):
             )
             return
         self.app.post_message(
-            ModelCreateRequested(
+            LocalModelCreateRequested(
                 widget=self,
                 model_name=name,
                 model_code=code,

@@ -172,6 +172,12 @@ options:
 Unless you specify "--no-save" most flags such as -u, -t, -m, -s are sticky and will be used next time you start PAR_LLAMA.
 
 ## Environment Variables
+### Variables are loaded in the following order, last one to set a var wins
+* PARLLAMA_DATA_DIR/.env
+* HOST Environment
+* ParLlama Secrets Manager
+
+### Environment Variables for PAR LLAMA configuration
 * PARLLAMA_DATA_DIR - Used to set --data-dir
 * PARLLAMA_THEME_NAME - Used to set --theme-name
 * PARLLAMA_THEME_MODE - Used to set --theme-mode
@@ -346,9 +352,10 @@ if anything remains to be fixed before the commit is allowed.
 * Custom prompt library with import from Fabric
 * Auto complete of slash commands, input history, multi line edit
 * Secure secrets management for API keys and other sensitive data
+* Ability to use cloud AI providers like OpenAI
 
 ### Where we're going
-* Ability to use other AI providers like Open AI
+
 * Chat using embeddings for local documents
 * Expand ability to import custom prompts of other tools
 * LLM tool use
@@ -357,6 +364,7 @@ if anything remains to be fixed before the commit is allowed.
 ## What's new
 
 ### v0.3.9
+* Added support for the following online providers: OpenAI, Anthropic, Groq, Google (More coming soon)
 * Added secrets manager
 
 ### v0.3.8

@@ -19,7 +19,8 @@ from textual.message_pump import MessagePump
 
 from parllama.chat_message import ParllamaChatMessage
 from parllama.chat_message_container import ChatMessageContainer
-from parllama.llm_config import LlmConfig, LlmProvider
+from parllama.llm_config import LlmConfig
+from parllama.llm_providers import LlmProvider
 from parllama.messages.messages import ChatGenerationAborted
 from parllama.messages.messages import ChatMessage
 from parllama.messages.messages import SessionChanges
@@ -148,6 +149,22 @@ class ChatSession(ChatMessageContainer):
         return self._stream_stats
 
     @property
+    def llm_provider_name(self) -> LlmProvider:
+        """Get the LLM model name"""
+        return self._llm_config.provider
+
+    @llm_provider_name.setter
+    def llm_provider_name(self, value: LlmProvider) -> None:
+        """Set the LLM model name"""
+        if self._llm_config.provider == value:
+            return
+        self._llm_config.provider = value
+        self._stream_stats = None
+        self._changes.add("provider")
+        self._changes.add("model")
+        self.save()
+
+    @property
     def llm_model_name(self) -> str:
         """Get the LLM model name"""
         return self._llm_config.model_name
@@ -189,7 +206,8 @@ class ChatSession(ChatMessageContainer):
                 self.post_message(ParChatUpdated(parent_id=self.id, message_id=msg.id))
                 self.save()
 
-            # self.log_it(self.messages)
+            self.log_it(self._llm_config)
+            # return False
             stream: Iterator[
                 BaseMessageChunk
             ] = self._llm_config.build_chat_model().stream(
