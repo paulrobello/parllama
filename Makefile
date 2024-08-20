@@ -5,6 +5,7 @@ run    := pipenv run
 python := $(run) python
 lint   := $(run) pylint
 mypy   := $(run) mypy
+pyright   := $(run) pyright
 twine  := $(run) twine
 build  := $(python) -m build
 black  := $(run) black
@@ -118,6 +119,10 @@ lint:				# Run Pylint over the library
 
 .PHONY: typecheck
 typecheck:			# Perform static type checks with mypy
+	$(pyright)
+
+.PHONY: typecheck2
+typecheck2:			# Perform static type checks with mypy
 	$(mypy) --scripts-are-modules $(lib)
 
 .PHONY: stricttypecheck

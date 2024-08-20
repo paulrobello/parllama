@@ -1,0 +1,30 @@
+{
+  "include": [
+    "parllama"
+  ],
+  "exclude": [
+    "**/node_modules",
+    "**/__pycache__"
+  ],
+  "ignore": [],
+  "defineConstant": {
+    "DEBUG": true
+  },
+  "reportMissingImports": "error",
+  "reportMissingTypeStubs": false,
+  "pythonVersion": "3.11",
+  "pythonPlatform": "Linux",
+  "executionEnvironments": [
+    {
+      "root": "parllama",
+      "pythonVersion": "3.11",
+      "pythonPlatform": "Windows",
+      "extraPaths": [],
+      "reportMissingImports": "warning"
+    },
+    {
+      "root": "tests",
+      "extraPaths": []
+    }
+  ]
+}

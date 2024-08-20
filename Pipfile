@@ -59,6 +59,7 @@ langchain-google-community = "*"
 
 [dev-packages]
 mypy = "*"
+pyright = "*"
 build = "*"
 twine = "*"
 typing-extensions = "*"
