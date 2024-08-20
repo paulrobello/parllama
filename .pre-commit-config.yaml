@@ -62,6 +62,17 @@ repos:
 
 - repo: local
   hooks:
+    - id: pyright
+      name: pyright
+      entry: make
+      language: system
+      pass_filenames: false
+      args:
+        [typecheck]
+      exclude: tests(/\w*)*/functional/|tests/input|tests(/\w*)*data/|doc/
+
+- repo: local
+  hooks:
     - id: pylint
       name: pylint
       entry: make

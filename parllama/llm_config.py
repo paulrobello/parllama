@@ -12,7 +12,8 @@ from langchain_community.llms.ollama import Ollama
 from langchain_core.embeddings import Embeddings
 from langchain_core.language_models import BaseChatModel
 from langchain_core.language_models import BaseLanguageModel
-from langchain_google_genai import GoogleGenerativeAI, ChatGoogleGenerativeAI
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_google_genai import GoogleGenerativeAI
 from langchain_groq import ChatGroq
 from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
@@ -115,8 +116,9 @@ class LlmConfig:
                     f"{self.provider} provider does not support mode {self.mode}"
                 )
             if self.mode == LlmMode.CHAT:
-                return ChatAnthropic(  # type: ignore
-                    model=self.model_name, temperature=self.temperature
+                return ChatAnthropic(  # pyright: ignore [reportCallIssue]
+                    model=self.model_name,  # pyright: ignore [reportCallIssue]
+                    temperature=self.temperature,
                 )
             if self.mode == LlmMode.EMBEDDINGS:
                 raise ValueError(

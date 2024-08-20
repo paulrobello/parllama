@@ -36,36 +36,33 @@ from textual.widgets import TextArea
 from parllama import __application_title__
 from parllama.chat_manager import chat_manager
 from parllama.chat_manager import ChatManager
-from parllama.ollama_data_manager import ollama_dm
 from parllama.dialogs.help_dialog import HelpDialog
 from parllama.dialogs.information import InformationDialog
-from parllama.messages.messages import (
-    ChangeTab,
-    RefreshProviderModelsRequested,
-    ProviderModelsChanged,
-)
+from parllama.messages.messages import ChangeTab
 from parllama.messages.messages import ClearChatInputHistory
-from parllama.messages.messages import LocalCreateModelFromExistingRequested
 from parllama.messages.messages import DeletePrompt
 from parllama.messages.messages import DeleteSession
+from parllama.messages.messages import LocalCreateModelFromExistingRequested
 from parllama.messages.messages import LocalModelCopied
 from parllama.messages.messages import LocalModelCopyRequested
+from parllama.messages.messages import LocalModelCreated
+from parllama.messages.messages import LocalModelCreateRequested
 from parllama.messages.messages import LocalModelDelete
 from parllama.messages.messages import LocalModelDeleted
 from parllama.messages.messages import LocalModelListLoaded
 from parllama.messages.messages import LocalModelListRefreshRequested
-from parllama.messages.messages import LogIt
-from parllama.messages.messages import LocalModelCreated
-from parllama.messages.messages import LocalModelCreateRequested
-from parllama.messages.messages import ModelInteractRequested
 from parllama.messages.messages import LocalModelPulled
 from parllama.messages.messages import LocalModelPullRequested
 from parllama.messages.messages import LocalModelPushed
 from parllama.messages.messages import LocalModelPushRequested
+from parllama.messages.messages import LogIt
+from parllama.messages.messages import ModelInteractRequested
 from parllama.messages.messages import PromptListChanged
 from parllama.messages.messages import PromptListLoaded
 from parllama.messages.messages import PromptSelected
+from parllama.messages.messages import ProviderModelsChanged
 from parllama.messages.messages import PsMessage
+from parllama.messages.messages import RefreshProviderModelsRequested
 from parllama.messages.messages import RegisterForUpdates
 from parllama.messages.messages import SendToClipboard
 from parllama.messages.messages import SessionListChanged
@@ -81,6 +78,7 @@ from parllama.models.jobs import CreateModelJob
 from parllama.models.jobs import PullModelJob
 from parllama.models.jobs import PushModelJob
 from parllama.models.jobs import QueueJob
+from parllama.ollama_data_manager import ollama_dm
 from parllama.prompt_utils.import_fabric import import_fabric_manager
 from parllama.provider_manager import provider_manager
 from parllama.rag_manager import rag_manager

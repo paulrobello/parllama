@@ -6,9 +6,10 @@ import uuid
 from collections.abc import Awaitable
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 from typing import Callable
 from typing import ClassVar
+from typing import Optional
 
 import rich.repr
 from rich.console import ConsoleRenderable

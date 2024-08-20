@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import re
 from typing import Any
@@ -93,15 +92,15 @@ def fetch_yt_data(url: str, options: Any) -> dict[str, Any] | None:
         )
 
         # Extract video duration and convert to minutes
-        duration_iso = video_response["items"][0]["contentDetails"]["duration"]
+        duration_iso = video_response["items"][0]["contentDetails"]["duration"]  # type: ignore
         duration_seconds = isodate2.parse_duration(duration_iso).total_seconds()
         duration_minutes = round(duration_seconds / 60)
         # Set up metadata
         metadata: dict[str, Any] = {
-            "id": video_response["items"][0]["id"],
-            "title": video_response["items"][0]["snippet"]["title"],
-            "channel": video_response["items"][0]["snippet"]["channelTitle"],
-            "published_at": video_response["items"][0]["snippet"]["publishedAt"],
+            "id": video_response["items"][0]["id"],  # type: ignore
+            "title": video_response["items"][0]["snippet"]["title"],  # type: ignore
+            "channel": video_response["items"][0]["snippet"]["channelTitle"],  # type: ignore
+            "published_at": video_response["items"][0]["snippet"]["publishedAt"],  # type: ignore
         }
 
         # Get video transcript

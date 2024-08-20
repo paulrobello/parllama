@@ -20,14 +20,14 @@ from textual.widgets import TabbedContent
 from parllama.chat_manager import chat_manager
 from parllama.chat_manager import ChatSession
 from parllama.chat_message import ParllamaChatMessage
-from parllama.ollama_data_manager import ollama_dm
 from parllama.dialogs.information import InformationDialog
-from parllama.messages.messages import ChangeTab, LocalModelDeleted
+from parllama.messages.messages import ChangeTab
 from parllama.messages.messages import ChatGenerationAborted
 from parllama.messages.messages import ChatMessage
 from parllama.messages.messages import ChatMessageSent
 from parllama.messages.messages import ClearChatInputHistory
 from parllama.messages.messages import DeleteSession
+from parllama.messages.messages import LocalModelDeleted
 from parllama.messages.messages import LocalModelListLoaded
 from parllama.messages.messages import LogIt
 from parllama.messages.messages import PromptListChanged
@@ -39,6 +39,7 @@ from parllama.messages.messages import SessionToPrompt
 from parllama.messages.messages import SessionUpdated
 from parllama.messages.messages import UpdateChatControlStates
 from parllama.messages.messages import UpdateTabLabel
+from parllama.ollama_data_manager import ollama_dm
 from parllama.widgets.session_list import SessionList
 from parllama.widgets.user_input import UserInput
 from parllama.widgets.views.chat_tab import ChatTab

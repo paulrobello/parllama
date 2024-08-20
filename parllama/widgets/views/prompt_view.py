@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from functools import partial
+from typing import cast
 
 from textual import on
 from textual.app import ComposeResult
@@ -11,6 +12,7 @@ from textual.containers import Horizontal
 from textual.containers import Vertical
 from textual.events import Show
 from textual.message import Message
+from textual.screen import ScreenResultCallbackType
 from textual.widgets import Button
 from textual.widgets import Input
 from textual.widgets import Label
@@ -118,7 +120,10 @@ class PromptView(Container):
         event.stop()
         self.app.push_screen(
             YesNoDialog("Confirm Delete", "Delete custom prompt?", yes_first=False),
-            partial(self.confirm_delete_response, event.prompt_id),
+            cast(
+                ScreenResultCallbackType[bool],
+                partial(self.confirm_delete_response, event.prompt_id),
+            ),
         )
 
     def confirm_delete_response(self, prompt_id: str, res: bool) -> None:
@@ -132,7 +137,8 @@ class PromptView(Container):
         """Open the new prompt screen."""
         prompt: ChatPrompt = ChatPrompt(name="New Prompt", description="")
         self.app.push_screen(
-            EditPromptDialog(prompt), partial(self.do_add_prompt, prompt)
+            EditPromptDialog(prompt),
+            cast(ScreenResultCallbackType[bool], partial(self.do_add_prompt, prompt)),
         )
 
     def do_add_prompt(self, prompt: ChatPrompt, res: bool) -> None:

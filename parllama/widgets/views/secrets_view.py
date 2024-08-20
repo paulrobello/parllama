@@ -11,11 +11,12 @@ from textual.binding import Binding
 from textual.containers import Horizontal
 from textual.containers import Vertical
 from textual.events import Show
-from textual.widgets import Button, Static
+from textual.widgets import Button
 from textual.widgets import Checkbox
 from textual.widgets import Input
 from textual.widgets import Label
 from textual.widgets import Select
+from textual.widgets import Static
 
 from parllama.dialogs.yes_no_dialog import YesNoDialog
 from parllama.secrets_manager import secrets_manager

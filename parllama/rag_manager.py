@@ -5,14 +5,16 @@ from __future__ import annotations
 import os
 import time
 import warnings
-from typing import Any, Optional
+from typing import Any
+from typing import Optional
 
 import simplejson as json
 from dotenv import load_dotenv
 from langchain.chains.retrieval_qa.base import RetrievalQA
 from textual.app import App
 
-from parllama.llm_config import LlmConfig, LlmMode
+from parllama.llm_config import LlmConfig
+from parllama.llm_config import LlmMode
 from parllama.llm_providers import LlmProvider
 from parllama.models.rag_datasource import DataSourceFile
 from parllama.models.rag_datasource import LoadSplitConfig

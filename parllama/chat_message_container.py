@@ -208,7 +208,7 @@ class ChatMessageContainer(ParEventSystemBase):
                 "id": self.id,
                 "name": self._name,
                 "last_updated": self.last_updated.isoformat(),
-                "messages": [m.__dict__() for m in self.messages],
+                "messages": [m.to_dict() for m in self.messages],
             },
             default=str,
             indent=indent,

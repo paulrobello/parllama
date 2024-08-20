@@ -1,6 +1,7 @@
 """Base model for rag related tasks."""
 
 from __future__ import annotations
+
 from parllama.par_event_system import ParEventSystemBase
 
 

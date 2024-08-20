@@ -16,9 +16,9 @@ from textual.widgets import Pretty
 from textual.widgets import Static
 from textual.widgets import TextArea
 
-from parllama.ollama_data_manager import ollama_dm
 from parllama.messages.messages import LocalCreateModelFromExistingRequested
 from parllama.models.ollama_data import FullModel
+from parllama.ollama_data_manager import ollama_dm
 from parllama.widgets.field_set import FieldSet
 
 
@@ -133,7 +133,11 @@ class ModelDetailsDialog(ModalScreen[None]):
             messages: list[ollama.Message] = self.model.get_messages()
             system_msg: list[str] = self.model.get_system_messages()
 
-            msgs = [f"* MESSAGE {m['role']} {m['content']}" for m in messages]
+            msgs = [
+                f"* MESSAGE {m['role']} {m['content']}"
+                for m in messages
+                if "content" in m
+            ]
             for sys_msg in system_msg:
                 msgs.insert(0, f"* SYSTEM {sys_msg}")
             md = MarkdownViewer(

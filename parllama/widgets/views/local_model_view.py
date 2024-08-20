@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from functools import partial
+from typing import cast
 
 from textual import on
 from textual.app import ComposeResult
@@ -11,11 +12,11 @@ from textual.containers import Container
 from textual.containers import VerticalScroll
 from textual.events import Focus
 from textual.events import Show
+from textual.screen import ScreenResultCallbackType
 from textual.widget import Widget
 from textual.widgets import Input
 from textual.widgets import TabbedContent
 
-from parllama.ollama_data_manager import ollama_dm
 from parllama.dialogs.input_dialog import InputDialog
 from parllama.dialogs.model_details_dialog import ModelDetailsDialog
 from parllama.dialogs.yes_no_dialog import YesNoDialog
@@ -26,13 +27,14 @@ from parllama.messages.messages import LocalModelDeleted
 from parllama.messages.messages import LocalModelDeleteRequested
 from parllama.messages.messages import LocalModelListLoaded
 from parllama.messages.messages import LocalModelListRefreshRequested
-from parllama.messages.messages import ModelInteractRequested
 from parllama.messages.messages import LocalModelPulled
 from parllama.messages.messages import LocalModelPullRequested
 from parllama.messages.messages import LocalModelPushRequested
+from parllama.messages.messages import ModelInteractRequested
 from parllama.messages.messages import RegisterForUpdates
 from parllama.messages.messages import SetModelNameLoading
 from parllama.messages.messages import ShowLocalModel
+from parllama.ollama_data_manager import ollama_dm
 from parllama.settings_manager import settings
 from parllama.widgets.filter_input import FilterInput
 from parllama.widgets.local_model_grid_list import LocalModelGridList
@@ -209,7 +211,10 @@ class LocalModelView(Container):
             YesNoDialog(
                 "Delete Model", "Delete model from local filesystem?", yes_first=False
             ),
-            partial(self.confirm_delete_response, event.model_name),
+            cast(
+                ScreenResultCallbackType[bool],
+                partial(self.confirm_delete_response, event.model_name),
+            ),
         )
         self.grid.set_item_loading(event.model_name, True)
 
@@ -262,7 +267,10 @@ class LocalModelView(Container):
                 title="Copy Model",
                 msg=f"Src: {src_model_name}",
             ),
-            partial(self.confirm_copy_response, src_model_name),
+            cast(
+                ScreenResultCallbackType[str],
+                partial(self.confirm_copy_response, src_model_name),
+            ),
         )
 
     def confirm_copy_response(self, src_model_name: str, dst_model_name: str) -> None:

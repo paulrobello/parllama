@@ -8,14 +8,14 @@ import re
 import warnings
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import cast
 from typing import Literal
 from typing import Optional
 
-import chromadb
+import chromadb.api
+import chromadb.config
 from langchain._api import LangChainDeprecationWarning
-
 from langchain_chroma import Chroma
-
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_core.retrievers import BaseRetriever
@@ -24,7 +24,8 @@ from langchain_core.vectorstores import VectorStoreRetriever
 
 from parllama.llm_config import LlmConfig
 from parllama.models.rag_base import RagBase
-from parllama.models.rag_pipeline import rag_pipeline, RagPipelineConfig
+from parllama.models.rag_pipeline import rag_pipeline
+from parllama.models.rag_pipeline import RagPipelineConfig
 from parllama.settings_manager import settings
 from parllama.utils import all_subclasses
 
@@ -147,7 +148,7 @@ class VectorStoreConfig(StoreConfig):
 class VectorStoreBase(StoreBase, abc.ABC):
     """Base class for vector store."""
 
-    config: VectorStoreConfig
+    # config: VectorStoreConfig
     _embeddings: Optional[Embeddings] = None
     _dimension: int = 0
 
@@ -172,15 +173,16 @@ class VectorStoreBase(StoreBase, abc.ABC):
             raise ValueError("location must be provided")
         self._embeddings = config.embeddings_config.build_embeddings()
 
+    @property
+    def vector_config(self) -> VectorStoreConfig:
+        """Get the vector store config."""
+        return cast(VectorStoreConfig, self.config)
+
     @staticmethod
     @abc.abstractmethod
     def from_json(data: dict) -> VectorStoreBase:
         """Create instance from json data"""
         raise NotImplementedError("Subclass must implement this method")
-
-    def to_json(self) -> dict:
-        """Return dict for use with json"""
-        return super().to_json() | {"config": self.config.to_json()}
 
     @property
     @abc.abstractmethod
@@ -265,7 +267,7 @@ class VectorStoreBase(StoreBase, abc.ABC):
 class VectorStoreChroma(VectorStoreBase):
     """Base class for vector store."""
 
-    _client: Optional[chromadb.ClientAPI] = None
+    _client: Optional[chromadb.api.ClientAPI] = None
     _chroma: Optional[Chroma] = None
     _vector_store: Optional[Chroma] = None
 
@@ -306,20 +308,20 @@ class VectorStoreChroma(VectorStoreBase):
                 path=os.path.join(settings.data_dir, self.config.location)
             )
         else:
-            self._client = chromadb.chromadb.HttpClient(
+            self._client = chromadb.HttpClient(
                 host=self.config.location,
-                settings=chromadb.Settings(
+                settings=chromadb.config.Settings(
                     allow_reset=False, anonymized_telemetry=False
                 ),
             )
         if self.config.purge_on_start:
             try:
-                self.client.delete_collection(self.config.collection_name)
+                self.client.delete_collection(self.vector_config.collection_name)
             except ValueError:
                 pass
 
     @property
-    def client(self) -> chromadb.ClientAPI:
+    def client(self) -> chromadb.api.ClientAPI:
         """Get the milvus client."""
         if self._client is None:
             self._instantiate_store()
@@ -330,7 +332,7 @@ class VectorStoreChroma(VectorStoreBase):
         """Get the chroma vector store."""
         if self._vector_store is None:
             self._vector_store = Chroma(
-                collection_name=self.config.collection_name,
+                collection_name=self.vector_config.collection_name,
                 client=self.client,
                 embedding_function=self.embeddings,
                 create_collection_if_not_exists=True,
@@ -341,6 +343,8 @@ class VectorStoreChroma(VectorStoreBase):
     def num_documents(self) -> int:
         """Get the number of documents in the vector store."""
         try:
-            return self.client.get_collection(self.config.collection_name).count()
+            return self.client.get_collection(
+                self.vector_config.collection_name
+            ).count()
         except ValueError:
             return 0

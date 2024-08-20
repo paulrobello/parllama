@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import base64
 import os
-from typing import Optional, Any
+from typing import Any
+from typing import Optional
+
 import simplejson as json
 from cryptography.exceptions import InvalidTag
-
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers import algorithms

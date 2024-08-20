@@ -1,6 +1,15 @@
 {
   "include": [
-    "parllama"
+    "parllama",
+    "parllama/dialogs",
+    "parllama/messages",
+    "parllama/models",
+    "parllama/prompt_utils",
+    "parllama/screens",
+    "parllama/themes",
+    "parllama/tools",
+    "parllama/validators",
+    "parllama/widgets"
   ],
   "exclude": [
     "**/node_modules",
@@ -16,9 +25,8 @@
   "pythonPlatform": "Linux",
   "executionEnvironments": [
     {
-      "root": "parllama",
+      "root": ".",
       "pythonVersion": "3.11",
-      "pythonPlatform": "Windows",
       "extraPaths": [],
       "reportMissingImports": "warning"
     },

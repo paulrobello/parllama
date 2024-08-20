@@ -334,7 +334,7 @@ class ChatSession(ChatMessageContainer):
                 "name_generated": self.name_generated,
                 "last_updated": self.last_updated.isoformat(),
                 "llm_config": self._llm_config.to_json(),
-                "messages": [m.__dict__() for m in self.messages],
+                "messages": [m.to_dict() for m in self.messages],
             },
             default=str,
             indent=indent,

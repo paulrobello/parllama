@@ -23,7 +23,6 @@ from textual.widgets import TabPane
 from parllama.chat_manager import chat_manager
 from parllama.chat_manager import ChatSession
 from parllama.chat_message import ParllamaChatMessage
-from parllama.ollama_data_manager import ollama_dm
 from parllama.messages.messages import ChatMessage
 from parllama.messages.messages import ChatMessageSent
 from parllama.messages.messages import DeleteSession
@@ -36,13 +35,14 @@ from parllama.messages.messages import UpdateChatControlStates
 from parllama.messages.messages import UpdateChatStatus
 from parllama.messages.messages import UpdateTabLabel
 from parllama.models.ollama_data import FullModel
+from parllama.ollama_data_manager import ollama_dm
 from parllama.provider_manager import provider_manager
 from parllama.screens.save_session import SaveSession
 from parllama.settings_manager import settings
 from parllama.utils import str_ellipsis
-from parllama.widgets.session_config import SessionConfig
 from parllama.widgets.chat_message_list import ChatMessageList
 from parllama.widgets.chat_message_widget import ChatMessageWidget
+from parllama.widgets.session_config import SessionConfig
 from parllama.widgets.session_list import SessionList
 from parllama.widgets.user_input import UserInput
 

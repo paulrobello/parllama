@@ -18,11 +18,11 @@ from textual.widgets import ListView
 from textual.widgets import Static
 from textual.widgets import TabbedContent
 
-from parllama.ollama_data_manager import ollama_dm
 from parllama.messages.messages import LocalModelPullRequested
 from parllama.messages.messages import RegisterForUpdates
 from parllama.messages.messages import SiteModelsLoaded
 from parllama.messages.messages import SiteModelsRefreshRequested
+from parllama.ollama_data_manager import ollama_dm
 from parllama.settings_manager import settings
 from parllama.widgets.input_tab_complete import InputTabComplete
 from parllama.widgets.site_model_list_item import SiteModelListItem

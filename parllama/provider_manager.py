@@ -3,21 +3,20 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Optional
+from typing import Any
+from typing import Optional
 
+import google.generativeai as genai  # type: ignore
 import simplejson as json
-
 from dotenv import load_dotenv
 from groq import Groq
 from openai import OpenAI
-import google.generativeai as genai  # type: ignore
 from textual.app import App
 
-from parllama.llm_providers import LlmProvider, llm_provider_types
-from parllama.messages.messages import (
-    ProviderModelsChanged,
-    RefreshProviderModelsRequested,
-)
+from parllama.llm_providers import llm_provider_types
+from parllama.llm_providers import LlmProvider
+from parllama.messages.messages import ProviderModelsChanged
+from parllama.messages.messages import RefreshProviderModelsRequested
 from parllama.ollama_data_manager import ollama_dm
 from parllama.par_event_system import ParEventSystemBase
 from parllama.settings_manager import settings

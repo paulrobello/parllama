@@ -118,11 +118,11 @@ lint:				# Run Pylint over the library
 	$(lint) $(lib)
 
 .PHONY: typecheck
-typecheck:			# Perform static type checks with mypy
+typecheck:			# Perform static type checks with pyright
 	$(pyright)
 
-.PHONY: typecheck2
-typecheck2:			# Perform static type checks with mypy
+.PHONY: typecheck-mypy
+typecheck-mypy:			# Perform static type checks with mypy
 	$(mypy) --scripts-are-modules $(lib)
 
 .PHONY: stricttypecheck

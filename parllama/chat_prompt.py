@@ -145,7 +145,7 @@ class ChatPrompt(ChatMessageContainer):
                 "last_updated": self.last_updated.isoformat(),
                 "description": self._description,
                 "submit_on_load": self._submit_on_load,
-                "messages": [m.__dict__() for m in self.messages],
+                "messages": [m.to_dict() for m in self.messages],
                 "source": self.source,
             },
             default=str,

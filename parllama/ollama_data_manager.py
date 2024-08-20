@@ -6,13 +6,13 @@ import functools
 import os.path
 import re
 import shutil
-from collections.abc import Generator
 from collections.abc import Iterator
 from collections.abc import Mapping
 from datetime import datetime
 from datetime import timezone
-from typing import Any, Optional
+from typing import Any
 from typing import Literal
+from typing import Optional
 
 import docker.errors  # type: ignore
 import docker.types  # type: ignore
@@ -22,6 +22,7 @@ import requests
 import simplejson as json
 from bs4 import BeautifulSoup
 from docker.models.containers import Container  # type: ignore
+from docker.types import CancellableStream
 from httpx import Response
 
 from parllama.docker_utils import start_docker_container
@@ -317,7 +318,7 @@ class OllamaDataManager(ParEventSystemBase):
     @staticmethod
     def quantize_model(
         model_name: str, quantize_level: str = "q4_0"
-    ) -> str | Container | Generator[bytes, None, None]:
+    ) -> str | Container | CancellableStream:
         """
         Quantize a model
 

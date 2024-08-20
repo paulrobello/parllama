@@ -8,12 +8,11 @@ from typing import Literal
 from typing import Optional
 from typing import Set
 
-
 from langchain.retrievers import ContextualCompressionRetriever
 from langchain.retrievers import MergerRetriever
 from langchain.retrievers import MultiQueryRetriever
-from langchain.retrievers.document_compressors import DocumentCompressorPipeline
-from langchain.retrievers.document_compressors import LLMListwiseRerank
+from langchain.retrievers.document_compressors.base import DocumentCompressorPipeline
+from langchain.retrievers.document_compressors.listwise_rerank import LLMListwiseRerank
 from langchain_community.document_transformers import EmbeddingsRedundantFilter
 from langchain_community.document_transformers import LongContextReorder
 from langchain_core._api import LangChainDeprecationWarning

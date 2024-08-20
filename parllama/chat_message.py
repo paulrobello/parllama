@@ -5,8 +5,9 @@ from __future__ import annotations
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Tuple
+from typing import Any
 from typing import Optional
+from typing import Tuple
 
 from ollama import Message as OMessage
 
@@ -63,9 +64,9 @@ class ParllamaChatMessage(ParEventSystemBase):
         """Ollama message representation"""
         return f"## {self.role}\n\n{self.content}\n\n"
 
-    def __dict__(
+    def to_dict(
         self,
-    ):
+    ) -> dict[str, Any]:
         """Convert the chat message to a dictionary"""
         return {
             "id": self.id,
