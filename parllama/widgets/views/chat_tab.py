@@ -36,6 +36,7 @@ from parllama.messages.messages import UpdateChatControlStates
 from parllama.messages.messages import UpdateChatStatus
 from parllama.messages.messages import UpdateTabLabel
 from parllama.models.ollama_data import FullModel
+from parllama.provider_manager import provider_manager
 from parllama.screens.save_session import SaveSession
 from parllama.settings_manager import settings
 from parllama.utils import str_ellipsis
@@ -315,20 +316,18 @@ class ChatTab(TabPane):
         """Update session status bar"""
         if event:
             event.stop()
-        model: FullModel | None = ollama_dm.get_model_by_name(
-            self.session.llm_model_name
-        )
-        max_context_length = 0
-        if model:
-            if not model.model_info:
-                self.get_model_details(model)
-            elif model.model_info:
-                max_context_length = model.model_info.llama_context_length or 0
         parts = [
-            "Context Length: ",
+            self.session.llm_provider_name,
+            "-",
+            str_ellipsis(self.session.llm_model_name, 20),
+            " - CTX Len: ",
             humanize.intcomma(self.session.context_length),
             " / ",
-            humanize.intcomma(max_context_length),
+            humanize.intcomma(
+                provider_manager.get_model_context_length(
+                    self.session.llm_provider_name, self.session.llm_model_name
+                )
+            ),
         ]
         stats = self.session.stats
         if stats:

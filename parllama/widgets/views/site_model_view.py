@@ -96,7 +96,7 @@ class SiteModelView(Container):
             placeholder="Namespace",
             value=settings.site_models_namespace or "",
             suggester=SuggestFromList(
-                ollama_dm.list_cache_files(), case_sensitive=False
+                ollama_dm.list_site_cache_files(), case_sensitive=False
             ),
         )
         self.namespace_input.BINDINGS.append(
@@ -225,5 +225,5 @@ class SiteModelView(Container):
         self.lv.mount(*ollama_dm.site_models)
         self.lv.loading = False
         self.namespace_input.suggester = SuggestFromList(
-            ollama_dm.list_cache_files(), case_sensitive=False
+            ollama_dm.list_site_cache_files(), case_sensitive=False
         )

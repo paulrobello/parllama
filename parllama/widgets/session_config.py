@@ -206,7 +206,7 @@ class SessionConfig(VerticalScroll):
         """Handle session name input change"""
         event.stop()
         event.prevent_default()
-        self.app.post_message(LogIt("CT session_name_input_changed"))
+        # self.app.post_message(LogIt("CT session_name_input_changed"))
         session_name: str = self.session_name_input.value.strip()
         if not session_name:
             return
@@ -232,7 +232,7 @@ class SessionConfig(VerticalScroll):
     def model_select_changed(self) -> None:
         """Model select changed, update control states and save model name"""
         if self.model_select.value not in (Select.BLANK, settings.last_chat_model):
-            settings.last_chat_model = str(self.model_select.value)
+            settings.last_chat_model = self.model_select.value  # type: ignore
             settings.save()
 
         if self.model_select.value != Select.BLANK:

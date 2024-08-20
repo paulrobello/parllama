@@ -11,7 +11,7 @@ from collections.abc import Iterator
 from collections.abc import Mapping
 from datetime import datetime
 from datetime import timezone
-from typing import Any
+from typing import Any, Optional
 from typing import Literal
 
 import docker.errors  # type: ignore
@@ -103,7 +103,22 @@ class OllamaDataManager(ParEventSystemBase):
         """Enrich model details."""
         pattern = r"^(# Modelfile .*)\n(# To build.*)\n# (FROM .*\n)\n(FROM .*)\n(.*)$"
         replacement = r"\3\5"
-        model_data = ollama.Client(host=settings.ollama_host).show(model.name)
+        mfn = re.sub(r"[^\w_]", "", model.name)
+        cache_file = os.path.join(
+            settings.ollama_cache_dir, f"model_details-{mfn}.json"
+        )
+        model_data: Optional[Mapping[str, Any]] = None
+        if os.path.exists(cache_file):
+            with open(cache_file, "rt", encoding="utf-8") as f:
+                try:
+                    model_data = json.load(f)
+                except json.JSONDecodeError:
+                    model_data = None
+        if not model_data:
+            model_data = ollama.Client(host=settings.ollama_host).show(model.name)
+            with open(cache_file, "wt", encoding="utf-8") as f:
+                json.dump(dict(model_data), f, indent=4, default=str)
+
         msp = ModelShowPayload(**model_data)
         msp.modelfile = re.sub(
             pattern, replacement, msp.modelfile, flags=re.MULTILINE | re.IGNORECASE
@@ -169,7 +184,7 @@ class OllamaDataManager(ParEventSystemBase):
         return False
 
     @staticmethod
-    def list_cache_files() -> list[str]:
+    def list_site_cache_files() -> list[str]:
         """List cache files."""
         if not os.path.exists(settings.ollama_cache_dir):
             return []
@@ -179,6 +194,7 @@ class OllamaDataManager(ParEventSystemBase):
             for f in os.listdir(settings.ollama_cache_dir)
             if os.path.isfile(os.path.join(settings.ollama_cache_dir, f))
             and f.lower().endswith(".json")
+            and f.lower().startswith("site_models-")
         ]
 
     # pylint: disable=too-many-branches
@@ -356,6 +372,23 @@ class OllamaDataManager(ParEventSystemBase):
     def ollama_aclient(self) -> ollama.AsyncClient:
         """Get the async ollama client."""
         return ollama.AsyncClient(host=settings.ollama_host)
+
+    def get_model_context_length(self, model_name: str) -> int:
+        """Get the context length of a model."""
+        model: FullModel | None = self.get_model_by_name(model_name)
+        if not model:
+            self.log_it("Model not found: " + model_name)
+            return 0
+        if not model.model_info:
+            self.log_it("Model info not loaded: " + model_name)
+            self.enrich_model_details(model)
+            if not model.model_info:
+                self.log_it("Model load failed: " + model_name)
+                return 0
+        if model.model_info:
+            return model.model_info.llama_context_length or 0
+
+        return 0
 
 
 ollama_dm: OllamaDataManager = OllamaDataManager()

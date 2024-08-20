@@ -571,6 +571,7 @@ If you would like to auto check for updates, you can enable it in the Startup se
             ollama_dm.refresh_models()
             self.post_message_all(StatusMessage("Local model list refreshed"))
             self.post_message_all(LocalModelListLoaded())
+            self.post_message_all(ProviderModelsChanged())
         except ConnectError as e:
             self.post_message(
                 LogIt(
