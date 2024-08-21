@@ -78,8 +78,8 @@ Supports Dark and Light mode as well as custom themes.
     * Install Scoop then do `scoop install python`
 
 ## Prerequisites for dev
-* Install pipenv
-  * if you have pip you can install it globally using `pip install pipenv`
+* Install uv
+  * if you have pip you can install it globally using `pip install uv`
 * Install GNU Compatible Make command
   * On windows if you have scoop installed you can install make with `scoop install make`
 
@@ -109,6 +109,10 @@ To upgrade an existing installation use the --force flag:
 ```bash
 pipx install parllama --force
 ```
+## Installing / running using uvx
+```shell
+uvx parllama
+```
 
 ### GitHub install
 Once pipx is installed, run the following:
@@ -120,20 +124,11 @@ To upgrade an existing installation use the --force flag:
 pipx install git+https://github.com/paulrobello/parllama --force
 ```
 
-## Installing from mypi using pip
-Create a virtual environment and install using pip
-```bash
-mkdir parllama
-cd parllama
-python -m venv venv
-source venv/Scripts/activate
-pip install parllama
-```
 
 ## Installing for dev mode
 Clone the repo and run the following from the root of the repo:
 ```bash
-make first-setup
+make setup
 ```
 
 

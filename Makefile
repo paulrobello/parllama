@@ -4,13 +4,13 @@ lib    := parllama
 run    := uv run
 python := $(run) python
 lint   := $(run) pylint
-mypy   := $(run) mypy
 pyright := $(run) pyright
 twine  := $(run) twine
 build  := $(python) -m build
 black  := $(run) black
 isort  := $(run) isort
 
+export UV_LINK_MODE=copy
 export PIPENV_VERBOSITY=-1
 ##############################################################################
 # Run the app.
@@ -58,10 +58,6 @@ wsl-run:	        # Run in dev mode
 chat_dev:	        # Run in dev mode
 	$(run) textual run --dev $(lib).app:ParLlamaApp -s chat
 
-.PHONY: chat
-chat:	        # Run in dev mode
-	$(python) -m $(lib) -s chat
-
 .PHONY: debug
 debug:	        # Run in debug mode
 	TEXTUAL=devtools make
@@ -76,41 +72,35 @@ test:	        # Run textual dev console
 
 
 ##############################################################################
-.PHONY: pip-lock
-pip-lock:
-	pipenv lock
+.PHONY: uv-lock
+uv-lock:
+	uv lock
 
-.PHONY: first-setup
-first-setup: pip-lock setup typecheck setupstubs	        # use this for first time run
+.PHONY: uv-sync
+uv-sync:
+	uv sync
 
-# Setup/update packages the system requires.
 .PHONY: setup
-setup:				# Install all dependencies and type stubs
-	pipenv sync --dev
+setup: uv-lock uv-sync	        # use this for first time run
 
 .PHONY: resetup
 resetup: remove-venv setup			# Recreate the virtual environment from scratch
 
 .PHONY: remove-venv
 remove-venv:			# Remove the virtual environment
-	rm -rf $(shell pipenv --venv)
-
-.PHONY: depsoutdated
-depsoutdated:			# Show a list of outdated dependencies
-	pipenv update --outdated
+	rm -rf .venv
 
 .PHONY: depsupdate
 depsupdate:			# Update all dependencies
-	pipenv update --dev
+	for package in $(shell uv pip list | cut -d' ' -f1); do uv pip install -U $$package; done
 
 .PHONY: depsshow
 depsshow:			# Show the dependency graph
-	pipenv graph
+	uv tree
 
-.PHONY: setupsubs  # Install mypy type stubs
-setupstubs:
-	$(run) mypy --install-types --non-interactive
-
+.PHONY: shell
+shell:			# Start shell inside of .venv
+	$(run) bash
 ##############################################################################
 # Checking/testing/linting/etc.
 .PHONY: lint
@@ -121,13 +111,10 @@ lint:				# Run Pylint over the library
 typecheck:			# Perform static type checks with pyright
 	$(pyright)
 
-.PHONY: typecheck-mypy
-typecheck-mypy:			# Perform static type checks with mypy
-	$(mypy) --scripts-are-modules $(lib)
 
-.PHONY: stricttypecheck
-stricttypecheck:	        # Perform a strict static type checks with mypy
-	$(mypy) --scripts-are-modules --strict $(lib)
+.PHONY: typecheck-stats
+typecheck:			# Perform static type checks with pyright and print stats
+	$(pyright) --stats
 
 .PHONY: checkall
 checkall: typecheck lint 	        # Check all the things
@@ -135,6 +122,10 @@ checkall: typecheck lint 	        # Check all the things
 .PHONY: pre-commit	        # run pre-commit checks on all files
 pre-commit:
 	pre-commit run --all-files
+
+.PHONY: pre-commit-update	        # run pre-commit and update hooks
+pre-commit-update:
+	pre-commit autoupdate
 
 ##############################################################################
 # Package/publish.
@@ -168,7 +159,7 @@ get-venv-name:
 
 .PHONY: ugly
 ugly:				# Reformat the code with black.
-	$(isort) $(lib)
+#	$(isort) $(lib)
 	$(black) $(lib)
 
 .PHONY: repl

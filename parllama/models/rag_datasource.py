@@ -18,9 +18,7 @@ from langchain_community.document_loaders import TextLoader
 from langchain_community.document_loaders import UnstructuredHTMLLoader
 from langchain_community.document_loaders import UnstructuredMarkdownLoader
 from langchain_community.document_loaders import WebBaseLoader
-from langchain_community.document_transformers import (
-    MarkdownifyTransformer,
-)
+from langchain_community.document_transformers import MarkdownifyTransformer
 from langchain_core._api import LangChainDeprecationWarning
 from langchain_core.document_loaders import BaseLoader
 from langchain_core.documents import BaseDocumentTransformer
