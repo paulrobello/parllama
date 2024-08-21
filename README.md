@@ -40,6 +40,9 @@
     * [v0.2.51](#v0251)
     * [v0.2.5](#v025)
 
+[![PyPI - Version](https://img.shields.io/pypi/v/parllama.svg)](https://pypi.org/project/parllama/)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/parllama.svg)](https://pypi.org/project/parllama/)
+
 ## About
 PAR LLAMA is a TUI application designed for easy management and use of Ollama based LLMs.
 The application was built with [Textual](https://textual.textualize.io/) and [Rich](https://github.com/Textualize/rich?tab=readme-ov-file)
