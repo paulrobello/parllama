@@ -1,11 +1,11 @@
 ###############################################################################
 # Common make values.
 lib    := parllama
-run    := pipenv run
+run    := uv run
 python := $(run) python
 lint   := $(run) pylint
 mypy   := $(run) mypy
-pyright   := $(run) pyright
+pyright := $(run) pyright
 twine  := $(run) twine
 build  := $(python) -m build
 black  := $(run) black

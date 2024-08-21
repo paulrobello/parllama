@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
-import os
+# import os
 
 from parllama.app import ParLlamaApp
 from parllama.settings_manager import settings
 
-if os.environ.get("DEBUG"):
-    import pydevd_pycharm  # type: ignore
-
-    pydevd_pycharm.settrace(
-        "localhost", port=12345, suspend=False, patch_multiprocessing=True
-    )
+# if os.environ.get("DEBUG"):
+#     import pydevd_pycharm  # type: ignore
+#
+#     pydevd_pycharm.settrace(
+#         "localhost", port=12345, suspend=False, patch_multiprocessing=True
+#     )
 
 
 def run() -> None:
