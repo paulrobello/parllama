@@ -38,6 +38,7 @@ from parllama.chat_manager import chat_manager
 from parllama.chat_manager import ChatManager
 from parllama.dialogs.help_dialog import HelpDialog
 from parllama.dialogs.information import InformationDialog
+from parllama.llm_providers import LlmProvider
 from parllama.messages.messages import ChangeTab
 from parllama.messages.messages import ClearChatInputHistory
 from parllama.messages.messages import DeletePrompt
@@ -705,7 +706,10 @@ If you would like to auto check for updates, you can enable it in the Startup se
     async def on_model_interact_requested(self, event: ModelInteractRequested) -> None:
         """Model interact requested event"""
         self.main_screen.change_tab("Chat")
-        self.main_screen.chat_view.active_tab.session_config.model_select.value = (
+        self.main_screen.chat_view.active_tab.session_config.provider_model_select.provider_select.value = (
+            LlmProvider.OLLAMA
+        )
+        self.main_screen.chat_view.active_tab.session_config.provider_model_select.model_select.value = (
             event.model_name
         )
         await self.main_screen.chat_view.active_tab.action_new_session()

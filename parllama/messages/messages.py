@@ -12,6 +12,7 @@ from textual.message import Message
 from textual.message_pump import MessagePump
 from textual.notifications import SeverityLevel
 
+from parllama.llm_providers import LlmProvider
 from parllama.messages.shared import SessionChanges
 from parllama.models.ollama_data import FullModel
 from parllama.utils import TabType
@@ -270,6 +271,7 @@ class PromptSelected(PromptMessage):
     """Notify that a prompt has been selected."""
 
     temperature: float | None = None
+    llm_provider_name: LlmProvider | None = None
     llm_model_name: str | None = None
 
 
@@ -374,9 +376,19 @@ class ClearChatInputHistory(Message):
 
 
 # ---------- Provider Related Messages ---------- #
+@dataclass
 class RefreshProviderModelsRequested(AppRequest):
     """Refresh provider models."""
 
 
+@dataclass
 class ProviderModelsChanged(Message):
     """Provider models refreshed."""
+
+
+@dataclass
+class ProviderModelSelected(Message):
+    """Provider model selected."""
+
+    provider: LlmProvider
+    model_name: str
