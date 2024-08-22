@@ -83,9 +83,7 @@ class MainScreen(Screen[None]):
     def compose(self) -> ComposeResult:
         """Compose the Main screen."""
         yield Header(show_clock=True)
-        f = Footer()
-        f.upper_case_keys = True
-        yield f
+        yield Footer()
         yield self.status_bar
         yield self.ps_status_bar
 

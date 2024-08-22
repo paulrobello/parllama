@@ -93,6 +93,8 @@ class ParLlamaApp(App[None]):
     """Main application class"""
 
     TITLE = __application_title__
+    COMMAND_PALETTE_BINDING = "ctrl+underscore"
+    ENABLE_COMMAND_PALETTE = False
     BINDINGS = [
         Binding(key="f1", action="help", description="Help", show=True, priority=True),
         Binding(key="ctrl+q", action="app.shutdown", description="Quit", show=True),

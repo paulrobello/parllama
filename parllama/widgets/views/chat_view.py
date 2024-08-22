@@ -409,6 +409,12 @@ Chat Commands:
                 self.notify("System prompt cannot be empty", severity="error")
                 return
             self.session.system_prompt = ParllamaChatMessage(role="system", content=v)
+            self.active_tab.post_message(
+                ChatMessage(
+                    parent_id=self.session.id,
+                    message_id=self.session.system_prompt.id,  # pyright: ignore [reportOptionalMemberAccess]
+                )
+            )
         elif cmd.startswith("prompt.load "):
             (_, v) = cmd.split(" ", 1)
             v = v.strip()

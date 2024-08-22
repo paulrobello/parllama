@@ -237,16 +237,3 @@ class OllamaChatChunk(BaseModel):
     prompt_eval_duration: Optional[int] = None
     eval_count: Optional[int] = None
     eval_duration: Optional[int] = None
-
-
-class TokenStats(BaseModel):
-    """Ollama Streaming Chat Chunk Stats."""
-
-    model: str
-    created_at: datetime
-    total_duration: int
-    load_duration: int
-    prompt_eval_count: int
-    prompt_eval_duration: int
-    eval_count: int
-    eval_duration: int

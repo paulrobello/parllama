@@ -331,9 +331,9 @@ class ChatTab(TabPane):
         ]
         stats = self.session.stats
         if stats:
-            if stats.eval_duration:
+            if stats.eval_count:
                 parts.append(
-                    f" | Tokens / Sec: {stats.eval_count / (stats.eval_duration/1_000_000_000):.1f}"
+                    f" | Res Tkns / Sec: {stats.eval_count / (stats.eval_duration or 1):.1f}"
                 )
 
         self.session_status_bar.update(Text.assemble(*parts))

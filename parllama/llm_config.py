@@ -96,7 +96,11 @@ class LlmConfig:
             if self.mode == LlmMode.BASE:
                 return OpenAI(model=self.model_name, temperature=self.temperature)
             if self.mode == LlmMode.CHAT:
-                return ChatOpenAI(model=self.model_name, temperature=self.temperature)
+                return ChatOpenAI(
+                    model=self.model_name,
+                    temperature=self.temperature,
+                    stream_usage=True,
+                )
             if self.mode == LlmMode.EMBEDDINGS:
                 return OpenAIEmbeddings(model=self.model_name)
         elif self.provider == LlmProvider.GROQ:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import base64
 import os
 import uuid
@@ -31,7 +32,7 @@ from parllama.messages.par_session_messages import ParSessionAutoName
 from parllama.messages.par_session_messages import ParSessionDelete
 from parllama.messages.par_session_messages import ParSessionUpdated
 from parllama.messages.shared import session_change_list
-from parllama.models.ollama_data import TokenStats
+from parllama.models.token_stats import TokenStats
 from parllama.settings_manager import settings
 
 
@@ -136,6 +137,7 @@ class ChatSession(ChatMessageContainer):
     def _notify_subs(self, event: SessionMessage | ChatMessage) -> None:
         """Notify all subscriptions"""
         for sub in self._subs:
+            self.log_it(f"notifying sub {sub.__class__.__name__ }")
             sub.post_message(event)
 
     def _notify_changed(self, changed: SessionChanges) -> None:
@@ -192,44 +194,44 @@ class ChatSession(ChatMessageContainer):
         self._changes.add("temperature")
         self.save()
 
+    # pylint: disable=too-many-branches, too-many-statements
     async def send_chat(self, from_user: str) -> bool:
         """Send a chat message to LLM"""
         self._generating = True
+        is_aborted = False
+        msg: Optional[ParllamaChatMessage] = None
         try:
             if from_user:
                 # self.log_it("CM adding user message")
-                msg: ParllamaChatMessage = ParllamaChatMessage(
-                    role="user", content=from_user
-                )
+                msg = ParllamaChatMessage(role="user", content=from_user)
                 self.add_message(msg)
                 self._notify_subs(ChatMessage(parent_id=self.id, message_id=msg.id))
                 self.post_message(ParChatUpdated(parent_id=self.id, message_id=msg.id))
                 self.save()
 
+            num_tokens: int = 0
+            start_time = datetime.now(timezone.utc)
+            ttft: float = 0.0  # time to first token
+
             self.log_it(self._llm_config)
-            # return False
             stream: Iterator[
                 BaseMessageChunk
             ] = self._llm_config.build_chat_model().stream(
                 [m.to_langchain_native() for m in self.messages]
             )
-            is_aborted = False
             # self.log_it("CM adding assistant message")
             msg = ParllamaChatMessage(role="assistant")
             self.add_message(msg)
             self._notify_subs(ChatMessage(parent_id=self.id, message_id=msg.id))
             self.post_message(ParChatUpdated(parent_id=self.id, message_id=msg.id))
 
-            # num_tokens: int = 0
-            # start_time = datetime.now(timezone.utc)
-            # ttft: float = 0.0
             for chunk in stream:
-                # self.log_it(chunk)
+                self.log_it(chunk)
+                elapsed_time = datetime.now(timezone.utc) - start_time
                 if chunk.content:
-                    # elapsed_time = datetime.now(timezone.utc) - start_time
-                    # if num_tokens == 0:
-                    #     ttft = elapsed_time.total_seconds()
-                    # num_tokens += 1
+                    if num_tokens == 0:
+                        ttft = elapsed_time.total_seconds()
+                    num_tokens += 1
                     if isinstance(chunk.content, str):
                         msg.content += chunk.content
 
@@ -245,11 +247,32 @@ class ChatSession(ChatMessageContainer):
                         self._abort = False
                     break
 
+                if (
+                    hasattr(chunk, "usage_metadata")
+                    and chunk.usage_metadata  # pyright: ignore [reportAttributeAccessIssue]
+                ):
+                    # self.log_it(chunk)
+                    usage_metadata = (
+                        chunk.usage_metadata  # pyright: ignore [reportAttributeAccessIssue]
+                    )
+                    self._stream_stats = TokenStats(
+                        model=self._llm_config.model_name,
+                        created_at=datetime.now(),
+                        total_duration=int(elapsed_time.total_seconds()),
+                        load_duration=0,
+                        prompt_eval_count=usage_metadata["input_tokens"],
+                        prompt_eval_duration=0,
+                        eval_count=usage_metadata["output_tokens"],
+                        eval_duration=int(elapsed_time.total_seconds() - ttft),
+                        input_tokens=usage_metadata["input_tokens"],
+                        output_tokens=usage_metadata["output_tokens"],
+                        total_tokens=usage_metadata["total_tokens"],
+                        time_til_first_token=int(ttft),
+                    )
+                    self.log_it(self._stream_stats)
                 if hasattr(chunk, "response_metadata"):
-                    self.log_it(chunk.response_metadata)
-
                     if "model" in chunk.response_metadata:
-
+                        # self.log_it(chunk)
                         self._stream_stats = TokenStats(
                             model=chunk.response_metadata.get("model") or "?",
                             created_at=chunk.response_metadata.get("created_at")
@@ -267,8 +290,15 @@ class ChatSession(ChatMessageContainer):
                             )
                             or 0,
                             eval_count=chunk.response_metadata.get("eval_count") or 0,
-                            eval_duration=chunk.response_metadata.get("eval_duration")
+                            eval_duration=int(
+                                chunk.response_metadata.get("eval_duration", 0)
+                                / 1_000_000_000
+                            )
                             or 0,
+                            input_tokens=0,
+                            output_tokens=0,
+                            total_tokens=0,
+                            time_til_first_token=int(ttft),
                         )
                 self._notify_subs(ChatMessage(parent_id=self.id, message_id=msg.id))
                 self.post_message(ParChatUpdated(parent_id=self.id, message_id=msg.id))
@@ -292,6 +322,21 @@ class ChatSession(ChatMessageContainer):
                             context=user_msg.content,
                         )
                     )
+        except Exception as e:  # pylint: disable=broad-except
+            self.log_it(e)
+            self.log_it("Error generating message", notify=True, severity="error")
+            if msg is not None:
+                err_msg = str(e)
+                if err_msg[18:].startswith("{"):
+                    err_dict = ast.literal_eval(err_msg[18:])
+                    err_msg = err_dict.get("error", {}).get("message") or err_msg
+
+                msg.content += f"\n\n{err_msg}"
+                msg.content = msg.content.strip()
+                self._changes.add("messages")
+                self.save()
+                self._notify_subs(ChatMessage(parent_id=self.id, message_id=msg.id))
+                return False
         finally:
             self._generating = False
 
@@ -407,12 +452,12 @@ class ChatSession(ChatMessageContainer):
     def save(self) -> bool:
         """Save the chat session to a file"""
         if self._batching:
-            # self.log_it(f"CS is batching, not notifying: {self.name}")
+            self.log_it(f"CS is batching, not notifying: {self.name}")
             return False
         if not self._loaded:
             self.load()
         if not self.is_dirty:
-            # self.log_it(f"CS is not dirty, not notifying: {self.name}")
+            self.log_it(f"CS is not dirty, not notifying: {self.name}")
             return False  # No need to save if no changes
 
         self.last_updated = datetime.now(timezone.utc)

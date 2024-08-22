@@ -92,7 +92,7 @@ remove-venv:			# Remove the virtual environment
 
 .PHONY: depsupdate
 depsupdate:			# Update all dependencies
-	for package in $(shell uv pip list | cut -d' ' -f1); do uv pip install -U $$package; done
+	uv sync -U
 
 .PHONY: depsshow
 depsshow:			# Show the dependency graph
