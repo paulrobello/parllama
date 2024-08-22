@@ -111,9 +111,8 @@ lint:				# Run Pylint over the library
 typecheck:			# Perform static type checks with pyright
 	$(pyright)
 
-
 .PHONY: typecheck-stats
-typecheck:			# Perform static type checks with pyright and print stats
+typecheck-stats:			# Perform static type checks with pyright and print stats
 	$(pyright) --stats
 
 .PHONY: checkall

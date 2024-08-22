@@ -246,8 +246,9 @@ class ChatSession(ChatMessageContainer):
                     break
 
                 if hasattr(chunk, "response_metadata"):
+                    self.log_it(chunk.response_metadata)
+
                     if "model" in chunk.response_metadata:
-                        self.log_it(chunk.response_metadata)
 
                         self._stream_stats = TokenStats(
                             model=chunk.response_metadata.get("model") or "?",

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import os
 import shutil
+from typing import Optional
+
 from argparse import Namespace
 from datetime import datetime
 
@@ -49,7 +51,7 @@ class Settings(BaseModel):
     use_last_tab_on_startup: bool = True
 
     last_chat_provider: LlmProvider = LlmProvider.OLLAMA
-    last_chat_model: str = ""
+    last_chat_model: Optional[str] = None
     last_chat_temperature: float = 0.5
     last_chat_session_id: str | None = None
 

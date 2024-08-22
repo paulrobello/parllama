@@ -318,9 +318,9 @@ class ChatTab(TabPane):
             event.stop()
         parts = [
             self.session.llm_provider_name,
-            "-",
-            str_ellipsis(self.session.llm_model_name, 20),
-            " - CTX Len: ",
+            " : ",
+            str_ellipsis(self.session.llm_model_name, 25, ""),
+            " : CTX Len: ",
             humanize.intcomma(self.session.context_length),
             " / ",
             humanize.intcomma(

@@ -408,10 +408,12 @@ def timer_block(label: str = "Timer") -> Generator[None, None, None]:
         print(f"{label} took {elapsed_time:.4f} seconds.")
 
 
-def str_ellipsis(s: str, max_len: int) -> str:
+def str_ellipsis(s: str, max_len: int, pad_char: str = " ") -> str:
     """Return a left space padded string exactly max_len with ellipsis if it exceeds max_len."""
     if len(s) <= max_len:
-        return s.ljust(max_len)
+        if pad_char:
+            return s.ljust(max_len, pad_char)
+        return s
     return s[: max_len - 3] + "..."
 
 
@@ -419,10 +421,8 @@ def camel_to_snake(
     name: str, _re_snake: Pattern[str] = re.compile("[a-z][A-Z]")
 ) -> str:
     """Convert name from CamelCase to snake_case.
-
     Args:
         name: A symbol name, such as a class name.
-
     Returns:
         Name in camel case.
     """

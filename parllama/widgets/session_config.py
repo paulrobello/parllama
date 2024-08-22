@@ -60,14 +60,16 @@ class SessionConfig(VerticalScroll):
         )
 
         opts = provider_manager.get_model_select_options(lp)
-        v: NoSelection | str
-        if settings.last_chat_model not in provider_manager.provider_models[lp]:
-            self._deferred_model_value = settings.last_chat_model
-            v = Select.BLANK
-        else:
-            self._deferred_model_value = settings.last_chat_model
-            # self._deferred_model_value = Select.BLANK
-            v = settings.last_chat_model
+        models = provider_manager.get_model_names(lp)
+        v: NoSelection | str = Select.BLANK
+        if settings.last_chat_model:
+            if len(models) == 0:
+                self._deferred_model_value = settings.last_chat_model
+            elif settings.last_chat_model not in models:
+                self._deferred_model_value = settings.last_chat_model
+            else:
+                self._deferred_model_value = settings.last_chat_model
+                v = settings.last_chat_model
 
         # self.app.post_message(
         #     LogIt(
@@ -317,26 +319,28 @@ class SessionConfig(VerticalScroll):
     def on_provider_models_refreshed(self, event: ProviderModelsChanged) -> None:
         """Handle provider models refreshed event"""
         event.stop()
-        self.app.post_message(LogIt("ProviderModelsChanged", notify=True))
+        # self.app.post_message(LogIt("ProviderModelsChanged", notify=True))
         if self.provider_select.value == Select.BLANK:
             self.post_message(
-                LogIt("Got refresh with no provider selected", notify=True)
+                LogIt(
+                    "Got refresh with no provider selected",
+                    notify=True,
+                    severity="warning",
+                )
             )
             return
         opts = provider_manager.get_model_select_options(self.provider_select.value)  # type: ignore
+
         old_value = self.model_select.value
         # self.app.post_message(LogIt(f"dv={self._deferred_model_value}, ov={old_value}"))
+        models = provider_manager.get_model_names(self.provider_select.value)  # type: ignore
+        # self.post_message(LogIt(models))
+        if old_value == Select.BLANK or old_value not in models:
+            old_value = Select.BLANK
 
         if (
-            old_value == Select.BLANK
-            or old_value
-            not in provider_manager.provider_models[self.provider_select.value]  # type: ignore
-        ):
-            old_value = Select.BLANK
-        if (
             self._deferred_model_value != Select.BLANK
-            and self._deferred_model_value
-            in provider_manager.provider_models[self.provider_select.value]  # type: ignore
+            and self._deferred_model_value in models
         ):
             old_value = self._deferred_model_value
             self._deferred_model_value = Select.BLANK

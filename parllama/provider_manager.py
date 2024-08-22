@@ -24,6 +24,7 @@ from parllama.settings_manager import settings
 load_dotenv(os.path.expanduser("~/.parllama/.env"))
 
 openai_model_context_windows = {
+    "chatgpt-4o-latest": 128_000,
     "gpt-4o-mini": 128_000,
     "gpt-4o-mini-2024-07-18": 128_000,
     "gpt-4-turbo": 128_000,
@@ -145,6 +146,12 @@ class ProviderManager(ParEventSystemBase):
         if provider == LlmProvider.OLLAMA:
             return ollama_dm.get_model_select_options()
         return [(m, m) for m in self.provider_models[provider]]
+
+    def get_model_names(self, provider: LlmProvider) -> list[str]:
+        """Get select options."""
+        if provider == LlmProvider.OLLAMA:
+            return ollama_dm.get_model_names()
+        return self.provider_models[provider]
 
 
 provider_manager = ProviderManager()
