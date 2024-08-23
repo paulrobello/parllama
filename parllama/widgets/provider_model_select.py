@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from textual import on
 from textual.app import ComposeResult
-from textual.containers import Vertical
+from textual.containers import Container
 from textual.widgets import Select
 from textual.widgets._select import NoSelection
 
@@ -19,9 +19,20 @@ from parllama.provider_manager import provider_manager
 from parllama.settings_manager import settings
 
 
-class ProviderModelSelect(Vertical):
+class ProviderModelSelect(Container):
     """Widget to select provider and model"""
 
+    DEFAULT_CSS = """
+       ProviderModelSelect {
+           width: 1fr;
+           height: 1fr;
+           layout: vertical;
+           overflow: hidden hidden;
+           &.horizontal {
+               layout: horizontal;
+           }
+       }
+       """
     _deferred_model_value: str | NoSelection
     provider_select: Select[LlmProvider]
     model_select: Select[str]

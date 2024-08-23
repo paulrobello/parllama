@@ -147,6 +147,7 @@ class FullModel(Model):
     parameters: str | None = None
     template: str | None = None
     model_info: ModelInfo | None = None
+    _num_ctx: int = 0
 
     def get_messages(self) -> list[ollama.Message]:
         """Get messages from the model."""
@@ -174,6 +175,20 @@ class FullModel(Model):
                 messages.append(match.group(1))
 
         return messages
+
+    def num_ctx(self) -> int:
+        """Get number of context tokens from the model or default to Ollama 2k."""
+        if self._num_ctx:
+            return self._num_ctx
+        if not self.modelfile:
+            return 2048
+        context_regex = re.compile(r"parameter\s+num_ctx (\d+)", re.I)
+        match = context_regex.search(self.modelfile)
+        if match:
+            self._num_ctx = int(match.group(1))
+        else:
+            self._num_ctx = 2048
+        return self._num_ctx
 
 
 class ToolCallFunction(BaseModel):

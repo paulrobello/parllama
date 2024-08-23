@@ -308,9 +308,7 @@ class ChatTab(TabPane):
         ollama_dm.enrich_model_details(model)
         if not model.model_info:
             return
-        max_context_length = model.model_info.llama_context_length
-        if max_context_length:
-            self.post_message(UpdateChatStatus())
+        self.post_message(UpdateChatStatus())
 
     def on_update_chat_status(self, event: Message | None = None) -> None:
         """Update session status bar"""

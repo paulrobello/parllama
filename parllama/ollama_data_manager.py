@@ -379,17 +379,14 @@ class OllamaDataManager(ParEventSystemBase):
         model: FullModel | None = self.get_model_by_name(model_name)
         if not model:
             self.log_it("Model not found: " + model_name)
-            return 0
+            return 2048
         if not model.model_info:
             self.log_it("Model info not loaded: " + model_name)
             self.enrich_model_details(model)
             if not model.model_info:
                 self.log_it("Model load failed: " + model_name)
-                return 0
-        if model.model_info:
-            return model.model_info.llama_context_length or 0
-
-        return 0
+                return 2048
+        return model.num_ctx()
 
 
 ollama_dm: OllamaDataManager = OllamaDataManager()

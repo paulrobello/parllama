@@ -705,14 +705,14 @@ If you would like to auto check for updates, you can enable it in the Startup se
     @on(ModelInteractRequested)
     async def on_model_interact_requested(self, event: ModelInteractRequested) -> None:
         """Model interact requested event"""
-        self.main_screen.change_tab("Chat")
+        await self.main_screen.chat_view.action_new_tab()
         self.main_screen.chat_view.active_tab.session_config.provider_model_select.provider_select.value = (
             LlmProvider.OLLAMA
         )
         self.main_screen.chat_view.active_tab.session_config.provider_model_select.model_select.value = (
             event.model_name
         )
-        await self.main_screen.chat_view.active_tab.action_new_session()
+        self.main_screen.change_tab("Chat")
         self.main_screen.chat_view.user_input.focus()
 
     @on(ClearChatInputHistory)
