@@ -111,8 +111,8 @@ class MainScreen(Screen[None]):
                 yield self.options_view
             with TabPane("Secrets", id="Secrets"):
                 yield self.secrets_view
-            with TabPane("Rag", id="Rag"):
-                yield self.rag_view
+            # with TabPane("Rag", id="Rag"):
+            #     yield self.rag_view
             with TabPane("Logs", id="Logs"):
                 yield self.log_view
 

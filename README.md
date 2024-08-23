@@ -40,8 +40,11 @@
     * [v0.2.51](#v0251)
     * [v0.2.5](#v025)
 
-[![PyPI - Version](https://img.shields.io/pypi/v/parllama.svg)](https://pypi.org/project/parllama/)
-[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/parllama.svg)](https://pypi.org/project/parllama/)
+[![PyPI](https://img.shields.io/pypi/v/parllama)](https://pypi.org/project/parllama/)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/parllama.svg)](https://pypi.org/project/parllama/)  
+![Runs on Linux | MacOS | Windows](https://img.shields.io/badge/runs%20on-Linux%20%7C%20MacOS%20%7C%20Windows-blue)
+![Arch x86-63 | ARM | AppleSilicon](https://img.shields.io/badge/arch-x86--64%20%7C%20ARM%20%7C%20AppleSilicon-blue)  
+![PyPI - License](https://img.shields.io/pypi/l/parllama)
 
 ## About
 PAR LLAMA is a TUI application designed for easy management and use of Ollama based LLMs.
@@ -50,7 +53,7 @@ and runs on all major OS's including but not limited to Windows, Windows WSL, Ma
 
 [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://buymeacoffee.com/probello3)
 
-### Screenshots
+## Screenshots
 Supports Dark and Light mode as well as custom themes.
 
 ![Local Models Dark](https://raw.githubusercontent.com/paulrobello/parllama/main/docs/local_models_dark_1.png)
@@ -361,13 +364,10 @@ if anything remains to be fixed before the commit is allowed.
 
 ## What's new
 
-### v0.3.9
-* Added support for the following online providers: OpenAI, Anthropic, Groq, Google (More coming soon)
-* Added secrets manager
 
 ### v0.3.8
+* Added support for the following online providers: OpenAI, Anthropic, Groq, Google (More coming soon)
 * Added secrets manager with encrypted storage
-* Added RAG system
 
 ### v0.3.7
 * Fix for possible crash when there is more than one model loaded into ollama
