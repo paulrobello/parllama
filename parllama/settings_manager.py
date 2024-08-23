@@ -232,7 +232,8 @@ class Settings(BaseModel):
                     },
                 )
                 if self.auto_name_session_llm_config:
-                    del self.auto_name_session_llm_config["class_name"]
+                    if "class_name" in self.auto_name_session_llm_config:
+                        del self.auto_name_session_llm_config["class_name"]
 
                 self.chat_tab_max_length = max(
                     8, data.get("chat_tab_max_length", self.chat_tab_max_length)
