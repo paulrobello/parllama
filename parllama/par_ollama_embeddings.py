@@ -9,8 +9,6 @@ from langchain_core.embeddings import Embeddings
 from langchain_core.pydantic_v1 import BaseModel
 from langchain_core.pydantic_v1 import Extra
 
-from parllama.settings_manager import settings
-
 
 class ParOllamaEmbeddings(BaseModel, Embeddings):
     """OllamaEmbeddings embedding model.
@@ -25,6 +23,7 @@ class ParOllamaEmbeddings(BaseModel, Embeddings):
     """
 
     model: str
+    _ollama_host: str = "localhost"
     """Model name to use."""
 
     class Config:
@@ -32,11 +31,16 @@ class ParOllamaEmbeddings(BaseModel, Embeddings):
 
         extra = Extra.forbid
 
+    def __init__(self, ollama_host: str, **kwargs) -> None:
+        """Initialize OllamaEmbeddings."""
+        super().__init__(**kwargs)
+        self._ollama_host = ollama_host
+
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         """Embed search docs."""
-        embedded_docs = ollama.Client(host=settings.ollama_host).embed(
-            self.model, texts
-        )["embeddings"]
+        embedded_docs = ollama.Client(host=self._ollama_host).embed(self.model, texts)[
+            "embeddings"
+        ]
         return embedded_docs
 
     def embed_query(self, text: str) -> List[float]:
@@ -54,7 +58,7 @@ class ParOllamaEmbeddings(BaseModel, Embeddings):
     async def aembed_documents(self, texts: List[str]) -> List[List[float]]:
         """Embed search docs."""
         embedded_docs = (
-            await ollama.AsyncClient(host=settings.ollama_host).embed(self.model, texts)
+            await ollama.AsyncClient(host=self._ollama_host).embed(self.model, texts)
         )["embeddings"]
         return embedded_docs
 

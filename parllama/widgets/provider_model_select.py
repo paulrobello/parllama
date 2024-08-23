@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Optional
 
 from textual import on
 from textual.app import ComposeResult
@@ -37,15 +38,17 @@ class ProviderModelSelect(Container):
     provider_select: Select[LlmProvider]
     model_select: Select[str]
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(
+        self,
+        *,
+        provider: Optional[LlmProvider] = None,
+        model_name: Optional[str] = None,
+        **kwargs,
+    ) -> None:
         """Initialise the view."""
         super().__init__(**kwargs)
 
-        lp: LlmProvider = (
-            settings.last_chat_provider
-            if settings.last_chat_provider
-            else LlmProvider.OLLAMA
-        )
+        lp: LlmProvider = provider or settings.last_chat_provider or LlmProvider.OLLAMA
         self.provider_select = Select[LlmProvider](
             id="provider_name",
             options=provider_select_options,
@@ -56,11 +59,12 @@ class ProviderModelSelect(Container):
         opts = provider_manager.get_model_select_options(lp)
         models = provider_manager.get_model_names(lp)
         v: NoSelection | str = Select.BLANK
-        if settings.last_chat_model:
+        cm = model_name or settings.last_chat_model
+        if cm:
             if len(models) == 0:
-                self._deferred_model_value = settings.last_chat_model
+                self._deferred_model_value = cm
             elif settings.last_chat_model not in models:
-                self._deferred_model_value = settings.last_chat_model
+                self._deferred_model_value = cm
             else:
                 self._deferred_model_value = settings.last_chat_model
                 v = settings.last_chat_model
@@ -157,8 +161,9 @@ class ProviderModelSelect(Container):
         )
 
     @on(Select.Changed, "#model_name")
-    def model_select_changed(self) -> None:
+    def model_select_changed(self, event: Select.Changed) -> None:
         """Model select changed, update control states and save model name"""
+        event.stop()
         if self.model_select.value not in (Select.BLANK, settings.last_chat_model):
             settings.last_chat_model = self.model_select.value  # type: ignore
             settings.save()

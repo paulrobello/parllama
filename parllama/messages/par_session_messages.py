@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from parllama.llm_config import LlmConfig
 from parllama.messages.shared import SessionChanges
 from parllama.par_event_system import ParEventBase
 
@@ -31,5 +32,5 @@ class ParSessionDelete(ParSessionMessage):
 class ParSessionAutoName(ParSessionMessage):
     """Request session be auto named."""
 
-    model_name: str
+    llm_config: LlmConfig
     context: str

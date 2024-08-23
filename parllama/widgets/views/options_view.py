@@ -16,12 +16,14 @@ from textual.widgets import Select
 from textual.widgets import Static
 
 import parllama
-from parllama.messages.messages import ClearChatInputHistory
+from parllama.llm_config import LlmConfig
+from parllama.messages.messages import ClearChatInputHistory, ProviderModelSelected
 from parllama.settings_manager import settings
 from parllama.theme_manager import theme_manager
 from parllama.utils import valid_tabs
 from parllama.validators.http_validator import HttpValidator
 from parllama.widgets.input_blur_submit import InputBlurSubmit
+from parllama.widgets.provider_model_select import ProviderModelSelect
 
 
 class OptionsView(Horizontal):
@@ -220,11 +222,14 @@ class OptionsView(Horizontal):
                             id="auto_name_session",
                         )
                         yield Label("LLM used for auto name")
-                        # TODO: Add support for multiple LLMs
-                        # yield LocalModelSelect(
-                        #     value=settings.auto_name_session_llm,
-                        #     id="auto_name_session_llm",
-                        # )
+                        if settings.auto_name_session_llm_config:
+                            llmc = LlmConfig(**settings.auto_name_session_llm_config)
+                        else:
+                            llmc = None
+                        yield ProviderModelSelect(
+                            provider=(llmc.provider if llmc else None),
+                            model_name=(llmc.model_name if llmc else None),
+                        )
 
                 with Vertical(classes="section") as vst:
                     vst.border_title = "Theme"
@@ -257,6 +262,15 @@ class OptionsView(Horizontal):
         event.stop()
         self.app.post_message(ClearChatInputHistory())
 
+    @on(ProviderModelSelected)
+    def on_provider_model_selected(self, event: ProviderModelSelected) -> None:
+        """Handle provider model selected"""
+        event.stop()
+        settings.auto_name_session_llm_config = LlmConfig(
+            provider=event.provider, model_name=event.model_name, temperature=0.5
+        ).to_json()
+        settings.save()
+
     @on(Select.Changed)
     def on_select_changed(self, event: Select.Changed) -> None:
         """Handle theme select changed"""
@@ -267,11 +281,6 @@ class OptionsView(Horizontal):
                 settings.starting_tab = "Local"
             else:
                 settings.starting_tab = ctrl.value  # type: ignore
-        elif ctrl.id == "auto_name_session_llm":
-            if ctrl.value == Select.BLANK:
-                settings.auto_name_session_llm = ""
-            else:
-                settings.auto_name_session_llm = ctrl.value  # type: ignore
         elif ctrl.id == "theme_name":
             if ctrl.value != Select.BLANK:
                 settings.theme_name = ctrl.value  # type: ignore

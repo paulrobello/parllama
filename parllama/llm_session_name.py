@@ -2,21 +2,20 @@
 
 from __future__ import annotations
 
-import ollama
+from typing import Optional
 
-from parllama.settings_manager import settings
+from parllama.llm_config import LlmConfig
 
 
-def llm_session_name(text: str, llm_model_name: str | None = None) -> str | None:
+def llm_session_name(text: str, llm_config: Optional[LlmConfig] = None) -> str | None:
     """Generate a session name from the given text using llm"""
-    model = llm_model_name or settings.auto_name_session_llm or ""
-    if not model:
+    if not llm_config:
         return None
-    ret = ollama.Client(host=settings.ollama_host).generate(
-        model=model,
-        options={"temperature": 0.1},
-        prompt=f"Summarize the following: {text}",
-        system="""
+    ret = llm_config.build_chat_model().invoke(
+        [
+            (
+                "system",
+                """
 You are an export at naming things.
 You will be given text from the user to summarize.
 You must follow all the following instructions:
@@ -32,5 +31,8 @@ Examples:
 * "What is the tallest mountain?" -> "Tallest Mountain"
 * "What is the meaning of life?" -> "Meaning of Life"
     """,
+            ),
+            ("user", f"Summarize the following: {text}"),
+        ]
     )
     return ret["response"].strip()  # type: ignore

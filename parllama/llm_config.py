@@ -91,7 +91,9 @@ class LlmConfig:
                     base_url=settings.ollama_host,
                 )
             if self.mode == LlmMode.EMBEDDINGS:
-                return ParOllamaEmbeddings(model=self.model_name)
+                return ParOllamaEmbeddings(
+                    ollama_host=settings.ollama_host, model=self.model_name
+                )
         elif self.provider == LlmProvider.OPENAI:
             if self.mode == LlmMode.BASE:
                 return OpenAI(model=self.model_name, temperature=self.temperature)

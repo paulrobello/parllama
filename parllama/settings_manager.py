@@ -63,7 +63,7 @@ class Settings(BaseModel):
     load_local_models_on_startup: bool = True
 
     auto_name_session: bool = False
-    auto_name_session_llm: str = ""
+    auto_name_session_llm_config: Optional[dict] = None
     return_to_single_line_on_submit: bool = True
 
     # pylint: disable=too-many-branches, too-many-statements
@@ -223,9 +223,17 @@ class Settings(BaseModel):
                 self.auto_name_session = data.get(
                     "auto_name_session", self.auto_name_session
                 )
-                self.auto_name_session_llm = data.get(
-                    "auto_name_session_llm", self.auto_name_session_llm
+                self.auto_name_session_llm_config = data.get(
+                    "auto_name_session_llm_config",
+                    {
+                        "provider": LlmProvider.OLLAMA,
+                        "model_name": "",
+                        "temperature": 0.5,
+                    },
                 )
+                if self.auto_name_session_llm_config:
+                    del self.auto_name_session_llm_config["class_name"]
+
                 self.chat_tab_max_length = max(
                     8, data.get("chat_tab_max_length", self.chat_tab_max_length)
                 )

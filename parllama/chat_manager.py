@@ -98,7 +98,11 @@ class ChatManager(ParEventSystemBase):
 
     def mk_llm_session_name(self, text: str) -> str | None:
         """Generate a unique LLM session name"""
-        base_name = llm_session_name(text)
+        if not settings.auto_name_session_llm_config:
+            return None
+        base_name = llm_session_name(
+            text, LlmConfig(**settings.auto_name_session_llm_config)
+        )
         if not base_name:
             return None
         return self.mk_session_name(base_name)
@@ -231,7 +235,7 @@ class ChatManager(ParEventSystemBase):
         session = self.get_session(event.session_id)
         if not session:
             return
-        new_name = llm_session_name(event.context, event.model_name)
+        new_name = llm_session_name(event.context, event.llm_config)
         if not new_name:
             return
         self.log_it(

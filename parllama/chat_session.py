@@ -309,6 +309,7 @@ class ChatSession(ChatMessageContainer):
             if (
                 not is_aborted
                 and settings.auto_name_session
+                and settings.auto_name_session_llm_config
                 and not self.name_generated
             ):
                 self.name_generated = True
@@ -317,8 +318,9 @@ class ChatSession(ChatMessageContainer):
                     self.post_message(
                         ParSessionAutoName(
                             session_id=self.id,
-                            model_name=settings.auto_name_session_llm
-                            or self.llm_model_name,
+                            llm_config=LlmConfig(
+                                **settings.auto_name_session_llm_config
+                            ),
                             context=user_msg.content,
                         )
                     )
