@@ -66,6 +66,7 @@ dependencies = [
     "youtube-transcript-api",
     "zipp",
     "unstructured",
+    "watchdog>=4.0.2",
 ]
 
 [build-system]
