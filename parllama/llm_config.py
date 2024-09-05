@@ -46,6 +46,7 @@ class LlmConfig:
     model_name: str
     mode: LlmMode = LlmMode.CHAT
     temperature: float = 0.5
+    streaming: bool = True
 
     def to_json(self) -> dict:
         """Return dict for use with json"""
@@ -96,12 +97,17 @@ class LlmConfig:
                 )
         elif self.provider == LlmProvider.OPENAI:
             if self.mode == LlmMode.BASE:
-                return OpenAI(model=self.model_name, temperature=self.temperature)
+                return OpenAI(
+                    model=self.model_name,
+                    temperature=self.temperature,
+                    streaming=self.streaming,
+                )
             if self.mode == LlmMode.CHAT:
                 return ChatOpenAI(
                     model=self.model_name,
                     temperature=self.temperature,
                     stream_usage=True,
+                    streaming=self.streaming,
                 )
             if self.mode == LlmMode.EMBEDDINGS:
                 return OpenAIEmbeddings(model=self.model_name)
@@ -125,6 +131,7 @@ class LlmConfig:
                 return ChatAnthropic(  # pyright: ignore [reportCallIssue]
                     model=self.model_name,  # pyright: ignore [reportCallIssue]
                     temperature=self.temperature,
+                    streaming=self.streaming,
                 )
             if self.mode == LlmMode.EMBEDDINGS:
                 raise ValueError(
