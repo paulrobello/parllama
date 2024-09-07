@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from enum import Enum
 
 
@@ -23,3 +24,31 @@ provider_select_options: list[tuple[str, LlmProvider]] = [
     )
     for p in llm_provider_types
 ]
+
+provider_default_models: dict[LlmProvider, str] = {
+    LlmProvider.OLLAMA: "llama3.1:8b",
+    LlmProvider.OPENAI: "gpt-4o-mini",
+    LlmProvider.GROQ: "llama3-70b-8192",
+    LlmProvider.ANTHROPIC: "claude-3-5-sonnet-20240620",
+    LlmProvider.GOOGLE: "gemini-1.5-flash-latest",
+}
+
+provider_env_key_names: dict[LlmProvider, str] = {
+    LlmProvider.OLLAMA: "",
+    LlmProvider.OPENAI: "OPENAI_API_KEY",
+    LlmProvider.GROQ: "GROQ_API_KEY",
+    LlmProvider.ANTHROPIC: "ANTHROPIC_API_KEY",
+    LlmProvider.GOOGLE: "GOOGLE_API_KEY",
+}
+
+
+def is_provider_api_key_set(provider: LlmProvider) -> bool:
+    """Check if API key is set for the provider."""
+    if provider == LlmProvider.OLLAMA:
+        return True
+    return len(os.environ.get(provider_env_key_names[provider], "")) > 0
+
+
+def get_providers_with_api_keys() -> list[LlmProvider]:
+    """Get providers with API keys."""
+    return [p for p in LlmProvider if is_provider_api_key_set(p)]
