@@ -16,8 +16,8 @@ def llm_session_name(text: str, llm_config: Optional[LlmConfig] = None) -> str |
             (
                 "system",
                 """
-You are an export at naming things.
-You will be given text from the user to summarize.
+ROLE: You are an export at naming things.
+TASK: You will be given text from the user to summarize.
 You must follow all the following instructions:
 * Generate a descriptive name of no more than a 4 words.
 * Only output the name.
