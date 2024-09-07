@@ -1,39 +1,23 @@
 {
   "include": [
-    "parllama",
-    "parllama/dialogs",
-    "parllama/messages",
-    "parllama/models",
-    "parllama/prompt_utils",
-    "parllama/screens",
-    "parllama/themes",
-    "parllama/tools",
-    "parllama/validators",
-    "parllama/widgets"
+    "src/**/*.py"
   ],
   "exclude": [
     "**/node_modules",
     "**/__pycache__",
     "**/build"
   ],
-  "ignore": [],
+  "ignore": [
+    "**/.venv"
+  ],
   "defineConstant": {
     "DEBUG": true
   },
-  "reportMissingImports": "error",
+  "venvPath": ".",
+  "venv": ".venv",
+  "reportMissingImports": true,
   "reportMissingTypeStubs": false,
   "pythonVersion": "3.11",
-  "pythonPlatform": "Linux",
-  "executionEnvironments": [
-    {
-      "root": ".",
-      "pythonVersion": "3.11",
-      "extraPaths": [],
-      "reportMissingImports": "warning"
-    },
-    {
-      "root": "tests",
-      "extraPaths": []
-    }
-  ]
+  "pythonPlatform": "Windows",
+  "typeCheckingMode": "basic"
 }
