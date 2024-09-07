@@ -16,19 +16,19 @@ export PIPENV_VERBOSITY=-1
 # Run the app.
 .PHONY: run
 run:	        # Run the app
-	$(python) -m $(lib)
+	$(run) $(lib)
 
 .PHONY: app_help
 app_help:	        # Show app help
-	$(python) -m $(lib) --help
+	$(run) $(lib) --help
 
 .PHONY: restore_defaults
 restore_defaults:	        # Restore application default settings
-	$(python) -m $(lib) --restore-defaults
+	$(run) $(lib) --restore-defaults
 
 .PHONY: clear_cache
 clear_cache:	        # Clear application cache
-	$(python) -m $(lib) --clear-cache
+	$(run) $(lib) --clear-cache
 
 .PHONY: dev
 dev:	        # Run in dev mode

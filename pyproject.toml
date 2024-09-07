@@ -1,6 +1,24 @@
 [project]
 name = "parllama"
-dynamic = ["version", "description", "readme", "license", "classifiers", "keywords", "maintainers", "authors", "scripts", "urls"]
+dynamic = ["version"]
+description = "Terminal UI for Ollama"
+url = "https://github.com/paulrobello/parllama"
+license = { file = "LICENSE" }
+authors = [{ name = "Paul Robello", email = "probello@gmail.com" }]
+maintainers = [{ name = "Paul Robello", email = "probello@gmail.com" }]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Environment :: Console",
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Terminals",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Typing :: Typed"
+]
+keywords = ["ollama", "ai","terminal", "tui"]
+
 requires-python = ">=3.11"
 dependencies = [
     "anthropic",
@@ -69,9 +87,24 @@ dependencies = [
     "watchdog>=4.0.2",
 ]
 
+packages = [
+    "src/parllama"
+]
+
+[project.urls]
+Homepage = "https://github.com/paulrobello/parllama"
+Documentation = "https://github.com/paulrobello/parllama/blob/main/README.md"
+Source = "https://github.com/paulrobello/parllama"
+Issues = "https://github.com/paulrobello/parllama/issues"
+Discussions = "https://github.com/paulrobello/parllama/discussions"
+Wiki = "https://github.com/paulrobello/parllama/wiki"
+
+[project.scripts]
+parllama = "parllama.__main__:run"
+
 [build-system]
-requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling", "wheel"]
+build-backend = "hatchling.build"
 
 [tool.uv]
 dev-dependencies = [
@@ -88,4 +121,34 @@ dev-dependencies = [
     "google-api-python-client-stubs",
     "typing-extensions",
     "types-simplejson",
+]
+
+[tool.hatch.version]
+path = "src/parllama/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/parllama"]
+include = [
+    "*.py",
+    "py.typed",
+    "*.png",
+    "*.md",
+    "*.tcss",
+    "*.png",
+    "*.md",
+    "*.tcss"
+]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/parllama",
+    "LICENSE",
+    "README.md",
+    "pyproject.toml"
+]
+exclude = [
+    "*.pyc",
+    "__pycache__",
+    "*.so",
+    "*.dylib"
 ]
