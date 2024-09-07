@@ -319,7 +319,7 @@ class ChatTab(TabPane):
             " : ",
             str_ellipsis(self.session.llm_model_name, 25, ""),
             " : CTX Len: ",
-            humanize.intcomma(self.session.context_length),
+            humanize.intcomma(int(self.session.context_length / 3)),
             " / ",
             humanize.intcomma(
                 provider_manager.get_model_context_length(
