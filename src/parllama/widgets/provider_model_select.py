@@ -10,7 +10,7 @@ from textual.containers import Container
 from textual.widgets import Select
 from textual.widgets._select import NoSelection
 
-from parllama.llm_providers import LlmProvider
+from parllama.llm_providers import LlmProvider, provider_default_models
 from parllama.llm_providers import provider_select_options
 from parllama.messages.messages import LogIt, ProviderModelSelected
 from parllama.messages.messages import ProviderModelsChanged
@@ -26,7 +26,7 @@ class ProviderModelSelect(Container):
     DEFAULT_CSS = """
        ProviderModelSelect {
            width: 1fr;
-           height: 1fr;
+           height: auto;
            layout: vertical;
            overflow: hidden hidden;
            &.horizontal {
@@ -59,7 +59,7 @@ class ProviderModelSelect(Container):
         opts = provider_manager.get_model_select_options(lp)
         models = provider_manager.get_model_names(lp)
         v: NoSelection | str = Select.BLANK
-        cm = model_name or settings.last_chat_model
+        cm = model_name or settings.last_chat_model or provider_default_models[lp]
         if cm:
             if len(models) == 0:
                 self._deferred_model_value = cm
@@ -142,6 +142,11 @@ class ProviderModelSelect(Container):
             settings.save()
             self.model_select.set_options(
                 provider_manager.get_model_select_options(self.provider_select.value)  # type: ignore
+            )
+            self.model_select.value = (
+                provider_default_models[  # pyright: ignore [reportArgumentType]
+                    self.provider_select.value
+                ]
             )
         else:
             self.model_select.set_options([])
