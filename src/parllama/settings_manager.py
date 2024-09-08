@@ -12,7 +12,7 @@ from datetime import datetime
 import simplejson as json
 from pydantic import BaseModel
 
-from parllama.llm_providers import LlmProvider
+from parllama.llm_providers import LlmProvider, provider_name_to_enum
 from parllama.utils import get_args
 from parllama.utils import TabType
 from parllama.utils import valid_tabs
@@ -61,6 +61,13 @@ class Settings(BaseModel):
     ollama_host: str = "http://localhost:11434"
     ollama_ps_poll_interval: int = 3
     load_local_models_on_startup: bool = True
+    provider_base_urls: dict[LlmProvider, Optional[str]] = {
+        LlmProvider.OLLAMA: "http://localhost:11434",
+        LlmProvider.OPENAI: None,
+        LlmProvider.GROQ: None,
+        LlmProvider.ANTHROPIC: None,
+        LlmProvider.GOOGLE: None,
+    }
 
     auto_name_session: bool = False
     auto_name_session_llm_config: Optional[dict] = None
@@ -135,6 +142,7 @@ class Settings(BaseModel):
             if not (url.startswith("http://") or url.startswith("https://")):
                 raise ValueError("Ollama URL must start with http:// or https://")
             self.ollama_host = url
+        self.provider_base_urls[LlmProvider.OLLAMA] = self.ollama_host
 
         if os.environ.get("PARLLAMA_THEME_NAME"):
             self.theme_name = os.environ.get("PARLLAMA_THEME_NAME", self.theme_name)
@@ -183,7 +191,7 @@ class Settings(BaseModel):
     def load_from_file(self) -> None:
         """Load settings from file."""
         try:
-            with open(self.settings_file, encoding="utf-8") as f:
+            with open(self.settings_file, "rt", encoding="utf-8") as f:
                 data = json.load(f)
                 url = data.get("ollama_host", self.ollama_host)
 
@@ -191,6 +199,23 @@ class Settings(BaseModel):
                     self.ollama_host = url
                 else:
                     print("ollama_host must start with http:// or https://")
+                saved_provider_base_urls = data.get("provider_base_urls") or {}
+                provider_base_urls: dict[LlmProvider, Optional[str]] = {}
+                for k, v in saved_provider_base_urls.items():
+                    provider_base_urls[provider_name_to_enum(k)] = v or None
+
+                if LlmProvider.OLLAMA not in provider_base_urls:
+                    provider_base_urls[LlmProvider.OLLAMA] = self.ollama_host
+                if LlmProvider.OPENAI not in provider_base_urls:
+                    provider_base_urls[LlmProvider.OPENAI] = None
+                if LlmProvider.GROQ not in provider_base_urls:
+                    provider_base_urls[LlmProvider.GROQ] = None
+                if LlmProvider.ANTHROPIC not in provider_base_urls:
+                    provider_base_urls[LlmProvider.ANTHROPIC] = None
+                if LlmProvider.GOOGLE not in provider_base_urls:
+                    provider_base_urls[LlmProvider.GOOGLE] = None
+                self.provider_base_urls = provider_base_urls
+
                 self.theme_name = data.get("theme_name", self.theme_name)
                 self.theme_mode = data.get("theme_mode", self.theme_mode)
                 self.site_models_namespace = data.get("site_models_namespace", "")
@@ -229,6 +254,7 @@ class Settings(BaseModel):
                         "provider": LlmProvider.OLLAMA,
                         "model_name": "",
                         "temperature": 0.5,
+                        "streaming": True,
                     },
                 )
                 if self.auto_name_session_llm_config:
@@ -281,7 +307,7 @@ class Settings(BaseModel):
                 f"Par Llama data directory does not exist: {self.data_dir}"
             )
 
-        with open(self.settings_file, "w", encoding="utf-8") as f:
+        with open(self.settings_file, "wt", encoding="utf-8") as f:
             f.write(self.model_dump_json(indent=4))
 
     def ensure_cache_folder(self) -> None:

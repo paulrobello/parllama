@@ -17,6 +17,7 @@ from textual.widgets import Static
 
 import parllama
 from parllama.llm_config import LlmConfig
+from parllama.llm_providers import LlmProvider
 from parllama.messages.messages import ClearChatInputHistory, ProviderModelSelected
 from parllama.settings_manager import settings
 from parllama.theme_manager import theme_manager
@@ -158,14 +159,7 @@ class OptionsView(Horizontal):
                         )
 
                 with Vertical(classes="section") as vso:
-                    vso.border_title = "Ollama Endpoint"
-                    yield Label("Ollama Host")
-                    yield InputBlurSubmit(
-                        value=settings.ollama_host,
-                        valid_empty=True,
-                        validators=HttpValidator(),
-                        id="ollama_host",
-                    )
+                    vso.border_title = "Ollama"
                     yield Label("PS poll interval in seconds")
                     yield InputBlurSubmit(
                         value=str(settings.ollama_ps_poll_interval),
@@ -173,6 +167,37 @@ class OptionsView(Horizontal):
                         type="integer",
                         validators=[Integer(minimum=0, maximum=300)],
                         id="ollama_ps_poll_interval",
+                    )
+
+                with Vertical(classes="section") as vso:
+                    vso.border_title = "Provider Endpoints"
+                    yield Label("Ollama")
+                    yield InputBlurSubmit(
+                        value=settings.provider_base_urls[LlmProvider.OLLAMA] or "",
+                        valid_empty=True,
+                        validators=HttpValidator(),
+                        id="ollama_base_url",
+                    )
+                    yield Label("OpenAI")
+                    yield InputBlurSubmit(
+                        value=settings.provider_base_urls[LlmProvider.OPENAI] or "",
+                        valid_empty=True,
+                        validators=HttpValidator(),
+                        id="openai_base_url",
+                    )
+                    yield Label("Groq")
+                    yield InputBlurSubmit(
+                        value=settings.provider_base_urls[LlmProvider.GROQ] or "",
+                        valid_empty=True,
+                        validators=HttpValidator(),
+                        id="groq_base_url",
+                    )
+                    yield Label("Anthropic")
+                    yield InputBlurSubmit(
+                        value=settings.provider_base_urls[LlmProvider.ANTHROPIC] or "",
+                        valid_empty=True,
+                        validators=HttpValidator(),
+                        id="anthropic_base_url",
                     )
 
             with Vertical(classes="column"):
@@ -223,6 +248,8 @@ class OptionsView(Horizontal):
                         )
                         yield Label("LLM used for auto name")
                         if settings.auto_name_session_llm_config:
+                            if "class_name" in settings.auto_name_session_llm_config:
+                                del settings.auto_name_session_llm_config["class_name"]
                             llmc = LlmConfig(**settings.auto_name_session_llm_config)
                         else:
                             llmc = None
@@ -334,8 +361,15 @@ class OptionsView(Horizontal):
             self.notify(f"{ctrl.id} [{errors}]", severity="error", timeout=8)
             return
 
-        if ctrl.id == "ollama_host":
+        if ctrl.id == "ollama_base_url":
+            settings.provider_base_urls[LlmProvider.OLLAMA] = ctrl.value
             settings.ollama_host = ctrl.value
+        elif ctrl.id == "openai_base_url":
+            settings.provider_base_urls[LlmProvider.OPENAI] = ctrl.value or None
+        elif ctrl.id == "groq_base_url":
+            settings.provider_base_urls[LlmProvider.GROQ] = ctrl.value or None
+        elif ctrl.id == "anthropic_base_url":
+            settings.provider_base_urls[LlmProvider.ANTHROPIC] = ctrl.value or None
         elif ctrl.id == "ollama_ps_poll_interval":
             settings.ollama_ps_poll_interval = int(ctrl.value)
         elif ctrl.id == "chat_tab_max_length":

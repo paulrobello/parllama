@@ -41,6 +41,19 @@ provider_env_key_names: dict[LlmProvider, str] = {
     LlmProvider.GOOGLE: "GOOGLE_API_KEY",
 }
 
+provider_supports_base_url: dict[LlmProvider, bool] = {
+    LlmProvider.OLLAMA: True,
+    LlmProvider.OPENAI: True,
+    LlmProvider.GROQ: True,
+    LlmProvider.ANTHROPIC: True,
+    LlmProvider.GOOGLE: False,
+}
+
+
+def provider_name_to_enum(name: str) -> LlmProvider:
+    """Get LlmProvider enum from string."""
+    return LlmProvider(name)
+
 
 def is_provider_api_key_set(provider: LlmProvider) -> bool:
     """Check if API key is set for the provider."""

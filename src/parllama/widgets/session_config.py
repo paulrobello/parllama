@@ -56,11 +56,13 @@ class SessionConfig(VerticalScroll):
             restrict=r"^\d?\.?\d?\d?$",
             valid_empty=False,
         )
+
         self.session_name_input: InputBlurSubmit = InputBlurSubmit(
             id="session_name_input",
             value=session_name,
             valid_empty=False,
         )
+
         self.session = chat_manager.get_or_create_session(
             session_id=None,
             session_name=session_name,
