@@ -59,8 +59,8 @@ class LocalModelSelect(Select[str]):
             self._deferred_value = None  # Reset the deferred value.
         elif self.value != Select.BLANK:
             old_v = self.value
-        elif settings.last_chat_model:
-            old_v = settings.last_chat_model
+        elif settings.last_llm_config.model_name:
+            old_v = settings.last_llm_config.model_name
         else:
             old_v = None
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import shutil
+from dataclasses import dataclass
 from typing import Optional
 
 from argparse import Namespace
@@ -16,6 +17,15 @@ from parllama.llm_providers import LlmProvider, provider_name_to_enum
 from parllama.utils import get_args
 from parllama.utils import TabType
 from parllama.utils import valid_tabs
+
+
+@dataclass
+class LastLlmConfig:
+    """Last LLM config."""
+
+    provider: LlmProvider = LlmProvider.OLLAMA
+    model_name: str = ""
+    temperature: float = 0.5
 
 
 class Settings(BaseModel):
@@ -50,9 +60,7 @@ class Settings(BaseModel):
     last_tab: TabType = "Local"
     use_last_tab_on_startup: bool = True
 
-    last_chat_provider: LlmProvider = LlmProvider.OLLAMA
-    last_chat_model: Optional[str] = None
-    last_chat_temperature: float = 0.5
+    last_llm_config: LastLlmConfig = LastLlmConfig()
     last_chat_session_id: str | None = None
 
     max_log_lines: int = 1000
@@ -232,12 +240,25 @@ class Settings(BaseModel):
                 self.use_last_tab_on_startup = data.get(
                     "use_last_tab_on_startup", self.use_last_tab_on_startup
                 )
-
-                self.last_chat_provider = LlmProvider(
-                    data.get("last_chat_provider", self.last_chat_provider.value)
+                last_llm_config = data.get("last_llm_config", {})
+                self.last_llm_config.provider = LlmProvider(
+                    data.get(
+                        "last_chat_provider",
+                        last_llm_config.get(
+                            "provider", self.last_llm_config.provider.value
+                        ),
+                    )
                 )
-                self.last_chat_model = data.get("last_chat_model", self.last_chat_model)
-                self.last_chat_temperature = data.get("last_chat_temperature", 0.5)
+                self.last_llm_config.model_name = data.get(
+                    "last_chat_model",
+                    last_llm_config.get("model_name", self.last_llm_config.model_name),
+                )
+                self.last_llm_config.temperature = data.get(
+                    "last_chat_temperature",
+                    last_llm_config.get(
+                        "temperature", self.last_llm_config.temperature
+                    ),
+                )
                 self.last_chat_session_id = data.get(
                     "last_chat_session_id", self.last_chat_session_id
                 )

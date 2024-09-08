@@ -47,11 +47,7 @@ class SessionConfig(VerticalScroll):
         self.provider_model_select = ProviderModelSelect()
         self.temperature_input: InputBlurSubmit = InputBlurSubmit(
             id="temperature_input",
-            value=(
-                f"{settings.last_chat_temperature:.2f}"
-                if settings.last_chat_temperature
-                else ""
-            ),
+            value=(f"{settings.last_llm_config.temperature:.2f}"),
             max_length=4,
             restrict=r"^\d?\.?\d?\d?$",
             valid_empty=False,
@@ -138,7 +134,7 @@ class SessionConfig(VerticalScroll):
         try:
             return float(self.temperature_input.value)
         except ValueError:
-            return settings.last_chat_temperature
+            return settings.last_llm_config.temperature
 
     @on(SessionSelected)
     def on_session_selected(self, event: SessionSelected) -> None:
@@ -152,10 +148,10 @@ class SessionConfig(VerticalScroll):
         if not self.temperature_input.value:
             return
         try:
-            settings.last_chat_temperature = float(self.temperature_input.value)
+            settings.last_llm_config.temperature = float(self.temperature_input.value)
         except ValueError:
             return
-        self.session.temperature = settings.last_chat_temperature
+        self.session.temperature = settings.last_llm_config.temperature
         settings.save()
 
     @on(Input.Submitted, "#session_name_input")

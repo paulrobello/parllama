@@ -68,11 +68,7 @@ class PromptView(Container):
         )
         self.temperature_input: InputBlurSubmit = InputBlurSubmit(
             id="temperature_input",
-            value=(
-                f"{settings.last_chat_temperature:.2f}"
-                if settings.last_chat_temperature
-                else ""
-            ),
+            value=f"{settings.last_llm_config.temperature:.2f}",
             max_length=4,
             restrict=r"^\d?\.?\d?\d?$",
             valid_empty=False,

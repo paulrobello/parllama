@@ -48,7 +48,7 @@ class ProviderModelSelect(Container):
         """Initialise the view."""
         super().__init__(**kwargs)
 
-        lp: LlmProvider = provider or settings.last_chat_provider or LlmProvider.OLLAMA
+        lp: LlmProvider = provider or settings.last_llm_config.provider
         self.provider_select = Select[LlmProvider](
             id="provider_name",
             options=provider_select_options,
@@ -59,21 +59,19 @@ class ProviderModelSelect(Container):
         opts = provider_manager.get_model_select_options(lp)
         models = provider_manager.get_model_names(lp)
         v: NoSelection | str = Select.BLANK
-        cm = model_name or settings.last_chat_model or provider_default_models[lp]
+        cm = (
+            model_name
+            or settings.last_llm_config.model_name
+            or provider_default_models[lp]
+        )
         if cm:
             if len(models) == 0:
                 self._deferred_model_value = cm
-            elif settings.last_chat_model not in models:
+            elif settings.last_llm_config.model_name not in models:
                 self._deferred_model_value = cm
             else:
-                self._deferred_model_value = settings.last_chat_model
-                v = settings.last_chat_model
-
-        # self.app.post_message(
-        #     LogIt(
-        #         f"dv={self._deferred_model_value}, cv={settings.last_chat_model}, v={v}"
-        #     )
-        # )
+                self._deferred_model_value = settings.last_llm_config.model_name
+                v = settings.last_llm_config.model_name
 
         self.model_select = Select(
             id="model_name",
@@ -138,16 +136,15 @@ class ProviderModelSelect(Container):
     def provider_select_changed(self) -> None:
         """Provider select changed, update control states and save provider name"""
         if self.provider_select.value != Select.BLANK:
-            settings.last_chat_provider = self.provider_select.value  # type: ignore
+            settings.last_llm_config.provider = self.provider_select.value  # type: ignore
             settings.save()
-            self.model_select.set_options(
-                provider_manager.get_model_select_options(self.provider_select.value)  # type: ignore
-            )
-            self.model_select.value = (
-                provider_default_models[  # pyright: ignore [reportArgumentType]
-                    self.provider_select.value
-                ]
-            )
+            opts = provider_manager.get_model_select_options(self.provider_select.value)  # type: ignore
+            self.model_select.set_options(opts)
+            msv = provider_default_models[  # pyright: ignore [reportArgumentType]
+                self.provider_select.value
+            ]
+            if msv in provider_manager.get_model_names(self.provider_select.value):  # type: ignore
+                self.model_select.value = msv
         else:
             self.model_select.set_options([])
         self.notify_changed()
@@ -169,8 +166,11 @@ class ProviderModelSelect(Container):
     def model_select_changed(self, event: Select.Changed) -> None:
         """Model select changed, update control states and save model name"""
         event.stop()
-        if self.model_select.value not in (Select.BLANK, settings.last_chat_model):
-            settings.last_chat_model = self.model_select.value  # type: ignore
+        if self.model_select.value not in (
+            Select.BLANK,
+            settings.last_llm_config.model_name,
+        ):
+            settings.last_llm_config.model_name = self.model_select.value  # type: ignore
             settings.save()
         self.notify_changed()
 

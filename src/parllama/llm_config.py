@@ -47,8 +47,8 @@ class LlmConfig:
     model_config = ConfigDict(extra="ignore")
     provider: LlmProvider
     model_name: str
-    mode: LlmMode = LlmMode.CHAT
     temperature: float = 0.5
+    mode: LlmMode = LlmMode.CHAT
     streaming: bool = True
     base_url: Optional[str] = None
 
