@@ -160,7 +160,7 @@ class OptionsView(Horizontal):
 
                 with Vertical(classes="section") as vso:
                     vso.border_title = "Ollama"
-                    yield Label("PS poll interval in seconds")
+                    yield Label("PS poll interval in seconds. 0 to disable.")
                     yield InputBlurSubmit(
                         value=str(settings.ollama_ps_poll_interval),
                         max_length=5,
@@ -171,6 +171,11 @@ class OptionsView(Horizontal):
 
                 with Vertical(classes="section") as vso:
                     vso.border_title = "Provider Endpoints"
+                    yield Static("Provider Base URLs (leave empty to use default)")
+                    yield Static(
+                        "Any changes in this section may require app restart",
+                        classes="mb-1",
+                    )
                     yield Label("Ollama")
                     yield InputBlurSubmit(
                         value=settings.provider_base_urls[LlmProvider.OLLAMA] or "",
@@ -260,6 +265,7 @@ class OptionsView(Horizontal):
 
                 with Vertical(classes="section") as vst:
                     vst.border_title = "Theme"
+                    yield Static("Themes are stored in $DataDir/themes", classes="mb-1")
                     yield Label("Theme")
                     yield Select[str](
                         value=settings.theme_name,
