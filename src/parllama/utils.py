@@ -52,7 +52,7 @@ TabType: TypeAlias = Literal[
     "Tools",
     "Create",
     "Options",
-    "Secrets",
+    #    "Secrets",
     # "Rag",
     "Logs",
 ]
@@ -64,7 +64,7 @@ valid_tabs: list[TabType] = [
     "Tools",
     "Create",
     "Options",
-    "Secrets",
+    #    "Secrets",
     # "Rag",
     "Logs",
 ]

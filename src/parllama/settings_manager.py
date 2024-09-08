@@ -13,7 +13,13 @@ from datetime import datetime
 import simplejson as json
 from pydantic import BaseModel
 
-from parllama.llm_providers import LlmProvider, provider_name_to_enum
+from parllama.llm_providers import (
+    LlmProvider,
+    provider_name_to_enum,
+    llm_provider_types,
+    provider_env_key_names,
+    LangChainConfig,
+)
 from parllama.utils import get_args
 from parllama.utils import TabType
 from parllama.utils import valid_tabs
@@ -76,6 +82,16 @@ class Settings(BaseModel):
         LlmProvider.ANTHROPIC: None,
         LlmProvider.GOOGLE: None,
     }
+
+    provider_api_keys: dict[LlmProvider, Optional[str]] = {
+        LlmProvider.OLLAMA: None,
+        LlmProvider.OPENAI: None,
+        LlmProvider.GROQ: None,
+        LlmProvider.ANTHROPIC: None,
+        LlmProvider.GOOGLE: None,
+    }
+
+    langchain_config: LangChainConfig = LangChainConfig()
 
     auto_name_session: bool = False
     auto_name_session_llm_config: Optional[dict] = None
@@ -207,22 +223,31 @@ class Settings(BaseModel):
                     self.ollama_host = url
                 else:
                     print("ollama_host must start with http:// or https://")
+
+                saved_provider_api_keys = data.get("provider_api_keys") or {}
+                provider_api_keys: dict[LlmProvider, Optional[str]] = {}
+                for p in llm_provider_types:
+                    provider_api_keys[p] = None
+
+                for k, v in saved_provider_api_keys.items():
+                    p: LlmProvider = provider_name_to_enum(k)
+                    provider_api_keys[p] = v or None
+                self.provider_api_keys = provider_api_keys
+
                 saved_provider_base_urls = data.get("provider_base_urls") or {}
                 provider_base_urls: dict[LlmProvider, Optional[str]] = {}
+                for p in llm_provider_types:
+                    provider_base_urls[p] = None
+
                 for k, v in saved_provider_base_urls.items():
                     provider_base_urls[provider_name_to_enum(k)] = v or None
 
-                if LlmProvider.OLLAMA not in provider_base_urls:
+                if not provider_base_urls[LlmProvider.OLLAMA]:
                     provider_base_urls[LlmProvider.OLLAMA] = self.ollama_host
-                if LlmProvider.OPENAI not in provider_base_urls:
-                    provider_base_urls[LlmProvider.OPENAI] = None
-                if LlmProvider.GROQ not in provider_base_urls:
-                    provider_base_urls[LlmProvider.GROQ] = None
-                if LlmProvider.ANTHROPIC not in provider_base_urls:
-                    provider_base_urls[LlmProvider.ANTHROPIC] = None
-                if LlmProvider.GOOGLE not in provider_base_urls:
-                    provider_base_urls[LlmProvider.GOOGLE] = None
                 self.provider_base_urls = provider_base_urls
+
+                saved_langchain_config = data.get("langchain_config") or {}
+                self.langchain_config = LangChainConfig(**saved_langchain_config)
 
                 self.theme_name = data.get("theme_name", self.theme_name)
                 self.theme_mode = data.get("theme_mode", self.theme_mode)
@@ -314,12 +339,28 @@ class Settings(BaseModel):
                 self.load_local_models_on_startup = data.get(
                     "load_local_models_on_startup", self.load_local_models_on_startup
                 )
-
+            self.update_env()
         except FileNotFoundError:
             pass  # If file does not exist, continue with default settings
 
+    def update_env(self) -> None:
+        """Update environment variables."""
+
+        for p, v in self.provider_api_keys.items():
+            if v:
+                os.environ[provider_env_key_names[p]] = v
+
+        os.environ["LANGCHAIN_TRACING_V2"] = str(self.langchain_config.tracing).lower()
+        if self.langchain_config.base_url:
+            os.environ["LANGCHAIN_ENDPOINT"] = self.langchain_config.base_url
+        if self.langchain_config.api_key:
+            os.environ["LANGCHAIN_API_KEY"] = self.langchain_config.api_key
+        if self.langchain_config.project:
+            os.environ["LANGCHAIN_PROJECT"] = self.langchain_config.project
+
     def save_settings_to_file(self) -> None:
         """Save settings to file."""
+        self.update_env()
         if self.no_save or self._shutting_down:
             return
         os.makedirs(self.data_dir, exist_ok=True)

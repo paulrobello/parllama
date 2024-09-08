@@ -352,8 +352,7 @@ if anything remains to be fixed before the commit is allowed.
 * Chat tabs allow chat with multiple models at same time
 * Custom prompt library with import from Fabric
 * Auto complete of slash commands, input history, multi line edit
-* Secure secrets management for API keys and other sensitive data
-* Ability to use cloud AI providers like OpenAI
+* Ability to use cloud AI providers like OpenAI, Anthropic, Groq, and Google
 
 ### Where we're going
 
@@ -367,8 +366,8 @@ if anything remains to be fixed before the commit is allowed.
 
 
 ### v0.3.8
+* Major rework of core to support providers other than Ollama
 * Added support for the following online providers: OpenAI, Anthropic, Groq, Google
-* Added secrets manager with encrypted storage
 
 ### v0.3.7
 * Fix for possible crash when there is more than one model loaded into ollama

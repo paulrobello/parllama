@@ -158,54 +158,25 @@ class OptionsView(Horizontal):
                             id="load_local_models_on_startup",
                         )
 
-                with Vertical(classes="section") as vso:
-                    vso.border_title = "Ollama"
-                    yield Label("PS poll interval in seconds. 0 to disable.")
-                    yield InputBlurSubmit(
-                        value=str(settings.ollama_ps_poll_interval),
-                        max_length=5,
-                        type="integer",
-                        validators=[Integer(minimum=0, maximum=300)],
-                        id="ollama_ps_poll_interval",
+                with Vertical(classes="section") as vst:
+                    vst.border_title = "Theme"
+                    yield Static("Themes are stored in $DataDir/themes", classes="mb-1")
+                    yield Label("Theme")
+                    yield Select[str](
+                        value=settings.theme_name,
+                        options=theme_manager.theme_select_options(),
+                        allow_blank=False,
+                        id="theme_name",
                     )
 
-                with Vertical(classes="section") as vso:
-                    vso.border_title = "Provider Endpoints"
-                    yield Static("Provider Base URLs (leave empty to use default)")
-                    yield Static(
-                        "Any changes in this section may require app restart",
-                        classes="mb-1",
-                    )
-                    yield Label("Ollama")
-                    yield InputBlurSubmit(
-                        value=settings.provider_base_urls[LlmProvider.OLLAMA] or "",
-                        valid_empty=True,
-                        validators=HttpValidator(),
-                        id="ollama_base_url",
-                    )
-                    yield Label("OpenAI")
-                    yield InputBlurSubmit(
-                        value=settings.provider_base_urls[LlmProvider.OPENAI] or "",
-                        valid_empty=True,
-                        validators=HttpValidator(),
-                        id="openai_base_url",
-                    )
-                    yield Label("Groq")
-                    yield InputBlurSubmit(
-                        value=settings.provider_base_urls[LlmProvider.GROQ] or "",
-                        valid_empty=True,
-                        validators=HttpValidator(),
-                        id="groq_base_url",
-                    )
-                    yield Label("Anthropic")
-                    yield InputBlurSubmit(
-                        value=settings.provider_base_urls[LlmProvider.ANTHROPIC] or "",
-                        valid_empty=True,
-                        validators=HttpValidator(),
-                        id="anthropic_base_url",
+                    yield Label("Mode")
+                    yield Select[str](
+                        value=settings.theme_mode,
+                        options=(("light", "light"), ("dark", "dark")),
+                        allow_blank=False,
+                        id="theme_mode",
                     )
 
-            with Vertical(classes="column"):
                 with Vertical(classes="section") as vsc:
                     vsc.border_title = "Chat"
                     yield Label("Chat Tab Max Length")
@@ -234,7 +205,7 @@ class OptionsView(Horizontal):
                                 id="save_chat_input_history",
                             )
                             yield Button(
-                                "Delete chat history",
+                                "Delete chat input history",
                                 id="delete_chat_history",
                                 variant="warning",
                             )
@@ -263,24 +234,119 @@ class OptionsView(Horizontal):
                             model_name=(llmc.model_name if llmc else None),
                         )
 
-                with Vertical(classes="section") as vst:
-                    vst.border_title = "Theme"
-                    yield Static("Themes are stored in $DataDir/themes", classes="mb-1")
-                    yield Label("Theme")
-                    yield Select[str](
-                        value=settings.theme_name,
-                        options=theme_manager.theme_select_options(),
-                        allow_blank=False,
-                        id="theme_name",
-                    )
+            with Vertical(classes="column"):
 
-                    yield Label("Mode")
-                    yield Select[str](
-                        value=settings.theme_mode,
-                        options=(("light", "light"), ("dark", "dark")),
-                        allow_blank=False,
-                        id="theme_mode",
+                with Vertical(classes="section") as vso:
+                    vso.border_title = "AI Providers"
+                    yield Static("Provider Base URLs (leave empty to use default)")
+                    yield Static(
+                        "Any changes in this section may require app restart",
+                        classes="mb-1",
                     )
+                    with Vertical(classes="section") as aips1:
+                        aips1.border_title = "Ollama"
+                        yield Label("Base URL")
+                        yield InputBlurSubmit(
+                            value=settings.provider_base_urls[LlmProvider.OLLAMA] or "",
+                            valid_empty=True,
+                            validators=HttpValidator(),
+                            id="ollama_base_url",
+                        )
+                        yield Label("PS poll interval in seconds. 0 to disable.")
+                        yield InputBlurSubmit(
+                            value=str(settings.ollama_ps_poll_interval),
+                            max_length=5,
+                            type="integer",
+                            validators=[Integer(minimum=0, maximum=300)],
+                            id="ollama_ps_poll_interval",
+                        )
+
+                    with Vertical(classes="section") as aips2:
+                        aips2.border_title = "OpenAI"
+                        yield Label("Base URL")
+                        yield InputBlurSubmit(
+                            value=settings.provider_base_urls[LlmProvider.OPENAI] or "",
+                            valid_empty=True,
+                            validators=HttpValidator(),
+                            id="openai_base_url",
+                        )
+                        yield Label("API Key")
+                        yield InputBlurSubmit(
+                            value=settings.provider_api_keys[LlmProvider.OPENAI] or "",
+                            valid_empty=True,
+                            password=True,
+                            id="openai_api_key",
+                        )
+                    with Vertical(classes="section") as aips3:
+                        aips3.border_title = "Groq"
+                        yield Label("Base URL")
+                        yield InputBlurSubmit(
+                            value=settings.provider_base_urls[LlmProvider.GROQ] or "",
+                            valid_empty=True,
+                            validators=HttpValidator(),
+                            id="groq_base_url",
+                        )
+                        yield Label("API Key")
+                        yield InputBlurSubmit(
+                            value=settings.provider_api_keys[LlmProvider.GROQ] or "",
+                            valid_empty=True,
+                            password=True,
+                            id="groq_api_key",
+                        )
+                    with Vertical(classes="section") as aips4:
+                        aips4.border_title = "Anthropic"
+                        yield Label("Base URL")
+                        yield InputBlurSubmit(
+                            value=settings.provider_base_urls[LlmProvider.ANTHROPIC]
+                            or "",
+                            valid_empty=True,
+                            validators=HttpValidator(),
+                            id="anthropic_base_url",
+                        )
+                        yield Label("API Key")
+                        yield InputBlurSubmit(
+                            value=settings.provider_api_keys[LlmProvider.ANTHROPIC]
+                            or "",
+                            valid_empty=True,
+                            password=True,
+                            id="anthropic_api_key",
+                        )
+                    with Vertical(classes="section") as aips5:
+                        aips5.border_title = "Google"
+                        yield Label("API Key")
+                        yield InputBlurSubmit(
+                            value=settings.provider_api_keys[LlmProvider.GOOGLE] or "",
+                            valid_empty=True,
+                            password=True,
+                            id="google_api_key",
+                        )
+                    with Vertical(classes="section") as aips5:
+                        aips5.border_title = "Langchain"
+                        yield Label("Base URL")
+                        yield InputBlurSubmit(
+                            value=settings.langchain_config.base_url or "",
+                            valid_empty=True,
+                            validators=HttpValidator(),
+                            id="langchain_base_url",
+                        )
+                        yield Label("API Key")
+                        yield InputBlurSubmit(
+                            value=settings.langchain_config.api_key or "",
+                            valid_empty=True,
+                            password=True,
+                            id="langchain_api_key",
+                        )
+                        yield Label("Project Name")
+                        yield InputBlurSubmit(
+                            value=settings.langchain_config.project or "parllama",
+                            valid_empty=True,
+                            id="langchain_project",
+                        )
+                        yield Checkbox(
+                            label="Enable Tracing",
+                            value=settings.langchain_config.tracing,
+                            id="langchain_tracing",
+                        )
 
     def _on_show(self, event: Show) -> None:
         """Handle show event"""
@@ -337,24 +403,27 @@ class OptionsView(Horizontal):
         event.stop()
         ctrl: Checkbox = event.control
         if ctrl.id == "check_for_updates":
-            settings.check_for_updates = bool(int(ctrl.value))
+            settings.check_for_updates = ctrl.value
         elif ctrl.id == "use_last_tab_on_startup":
-            settings.use_last_tab_on_startup = bool(int(ctrl.value))
+            settings.use_last_tab_on_startup = ctrl.value
         elif ctrl.id == "auto_name_session":
-            settings.auto_name_session = bool(int(ctrl.value))
+            settings.auto_name_session = ctrl.value
         elif ctrl.id == "show_first_run":
-            settings.show_first_run = bool(int(ctrl.value))
+            settings.show_first_run = ctrl.value
         elif ctrl.id == "return_to_single_line_on_submit":
-            settings.return_to_single_line_on_submit = bool(int(ctrl.value))
+            settings.return_to_single_line_on_submit = ctrl.value
         elif ctrl.id == "save_chat_input_history":
-            settings.save_chat_input_history = bool(int(ctrl.value))
+            settings.save_chat_input_history = ctrl.value
         elif ctrl.id == "load_local_models_on_startup":
-            settings.load_local_models_on_startup = bool(int(ctrl.value))
+            settings.load_local_models_on_startup = ctrl.value
+        elif ctrl.id == "langchain_tracing":
+            settings.langchain_config.tracing = ctrl.value
         else:
             self.notify(f"Unhandled input: {ctrl.id}", severity="error", timeout=8)
             return
         settings.save()
 
+    # pylint: disable=too-many-branches
     @on(Input.Submitted)
     def on_input_submitted(self, event: Input.Submitted) -> None:
         """Handle input submission"""
@@ -372,16 +441,30 @@ class OptionsView(Horizontal):
             settings.ollama_host = ctrl.value
         elif ctrl.id == "openai_base_url":
             settings.provider_base_urls[LlmProvider.OPENAI] = ctrl.value or None
+        elif ctrl.id == "openai_api_key":
+            settings.provider_api_keys[LlmProvider.OPENAI] = ctrl.value or None
         elif ctrl.id == "groq_base_url":
             settings.provider_base_urls[LlmProvider.GROQ] = ctrl.value or None
+        elif ctrl.id == "groq_api_key":
+            settings.provider_api_keys[LlmProvider.GROQ] = ctrl.value or None
         elif ctrl.id == "anthropic_base_url":
             settings.provider_base_urls[LlmProvider.ANTHROPIC] = ctrl.value or None
+        elif ctrl.id == "anthropic_api_key":
+            settings.provider_api_keys[LlmProvider.ANTHROPIC] = ctrl.value or None
+        elif ctrl.id == "google_api_key":
+            settings.provider_api_keys[LlmProvider.GOOGLE] = ctrl.value or None
         elif ctrl.id == "ollama_ps_poll_interval":
             settings.ollama_ps_poll_interval = int(ctrl.value)
         elif ctrl.id == "chat_tab_max_length":
             settings.chat_tab_max_length = int(ctrl.value)
         elif ctrl.id == "chat_input_history_length":
             settings.chat_input_history_length = int(ctrl.value)
+        elif ctrl.id == "langchain_base_url":
+            settings.langchain_config.base_url = ctrl.value
+        elif ctrl.id == "langchain_api_key":
+            settings.langchain_config.api_key = ctrl.value
+        elif ctrl.id == "langchain_project":
+            settings.langchain_config.project = ctrl.value or "parllama"
         else:
             self.notify(f"Unhandled input: {ctrl.id}", severity="error", timeout=8)
             return

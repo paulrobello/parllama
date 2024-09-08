@@ -3,7 +3,18 @@
 from __future__ import annotations
 
 import os
+from dataclasses import dataclass
 from enum import Enum
+
+
+@dataclass
+class LangChainConfig:
+    """Langchain config."""
+
+    tracing: bool = False
+    project: str = "parllama"
+    base_url: str = "https://api.smith.langchain.com"
+    api_key: str = ""
 
 
 class LlmProvider(str, Enum):
