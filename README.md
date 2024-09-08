@@ -357,7 +357,8 @@ if anything remains to be fixed before the commit is allowed.
 
 ### Where we're going
 
-* Chat using embeddings for local documents
+* RAG for local documents and web pages
+* Use images for vision based LLMs
 * Expand ability to import custom prompts of other tools
 * LLM tool use
 
@@ -366,7 +367,7 @@ if anything remains to be fixed before the commit is allowed.
 
 
 ### v0.3.8
-* Added support for the following online providers: OpenAI, Anthropic, Groq, Google (More coming soon)
+* Added support for the following online providers: OpenAI, Anthropic, Groq, Google
 * Added secrets manager with encrypted storage
 
 ### v0.3.7
