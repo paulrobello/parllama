@@ -238,4 +238,5 @@ class ChatPrompt(ChatMessageContainer):
             messages=[m.clone() for m in self.messages],
             submit_on_load=self._submit_on_load,
             last_updated=self.last_updated,
+            source=self.source,
         )

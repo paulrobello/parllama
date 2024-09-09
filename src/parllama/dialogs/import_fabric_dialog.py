@@ -95,7 +95,7 @@ class ImportFabricDialog(ModalScreen[None]):
                             classes="prompt_cb",
                             value=False,
                         )
-                        yield Label(str_ellipsis(prompt.description, 35))
+                        yield Label(str_ellipsis(prompt.description, 100))
 
     def on_mount(self) -> None:
         """Mount the view."""

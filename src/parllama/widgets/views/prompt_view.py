@@ -29,8 +29,8 @@ from parllama.messages.messages import PromptSelected
 from parllama.messages.messages import RegisterForUpdates
 from parllama.settings_manager import settings
 from parllama.widgets.input_blur_submit import InputBlurSubmit
-from parllama.widgets.local_model_select import LocalModelSelect
 from parllama.widgets.prompt_list import PromptList
+from parllama.widgets.provider_model_select import ProviderModelSelect
 
 
 class PromptView(Container):
@@ -48,9 +48,6 @@ class PromptView(Container):
             #temperature_input {
                 width: 12;
             }
-            #model_name {
-                max-width: 40;
-            }
         }
         #prompt_list {
             width: 1fr;
@@ -63,8 +60,8 @@ class PromptView(Container):
         """Initialise the screen."""
         super().__init__(**kwargs)
         self.list_view = PromptList(id="prompt_list")
-        self.model_select: LocalModelSelect = LocalModelSelect(
-            id="model_name",
+        self.provider_model_select: ProviderModelSelect = ProviderModelSelect(
+            classes="horizontal",
         )
         self.temperature_input: InputBlurSubmit = InputBlurSubmit(
             id="temperature_input",
@@ -79,7 +76,7 @@ class PromptView(Container):
         with Vertical():
             with Horizontal(id="tool_bar"):
                 yield Button("New", id="new_prompt", variant="primary")
-                yield self.model_select
+                yield self.provider_model_select
                 yield Label("Temp")
                 yield self.temperature_input
                 yield Button("Import from Fabric", id="import")
@@ -171,8 +168,9 @@ class PromptView(Container):
                 event.temperature = float(self.temperature_input.value)
         except ValueError:
             event.temperature = None
-        if self.model_select.value and self.model_select.value != Select.BLANK:
-            event.llm_model_name = self.model_select.value  # type: ignore
+        if self.provider_model_select.is_valid():
+            event.llm_provider_name = self.provider_model_select.provider_select.value.value  # type: ignore
+            event.llm_model_name = self.provider_model_select.model_select.value  # type: ignore
         else:
             event.llm_model_name = None
 

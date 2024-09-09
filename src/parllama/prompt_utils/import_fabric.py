@@ -42,6 +42,7 @@ class ImportFabricManager(ParEventSystemBase):
             prompt = self.id_to_prompt.get(prompt_id)
             if not prompt:
                 continue
+            prompt.source = "fabric"
             chat_manager.add_prompt(prompt)
             prompt.is_dirty = True
             prompt.save()

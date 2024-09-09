@@ -31,6 +31,14 @@ class ProviderModelSelect(Container):
            overflow: hidden hidden;
            &.horizontal {
                layout: horizontal;
+               width: 60;
+               margin-right: 1;
+               #provider_name{
+                   width: 20;
+               }
+               #model_name{
+                   max-width: 40;
+               }
            }
        }
        """
@@ -60,7 +68,7 @@ class ProviderModelSelect(Container):
             value=lp,
         )
 
-        self.model_select = DeferredSelect(
+        self.model_select = DeferredSelect[str](
             id="model_name",
             options=provider_manager.get_model_select_options(lp),
             allow_blank=True,
