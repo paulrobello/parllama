@@ -137,7 +137,7 @@ class ChatSession(ChatMessageContainer):
     def _notify_subs(self, event: SessionMessage | ChatMessage) -> None:
         """Notify all subscriptions"""
         for sub in self._subs:
-            self.log_it(f"notifying sub {sub.__class__.__name__ }")
+            # self.log_it(f"notifying sub {sub.__class__.__name__ }")
             sub.post_message(event)
 
     def _notify_changed(self, changed: SessionChanges) -> None:
@@ -226,7 +226,7 @@ class ChatSession(ChatMessageContainer):
             self.post_message(ParChatUpdated(parent_id=self.id, message_id=msg.id))
 
             for chunk in stream:
-                self.log_it(chunk)
+                # self.log_it(chunk)
                 elapsed_time = datetime.now(timezone.utc) - start_time
                 if chunk.content:
                     if num_tokens == 0:
@@ -269,10 +269,9 @@ class ChatSession(ChatMessageContainer):
                         total_tokens=usage_metadata["total_tokens"],
                         time_til_first_token=int(ttft),
                     )
-                    self.log_it(self._stream_stats)
+                    # self.log_it(self._stream_stats)
                 if hasattr(chunk, "response_metadata"):
                     if "model" in chunk.response_metadata:
-                        # self.log_it(chunk)
                         self._stream_stats = TokenStats(
                             model=chunk.response_metadata.get("model") or "?",
                             created_at=chunk.response_metadata.get("created_at")
@@ -315,6 +314,7 @@ class ChatSession(ChatMessageContainer):
                 self.name_generated = True
                 user_msg = self.get_first_user_message()
                 if user_msg and user_msg.content:
+                    self.log_it("Auto naming session", notify=True)
                     self.post_message(
                         ParSessionAutoName(
                             session_id=self.id,

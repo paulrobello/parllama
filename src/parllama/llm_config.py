@@ -51,6 +51,7 @@ class LlmConfig:
     mode: LlmMode = LlmMode.CHAT
     streaming: bool = True
     base_url: Optional[str] = None
+    class_name: str = "LlmConfig"
 
     def to_json(self) -> dict:
         """Return dict for use with json"""

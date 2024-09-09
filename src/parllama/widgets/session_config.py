@@ -44,7 +44,7 @@ class SessionConfig(VerticalScroll):
 
         session_name = chat_manager.mk_session_name("New Chat")
 
-        self.provider_model_select = ProviderModelSelect()
+        self.provider_model_select = ProviderModelSelect(update_settings=True)
         self.temperature_input: InputBlurSubmit = InputBlurSubmit(
             id="temperature_input",
             value=(f"{settings.last_llm_config.temperature:.2f}"),

@@ -4,6 +4,7 @@ from typing import Generic, Iterable
 
 import rich.repr
 from rich.console import RenderableType
+from textual import events
 from textual.message import Message
 from textual.widgets import Select
 from textual.widgets._select import (
@@ -11,6 +12,8 @@ from textual.widgets._select import (
     NoSelection,
     BLANK,
 )  # pylint: disable=unused-import
+
+from parllama.messages.messages import LogIt
 
 
 class DeferredSelect(Generic[SelectType], Select[SelectType]):
@@ -56,25 +59,24 @@ class DeferredSelect(Generic[SelectType], Select[SelectType]):
             del kwargs["value"]
         super().__init__(*args, **kwargs)
 
+    def _on_mount(self, _: events.Mount) -> None:
+        """Handle mount event."""
+        if self._deferred_value and self._deferred_value != BLANK:
+            self.post_message(LogIt(f"Deferred value {self._deferred_value}."))
+
     def set_options(self, options: Iterable[tuple[RenderableType, SelectType]]) -> None:
         """Set the options for the Select."""
         old_value = self.value
         super().set_options(options)
-        if old_value != BLANK and old_value in [o[1] for o in options]:
+        opts = [o[1] for o in options]
+        if old_value != BLANK and old_value in opts:
             with self.prevent(Select.Changed):
                 self.value = old_value
-
-    def _on_changed(self, event: Select.Changed) -> None:
-        """Handle change event."""
         if self._deferred_value is BLANK:
             return
-        opts = [o[1] for o in self._options]
         if len(opts) == 0:
             return
-        if event.value in opts:
-            self.value = self._deferred_value
-        else:
-            self.post_message(
-                DeferredSelect.BadDeferredValue(self, self._deferred_value)
-            )
+        if self._deferred_value in opts:
+            with self.prevent(Select.Changed):
+                self.value = self._deferred_value
         self._deferred_value = BLANK

@@ -313,6 +313,7 @@ If you would like to auto check for updates, you can enable it in the Startup se
     @on(LocalModelDeleted)
     def on_model_deleted(self, event: LocalModelDeleted) -> None:
         """Local model has been deleted event"""
+        self.post_message_all(ProviderModelsChanged())
         self.status_notify(f"Model {event.model_name} deleted.")
 
     @on(LocalModelPullRequested)

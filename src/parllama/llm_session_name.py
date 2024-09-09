@@ -35,4 +35,4 @@ Examples:
             ("user", f"Summarize the following: {text}"),
         ]
     )
-    return ret["response"].strip()  # type: ignore
+    return str(ret.content).strip()

@@ -42,10 +42,13 @@ class ProviderModelSelect(Container):
         *,
         provider: Optional[LlmProvider] = None,
         model_name: Optional[str] = None,
+        update_settings: bool = False,
         **kwargs,
     ) -> None:
         """Initialise the view."""
         super().__init__(**kwargs)
+
+        self.update_settings = update_settings
 
         lp: LlmProvider = (
             provider or settings.last_llm_config.provider or LlmProvider.OLLAMA
@@ -124,8 +127,9 @@ class ProviderModelSelect(Container):
     def provider_select_changed(self) -> None:
         """Provider select changed, update control states and save provider name"""
         if self.provider_select.value != Select.BLANK:
-            settings.last_llm_config.provider = self.provider_select.value  # type: ignore
-            settings.save()
+            if self.update_settings:
+                settings.last_llm_config.provider = self.provider_select.value  # type: ignore
+                settings.save()
             opts = provider_manager.get_model_select_options(self.provider_select.value)  # type: ignore
             self.model_select.set_options(opts)
             if self.model_select.value == Select.BLANK:
@@ -159,8 +163,9 @@ class ProviderModelSelect(Container):
             Select.BLANK,
             settings.last_llm_config.model_name,
         ):
-            settings.last_llm_config.model_name = self.model_select.value  # type: ignore
-            settings.save()
+            if self.update_settings:
+                settings.last_llm_config.model_name = self.model_select.value  # type: ignore
+                settings.save()
         self.notify_changed()
 
     @on(ProviderModelsChanged)
