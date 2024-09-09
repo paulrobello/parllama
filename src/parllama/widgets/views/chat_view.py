@@ -11,6 +11,7 @@ from textual.binding import Binding
 from textual.containers import Horizontal
 from textual.containers import Vertical
 from textual.events import Show
+from textual.message import Message
 from textual.suggester import SuggestFromList
 from textual.widgets import Button
 from textual.widgets import ContentSwitcher
@@ -21,14 +22,17 @@ from parllama.chat_manager import chat_manager
 from parllama.chat_manager import ChatSession
 from parllama.chat_message import ParllamaChatMessage
 from parllama.dialogs.information import InformationDialog
-from parllama.messages.messages import ChangeTab
+from parllama.llm_providers import (
+    llm_provider_names,
+    LlmProvider,
+    get_provider_name_fuzzy,
+)
+from parllama.messages.messages import ChangeTab, ProviderModelsChanged
 from parllama.messages.messages import ChatGenerationAborted
 from parllama.messages.messages import ChatMessage
 from parllama.messages.messages import ChatMessageSent
 from parllama.messages.messages import ClearChatInputHistory
 from parllama.messages.messages import DeleteSession
-from parllama.messages.messages import LocalModelDeleted
-from parllama.messages.messages import LocalModelListLoaded
 from parllama.messages.messages import LogIt
 from parllama.messages.messages import PromptListChanged
 from parllama.messages.messages import PromptListLoaded
@@ -39,8 +43,9 @@ from parllama.messages.messages import SessionToPrompt
 from parllama.messages.messages import SessionUpdated
 from parllama.messages.messages import UpdateChatControlStates
 from parllama.messages.messages import UpdateTabLabel
-from parllama.ollama_data_manager import ollama_dm
+from parllama.provider_manager import provider_manager
 from parllama.settings_manager import settings
+from parllama.widgets.session_config import SessionConfig
 from parllama.widgets.session_list import SessionList
 from parllama.widgets.user_input import UserInput
 from parllama.widgets.views.chat_tab import ChatTab
@@ -52,6 +57,7 @@ valid_commands: list[str] = [
     "/tab.remove",
     "/tabs.clear",
     "/session.",
+    "/session.provider",
     "/session.model",
     "/session.temp",
     "/session.new",
@@ -142,6 +148,7 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         ),
     ]
     chat_tabs: TabbedContent
+    provider_list_auto_complete_list: list[str]
     model_list_auto_complete_list: list[str]
     prompt_list_auto_complete_list: list[str]
 
@@ -168,6 +175,9 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
             "Stop", id="stop_button", disabled=True, variant="error"
         )
         self.last_command = ""
+        self.provider_list_auto_complete_list = [
+            f"/session.provider {p}" for p in llm_provider_names
+        ]
         self.model_list_auto_complete_list = []
         self.prompt_list_auto_complete_list = []
 
@@ -188,8 +198,7 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
             RegisterForUpdates(
                 widget=self,
                 event_names=[
-                    "LocalModelListLoaded",
-                    "LocalModelDeleted",
+                    "ProviderModelsChanged",
                     "DeleteSession",
                     "SessionSelected",
                     "PromptListLoaded",
@@ -214,12 +223,7 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         self.prompt_list_auto_complete_list = [
             f"/prompt.load {prompt.name}" for prompt in chat_manager.sorted_prompts
         ]
-        self.user_input.suggester = SuggestFromList(
-            valid_commands
-            + self.model_list_auto_complete_list
-            + self.prompt_list_auto_complete_list,
-            case_sensitive=False,
-        )
+        self.rebuild_suggester()
 
     @on(UserInput.Changed)
     def on_user_input_changed(self, event: UserInput.Changed) -> None:
@@ -241,19 +245,19 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
             not self.active_tab.busy or self.session.abort_pending
         )
 
-    @on(LocalModelListLoaded)
-    def on_local_model_list_loaded(self, evt: LocalModelListLoaded) -> None:
+    @on(ProviderModelsChanged)
+    def model_list_changed(self, evt: Message) -> None:
         """Model list changed"""
         evt.stop()
+        self.post_message(LogIt("Provider models changed"))
         self.model_list_auto_complete_list = [
-            f"/session.model {m.model.name}" for m in ollama_dm.models
+            f"/session.model {m}"
+            for m in provider_manager.get_model_names(
+                self.active_tab.session_config.provider_model_select.provider_select.value  # type: ignore
+            )
         ]
-        self.user_input.suggester = SuggestFromList(
-            valid_commands
-            + self.model_list_auto_complete_list
-            + self.prompt_list_auto_complete_list,
-            case_sensitive=False,
-        )
+        self.rebuild_suggester()
+        self.update_control_states()
 
     @on(PromptListChanged)
     def on_prompt_list_changed(self, evt: PromptListChanged) -> None:
@@ -263,8 +267,13 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         self.prompt_list_auto_complete_list = [
             f"/prompt.load {prompt.name}" for prompt in chat_manager.sorted_prompts
         ]
+        self.rebuild_suggester()
+
+    def rebuild_suggester(self) -> None:
+        """Rebuild the suggester"""
         self.user_input.suggester = SuggestFromList(
             valid_commands
+            + self.provider_list_auto_complete_list
             + self.model_list_auto_complete_list
             + self.prompt_list_auto_complete_list,
             case_sensitive=False,
@@ -306,14 +315,14 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         self.update_control_states()
 
         if user_msg.startswith("/"):
-            return await self.handle_command(user_msg[1:].lower().strip())
+            return await self.handle_command(user_msg[1:].strip())
 
         self.active_tab.do_send_message(user_msg)
 
-    # pylint: disable=too-many-branches
-    # pylint: disable=too-many-statements
-    async def handle_command(self, cmd: str) -> None:
+    # pylint: disable=too-many-statements,too-many-branches,too-many-return-statements
+    async def handle_command(self, cmd_raw: str) -> None:
         """Handle a command"""
+        cmd = cmd_raw.lower()
         if cmd in ("?", "help"):
             await self.app.push_screen(
                 InformationDialog(
@@ -326,6 +335,7 @@ Chat Commands:
 /tabs.clear - Clear / remove all tabs
 /session.new [session_name] - Start new chat session in current tab with optional name
 /session.name [session_name] - Select session name input or set the session name in current tab
+/session.provider [provider_name] - Select the AI provider dropdown or set provider name in current tab
 /session.model [model_name] - Select model dropdown or set model name in current tab
 /session.temp [temperature] - Select temperature input or set temperature in current tab
 /session.delete - Delete the chat session for current tab
@@ -362,17 +372,41 @@ Chat Commands:
             await self.active_tab.action_new_session(v)
         elif cmd == "session.delete":
             self.app.post_message(DeleteSession(session_id=self.session.id))
+        elif cmd == "session.provider":
+            self.active_tab.session_config.display = True
+            self.set_timer(
+                0.1,
+                self.active_tab.session_config.provider_model_select.provider_select.focus,
+            )
+            return
         elif cmd == "session.model":
+            self.active_tab.session_config.display = True
             self.set_timer(
                 0.1,
                 self.active_tab.session_config.provider_model_select.model_select.focus,
             )
-            self.active_tab.session_config.display = True
             return
-        elif cmd.startswith("session.model "):
+        elif cmd.startswith("session.provider "):
             (_, v) = cmd.split(" ", 1)
-            v = v.strip()
-            if v not in [m.model.name for m in ollama_dm.models]:
+            v_org = v.strip()
+            v = get_provider_name_fuzzy(v_org)
+            if not v:
+                self.notify(
+                    f"Provider {v_org} not found in [{','.join(llm_provider_names)}]",
+                    severity="error",
+                )
+                return
+            self.active_tab.session_config.provider_model_select.provider_select.value = LlmProvider(
+                v
+            )
+            self.set_timer(0.1, self.user_input.focus)
+        elif cmd.startswith("session.model "):
+            (_, v) = cmd_raw.split(" ", 1)
+            v = provider_manager.get_model_name_fuzzy(
+                self.active_tab.session_config.provider_model_select.provider_select.value,  # type: ignore
+                v.strip(),
+            )
+            if not v:
                 self.notify(f"Model {v} not found", severity="error")
                 return
             self.active_tab.session_config.provider_model_select.model_select.value = v
@@ -464,13 +498,12 @@ Chat Commands:
     async def session_updated(self, event: SessionUpdated) -> None:
         """Session updated event"""
         event.stop()
-        # self.notify(f"View session updated {','.join([*event.changed])}")
-
         session = chat_manager.get_session(event.session_id)
-        if session is None:
+        if session != self.session:
             return
-
-        session.name = chat_manager.mk_session_name(session.name)
+        # self.notify(f"Chat View session updated {','.join([*event.changed])}")
+        if "provider" in event.changed:
+            self.model_list_changed(ProviderModelsChanged())
 
     def action_toggle_session_list(self) -> None:
         """Toggle the session list."""
@@ -513,6 +546,27 @@ Chat Commands:
     def session(self) -> ChatSession:
         """Return the active chat session."""
         return self.active_tab.session
+
+    @property
+    def ai_provider(self) -> LlmProvider:
+        """Get the AI provider"""
+        v = self.session_config.provider_model_select.provider_select.value
+        if v == Select.BLANK:
+            return LlmProvider.OLLAMA
+        return v  # type: ignore
+
+    @property
+    def ai_model(self) -> str:
+        """Get the AI model"""
+        v = self.session_config.provider_model_select.model_select.value
+        if v == Select.BLANK:
+            return ""
+        return str(v)
+
+    @property
+    def session_config(self) -> SessionConfig:
+        """Get the session config"""
+        return self.active_tab.session_config
 
     @on(ChatMessage)
     async def on_chat_message(self, event: ChatMessage) -> None:
@@ -614,9 +668,3 @@ Chat Commands:
     def action_toggle_session_config(self) -> None:
         """Toggle session configuration panel"""
         self.active_tab.action_toggle_session_config()
-
-    @on(LocalModelDeleted)
-    def on_model_deleted(self, event: LocalModelDeleted) -> None:
-        """Model deleted check if the currently selected model."""
-        event.stop()
-        self.update_control_states()

@@ -293,10 +293,9 @@ class ChatTab(TabPane):
     @on(SessionUpdated)
     def session_updated(self, event: SessionUpdated) -> None:
         """Handle a session updated event"""
-        event.stop()
-        # self.app.post_message(
-        #     LogIt(f"CT session updated [{','.join([*event.changed])}]")
-        # )
+        # self.notify(f"Chat tab updated: {event.changed}")
+        # Allow event to propagate to parent
+        # event.stop()
         if "name" in event.changed:
             self.notify_tab_label_changed()
         if "model_name" in event.changed or "messages" in event.changed:

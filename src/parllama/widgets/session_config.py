@@ -201,7 +201,8 @@ SessionConfig {
 
     @on(SessionUpdated)
     def session_updated(self, event: SessionUpdated) -> None:
-        """Handle a session updated event"""
+        # """Handle a session updated event"""
+        self.notify(f"Session Config updated: {event.changed}")
         # Allow event to propagate to parent
         if "name" in event.changed:
             with self.prevent(Input.Changed, Input.Submitted):
@@ -275,6 +276,6 @@ SessionConfig {
         """Check if valid"""
         return (
             self.provider_model_select.is_valid()
-            and self.temperature_input.value
-            and self.session_name_input.value
+            and len(str(self.temperature_input.value)) > 0
+            and len(str(self.session_name_input.value)) > 0
         )

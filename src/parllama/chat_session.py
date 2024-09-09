@@ -454,12 +454,12 @@ class ChatSession(ChatMessageContainer):
     def save(self) -> bool:
         """Save the chat session to a file"""
         if self._batching:
-            self.log_it(f"CS is batching, not notifying: {self.name}")
+            # self.log_it(f"CS is batching, not notifying: {self.name}")
             return False
         if not self._loaded:
             self.load()
         if not self.is_dirty:
-            self.log_it(f"CS is not dirty, not notifying: {self.name}")
+            # self.log_it(f"CS is not dirty, not notifying: {self.name}")
             return False  # No need to save if no changes
 
         self.last_updated = datetime.now(timezone.utc)

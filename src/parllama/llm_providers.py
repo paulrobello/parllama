@@ -36,6 +36,19 @@ provider_select_options: list[tuple[str, LlmProvider]] = [
     for p in llm_provider_types
 ]
 
+llm_provider_names: list[str] = [p.value.lower() for p in llm_provider_types]
+
+
+def get_provider_name_fuzzy(provider: str) -> str:
+    """Get provider name fuzzy."""
+    provider = provider.lower()
+    for p in llm_provider_types:
+        if p.value.lower() == provider:
+            return p
+        if p.value.lower().startswith(provider):
+            return p
+    return ""
+
 
 @dataclass
 class LlmProviderConfig:

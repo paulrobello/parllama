@@ -154,5 +154,18 @@ class ProviderManager(ParEventSystemBase):
             return ollama_dm.get_model_names()
         return self.provider_models[provider]
 
+    def get_model_name_fuzzy(self, provider: LlmProvider, model_name: str) -> str:
+        """Get model name fuzzy."""
+        models = self.get_model_names(provider)
+        model_name = model_name.lower()
+        for m in models:
+            if m.lower() == model_name:
+                return m
+
+        for m in models:
+            if m.lower().startswith(model_name):
+                return m
+        return ""
+
 
 provider_manager = ProviderManager()

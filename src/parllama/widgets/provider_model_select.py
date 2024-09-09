@@ -188,7 +188,7 @@ class ProviderModelSelect(Container):
         """Check if valid"""
         return (
             self.provider_select.value != Select.BLANK
-            and self.provider_select.value
+            and len(str(self.provider_select.value)) > 0
             and self.model_select.value != Select.BLANK
-            and self.model_select.value
+            and len(str(self.model_select.value)) > 0
         )
