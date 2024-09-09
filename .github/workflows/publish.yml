@@ -166,21 +166,43 @@ jobs:
       id-token: write  # IMPORTANT: mandatory for trusted publishing
 
     steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.11'
+
+    - name: Install uv
+      run: |
+        python -m pip install --upgrade pip
+        pip install uv
+
+    - name: Get version from __init__.py
+      id: get_version
+      run: |
+        echo "VERSION=$(uv run python -c "from src.parllama import __version__; print(__version__)")" >> $GITHUB_ENV
+        echo "Version extracted: ${{ env.VERSION }}"
 
     - name: Download all the dists
       uses: actions/download-artifact@v4
       with:
         name: python-package-distributions
         path: dist/
+
     - name: Publish distribution 📦 to TestPyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
         repository-url: https://test.pypi.org/legacy/
         skip-existing: true
+
+    - name: Discord notification
+      env:
+        DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+      uses: Ilshidur/action-discord@master
+      with:
+        args: 'The project {{ EVENT_PAYLOAD.repository.full_name }} ${{ env.VERSION }} has been published to TestPyPI.'
 
   publish-to-pypi:
     name: >-
@@ -199,10 +221,24 @@ jobs:
       id-token: write  # IMPORTANT: mandatory for trusted publishing
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
+      - name: Install uv
+        run: |
+          python -m pip install --upgrade pip
+          pip install uv
+
+      - name: Get version from __init__.py
+        id: get_version
+        run: |
+          echo "VERSION=$(uv run python -c "from src.parllama import __version__; print(__version__)")" >> $GITHUB_ENV
+          echo "Version extracted: ${{ env.VERSION }}"
 
       - name: Download all the dists
         uses: actions/download-artifact@v4
@@ -214,6 +250,13 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           skip-existing: true
+
+      - name: Discord notification
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        uses: Ilshidur/action-discord@master
+        with:
+          args: 'The project {{ EVENT_PAYLOAD.repository.full_name }} ${{ env.VERSION }} has been published to PyPI.'
 
   github-release:
     name: >-
@@ -233,12 +276,14 @@ jobs:
         with:
           name: python-package-distributions
           path: dist/
+
       - name: Sign the dists with Sigstore
         uses: sigstore/gh-action-sigstore-python@v2.1.1
         with:
           inputs: >-
             ./dist/*.tar.gz
             ./dist/*.whl
+
       - name: Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -248,6 +293,7 @@ jobs:
           --repo '${{ github.repository }}' \
           --generate-notes \
           --latest
+
       - name: Upload artifact signatures to GitHub Release
         env:
           GITHUB_TOKEN: ${{ github.token }}

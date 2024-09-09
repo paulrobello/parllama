@@ -8,9 +8,8 @@ from textual import on
 from textual.app import ComposeResult
 from textual.containers import Container
 from textual.widgets import Select
-from textual.widgets._select import NoSelection
 
-from parllama.llm_providers import LlmProvider, provider_default_models
+from parllama.llm_providers import LlmProvider, provider_config
 from parllama.llm_providers import provider_select_options
 from parllama.messages.messages import LogIt, ProviderModelSelected
 from parllama.messages.messages import ProviderModelsChanged
@@ -65,7 +64,7 @@ class ProviderModelSelect(Container):
             value=(
                 model_name
                 or settings.last_llm_config.model_name
-                or provider_default_models[lp]
+                or provider_config[lp].default_model
             ),
         )
 
@@ -129,11 +128,12 @@ class ProviderModelSelect(Container):
             settings.save()
             opts = provider_manager.get_model_select_options(self.provider_select.value)  # type: ignore
             self.model_select.set_options(opts)
-            msv = provider_default_models[  # pyright: ignore [reportArgumentType]
-                self.provider_select.value
-            ]
-            if msv in provider_manager.get_model_names(self.provider_select.value):  # type: ignore
-                self.model_select.value = msv
+            if self.model_select.value == Select.BLANK:
+                msv = provider_config[  # pyright: ignore [reportArgumentType]
+                    self.provider_select.value
+                ].default_model
+                if msv in provider_manager.get_model_names(self.provider_select.value):  # type: ignore
+                    self.model_select.value = msv
         else:
             self.model_select.set_options([])
         self.notify_changed()

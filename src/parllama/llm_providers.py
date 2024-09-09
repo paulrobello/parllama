@@ -36,13 +36,42 @@ provider_select_options: list[tuple[str, LlmProvider]] = [
     for p in llm_provider_types
 ]
 
-provider_default_models: dict[LlmProvider, str] = {
-    LlmProvider.OLLAMA: "llama3.1:8b",
-    LlmProvider.OPENAI: "gpt-4o-mini",
-    LlmProvider.GROQ: "llama3-70b-8192",
-    LlmProvider.ANTHROPIC: "claude-3-haiku-20240307",
-    LlmProvider.GOOGLE: "gemini-1.5-flash-latest",
+
+@dataclass
+class LlmProviderConfig:
+    """Llm provider config."""
+
+    default_model: str
+    supports_base_url: bool
+    env_key_name: str
+
+
+provider_config: dict[LlmProvider, LlmProviderConfig] = {
+    LlmProvider.OLLAMA: LlmProviderConfig(
+        default_model="llama3.1:8b", supports_base_url=True, env_key_name=""
+    ),
+    LlmProvider.OPENAI: LlmProviderConfig(
+        default_model="gpt-4o-mini",
+        supports_base_url=True,
+        env_key_name="OPENAI_API_KEY",
+    ),
+    LlmProvider.GROQ: LlmProviderConfig(
+        default_model="llama3-70b-8192",
+        supports_base_url=True,
+        env_key_name="GROQ_API_KEY",
+    ),
+    LlmProvider.ANTHROPIC: LlmProviderConfig(
+        default_model="claude-3-haiku-20240307",
+        supports_base_url=False,
+        env_key_name="ANTHROPIC_API_KEY",
+    ),
+    LlmProvider.GOOGLE: LlmProviderConfig(
+        default_model="gemini-1.5-flash-latest",
+        supports_base_url=False,
+        env_key_name="GOOGLE_API_KEY",
+    ),
 }
+
 
 provider_env_key_names: dict[LlmProvider, str] = {
     LlmProvider.OLLAMA: "",
@@ -50,14 +79,6 @@ provider_env_key_names: dict[LlmProvider, str] = {
     LlmProvider.GROQ: "GROQ_API_KEY",
     LlmProvider.ANTHROPIC: "ANTHROPIC_API_KEY",
     LlmProvider.GOOGLE: "GOOGLE_API_KEY",
-}
-
-provider_supports_base_url: dict[LlmProvider, bool] = {
-    LlmProvider.OLLAMA: True,
-    LlmProvider.OPENAI: True,
-    LlmProvider.GROQ: True,
-    LlmProvider.ANTHROPIC: True,
-    LlmProvider.GOOGLE: False,
 }
 
 

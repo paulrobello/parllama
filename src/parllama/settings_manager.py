@@ -17,7 +17,7 @@ from parllama.llm_providers import (
     LlmProvider,
     provider_name_to_enum,
     llm_provider_types,
-    provider_env_key_names,
+    provider_config,
     LangChainConfig,
 )
 from parllama.utils import get_args
@@ -348,7 +348,7 @@ class Settings(BaseModel):
 
         for p, v in self.provider_api_keys.items():
             if v:
-                os.environ[provider_env_key_names[p]] = v
+                os.environ[provider_config[p].env_key_name] = v
 
         os.environ["LANGCHAIN_TRACING_V2"] = str(self.langchain_config.tracing).lower()
         if self.langchain_config.base_url:
