@@ -40,7 +40,7 @@ provider_default_models: dict[LlmProvider, str] = {
     LlmProvider.OLLAMA: "llama3.1:8b",
     LlmProvider.OPENAI: "gpt-4o-mini",
     LlmProvider.GROQ: "llama3-70b-8192",
-    LlmProvider.ANTHROPIC: "claude-3-5-sonnet-20240620",
+    LlmProvider.ANTHROPIC: "claude-3-haiku-20240307",
     LlmProvider.GOOGLE: "gemini-1.5-flash-latest",
 }
 

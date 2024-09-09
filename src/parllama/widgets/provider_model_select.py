@@ -18,6 +18,7 @@ from parllama.messages.messages import RegisterForUpdates
 from parllama.messages.messages import UnRegisterForUpdates
 from parllama.provider_manager import provider_manager
 from parllama.settings_manager import settings
+from parllama.widgets.deferred_select import DeferredSelect
 
 
 class ProviderModelSelect(Container):
@@ -34,9 +35,8 @@ class ProviderModelSelect(Container):
            }
        }
        """
-    _deferred_model_value: str | NoSelection
-    provider_select: Select[LlmProvider]
-    model_select: Select[str]
+    provider_select: DeferredSelect[LlmProvider]
+    model_select: DeferredSelect[str]
 
     def __init__(
         self,
@@ -48,36 +48,25 @@ class ProviderModelSelect(Container):
         """Initialise the view."""
         super().__init__(**kwargs)
 
-        lp: LlmProvider = provider or settings.last_llm_config.provider
-        self.provider_select = Select[LlmProvider](
+        lp: LlmProvider = (
+            provider or settings.last_llm_config.provider or LlmProvider.OLLAMA
+        )
+        self.provider_select = DeferredSelect[LlmProvider](
             id="provider_name",
             options=provider_select_options,
             allow_blank=False,
             value=lp,
         )
 
-        opts = provider_manager.get_model_select_options(lp)
-        models = provider_manager.get_model_names(lp)
-        v: NoSelection | str = Select.BLANK
-        cm = (
-            model_name
-            or settings.last_llm_config.model_name
-            or provider_default_models[lp]
-        )
-        if cm:
-            if len(models) == 0:
-                self._deferred_model_value = cm
-            elif settings.last_llm_config.model_name not in models:
-                self._deferred_model_value = cm
-            else:
-                self._deferred_model_value = settings.last_llm_config.model_name
-                v = settings.last_llm_config.model_name
-
-        self.model_select = Select(
+        self.model_select = DeferredSelect(
             id="model_name",
-            options=opts,
+            options=provider_manager.get_model_select_options(lp),
             allow_blank=True,
-            value=v,
+            value=(
+                model_name
+                or settings.last_llm_config.model_name
+                or provider_default_models[lp]
+            ),
         )
 
     @property
@@ -188,23 +177,4 @@ class ProviderModelSelect(Container):
             )
             return
         opts = provider_manager.get_model_select_options(self.provider_select.value)  # type: ignore
-
-        old_value = self.model_select.value
-        # self.app.post_message(LogIt(f"dv={self._deferred_model_value}, ov={old_value}"))
-        models = provider_manager.get_model_names(self.provider_select.value)  # type: ignore
-        # self.post_message(LogIt(models))
-        if old_value == Select.BLANK or old_value not in models:
-            old_value = Select.BLANK
-
-        if (
-            self._deferred_model_value != Select.BLANK
-            and self._deferred_model_value in models
-        ):
-            old_value = self._deferred_model_value
-            self._deferred_model_value = Select.BLANK
-
         self.model_select.set_options(opts)
-        if old_value != Select.BLANK:
-            with self.prevent(Select.Changed):
-                self.model_select.value = old_value
-            self.notify_changed()
