@@ -33,6 +33,28 @@ class SessionConfig(VerticalScroll):
     """Session configuration widget."""
 
     DEFAULT_CSS = """
+SessionConfig {
+    width: 50;
+    height: 1fr;
+    dock: right;
+    padding: 1;
+    #temperature_input {
+        width: 12;
+    }
+    #session_name_input {
+        width: 41;
+    }
+    #new_button {
+        margin-left: 2;
+        min-width: 9;
+        background: $warning-darken-2;
+        border-top: tall $warning-lighten-1;
+    }
+    Label {
+        margin: 1;
+        background: transparent;
+    }
+}
     """
     BINDINGS = []
     session: ChatSession
@@ -82,6 +104,7 @@ class SessionConfig(VerticalScroll):
                 ],
             )
         )
+        self.display = settings.always_show_session_config or not self.is_valid()
 
     async def on_unmount(self) -> None:
         """Remove dialog from updates when unmounted."""
@@ -247,3 +270,11 @@ class SessionConfig(VerticalScroll):
             self.session_name_input.value = self.session.name
 
         return True
+
+    def is_valid(self) -> bool:
+        """Check if valid"""
+        return (
+            self.provider_model_select.is_valid()
+            and self.temperature_input.value
+            and self.session_name_input.value
+        )

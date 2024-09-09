@@ -31,28 +31,3 @@ ListView:focus > SiteModelListItem.--highlight {
         background: $surface;
     }
 }
-
-
-
-SessionConfig {
-    width: 50;
-    height: 1fr;
-    dock: right;
-    padding: 1;
-    #temperature_input {
-        width: 12;
-    }
-    #session_name_input {
-        width: 41;
-    }
-    #new_button {
-        margin-left: 2;
-        min-width: 9;
-        background: $warning-darken-2;
-        border-top: tall $warning-lighten-1;
-    }
-    Label {
-        margin: 1;
-        background: transparent;
-    }
-}

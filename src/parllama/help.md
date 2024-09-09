@@ -79,13 +79,14 @@ Tools to create, modify, and publish models
 Chat with local LLMs and manage saved sessions
 
 ### Chat Tab keys
-| Key             | Command                                 |
-|-----------------|-----------------------------------------|
-| `ctrl+s`        | Toggle session list                     |
-| `ctrl+b`        | New session in current tab              |
-| `ctrl+n`        | New chat tab                            |
-| `ctrl+delete`   | Remove current chat tab                 |
-| `ctrl+e`        | Export selected tab as Markdown         |
+| Key           | Command                         |
+|---------------|---------------------------------|
+| `ctrl+s`      | Toggle session list             |
+| `ctrl+p`      | Toggle session config           |
+| `ctrl+b`      | New session in current tab      |
+| `ctrl+n`      | New chat tab                    |
+| `ctrl+delete` | Remove current chat tab         |
+| `ctrl+e`      | Export selected tab as Markdown |
 
 ### Message Input keys
 | Key           | Command                                         |

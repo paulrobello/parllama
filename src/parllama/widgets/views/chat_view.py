@@ -40,6 +40,7 @@ from parllama.messages.messages import SessionUpdated
 from parllama.messages.messages import UpdateChatControlStates
 from parllama.messages.messages import UpdateTabLabel
 from parllama.ollama_data_manager import ollama_dm
+from parllama.settings_manager import settings
 from parllama.widgets.session_list import SessionList
 from parllama.widgets.user_input import UserInput
 from parllama.widgets.views.chat_tab import ChatTab
@@ -285,6 +286,8 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
     async def action_send_message(self, event: UserInput.Submitted) -> None:
         """Send the message."""
         event.stop()
+        if settings.close_session_config_on_submit:
+            self.active_tab.session_config.display = False
 
         self.user_input.focus()
 

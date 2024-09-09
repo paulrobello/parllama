@@ -96,6 +96,8 @@ class Settings(BaseModel):
     auto_name_session: bool = False
     auto_name_session_llm_config: Optional[dict] = None
     return_to_single_line_on_submit: bool = True
+    always_show_session_config: bool = False
+    close_session_config_on_submit: bool = True
 
     # pylint: disable=too-many-branches, too-many-statements
     def __init__(self) -> None:
@@ -327,6 +329,13 @@ class Settings(BaseModel):
                 self.return_to_single_line_on_submit = data.get(
                     "return_to_single_line_on_submit",
                     self.return_to_single_line_on_submit,
+                )
+                self.always_show_session_config = data.get(
+                    "always_show_session_config", self.always_show_session_config
+                )
+                self.close_session_config_on_submit = data.get(
+                    "close_session_config_on_submit",
+                    self.close_session_config_on_submit,
                 )
 
                 self.save_chat_input_history = data.get(

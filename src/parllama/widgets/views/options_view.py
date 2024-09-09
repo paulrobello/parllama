@@ -214,6 +214,16 @@ class OptionsView(Horizontal):
                             value=settings.return_to_single_line_on_submit,
                             id="return_to_single_line_on_submit",
                         )
+                        yield Checkbox(
+                            label="Always show session config panel",
+                            value=settings.always_show_session_config,
+                            id="always_show_session_config",
+                        )
+                        yield Checkbox(
+                            label="Close session config on submit",
+                            value=settings.close_session_config_on_submit,
+                            id="close_session_config_on_submit",
+                        )
 
                     with Vertical(classes="section") as vscs:
                         vscs.border_title = "Session Naming"
@@ -414,6 +424,10 @@ class OptionsView(Horizontal):
             settings.return_to_single_line_on_submit = ctrl.value
         elif ctrl.id == "save_chat_input_history":
             settings.save_chat_input_history = ctrl.value
+        elif ctrl.id == "always_show_session_config":
+            settings.always_show_session_config = ctrl.value
+        elif ctrl.id == "close_session_config_on_submit":
+            settings.close_session_config_on_submit = ctrl.value
         elif ctrl.id == "load_local_models_on_startup":
             settings.load_local_models_on_startup = ctrl.value
         elif ctrl.id == "langchain_tracing":

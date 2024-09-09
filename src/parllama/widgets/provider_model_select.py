@@ -183,3 +183,12 @@ class ProviderModelSelect(Container):
             return
         opts = provider_manager.get_model_select_options(self.provider_select.value)  # type: ignore
         self.model_select.set_options(opts)
+
+    def is_valid(self) -> bool:
+        """Check if valid"""
+        return (
+            self.provider_select.value != Select.BLANK
+            and self.provider_select.value
+            and self.model_select.value != Select.BLANK
+            and self.model_select.value
+        )
