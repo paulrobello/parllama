@@ -271,6 +271,7 @@ class ChatManager(ParEventSystemBase):
             description="",
             messages=messages,
             submit_on_load=submit_on_load,
+            source="session",
         )
         self._id_to_prompt[prompt.id] = prompt
         self.mount(prompt)
