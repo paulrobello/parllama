@@ -82,7 +82,7 @@ Supports Dark and Light mode as well as custom themes.
 
 ## Prerequisites for dev
 * Install uv
-  * if you have pip you can install it globally using `pip install uv`
+  * See the [Using uv](#Using-uv) section
 * Install GNU Compatible Make command
   * On windows if you have scoop installed you can install make with `scoop install make`
 
@@ -97,31 +97,61 @@ Pull the docker image ollama/quantize
 docker pull ollama/quantize
 ```
 
-## Installing using pipx
+## Using uv
+
+### Installing uv
+If you don't have uv installed you can run the following:  
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+### MyPi install
+```shell
+uv tool install parllama
+```
+
+To upgrade an existing uv installation use the -U --force flags:
+```bash
+uv tool install parllama -U --force
+```
+
+### Installing / running using uvx
+```shell
+uvx parllama
+```
+
+### Source install from GitHub
+```bash
+uv tool install git+https://github.com/paulrobello/parllama
+```
+To upgrade an existing installation use the --force flag:
+```bash
+uv tool install git+https://github.com/paulrobello/parllama -U --force
+```
+
+## pipx
+### Installing
 If you don't have pipx installed you can run the following:  
 ```bash
 pip install pipx
 pipx ensurepath
 ```
-### MyPi install
-Once pipx is installed, run:  
+
+### MyPi install 
 ```shell
 pipx install parllama
 ```
-To upgrade an existing installation use the --force flag:
+
+To upgrade an existing pipx installation use the --force flag:
 ```bash
 pipx install parllama --force
 ```
-## Installing / running using uvx
-```shell
-uvx parllama
-```
 
-### GitHub install
-Once pipx is installed, run the following:
+### Source install from GitHub
 ```bash
 pipx install git+https://github.com/paulrobello/parllama
 ```
+
 To upgrade an existing installation use the --force flag:
 ```bash
 pipx install git+https://github.com/paulrobello/parllama --force
@@ -129,8 +159,10 @@ pipx install git+https://github.com/paulrobello/parllama --force
 
 
 ## Installing for dev mode
-Clone the repo and run the following from the root of the repo:
+Clone the repo and run the setup make target. Note `uv` is required for this.
 ```bash
+git clone https://github.com/paulrobello/parllama
+cd parllama
 make setup
 ```
 
@@ -176,7 +208,7 @@ Unless you specify "--no-save" most flags such as -u, -t, -m, -s are sticky and 
 ### Variables are loaded in the following order, last one to set a var wins
 * PARLLAMA_DATA_DIR/.env
 * HOST Environment
-* ParLlama Secrets Manager
+* ParLlama Options Screen
 
 ### Environment Variables for PAR LLAMA configuration
 * PARLLAMA_DATA_DIR - Used to set --data-dir
@@ -184,11 +216,10 @@ Unless you specify "--no-save" most flags such as -u, -t, -m, -s are sticky and 
 * PARLLAMA_THEME_MODE - Used to set --theme-mode
 * OLLAMA_URL - Used to set --ollama-url
 * PARLLAMA_AUTO_NAME_SESSION - Set to 0 or 1 to disable / enable session auto naming using LLM
-* PARLLAMA_VAULT_KEY - password to unlock vault without manual entry. **Not Recommended**
 
 ## Running PAR_LLAMA
 
-### with pipx installation
+### with pipx or uv tool installation
 From anywhere:
 ```bash
 parllama
@@ -200,7 +231,7 @@ From parent folder of venv
 source venv/Scripts/activate
 parllama
 ```
-## Running against a remote instance
+## Running against a remote Ollama instance
 ```bash
 parllama -u "http://REMOTE_HOST:11434"
 ```
@@ -258,15 +289,6 @@ You can create a library of custom prompts for easy starting of new chats.
 You can set up system prompts and user messages to prime conversations with the option of sending immediately to the LLM upon loading of the prompt.  
 Currently, importing prompts from the popular Fabric project is supported with more on the way.  
 
-## Secrets
-Parllama has a built-in secrets manager to securely manage all your secrets such as API keys.  
-The secrets manager uses PBKDF2 with HMAC-SHA256 to derive a key from your password,
-then uses AES-GCM encryption for storing secrets.  
-Secrets are never stored in plain text, and only decrypted when accessed.  
-Secrets are imported to the application environment and used by any providers that require them.  
-While it is not recommended for security reasons, you can specify the vault password using the environment variable `PARLLAMA_VAULT_KEY` to auto unlock the vault on app startup.
-![Secrets Manager](https://raw.githubusercontent.com/paulrobello/parllama/main/docs/secrets_dark_1.png)
-
 
 ## Themes
 Themes are json files stored in the themes folder in the data directory which defaults to **~/.parllama/themes**  
@@ -314,10 +336,9 @@ You can run the make target **pre-commit** to ensure the pipeline will pass with
 There is also a pre-commit config to that will assist with formatting and checks.  
 The easiest way to setup your environment to ensure smooth pull requests is:  
 
-If you don't have pipx installed you can run the following:  
+With uv installed:
 ```bash
-pip install pipx
-pipx ensurepath
+uv tool install pre-commit
 ```
 
 With pipx installed:
@@ -368,6 +389,7 @@ if anything remains to be fixed before the commit is allowed.
 ### v0.3.8
 * Major rework of core to support providers other than Ollama
 * Added support for the following online providers: OpenAI, Anthropic, Groq, Google
+* New session config panel docked to right side of chat tab (more settings coming soon)
 
 ### v0.3.7
 * Fix for possible crash when there is more than one model loaded into ollama
