@@ -20,7 +20,6 @@ from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 from langchain_openai import OpenAI
 from langchain_openai import OpenAIEmbeddings
-from pydantic import ConfigDict
 
 from parllama.llm_providers import LlmProvider, is_provider_api_key_set
 from parllama.par_ollama_embeddings import ParOllamaEmbeddings
@@ -44,7 +43,6 @@ llm_modes: list[LlmMode] = list(LlmMode)
 class LlmConfig:
     """Configuration for Llm."""
 
-    model_config = ConfigDict(extra="ignore")
     provider: LlmProvider
     model_name: str
     temperature: float = 0.5
