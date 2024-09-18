@@ -323,6 +323,14 @@ class ChatMessage(Message):
 
 
 @dataclass
+class ChatMessageDeleted(Message):
+    """Chat message deleted class"""
+
+    parent_id: str
+    message_id: str
+
+
+@dataclass
 class ChatMessageSent(SessionMessage):
     """Chat message sent class"""
 

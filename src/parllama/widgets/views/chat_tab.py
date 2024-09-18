@@ -22,7 +22,7 @@ from textual.widgets import TabPane
 from parllama.chat_manager import chat_manager
 from parllama.chat_manager import ChatSession
 from parllama.chat_message import ParllamaChatMessage
-from parllama.messages.messages import ChatMessage
+from parllama.messages.messages import ChatMessage, ChatMessageDeleted
 from parllama.messages.messages import ChatMessageSent
 from parllama.messages.messages import DeleteSession
 from parllama.messages.messages import PromptSelected
@@ -106,7 +106,9 @@ class ChatTab(TabPane):
             yield self.session_status_bar
             with self.vs:
                 yield from [
-                    ChatMessageWidget.mk_msg_widget(msg=m, session=self.session)
+                    ChatMessageWidget.mk_msg_widget(
+                        msg=m, session=self.session, is_final=True
+                    )
                     for m in self.session.messages
                 ]
 
@@ -116,7 +118,7 @@ class ChatTab(TabPane):
         #     RegisterForUpdates(
         #         widget=self,
         #         event_names=[
-        #             "SessionUpdated",
+        #             "ChatMessageDeleted",
         #         ],
         #     )
         # )
@@ -164,6 +166,24 @@ class ChatTab(TabPane):
                 str_ellipsis(self.session.name, settings.chat_tab_max_length),
             )
         )
+
+    @on(ChatMessageDeleted)
+    async def on_chat_message_deleted(self, event: ChatMessageDeleted) -> None:
+        """Handle a chat message deleted"""
+        event.stop()
+
+        if self.session.id != event.parent_id:
+            self.notify("Chat session id missmatch", severity="error")
+            return
+        msg: ParllamaChatMessage | None = self.session[event.message_id]
+        if not msg:
+            self.notify("Chat message not found", severity="error")
+            return
+
+        for w in cast(list[ChatMessageWidget], self.query(f"#cm_{msg.id}")):
+            await w.remove()
+            self.on_update_chat_status()
+            break
 
     @on(ChatMessage)
     async def on_chat_message(self, event: ChatMessage) -> None:
@@ -273,6 +293,7 @@ class ChatTab(TabPane):
         )
 
         self.set_timer(0.25, partial(self.scroll_to_bottom, False))
+        self.session_config.display = False
         self.update_control_states()
         self.notify_tab_label_changed()
         self.on_update_chat_status()

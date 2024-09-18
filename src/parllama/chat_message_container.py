@@ -9,11 +9,13 @@ from dataclasses import dataclass
 from datetime import datetime
 from datetime import timezone
 from io import StringIO
+from typing import Optional
 
 import rich.repr
 import simplejson as json
 
 from parllama.chat_message import ParllamaChatMessage
+from parllama.messages.par_chat_messages import ParChatMessageDeleted
 from parllama.par_event_system import ParEventSystemBase
 from parllama.settings_manager import settings
 
@@ -119,8 +121,21 @@ class ChatMessageContainer(ParEventSystemBase):
 
     # system prompt setter
     @system_prompt.setter
-    def system_prompt(self, value: ParllamaChatMessage) -> None:
+    def system_prompt(self, value: Optional[ParllamaChatMessage]) -> None:
         """Set system prompt"""
+        if not value:
+            if len(self.messages) == 0 or self.messages[0].role != "system":
+                return
+            msg = self.messages.pop(0)
+            self.last_updated = datetime.now(timezone.utc)
+            self._changes.add("messages")
+            self._changes.add("system_prompt")
+            self.save()
+            self.post_message(
+                ParChatMessageDeleted(parent_id=msg.parent.id, message_id=msg.id)
+            )
+            return
+
         if len(self.messages) > 0 and self.messages[0].role == "system":
             msg: ParllamaChatMessage = self.messages[0]
             if msg.content == value.content:

@@ -36,7 +36,7 @@ class ChatManager(ParEventSystemBase):
 
     options: OllamaOptions
     prompt_temperature: float
-    prompt_llm_name: str | None
+    prompt_llm_name: Optional[str]
 
     def __init__(self) -> None:
         """Initialize the chat manager"""
@@ -96,7 +96,7 @@ class ChatManager(ParEventSystemBase):
                 break
         return session_name
 
-    def mk_llm_session_name(self, text: str) -> str | None:
+    def mk_llm_session_name(self, text: str) -> Optional[str]:
         """Generate a unique LLM session name"""
         if not settings.auto_name_session_llm_config:
             return None
@@ -129,8 +129,8 @@ class ChatManager(ParEventSystemBase):
         return session
 
     def get_session(
-        self, session_id: str, widget: MessagePump | None = None
-    ) -> ChatSession | None:
+        self, session_id: str, widget: Optional[MessagePump] = None
+    ) -> Optional[ChatSession]:
         """Get a chat session"""
         # self.log_it("get_session: " + session_id)
 
@@ -140,14 +140,14 @@ class ChatManager(ParEventSystemBase):
             session.add_sub(widget)
         return session
 
-    def get_prompt(self, prompt_id: str) -> ChatPrompt | None:
+    def get_prompt(self, prompt_id: str) -> Optional[ChatPrompt]:
         """Get a chat prompt"""
         # self.log_it("get_prompt: " + prompt_id)
         return self._id_to_prompt.get(prompt_id)
 
     def get_session_by_name(
-        self, session_name: str, widget: MessagePump | None = None
-    ) -> ChatSession | None:
+        self, session_name: str, widget: Optional[MessagePump] = None
+    ) -> Optional[ChatSession]:
         """Get a chat session by name"""
         for session in self._id_to_session.values():
             if session.name == session_name:
@@ -177,13 +177,13 @@ class ChatManager(ParEventSystemBase):
     def get_or_create_session(  # pylint: disable=too-many-arguments
         self,
         *,
-        session_id: str | None,
-        session_name: str | None,
+        session_id: Optional[str],
+        session_name: Optional[str],
         llm_config: LlmConfig,
         widget: MessagePump,
     ) -> ChatSession:
         """Get or create a chat session"""
-        session: ChatSession | None = None
+        session: Optional[ChatSession] = None
         if session_id:
             session = self.get_session(session_id)
         if session is None:
@@ -251,7 +251,7 @@ class ChatManager(ParEventSystemBase):
 
     def session_to_prompt(
         self, session_id: str, submit_on_load: bool, prompt_name: Optional[str] = None
-    ) -> ChatPrompt | None:
+    ) -> Optional[ChatPrompt]:
         """Copy a session to a new custom prompt"""
         session = self.get_session(session_id)
         if session is None:
@@ -308,7 +308,7 @@ class ChatManager(ParEventSystemBase):
         """Return a list of session names"""
         return [prompt.name for prompt in self._id_to_prompt.values()]
 
-    def get_prompt_by_name(self, name: str) -> ChatPrompt | None:
+    def get_prompt_by_name(self, name: str) -> Optional[ChatPrompt]:
         """Get a custom prompt by name"""
         name = name.strip().lower()
         for prompt in self._id_to_prompt.values():

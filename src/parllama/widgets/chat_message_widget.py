@@ -125,6 +125,9 @@ class ChatMessageWidget(Vertical, can_focus=True):
         """Edit the chat message."""
         if self.editor:
             return
+        if not self.is_final:
+            self.notify("Only completed messages can be edited", severity="error")
+            return
         self.markdown.display = False
         self.placeholder.display = False
         self.editor = TextArea(self.raw_text, tab_behavior="indent")

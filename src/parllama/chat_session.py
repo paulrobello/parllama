@@ -22,12 +22,12 @@ from parllama.chat_message import ParllamaChatMessage
 from parllama.chat_message_container import ChatMessageContainer
 from parllama.llm_config import LlmConfig
 from parllama.llm_providers import LlmProvider
-from parllama.messages.messages import ChatGenerationAborted
+from parllama.messages.messages import ChatGenerationAborted, ChatMessageDeleted
 from parllama.messages.messages import ChatMessage
 from parllama.messages.messages import SessionChanges
 from parllama.messages.messages import SessionMessage
 from parllama.messages.messages import SessionUpdated
-from parllama.messages.par_chat_messages import ParChatUpdated
+from parllama.messages.par_chat_messages import ParChatUpdated, ParChatMessageDeleted
 from parllama.messages.par_session_messages import ParSessionAutoName
 from parllama.messages.par_session_messages import ParSessionDelete
 from parllama.messages.par_session_messages import ParSessionUpdated
@@ -134,10 +134,12 @@ class ChatSession(ChatMessageContainer):
         """Delete the session"""
         self.post_message(ParSessionDelete(session_id=self.id))
 
-    def _notify_subs(self, event: SessionMessage | ChatMessage) -> None:
+    def _notify_subs(
+        self, event: SessionMessage | ChatMessage | ChatMessageDeleted
+    ) -> None:
         """Notify all subscriptions"""
         for sub in self._subs:
-            # self.log_it(f"notifying sub {sub.__class__.__name__ }")
+            # self.log_it(f"notifying sub {sub.__class__.__name__ }", notify=True)
             sub.post_message(event)
 
     def _notify_changed(self, changed: SessionChanges) -> None:
@@ -523,3 +525,9 @@ class ChatSession(ChatMessageContainer):
     def num_subs(self):
         """Return the number of subscribers"""
         return len(self._subs)
+
+    def on_par_chat_message_deleted(self, event: ParChatMessageDeleted):
+        """Handle ParChatMessageDeleted event"""
+        self._notify_subs(
+            ChatMessageDeleted(parent_id=event.parent_id, message_id=event.message_id)
+        )

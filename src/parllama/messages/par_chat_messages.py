@@ -20,3 +20,8 @@ class ParChatUpdated(ParChatMessage):
     """Chat message updated"""
 
     is_final: bool = False
+
+
+@dataclass
+class ParChatMessageDeleted(ParChatMessage):
+    """Chat message deleted"""

@@ -65,6 +65,7 @@ valid_commands: list[str] = [
     "/session.delete",
     "/session.export",
     "/session.system_prompt",
+    "/session.clear_system_prompt",
     "/session.to_prompt",
     "/history.clear",
     "/prompt.load ",
@@ -341,6 +342,7 @@ Chat Commands:
 /session.delete - Delete the chat session for current tab
 /session.export - Export the conversation in current tab to a Markdown file
 /session.system_prompt [system_prompt] - Set system prompt in current tab
+/session.clear_system_prompt - Remove system prompt in current tab
 /session.to_prompt submit_on_load [prompt_name] - Copy current session to new custom prompt. submit_on_load = {0|1}
 /prompt.load prompt_name - Load a custom prompt using current tabs model and temperature
 /history.clear - Clear chat input history
@@ -445,6 +447,8 @@ Chat Commands:
             )
         elif cmd.startswith("session.export"):
             self.active_tab.save_conversation_text()
+        elif cmd.startswith("session.clear_system_prompt"):
+            self.session.system_prompt = None
         elif cmd.startswith("session.system_prompt "):
             (_, v) = cmd.split(" ", 1)
             v = v.strip()
@@ -456,6 +460,7 @@ Chat Commands:
                 ChatMessage(
                     parent_id=self.session.id,
                     message_id=self.session.system_prompt.id,  # pyright: ignore [reportOptionalMemberAccess]
+                    is_final=True,
                 )
             )
         elif cmd.startswith("prompt.load "):
