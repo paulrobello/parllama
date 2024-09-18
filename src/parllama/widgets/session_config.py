@@ -226,16 +226,18 @@ SessionConfig {
         self.session = session
 
         with self.prevent(Input.Changed, Select.Changed):
+            self.session_name_input.value = self.session.name
             self.provider_model_select.provider_select.value = (
                 self.session.llm_provider_name
             )
+            self.provider_model_select.provider_select_changed()
             self.provider_model_select.set_model_name(self.session.llm_model_name)
             if self.provider_model_select.model_select.value == Select.BLANK:
                 self.notify(
                     "Model defined in session is not installed", severity="warning"
                 )
             self.temperature_input.value = str(self.session.temperature)
-            self.session_name_input.value = self.session.name
+
         return True
 
     async def load_prompt(self, event: PromptSelected) -> bool:

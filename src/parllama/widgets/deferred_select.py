@@ -1,6 +1,6 @@
 """Deferred select widget."""
 
-from typing import Generic, Iterable
+from typing import Generic, Iterable, Optional
 
 import rich.repr
 from rich.console import RenderableType
@@ -19,12 +19,16 @@ from parllama.messages.messages import LogIt
 class DeferredSelect(Generic[SelectType], Select[SelectType]):
     """Deferred select widget."""
 
+    _deferred_value: SelectType | NoSelection = BLANK
+
     @rich.repr.auto
     class BadDeferredValue(Message):
         """Posted when the select options do not contain the deferred value.
 
         This message can be handled using a `on_bad_deferred_value` method.
         """
+
+        deferred_value: SelectType | NoSelection = BLANK
 
         def __init__(
             self, select: Select[SelectType], deferred_value: SelectType | NoSelection
@@ -46,8 +50,6 @@ class DeferredSelect(Generic[SelectType], Select[SelectType]):
             """The Select that sent the message."""
             return self.select
 
-    _deferred_value: SelectType | NoSelection = BLANK
-
     def __init__(self, *args, **kwargs):
         """Initialise the widget."""
         if "options" in kwargs:
@@ -64,11 +66,36 @@ class DeferredSelect(Generic[SelectType], Select[SelectType]):
         if self._deferred_value and self._deferred_value != BLANK:
             self.post_message(LogIt(f"Deferred value {self._deferred_value}."))
 
-    def set_options(self, options: Iterable[tuple[RenderableType, SelectType]]) -> None:
+    @property
+    def deferred_value(self) -> SelectType | NoSelection:
+        """Get the deferred value."""
+        return self._deferred_value
+
+    @deferred_value.setter
+    def deferred_value(self, value: SelectType | NoSelection) -> None:
+        """Set the deferred value."""
+        self._deferred_value = value
+        if self._deferred_value == BLANK:
+            self.value = BLANK
+            return
+        for opts in self._options:
+            if value == opts[1]:
+                self.value = self._deferred_value
+                self._deferred_value = BLANK
+                return
+        self.notify("DV not in options")
+        self.set_timer(0.1, self.set_options)
+
+    def set_options(
+        self, options: Optional[Iterable[tuple[RenderableType, SelectType]]] = None
+    ) -> None:
         """Set the options for the Select."""
         old_value = self.value
-        super().set_options(options)
-        opts = [o[1] for o in options]
+
+        if options:
+            super().set_options(options)
+
+        opts = [o[1] for o in self._options]
         if old_value != BLANK and old_value in opts:
             with self.prevent(Select.Changed):
                 self.value = old_value

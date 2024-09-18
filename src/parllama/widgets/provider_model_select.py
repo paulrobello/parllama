@@ -126,7 +126,7 @@ class ProviderModelSelect(Container):
                 self.provider_select.value  # type: ignore
             ):
                 if v == model_name:
-                    self.model_select.value = model_name
+                    self.model_select.deferred_value = model_name
                     return
             self.notify("Model not found", severity="warning")
         self.model_select.value = Select.BLANK
@@ -145,7 +145,7 @@ class ProviderModelSelect(Container):
                     self.provider_select.value
                 ].default_model
                 if msv in provider_manager.get_model_names(self.provider_select.value):  # type: ignore
-                    self.model_select.value = msv
+                    self.model_select.deferred_value = msv
         else:
             self.model_select.set_options([])
         self.notify_changed()
