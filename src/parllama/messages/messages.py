@@ -319,6 +319,7 @@ class ChatMessage(Message):
 
     parent_id: str
     message_id: str
+    is_final: bool = False
 
 
 @dataclass

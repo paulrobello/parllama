@@ -121,6 +121,7 @@ dev-dependencies = [
     "google-api-python-client-stubs",
     "typing-extensions",
     "types-simplejson",
+    "pyinstrument>=4.7.3",
 ]
 
 [tool.hatch.version]

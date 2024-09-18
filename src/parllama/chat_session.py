@@ -205,8 +205,12 @@ class ChatSession(ChatMessageContainer):
                 # self.log_it("CM adding user message")
                 msg = ParllamaChatMessage(role="user", content=from_user)
                 self.add_message(msg)
-                self._notify_subs(ChatMessage(parent_id=self.id, message_id=msg.id))
-                self.post_message(ParChatUpdated(parent_id=self.id, message_id=msg.id))
+                self._notify_subs(
+                    ChatMessage(parent_id=self.id, message_id=msg.id, is_final=True)
+                )
+                self.post_message(
+                    ParChatUpdated(parent_id=self.id, message_id=msg.id, is_final=True)
+                )
                 self.save()
 
             num_tokens: int = 0
@@ -299,8 +303,16 @@ class ChatSession(ChatMessageContainer):
                             total_tokens=0,
                             time_til_first_token=int(ttft),
                         )
-                self._notify_subs(ChatMessage(parent_id=self.id, message_id=msg.id))
-                self.post_message(ParChatUpdated(parent_id=self.id, message_id=msg.id))
+                self._notify_subs(
+                    ChatMessage(
+                        parent_id=self.id, message_id=msg.id, is_final=not chunk.content
+                    )
+                )
+                self.post_message(
+                    ParChatUpdated(
+                        parent_id=self.id, message_id=msg.id, is_final=not chunk.content
+                    )
+                )
 
             self._changes.add("messages")
             self.save()

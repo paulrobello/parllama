@@ -2,16 +2,21 @@
 
 from __future__ import annotations
 
+from typing import Optional
+
+from textual import on
 from textual.app import ComposeResult
-from textual.await_complete import AwaitComplete
 from textual.binding import Binding
 from textual.containers import Vertical
-from textual.widgets import Markdown
+from textual.events import Mount, Show, Hide, Unmount
+from textual.message import Message
+from textual.widgets import Markdown, Static
 from textual.widgets import TextArea
 
 from parllama.chat_manager import ChatSession
 from parllama.chat_message import ParllamaChatMessage
 from parllama.messages.messages import SendToClipboard
+from parllama.models.ollama_data import MessageRoles
 
 
 class ChatMessageWidget(Vertical, can_focus=True):
@@ -49,30 +54,66 @@ class ChatMessageWidget(Vertical, can_focus=True):
     """
     msg: ParllamaChatMessage
     markdown: Markdown
-    editor: TextArea | None = None
+    editor: Optional[TextArea] = None
+    placeholder: Static
     session: ChatSession
+    update_delay: float = 1
+    is_final: bool = False
 
     def __init__(
-        self, msg: ParllamaChatMessage, session: ChatSession, **kwargs
+        self,
+        msg: ParllamaChatMessage,
+        session: ChatSession,
+        is_final: bool = False,
+        **kwargs,
     ) -> None:
         """Initialise the widget."""
-        super().__init__(**kwargs)
+        super().__init__(id=f"cm_{msg.id}", **kwargs)
         self.session = session
         self.msg = msg
-        self.markdown = Markdown("")
+        self.markdown = Markdown(self.markdown_raw if is_final else "")
+        self.placeholder = Static(self.markdown_raw if not is_final else "")
 
-    def on_mount(self) -> None:
+        self.markdown.display = is_final
+        self.placeholder.display = not is_final
+        self.is_final = is_final
+
+    async def on_mount(self):
         """Set up the widget once the DOM is ready."""
-        self.update("")
+        # await self.update()
 
     def compose(self) -> ComposeResult:
         """Compose the content of the widget."""
         yield self.markdown
+        yield self.placeholder
 
-    def update(self, markdown: str) -> AwaitComplete:
+    @property
+    def raw_text(self) -> str:
+        """The raw text."""
+        return self.msg.content
+
+    @property
+    def role(self) -> MessageRoles:
+        """The role of the message."""
+        return self.msg.role
+
+    @property
+    def markdown_raw(self) -> str:
+        """The raw markdown."""
+        return "## " + self.role + "\n\n" + self.raw_text
+
+    async def update(self) -> None:
         """Update the document with new Markdown."""
-        self.msg.content += markdown
-        return self.markdown.update("## " + self.msg.role + "\n\n" + self.msg.content)
+        if self.is_final:
+            # self.post_message(LogIt(f"updating message {self.role}", notify=True))
+            self.placeholder.update("")
+            await self.markdown.update(self.markdown_raw)
+            self.placeholder.display = False
+            self.markdown.display = True
+        else:
+            self.placeholder.update(self.markdown_raw)
+            self.markdown.display = False
+            self.placeholder.display = True
 
     async def action_delete_msg(self) -> None:
         """Handle the delete message action."""
@@ -85,6 +126,7 @@ class ChatMessageWidget(Vertical, can_focus=True):
         if self.editor:
             return
         self.markdown.display = False
+        self.placeholder.display = False
         self.editor = TextArea(self.raw_text, tab_behavior="indent")
         await self.mount(self.editor)
         self.editor.focus()
@@ -94,29 +136,47 @@ class ChatMessageWidget(Vertical, can_focus=True):
         if not self.editor:
             return
         self.msg.content = self.editor.text
-        await self.update("")
         await self.editor.remove()
         self.editor = None
-        self.markdown.display = True
+        await self.update()
         self.session.save()
-
-    @property
-    def raw_text(self) -> str:
-        """The raw text."""
-        return self.msg.content or ""
 
     @staticmethod
     def mk_msg_widget(
-        msg: ParllamaChatMessage, session: ChatSession
+        msg: ParllamaChatMessage, session: ChatSession, is_final: bool = False
     ) -> ChatMessageWidget:
         """Create a chat message widget."""
         if msg.role == "user":
-            return UserChatMessage(msg=msg, session=session)
-        return AgentChatMessage(msg=msg, session=session)
+            return UserChatMessage(msg=msg, session=session, is_final=is_final)
+        if msg.role == "system":
+            return SystemChatMessage(msg=msg, session=session, is_final=is_final)
+        return AgentChatMessage(msg=msg, session=session, is_final=is_final)
 
     def action_copy_to_clipboard(self) -> None:
         """Copy focused widget value to clipboard"""
         self.app.post_message(SendToClipboard(self.raw_text))
+
+    @on(Mount)
+    @on(Unmount)
+    @on(Show)
+    @on(Hide)
+    @on(Markdown.TableOfContentsUpdated)
+    def on_markdown_updated(self, event: Message) -> None:
+        """Stop markdown events"""
+        event.stop()
+
+
+class SystemChatMessage(ChatMessageWidget):
+    """System chat message widget"""
+
+    DEFAULT_CSS = """
+    SystemChatMessage {
+      background: $panel-lighten-2;
+    }
+    SystemChatMessage:light {
+        background: #ccc;
+    }
+    """
 
 
 class AgentChatMessage(ChatMessageWidget):

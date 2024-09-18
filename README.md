@@ -137,7 +137,7 @@ pip install pipx
 pipx ensurepath
 ```
 
-### MyPi install 
+### MyPi install
 ```shell
 pipx install parllama
 ```

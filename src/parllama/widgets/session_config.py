@@ -204,6 +204,7 @@ SessionConfig {
         """Handle a session updated event"""
         # self.notify(f"Session Config updated: {event.changed}")
         # Allow event to propagate to parent
+        # event.stop()
         if "name" in event.changed:
             with self.prevent(Input.Changed, Input.Submitted):
                 self.session_name_input.value = self.session.name

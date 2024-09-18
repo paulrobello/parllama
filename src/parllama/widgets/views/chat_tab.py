@@ -14,7 +14,6 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Vertical
 from textual.events import Show
-from textual.message import Message
 from textual.reactive import Reactive
 from textual.widgets import Static
 from textual.widgets import TabbedContent
@@ -27,7 +26,6 @@ from parllama.messages.messages import ChatMessage
 from parllama.messages.messages import ChatMessageSent
 from parllama.messages.messages import DeleteSession
 from parllama.messages.messages import PromptSelected
-from parllama.messages.messages import RegisterForUpdates
 from parllama.messages.messages import SessionSelected
 from parllama.messages.messages import SessionUpdated
 from parllama.messages.messages import UnRegisterForUpdates
@@ -114,14 +112,14 @@ class ChatTab(TabPane):
 
     async def on_mount(self) -> None:
         """Set up the dialog once the DOM is ready."""
-        self.app.post_message(
-            RegisterForUpdates(
-                widget=self,
-                event_names=[
-                    "SessionUpdated",
-                ],
-            )
-        )
+        # self.app.post_message(
+        #     RegisterForUpdates(
+        #         widget=self,
+        #         event_names=[
+        #             "SessionUpdated",
+        #         ],
+        #     )
+        # )
         self.notify_tab_label_changed()
 
     async def on_unmount(self) -> None:
@@ -180,18 +178,21 @@ class ChatTab(TabPane):
             return
 
         msg_widget: ChatMessageWidget | None = None
-        for w in self.query(ChatMessageWidget):
-            if w.msg.id == msg.id:
-                await w.update("")
-                msg_widget = w
-                break
+        for w in cast(list[ChatMessageWidget], self.query(f"#cm_{msg.id}")):
+            msg_widget = w
+            w.is_final = event.is_final
+            await w.update()
+            break
         if not msg_widget:
-            msg_widget = ChatMessageWidget.mk_msg_widget(msg=msg, session=self.session)
+            msg_widget = ChatMessageWidget.mk_msg_widget(
+                msg=msg, session=self.session, is_final=event.is_final
+            )
             if msg.role == "system":
                 await self.vs.mount(msg_widget, before=0)
             else:
                 await self.vs.mount(msg_widget)
         msg_widget.loading = len(msg_widget.msg.content) == 0
+
         if self.user_input.child_has_focus:
             self.set_timer(0.1, self.scroll_to_bottom)
 
@@ -230,7 +231,9 @@ class ChatTab(TabPane):
         await self.vs.remove_children(ChatMessageWidget)
         await self.vs.mount(
             *[
-                ChatMessageWidget.mk_msg_widget(msg=m, session=self.session)
+                ChatMessageWidget.mk_msg_widget(
+                    msg=m, session=self.session, is_final=True
+                )
                 for m in self.session.messages
             ]
         )
@@ -262,7 +265,9 @@ class ChatTab(TabPane):
         await self.vs.remove_children(ChatMessageWidget)
         await self.vs.mount(
             *[
-                ChatMessageWidget.mk_msg_widget(msg=m, session=self.session)
+                ChatMessageWidget.mk_msg_widget(
+                    msg=m, session=self.session, is_final=True
+                )
                 for m in self.session.messages
             ]
         )
@@ -309,10 +314,8 @@ class ChatTab(TabPane):
             return
         self.post_message(UpdateChatStatus())
 
-    def on_update_chat_status(self, event: Message | None = None) -> None:
+    def on_update_chat_status(self) -> None:
         """Update session status bar"""
-        if event:
-            event.stop()
         parts = [
             self.session.llm_provider_name,
             " : ",
