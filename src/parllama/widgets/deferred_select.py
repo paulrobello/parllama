@@ -28,8 +28,6 @@ class DeferredSelect(Generic[SelectType], Select[SelectType]):
         This message can be handled using a `on_bad_deferred_value` method.
         """
 
-        deferred_value: SelectType | NoSelection = BLANK
-
         def __init__(
             self, select: Select[SelectType], deferred_value: SelectType | NoSelection
         ) -> None:

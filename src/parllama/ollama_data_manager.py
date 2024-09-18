@@ -90,7 +90,8 @@ class OllamaDataManager(ParEventSystemBase):
             return api_ret
         local_ret = output_to_dicts(ret)
         if len(local_ret) > 0:
-            api_ret.processor = local_ret[0]["processor"]
+            if "processor" in local_ret[0]:
+                api_ret.processor = local_ret[0]["processor"]
         return api_ret
 
     def get_model_by_name(self, name: str) -> FullModel | None:

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-import webbrowser
 
 from textual import on
 from textual.app import ComposeResult
@@ -78,5 +77,5 @@ class ModelToolsView(Container):
 
     def action_open_keys_page(self):
         """Open the Ollama keys page."""
-        webbrowser.open("https://ollama.com/settings/keys")
+        self.app.open_url("https://ollama.com/settings/keys")
         self.notify("Ollama keys page opened")

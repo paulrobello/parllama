@@ -166,6 +166,12 @@ class ChatMessageWidget(Vertical, can_focus=True):
         """Stop markdown events"""
         event.stop()
 
+    @on(Markdown.LinkClicked)
+    def on_markdown_link_clicked(self, event: Markdown.LinkClicked) -> None:
+        """Stop markdown events"""
+        event.stop()
+        self.app.open_url(event.href)
+
 
 class SystemChatMessage(ChatMessageWidget):
     """System chat message widget"""

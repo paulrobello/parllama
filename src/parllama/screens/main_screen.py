@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import webbrowser
 from typing import cast
 
 from rich.console import RenderableType
@@ -166,4 +165,4 @@ class MainScreen(Screen[None]):
 
     def action_open_mailto(self):
         """Open mailto link."""
-        webbrowser.open("mailto:probello@gmail.com")
+        self.app.open_url("mailto:probello@gmail.com")

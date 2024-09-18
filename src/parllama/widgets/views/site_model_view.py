@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import webbrowser
 from typing import cast
 
 from textual import on
@@ -174,7 +173,7 @@ class SiteModelView(Container):
         """Open the model page on ollama.com in the browser."""
         if not self.search_input.value:
             return
-        webbrowser.open(f"https://ollama.com/library/{self.search_input.value}")
+        self.app.open_url(f"https://ollama.com/library/{self.search_input.value}")
 
     def action_tag_clicked(self, model_tag: str) -> None:
         """Update search box with tag"""

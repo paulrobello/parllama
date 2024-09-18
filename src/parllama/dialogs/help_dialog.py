@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-import webbrowser
 from pathlib import Path
 from typing import Final
 
@@ -81,5 +80,4 @@ class HelpDialog(ModalScreen[None]):
 
     def on_markdown_link_clicked(self, event: Markdown.LinkClicked) -> None:
         """A link was clicked in the help."""
-
-        webbrowser.open(event.href)
+        self.app.open_url(event.href)

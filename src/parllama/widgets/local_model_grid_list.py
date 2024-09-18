@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import webbrowser
-
 from textual.binding import Binding
 from textual.containers import Grid
 from textual.reactive import Reactive
@@ -265,7 +263,7 @@ class LocalModelGridList(Grid, can_focus=False):
         """Open the model in the browser."""
         if not self.selected:
             return
-        webbrowser.open(f"https://ollama.com/library/{self.selected.model.name}")
+        self.app.open_url(f"https://ollama.com/library/{self.selected.model.name}")
 
     def action_open(self) -> None:
         """Open the model."""
