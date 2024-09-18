@@ -131,9 +131,10 @@ class ChatMessageContainer(ParEventSystemBase):
             self._changes.add("messages")
             self._changes.add("system_prompt")
             self.save()
-            self.post_message(
-                ParChatMessageDeleted(parent_id=msg.parent.id, message_id=msg.id)
-            )
+            if msg.parent:
+                self.post_message(
+                    ParChatMessageDeleted(parent_id=msg.parent.id, message_id=msg.id)
+                )
             return
 
         if len(self.messages) > 0 and self.messages[0].role == "system":
@@ -172,9 +173,9 @@ class ChatMessageContainer(ParEventSystemBase):
         """Get the number of messages"""
         return len(self.messages)
 
-    def __getitem__(self, msg_id: str) -> ParllamaChatMessage:
+    def __getitem__(self, msg_id: str) -> Optional[ParllamaChatMessage]:
         """Get a message"""
-        return self._id_to_msg[msg_id]
+        return self._id_to_msg.get(msg_id)
 
     def __setitem__(self, msg_id: str, value: ParllamaChatMessage) -> None:
         """Set a message"""
@@ -193,8 +194,17 @@ class ChatMessageContainer(ParEventSystemBase):
         del self._id_to_msg[key]
         for i, msg in enumerate(self.messages):
             if msg.id == key:
-                self.messages.pop(i)
+                if msg.parent:
+                    self.post_message(
+                        ParChatMessageDeleted(
+                            parent_id=msg.parent.id, message_id=msg.id
+                        )
+                    )
+
+                msg = self.messages.pop(i)
                 self.last_updated = datetime.now(timezone.utc)
+                if msg.role == "system":
+                    self._changes.add("system_prompt")
                 self._changes.add("messages")
                 self.save()
                 return

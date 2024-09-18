@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from functools import partial
-from typing import cast
+from typing import cast, Optional
 
 import humanize
 from rich.text import Text
@@ -175,12 +175,8 @@ class ChatTab(TabPane):
         if self.session.id != event.parent_id:
             self.notify("Chat session id missmatch", severity="error")
             return
-        msg: ParllamaChatMessage | None = self.session[event.message_id]
-        if not msg:
-            self.notify("Chat message not found", severity="error")
-            return
 
-        for w in cast(list[ChatMessageWidget], self.query(f"#cm_{msg.id}")):
+        for w in cast(list[ChatMessageWidget], self.query(f"#cm_{event.message_id}")):
             await w.remove()
             self.on_update_chat_status()
             break
@@ -192,12 +188,12 @@ class ChatTab(TabPane):
         if self.session.id != event.parent_id:
             self.notify("Chat session id missmatch", severity="error")
             return
-        msg: ParllamaChatMessage | None = self.session[event.message_id]
+        msg: Optional[ParllamaChatMessage] = self.session[event.message_id]
         if not msg:
             self.notify("Chat message not found", severity="error")
             return
 
-        msg_widget: ChatMessageWidget | None = None
+        msg_widget: Optional[ChatMessageWidget] = None
         for w in cast(list[ChatMessageWidget], self.query(f"#cm_{msg.id}")):
             msg_widget = w
             w.is_final = event.is_final
