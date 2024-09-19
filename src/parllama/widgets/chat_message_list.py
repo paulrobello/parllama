@@ -11,18 +11,6 @@ class ChatMessageList(VerticalScroll, can_focus=False, can_focus_children=True):
     DEFAULT_CSS = """
     ChatMessageList {
         background: $primary-background;
-        ChatMessageWidget {
-            padding: 1;
-            border: none;
-            border-left: blank;
-            &:focus {
-                border-left: thick $primary;
-            }
-        }
-        MarkdownH2 {
-            margin: 0;
-            padding: 0;
-        }
     }
     """
 

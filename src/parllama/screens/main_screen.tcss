@@ -9,17 +9,16 @@ MainScreen {
         padding-left: 1;
         background: $panel;
     }
-
 }
 
 ListView > SiteModelListItem.--highlight {
-  background: $panel;
-  border: double $primary;
-  border-title-color: $primary-lighten-2;
+    background: $panel;
+    border: double $primary;
+    border-title-color: $primary-lighten-2;
 
-  & > Widget:hover {
-    background: $surface;
-  }
+    & > Widget:hover {
+        background: $surface;
+    }
 }
 
 ListView:focus > SiteModelListItem.--highlight {

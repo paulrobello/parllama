@@ -81,7 +81,6 @@ class DeferredSelect(Generic[SelectType], Select[SelectType]):
                 self.value = self._deferred_value
                 self._deferred_value = BLANK
                 return
-        self.notify("DV not in options")
         self.set_timer(0.1, self.set_options)
 
     def set_options(

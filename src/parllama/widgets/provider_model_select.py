@@ -128,7 +128,7 @@ class ProviderModelSelect(Container):
                 if v == model_name:
                     self.model_select.deferred_value = model_name
                     return
-            self.notify("Model not found", severity="warning")
+            self.notify(f"Model not found: {model_name}", severity="warning")
         self.model_select.value = Select.BLANK
 
     @on(Select.Changed, "#provider_name")

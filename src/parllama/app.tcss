@@ -172,12 +172,3 @@ Widget {
     scrollbar-color-active: $primary;
     scrollbar-color-hover: $primary-darken-1;
 }
-
-/*
-Button:focus {
-    text-style: bold reverse;
-    color: $primary-lighten-2;
-    border-top: tall $surface-lighten-3;
-    border-bottom: tall $surface-darken-3;
-}
-*/

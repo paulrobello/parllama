@@ -244,7 +244,9 @@ SessionConfig {
         """Load a session"""
         self.app.post_message(LogIt("SC load_prompt: " + event.prompt_id))
         self.app.post_message(
-            LogIt(f"{event.prompt_id},{event.llm_model_name},{event.temperature}")
+            LogIt(
+                f"{event.prompt_id},{event.llm_provider_name},{event.llm_model_name},{event.temperature}"
+            )
         )
         prompt = chat_manager.get_prompt(event.prompt_id)
         if prompt is None:
@@ -266,9 +268,13 @@ SessionConfig {
             llm_config=llm_config,
             widget=self,
         )
+        self.provider_model_select.provider_select.value = llm_config.provider
         self.set_model_name(self.session.llm_model_name)
-        if self.provider_model_select.model_select.value == Select.BLANK:
-            self.notify("Model defined in prompt is not installed", severity="warning")
+        # if self.provider_model_select.model_select.value == Select.BLANK:
+        #     self.notify(
+        #         f"Prompt model: {self.session.llm_model_name} not found",
+        #         severity="warning",
+        #     )
         with self.prevent(Input.Changed, Select.Changed):
             self.temperature_input.value = str(self.session.temperature)
             self.session_name_input.value = self.session.name

@@ -34,10 +34,14 @@ from parllama.models.ollama_data import SiteModelData
 from parllama.models.ollama_ps import OllamaPsResponse
 from parllama.par_event_system import ParEventSystemBase
 from parllama.settings_manager import settings
-from parllama.utils import output_to_dicts
 from parllama.utils import run_cmd
 from parllama.widgets.local_model_list_item import LocalModelListItem
 from parllama.widgets.site_model_list_item import SiteModelListItem
+
+
+ps_pattern = re.compile(
+    r"(?P<NAME>\S+)\s+(?P<ID>\S+)\s+(?P<SIZE>\d+\.\d+ \S+)\s+(?P<PROCESSOR>\d+% \S+)\s+(?P<UNTIL>.+)"
+)
 
 
 def api_model_ps() -> OllamaPsResponse:
@@ -84,14 +88,14 @@ class OllamaDataManager(ParEventSystemBase):
         api_ret = api_model_ps()
         if not self.ollama_bin:
             return api_ret
-        ret = run_cmd([self.ollama_bin, "ps"])
+        ret: Optional[str] = run_cmd([self.ollama_bin, "ps"])
 
         if not ret:
             return api_ret
-        local_ret = output_to_dicts(ret)
-        if len(local_ret) > 0:
-            if "processor" in local_ret[0]:
-                api_ret.processor = local_ret[0]["processor"]
+        matches = list(ps_pattern.finditer(ret))
+
+        if len(matches) > 0:
+            api_ret.processor = matches[0].group("PROCESSOR")
         return api_ret
 
     def get_model_by_name(self, name: str) -> FullModel | None:

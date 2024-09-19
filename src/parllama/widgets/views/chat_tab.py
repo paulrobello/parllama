@@ -196,7 +196,7 @@ class ChatTab(TabPane):
         msg_widget: Optional[ChatMessageWidget] = None
         for w in cast(list[ChatMessageWidget], self.query(f"#cm_{msg.id}")):
             msg_widget = w
-            w.is_final = event.is_final
+            w.is_final = event.is_final or w.role == "system"
             await w.update()
             break
         if not msg_widget:

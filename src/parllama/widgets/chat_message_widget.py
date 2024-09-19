@@ -36,20 +36,32 @@ class ChatMessageWidget(Vertical, can_focus=True):
 
     DEFAULT_CSS = """
     ChatMessageWidget {
-        margin: 0;
+        margin: 0 0 1 0;
         padding: 0;
         height: auto;
+        border: solid $accent;
+        border-title-color: $primary;
+        border-title-background: $panel;
+        & > Static {
+            padding: 1;
+            margin: 0;
+            background: transparent;
+        }
         TextArea {
           height: auto;
           min-height: 3;
         }
         Markdown {
-          margin: 0 1;
+            margin: 0;
+            padding: 1 1 0 1;
+
+            MarkdownFence {
+                max-height: initial;
+            }
         }
-        MarkdownFence {
-            margin: 1 2;
-            max-height: initial;
-        }
+    }
+    ChatMessageWidget:focus {
+        border: double $primary;
     }
     """
     msg: ParllamaChatMessage
@@ -77,6 +89,7 @@ class ChatMessageWidget(Vertical, can_focus=True):
         self.markdown.display = is_final
         self.placeholder.display = not is_final
         self.is_final = is_final
+        self.border_title = self.msg.role
 
     async def on_mount(self):
         """Set up the widget once the DOM is ready."""
@@ -100,7 +113,7 @@ class ChatMessageWidget(Vertical, can_focus=True):
     @property
     def markdown_raw(self) -> str:
         """The raw markdown."""
-        return "## " + self.role + "\n\n" + self.raw_text
+        return self.raw_text
 
     async def update(self) -> None:
         """Update the document with new Markdown."""
@@ -178,10 +191,11 @@ class SystemChatMessage(ChatMessageWidget):
 
     DEFAULT_CSS = """
     SystemChatMessage {
-      background: $panel-lighten-2;
+        background: $background;
+        border-title-align: center;
     }
     SystemChatMessage:light {
-        background: #ccc;
+        background: $background;
     }
     """
 
@@ -191,7 +205,8 @@ class AgentChatMessage(ChatMessageWidget):
 
     DEFAULT_CSS = """
     AgentChatMessage {
-      background: $panel-lighten-2;
+        background: $panel;
+        border-title-align: right;
     }
     AgentChatMessage:light {
         background: #ccc;
@@ -204,7 +219,8 @@ class UserChatMessage(ChatMessageWidget):
 
     DEFAULT_CSS = """
     UserChatMessage {
-       background: $surface;
+        background: $surface;
+        border-title-align: left;
     }
     UserChatMessage:light {
         background: #aaa;
