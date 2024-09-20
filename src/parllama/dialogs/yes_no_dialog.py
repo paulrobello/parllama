@@ -64,7 +64,7 @@ class YesNoDialog(ModalScreen[bool]):
         Binding("escape", "dismiss(False)", "", show=False),
     ]
 
-    def __init__(  # pylint:disable=too-many-arguments
+    def __init__(  # pylint:disable=too-many-arguments, too-many-positional-arguments
         self,
         title: str,
         question: str,

@@ -3,6 +3,11 @@
 from __future__ import annotations
 
 import os
+import warnings
+
+from langchain._api import LangChainDeprecationWarning
+
+warnings.simplefilter("ignore", category=LangChainDeprecationWarning)
 
 __author__ = "Paul Robello"
 __copyright__ = "Copyright 2024, Paul Robello"

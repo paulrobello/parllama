@@ -234,8 +234,6 @@ class OptionsView(Horizontal):
                         )
                         yield Label("LLM used for auto name")
                         if settings.auto_name_session_llm_config:
-                            if "class_name" in settings.auto_name_session_llm_config:
-                                del settings.auto_name_session_llm_config["class_name"]
                             llmc = LlmConfig(**settings.auto_name_session_llm_config)
                         else:
                             llmc = None
@@ -402,6 +400,10 @@ class OptionsView(Horizontal):
                 theme_manager.change_theme(
                     settings.theme_name, settings.theme_mode == "dark"
                 )
+        elif ctrl.id == "provider_name":
+            pass
+        elif ctrl.id == "model_name":
+            pass
         else:
             self.notify(f"Unhandled input: {ctrl.id}", severity="error", timeout=8)
             return

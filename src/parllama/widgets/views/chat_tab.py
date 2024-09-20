@@ -155,6 +155,7 @@ class ChatTab(TabPane):
         await self.vs.remove_children(ChatMessageWidget)
         self.update_control_states()
         self.on_update_chat_status()
+        self.notify_tab_label_changed()
         self.user_input.focus()
 
     def notify_tab_label_changed(self) -> None:

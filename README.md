@@ -390,6 +390,7 @@ if anything remains to be fixed before the commit is allowed.
 * Major rework of core to support providers other than Ollama
 * Added support for the following online providers: OpenAI, Anthropic, Groq, Google
 * New session config panel docked to right side of chat tab (more settings coming soon)
+* Better counting of tokens (still not always 100% accurate)
 
 ### v0.3.7
 * Fix for possible crash when there is more than one model loaded into ollama

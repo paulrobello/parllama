@@ -346,7 +346,7 @@ Chat Commands:
 /session.to_prompt submit_on_load [prompt_name] - Copy current session to new custom prompt. submit_on_load = {0|1}
 /prompt.load prompt_name - Load a custom prompt using current tabs model and temperature
 /history.clear - Clear chat input history
-                    """,
+                        """,
                 )
             )
             return
@@ -381,13 +381,6 @@ Chat Commands:
                 self.active_tab.session_config.provider_model_select.provider_select.focus,
             )
             return
-        elif cmd == "session.model":
-            self.active_tab.session_config.display = True
-            self.set_timer(
-                0.1,
-                self.active_tab.session_config.provider_model_select.model_select.focus,
-            )
-            return
         elif cmd.startswith("session.provider "):
             (_, v) = cmd.split(" ", 1)
             v_org = v.strip()
@@ -402,6 +395,13 @@ Chat Commands:
                 v
             )
             self.set_timer(0.1, self.user_input.focus)
+        elif cmd == "session.model":
+            self.active_tab.session_config.display = True
+            self.set_timer(
+                0.1,
+                self.active_tab.session_config.provider_model_select.model_select.focus,
+            )
+            return
         elif cmd.startswith("session.model "):
             (_, v) = cmd_raw.split(" ", 1)
             v = provider_manager.get_model_name_fuzzy(
@@ -421,7 +421,6 @@ Chat Commands:
             v = v.strip()
             self.active_tab.session_config.temperature_input.value = v
             self.set_timer(0.1, self.user_input.focus)
-            self.active_tab.session_config.display = True
         elif cmd == "session.name":
             self.set_timer(0.1, self.active_tab.session_config.session_name_input.focus)
             self.active_tab.session_config.display = True

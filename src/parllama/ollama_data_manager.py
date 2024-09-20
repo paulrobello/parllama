@@ -40,7 +40,7 @@ from parllama.widgets.site_model_list_item import SiteModelListItem
 
 
 ps_pattern = re.compile(
-    r"(?P<NAME>\S+)\s+(?P<ID>\S+)\s+(?P<SIZE>\d+\.\d+ \S+)\s+(?P<PROCESSOR>\d+% \S+)\s+(?P<UNTIL>.+)"
+    r"(?P<NAME>\S+)\s+(?P<ID>\S+)\s+(?P<SIZE>\d+\.\d+\s+\S+)\s+(?P<PROCESSOR>\d+%(?:/\d+%)?\s+\S+)\s+(?P<UNTIL>.+)"
 )
 
 
