@@ -2,6 +2,7 @@
 name = "parllama"
 dynamic = ["version"]
 description = "Terminal UI for Ollama"
+readme = "README.md"
 url = "https://github.com/paulrobello/parllama"
 license = { file = "LICENSE" }
 authors = [{ name = "Paul Robello", email = "probello@gmail.com" }]
