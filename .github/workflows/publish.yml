@@ -21,8 +21,8 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pipenv
-          make first-setup
+          pip install uv
+          uv sync
       - name: Static Typecheck
         run: |
           make typecheck
@@ -54,6 +54,11 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Install uv
+        run: |
+          python -m pip install --upgrade pip
+          pip install uv
+
       - name: Configure Git
         run: |
           git config --global user.name "${{ github.actor }}"
@@ -62,9 +67,8 @@ jobs:
       - name: Get version from __init__.py
         id: get_version
         run: |
-          # Extract the version from the __init__.py file
-          VERSION=$(python -c "exec(open('./parllama/__init__.py').read()); print(__version__)")
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "VERSION=$(uv run python -c "from src.parllama import __version__; print(__version__)")" >> $GITHUB_ENV
+          echo "Version extracted: ${{ env.VERSION }}"
 
       - name: App VERSION
         run: echo "VERSION is ${{ env.VERSION }}"
@@ -96,8 +100,14 @@ jobs:
           VERSION: ${{ env.VERSION }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git tag -a "v$VERSION" -m "Version $VERSION"
-          git push origin "v$VERSION"
+          if ! git tag -a "v$VERSION" -m "Version $VERSION"; then
+            echo "Failed to create tag"
+            exit 1
+          fi
+          if ! git push origin "v$VERSION"; then
+            echo "Failed to push tag"
+            exit 1
+          fi
 
   check-release:
     name: Check if release requested
@@ -127,17 +137,11 @@ jobs:
       - name: Get version from __init__.py
         id: get_version
         run: |
-          # Extract the version from the __init__.py file
-          VERSION=$(python -c "exec(open('./parllama/__init__.py').read()); print(__version__)")
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "VERSION=$(uv run python -c "from src.parllama import __version__; print(__version__)")" >> $GITHUB_ENV
+          echo "Version extracted: ${{ env.VERSION }}"
 
       - name: Check Do Release
         id: check_do_release
-        # if [[ "${{ github.event.head_commit.message }}" == *"Create Release"* ]] ; then
-        #  echo "do_release=true" >> $GITHUB_OUTPUT
-        #  git tag -a "release-v$VERSION" -m "Release $VERSION"
-        #  git push origin "release-v$VERSION"
-        #el
         run: |
           if  [[ "${{ github.ref }}" == "refs/tags/release-v"* ]] ; then
             echo "do_release=true" >> $GITHUB_OUTPUT
@@ -162,16 +166,43 @@ jobs:
       id-token: write  # IMPORTANT: mandatory for trusted publishing
 
     steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install uv
+      run: |
+        python -m pip install --upgrade pip
+        pip install uv
+
+    - name: Get version from __init__.py
+      id: get_version
+      run: |
+        echo "VERSION=$(uv run python -c "from src.parllama import __version__; print(__version__)")" >> $GITHUB_ENV
+        echo "Version extracted: ${{ env.VERSION }}"
+
     - name: Download all the dists
       uses: actions/download-artifact@v4
       with:
         name: python-package-distributions
         path: dist/
+
     - name: Publish distribution 📦 to TestPyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
         repository-url: https://test.pypi.org/legacy/
         skip-existing: true
+
+    - name: Discord notification
+      env:
+        DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+      uses: Ilshidur/action-discord@master
+      with:
+        args: 'The project {{ EVENT_PAYLOAD.repository.full_name }} ${{ env.VERSION }} has been published to TestPyPI.'
 
   publish-to-pypi:
     name: >-
@@ -190,6 +221,25 @@ jobs:
       id-token: write  # IMPORTANT: mandatory for trusted publishing
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        run: |
+          python -m pip install --upgrade pip
+          pip install uv
+
+      - name: Get version from __init__.py
+        id: get_version
+        run: |
+          echo "VERSION=$(uv run python -c "from src.parllama import __version__; print(__version__)")" >> $GITHUB_ENV
+          echo "Version extracted: ${{ env.VERSION }}"
+
       - name: Download all the dists
         uses: actions/download-artifact@v4
         with:
@@ -200,6 +250,13 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           skip-existing: true
+
+      - name: Discord notification
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        uses: Ilshidur/action-discord@master
+        with:
+          args: 'The project {{ EVENT_PAYLOAD.repository.full_name }} ${{ env.VERSION }} has been published to PyPI.'
 
   github-release:
     name: >-
@@ -219,12 +276,14 @@ jobs:
         with:
           name: python-package-distributions
           path: dist/
+
       - name: Sign the dists with Sigstore
         uses: sigstore/gh-action-sigstore-python@v2.1.1
         with:
           inputs: >-
             ./dist/*.tar.gz
             ./dist/*.whl
+
       - name: Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -234,6 +293,7 @@ jobs:
           --repo '${{ github.repository }}' \
           --generate-notes \
           --latest
+
       - name: Upload artifact signatures to GitHub Release
         env:
           GITHUB_TOKEN: ${{ github.token }}

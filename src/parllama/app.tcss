@@ -1,0 +1,174 @@
+.height-1 {
+    height: 1;
+}
+.height-2 {
+    height: 2;
+}
+.height-3 {
+    height: 3;
+}
+.height-4 {
+    height: 4;
+}
+.height-5 {
+    height: 5;
+}
+.height-6 {
+    height: 6;
+}
+.height-7 {
+    height: 7;
+}
+.height-8 {
+    height: 8;
+}
+.height-9 {
+    height: 9;
+}
+.height-10 {
+    height: 10;
+}
+.height-11 {
+    height: 11;
+}
+.height-12 {
+    height: 12;
+}
+.height-13 {
+    height: 13;
+}
+.height-14 {
+    height: 14;
+}
+.height-15 {
+    height: 15;
+}
+.height-16 {
+    height: 16;
+}
+.height-17 {
+    height: 17;
+}
+.height-18 {
+    height: 18;
+}
+.height-19 {
+    height: 19;
+}
+.height-20 {
+    height: 20;
+}
+
+.height-fr-1 {
+    height: 1fr;
+}
+
+.height-auto {
+    height: auto;
+}
+
+.width-fr-1 {
+    width: 1fr;
+}
+.width-fr-2 {
+    width: 2fr;
+}
+.width-100pct {
+    width: 100%;
+}
+
+.mb-1 {
+    margin-bottom: 1;
+}
+.mb-2 {
+    margin-bottom: 1;
+}
+
+.mt-1 {
+    margin-top: 1;
+}
+.mt-2 {
+    margin-top: 2;
+}
+
+.p-1 {
+    padding: 1;
+}
+
+.pt-1 {
+    padding-top: 1;
+}
+.pb-1 {
+    padding-bottom: 1;
+}
+.pl-1 {
+    padding-left: 1;
+}
+
+.pr-1 {
+    padding-right: 1;
+}
+
+.plr-1 {
+    padding-left: 1;
+    padding-right: 1;
+}
+
+.align-right-middle {
+    align: right middle;
+}
+
+TabPane {
+    padding: 0;
+}
+
+Rule {
+    background: $background;
+    padding: 0;
+    margin: 0;
+}
+
+.list {
+    margin: 0 1 0 0;
+    border: solid blue;
+    background: $panel;
+}
+.col {
+    width: 1fr;
+    min-width: 36;
+}
+
+.field-button {
+    width: 4;
+    min-width: 4;
+    margin-right: 1;
+    &:focus {
+        text-style: bold;
+    }
+}
+#StatusBar {
+    padding-left: 1;
+    background: $boost;
+    dock: bottom;
+    height: 1;
+    margin: 0 0 1 0;
+}
+
+
+LoadingIndicator.-textual-loading-indicator {
+    background: $panel;
+}
+
+MarkdownH1 {
+    color: $primary;
+}
+
+MarkdownH2 {
+    color: $primary-darken-2;
+}
+
+Widget {
+    scrollbar-color: $primary-darken-2;
+    scrollbar-color-active: $primary;
+    scrollbar-color-hover: $primary-darken-1;
+}

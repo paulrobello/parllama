@@ -1,4 +1,6 @@
 default_stages: [pre-commit, pre-push]
+default_language_version:
+    python: python3.11
 fail_fast: false
 repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks
@@ -16,12 +18,7 @@ repos:
     -   id: check-json
     -   id: pretty-format-json
         args: [--autofix, --no-sort-keys]
-        exclude: tests(/\w*)*/functional/|tests/input|tests(/.*)+/conftest.py|doc/data/messages|tests(/\w*)*data/
-
-#-   repo: https://github.com/asottile/pyupgrade
-#    rev: v3.16.0
-#    hooks:
-#    -   message_id: pyupgrade
+        exclude: tests(/\w*)*/functional/|tests/input|tests(/.*)+/conftest.py|doc/data/messages|tests(/\w*)*data/|Pipfile.lock
 
 #-   repo: https://github.com/asottile/reorder-python-imports
 #    rev: v3.13.0
@@ -31,23 +28,32 @@ repos:
 #        exclude: tests(/\w*)*/functional/|tests/input|tests(/.*)+/conftest.py|doc/data/messages|tests(/\w*)*data/
 
 -   repo: https://github.com/psf/black
-    rev: 24.4.2
+    rev: 24.8.0
     hooks:
     -   id: black
         args: [-t, py310, -t, py311, -t, py312]
         exclude: tests(/\w*)*/functional/|tests/input|tests(/.*)+/conftest.py|doc/data/messages|tests(/\w*)*data/
 
-#-   repo: https://github.com/pre-commit/mirrors-mypy
-#    rev: v1.10.1
-#    hooks:
-#    -   message_id: mypy
-#        additional_dependencies: [textual, rich, pydantic, ollama, docker, types-beautifulsoup4, types-requests, types-pytz, types-simplejson, typing-extensions, asyncio, humanize, argparse, python-dotenv]
-#        exclude: tests(/\w*)*/functional/|tests/input|tests(/.*)+/conftest.py|doc/data/messages|tests(/\w*)*data/
+#- repo: local
+#  hooks:
+#    - id: mypy
+#      name: mypy
+#      entry: make
+#      language: system
+#      pass_filenames: false
+#      args:
+#        [typecheck]
+#      exclude: tests(/\w*)*/functional/|tests/input|tests(/\w*)*data/|doc/
+
+#- repo: https://github.com/RobertCraigie/pyright-python
+#  rev: v1.1.376
+#  hooks:
+#  - id: pyright
 
 - repo: local
   hooks:
-    - id: mypy
-      name: mypy
+    - id: pyright
+      name: pyright
       entry: make
       language: system
       pass_filenames: false

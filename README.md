@@ -7,7 +7,7 @@
 * [Prerequisites for running](#prerequisites-for-running)
 * [Prerequisites for dev](#prerequisites-for-dev)
 * [Prerequisites for huggingface model quantization](#prerequisites-for-huggingface-model-quantization)
-* [Installing from mypi using pipx](#installing-from-mypi-using-pipx)
+* [Installing using pipx](#installing-from-mypi-using-pipx)
 * [Installing from mypi using pip](#installing-from-mypi-using-pip)
 * [Installing for dev mode](#installing-for-dev-mode)
 * [Command line arguments](#command-line-arguments)
@@ -20,6 +20,7 @@
     * [Dev mode](#dev-mode)
 * [Quick start chat workflow](#quick-start-chat-workflow)
 * [Custom Prompts](#Custom-Prompts)
+* [Secrets](#Secrets)
 * [Themes](#themes)
 * [Contributing](#contributing)
 * [FAQ](#faq)
@@ -27,7 +28,8 @@
     * [Where we are](#where-we-are)
     * [Where we're going](#where-were-going)
 * [What's new](#whats-new)
-    * [v0.3.7](#v036)
+    * [v0.3.8](#v038)
+    * [v0.3.7](#v037)
     * [v0.3.6](#v036)
     * [v0.3.5](#v035)
     * [v0.3.4](#v034)
@@ -38,12 +40,20 @@
     * [v0.2.51](#v0251)
     * [v0.2.5](#v025)
 
+[![PyPI](https://img.shields.io/pypi/v/parllama)](https://pypi.org/project/parllama/)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/parllama.svg)](https://pypi.org/project/parllama/)  
+![Runs on Linux | MacOS | Windows](https://img.shields.io/badge/runs%20on-Linux%20%7C%20MacOS%20%7C%20Windows-blue)
+![Arch x86-63 | ARM | AppleSilicon](https://img.shields.io/badge/arch-x86--64%20%7C%20ARM%20%7C%20AppleSilicon-blue)  
+![PyPI - License](https://img.shields.io/pypi/l/parllama)
+
 ## About
 PAR LLAMA is a TUI application designed for easy management and use of Ollama based LLMs.
 The application was built with [Textual](https://textual.textualize.io/) and [Rich](https://github.com/Textualize/rich?tab=readme-ov-file)
 and runs on all major OS's including but not limited to Windows, Windows WSL, Mac, and Linux.
 
-### Screenshots
+[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://buymeacoffee.com/probello3)
+
+## Screenshots
 Supports Dark and Light mode as well as custom themes.
 
 ![Local Models Dark](https://raw.githubusercontent.com/paulrobello/parllama/main/docs/local_models_dark_1.png)
@@ -60,6 +70,9 @@ Supports Dark and Light mode as well as custom themes.
 
 ![Local Models Light](https://raw.githubusercontent.com/paulrobello/parllama/main/docs/local_models_light_1.png)
 
+## Videos
+[V0.3.5 demo](https://www.youtube.com/watch?v=Genv46SKA5o)
+
 ## Prerequisites for running
 * Install and run [Ollama](https://ollama.com/download)
 * Install Python 3.11 or newer
@@ -68,8 +81,8 @@ Supports Dark and Light mode as well as custom themes.
     * Install Scoop then do `scoop install python`
 
 ## Prerequisites for dev
-* Install pipenv
-  * if you have pip you can install it globally using `pip install pipenv`
+* Install uv
+  * See the [Using uv](#Using-uv) section
 * Install GNU Compatible Make command
   * On windows if you have scoop installed you can install make with `scoop install make`
 
@@ -84,36 +97,73 @@ Pull the docker image ollama/quantize
 docker pull ollama/quantize
 ```
 
-## Installing from mypi using pipx
+## Using uv
+
+### Installing uv
+If you don't have uv installed you can run the following:  
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+### MyPi install
+```shell
+uv tool install parllama
+```
+
+To upgrade an existing uv installation use the -U --force flags:
+```bash
+uv tool install parllama -U --force
+```
+
+### Installing / running using uvx
+```shell
+uvx parllama
+```
+
+### Source install from GitHub
+```bash
+uv tool install git+https://github.com/paulrobello/parllama
+```
+To upgrade an existing installation use the --force flag:
+```bash
+uv tool install git+https://github.com/paulrobello/parllama -U --force
+```
+
+## pipx
+### Installing
 If you don't have pipx installed you can run the following:  
 ```bash
 pip install pipx
 pipx ensurepath
 ```
-Once pipx is installed, run the following:  
-```bash
+
+### MyPi install
+```shell
 pipx install parllama
 ```
-To upgrade an existing installation use the --force flag:
+
+To upgrade an existing pipx installation use the --force flag:
 ```bash
 pipx install parllama --force
 ```
 
-
-## Installing from mypi using pip
-Create a virtual environment and install using pip
+### Source install from GitHub
 ```bash
-mkdir parllama
-cd parllama
-python -m venv venv
-source venv/Scripts/activate
-pip install parllama
+pipx install git+https://github.com/paulrobello/parllama
 ```
 
-## Installing for dev mode
-Clone the repo and run the following from the root of the repo:
+To upgrade an existing installation use the --force flag:
 ```bash
-make first-setup
+pipx install git+https://github.com/paulrobello/parllama --force
+```
+
+
+## Installing for dev mode
+Clone the repo and run the setup make target. Note `uv` is required for this.
+```bash
+git clone https://github.com/paulrobello/parllama
+cd parllama
+make setup
 ```
 
 
@@ -155,6 +205,12 @@ options:
 Unless you specify "--no-save" most flags such as -u, -t, -m, -s are sticky and will be used next time you start PAR_LLAMA.
 
 ## Environment Variables
+### Variables are loaded in the following order, last one to set a var wins
+* PARLLAMA_DATA_DIR/.env
+* HOST Environment
+* ParLlama Options Screen
+
+### Environment Variables for PAR LLAMA configuration
 * PARLLAMA_DATA_DIR - Used to set --data-dir
 * PARLLAMA_THEME_NAME - Used to set --theme-name
 * PARLLAMA_THEME_MODE - Used to set --theme-mode
@@ -163,7 +219,7 @@ Unless you specify "--no-save" most flags such as -u, -t, -m, -s are sticky and 
 
 ## Running PAR_LLAMA
 
-### with pipx installation
+### with pipx or uv tool installation
 From anywhere:
 ```bash
 parllama
@@ -175,7 +231,7 @@ From parent folder of venv
 source venv/Scripts/activate
 parllama
 ```
-## Running against a remote instance
+## Running against a remote Ollama instance
 ```bash
 parllama -u "http://REMOTE_HOST:11434"
 ```
@@ -233,6 +289,7 @@ You can create a library of custom prompts for easy starting of new chats.
 You can set up system prompts and user messages to prime conversations with the option of sending immediately to the LLM upon loading of the prompt.  
 Currently, importing prompts from the popular Fabric project is supported with more on the way.  
 
+
 ## Themes
 Themes are json files stored in the themes folder in the data directory which defaults to **~/.parllama/themes**  
 
@@ -279,10 +336,9 @@ You can run the make target **pre-commit** to ensure the pipeline will pass with
 There is also a pre-commit config to that will assist with formatting and checks.  
 The easiest way to setup your environment to ensure smooth pull requests is:  
 
-If you don't have pipx installed you can run the following:  
+With uv installed:
 ```bash
-pip install pipx
-pipx ensurepath
+uv tool install pre-commit
 ```
 
 With pipx installed:
@@ -317,14 +373,24 @@ if anything remains to be fixed before the commit is allowed.
 * Chat tabs allow chat with multiple models at same time
 * Custom prompt library with import from Fabric
 * Auto complete of slash commands, input history, multi line edit
+* Ability to use cloud AI providers like OpenAI, Anthropic, Groq, and Google
 
 ### Where we're going
-* Chat using embeddings for local documents
+
+* RAG for local documents and web pages
+* Use images for vision based LLMs
 * Expand ability to import custom prompts of other tools
 * LLM tool use
-* Ability to use other AI providers like Open AI
+
 
 ## What's new
+
+
+### v0.3.8
+* Major rework of core to support providers other than Ollama
+* Added support for the following online providers: OpenAI, Anthropic, Groq, Google
+* New session config panel docked to right side of chat tab (more settings coming soon)
+* Better counting of tokens (still not always 100% accurate)
 
 ### v0.3.7
 * Fix for possible crash when there is more than one model loaded into ollama

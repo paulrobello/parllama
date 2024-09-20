@@ -1,0 +1,32 @@
+MainScreen {
+    #tabbed_content {
+        width: 1fr;
+        height: 1fr;
+    }
+
+    #PsStatusBar {
+        height: 1;
+        padding-left: 1;
+        background: $panel;
+    }
+}
+
+ListView > SiteModelListItem.--highlight {
+    background: $panel;
+    border: double $primary;
+    border-title-color: $primary-lighten-2;
+
+    & > Widget:hover {
+        background: $surface;
+    }
+}
+
+ListView:focus > SiteModelListItem.--highlight {
+    background: $panel;
+    border: double $primary;
+    border-title-color: $primary-lighten-2;
+
+    & > Widget:hover {
+        background: $surface;
+    }
+}
