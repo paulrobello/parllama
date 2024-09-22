@@ -747,13 +747,9 @@ def b64_encode_image(image_path: str | Path) -> str:
     return base64.b64encode(image_path.read_bytes()).decode("utf-8")
 
 
-def image_to_chat_message(image_path: str | Path) -> dict:
+def image_to_chat_message(image_path: str | Path) -> dict[str, Any]:
     """Convert an image to a chat message."""
     return {
         "type": "image_url",
-        "data": {
-            "image_url": {
-                "url": f"data:image/jpeg;base64,{b64_encode_image(image_path)}"
-            },
-        },
+        "image_url": {"url": f"data:image/jpeg;base64,{b64_encode_image(image_path)}"},
     }

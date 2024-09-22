@@ -220,10 +220,12 @@ class ChatSession(ChatMessageContainer):
             ttft: float = 0.0  # time to first token
 
             self.log_it(self._llm_config)
+            chat_history = [m.to_langchain_native() for m in self.messages]
+            self.log_it(chat_history)
             stream: Iterator[
                 BaseMessageChunk
             ] = self._llm_config.build_chat_model().stream(
-                [m.to_langchain_native() for m in self.messages]
+                chat_history  # type: ignore
             )
             # self.log_it("CM adding assistant message")
             msg = ParllamaChatMessage(role="assistant")

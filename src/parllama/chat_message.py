@@ -5,7 +5,6 @@ from __future__ import annotations
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
 from typing import Optional
 from typing import Tuple
@@ -82,12 +81,15 @@ class ParllamaChatMessage(ParEventSystemBase):
         """Convert a message to Ollama native format"""
         return OMessage(role=self.role, content=self.content)
 
-    def to_langchain_native(self) -> Tuple[str, str | dict]:
+    def to_langchain_native(self) -> Tuple[str, str | list[dict[str, Any]]]:
         """Convert a message to Langchain native format"""
         content = self.content
         if self.images:
             for image in self.images:
-                content = image_to_chat_message(image)
+                content = [
+                    {"type": "text", "text": self.content},
+                    image_to_chat_message(image),
+                ]
         return (
             self.role,
             content,

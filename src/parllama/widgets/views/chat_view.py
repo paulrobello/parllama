@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from typing import cast
+from pathlib import Path
 
 from textual import on
 from textual.app import ComposeResult
@@ -68,6 +69,7 @@ valid_commands: list[str] = [
     "/session.clear_system_prompt",
     "/session.to_prompt",
     "/history.clear",
+    "/add.image",
     "/prompt.load ",
 ]
 
@@ -345,6 +347,7 @@ Chat Commands:
 /session.clear_system_prompt - Remove system prompt in current tab
 /session.to_prompt submit_on_load [prompt_name] - Copy current session to new custom prompt. submit_on_load = {0|1}
 /prompt.load prompt_name - Load a custom prompt using current tabs model and temperature
+/add.image [image_path] - Add an image to the active chat session
 /history.clear - Clear chat input history
                         """,
                 )
@@ -476,6 +479,20 @@ Chat Commands:
                     temperature=None,
                 )
             )
+        elif cmd.startswith("add.image "):
+            (_, v) = cmd.split(" ", 1)
+            v = v.strip()
+            path = Path(v)
+            if not path.exists():
+                self.notify(f"Image {v} not found", severity="error")
+                return
+            self.notify(f"Image {v} found")
+            self.session.add_message(
+                ParllamaChatMessage(
+                    role="user", content="describe this image", images=[path]
+                )
+            )
+            self.active_tab.do_send_message("")
         elif cmd == "history.clear":
             self.app.post_message(ClearChatInputHistory())
         else:

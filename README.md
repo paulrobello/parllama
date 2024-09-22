@@ -28,6 +28,7 @@
     * [Where we are](#where-we-are)
     * [Where we're going](#where-were-going)
 * [What's new](#whats-new)
+    * [v0.3.9](#v039)
     * [v0.3.8](#v038)
     * [v0.3.7](#v037)
     * [v0.3.6](#v036)
@@ -385,6 +386,8 @@ if anything remains to be fixed before the commit is allowed.
 
 ## What's new
 
+### v0.3.9
+* Fixed crash on models that dont have a license
 
 ### v0.3.8
 * Major rework of core to support providers other than Ollama
