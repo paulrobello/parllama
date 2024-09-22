@@ -710,7 +710,7 @@ If you would like to auto check for updates, you can enable it in the Startup se
         self.main_screen.chat_view.active_tab.session_config.provider_model_select.provider_select.value = (
             LlmProvider.OLLAMA
         )
-        self.main_screen.chat_view.active_tab.session_config.provider_model_select.model_select.value = (
+        self.main_screen.chat_view.active_tab.session_config.provider_model_select.model_select.deferred_value = (
             event.model_name
         )
         self.main_screen.change_tab("Chat")
