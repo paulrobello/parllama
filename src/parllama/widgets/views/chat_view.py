@@ -480,18 +480,18 @@ Chat Commands:
                 )
             )
         elif cmd.startswith("add.image "):
-            (_, v) = cmd.split(" ", 1)
-            v = v.strip()
+            parts = cmd.split(" ")
+            if len(parts) < 3:
+                self.notify("Usage add.image FILE_NAME PROMPT", severity="error")
+            v = parts[1].strip()
             path = Path(v)
             if not path.exists():
                 self.notify(f"Image {v} not found", severity="error")
                 return
-            self.notify(f"Image {v} found")
-            self.session.add_message(
-                ParllamaChatMessage(
-                    role="user", content="describe this image", images=[path]
-                )
-            )
+            v = " ".join(parts[2:])
+            msg = ParllamaChatMessage(role="user", content=v, images=[path])
+            self.session.add_message(msg)
+            self.post_message(ChatMessage(parent_id=self.session.id, message_id=msg.id))
             self.active_tab.do_send_message("")
         elif cmd == "history.clear":
             self.app.post_message(ClearChatInputHistory())
