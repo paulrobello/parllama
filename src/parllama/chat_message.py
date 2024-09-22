@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 from typing import Optional
 from typing import Tuple
@@ -15,6 +16,7 @@ from parllama.messages.par_chat_messages import ParChatUpdated
 from parllama.models.ollama_data import MessageRoles
 from parllama.models.ollama_data import ToolCall
 from parllama.par_event_system import ParEventSystemBase
+from parllama.utils import image_to_chat_message
 
 
 @dataclass
@@ -72,17 +74,23 @@ class ParllamaChatMessage(ParEventSystemBase):
             "id": self.id,
             "role": self.role,
             "content": self.content,
+            "images": self.images,
+            "tool_calls": self.tool_calls,
         }
 
     def to_ollama_native(self) -> OMessage:
         """Convert a message to Ollama native format"""
         return OMessage(role=self.role, content=self.content)
 
-    def to_langchain_native(self) -> Tuple[str, str]:
+    def to_langchain_native(self) -> Tuple[str, str | dict]:
         """Convert a message to Langchain native format"""
+        content = self.content
+        if self.images:
+            for image in self.images:
+                content = image_to_chat_message(image)
         return (
             self.role,
-            self.content,
+            content,
         )
 
     def notify_changes(self) -> None:
@@ -98,6 +106,6 @@ class ParllamaChatMessage(ParEventSystemBase):
             id=uuid.uuid4().hex if new_id else self.id,
             role=self.role,
             content=self.content,
-            images=self.images,
+            images=[*self.images] if self.images else None,
             tool_calls=self.tool_calls,
         )
