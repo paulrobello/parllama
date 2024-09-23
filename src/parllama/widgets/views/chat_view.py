@@ -12,7 +12,6 @@ from textual.binding import Binding
 from textual.containers import Horizontal
 from textual.containers import Vertical
 from textual.events import Show
-from textual.message import Message
 from textual.suggester import SuggestFromList
 from textual.widgets import Button
 from textual.widgets import ContentSwitcher
@@ -249,9 +248,15 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         )
 
     @on(ProviderModelsChanged)
-    def model_list_changed(self, evt: Message) -> None:
+    def model_list_changed(self, evt: ProviderModelsChanged) -> None:
         """Model list changed"""
         evt.stop()
+        if (
+            not evt.provider
+            or self.session_config.provider_model_select.provider_select.value
+            != evt.provider
+        ):
+            return
         self.post_message(LogIt("Provider models changed"))
         self.model_list_auto_complete_list = [
             f"/session.model {m}"
@@ -489,7 +494,9 @@ Chat Commands:
                 self.notify(f"Image {v} not found", severity="error")
                 return
             v = " ".join(parts[2:])
-            msg = ParllamaChatMessage(role="user", content=v, images=[path])
+            msg = ParllamaChatMessage(
+                role="user", content=v, images=[str(path.absolute())]
+            )
             self.session.add_message(msg)
             self.post_message(ChatMessage(parent_id=self.session.id, message_id=msg.id))
             self.active_tab.do_send_message("")

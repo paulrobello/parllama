@@ -394,6 +394,8 @@ class RefreshProviderModelsRequested(AppRequest):
 class ProviderModelsChanged(Message):
     """Provider models refreshed."""
 
+    provider: Optional[LlmProvider] = None
+
 
 @dataclass
 class ProviderModelSelected(Message):

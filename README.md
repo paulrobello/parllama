@@ -387,6 +387,7 @@ if anything remains to be fixed before the commit is allowed.
 ## What's new
 
 ### v0.3.9
+* Image support for models that support them 
 * Fixed crash on models that dont have a license
 
 ### v0.3.8

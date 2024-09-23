@@ -13,8 +13,6 @@ from textual.widgets._select import (
     BLANK,
 )  # pylint: disable=unused-import
 
-from parllama.messages.messages import LogIt
-
 
 class DeferredSelect(Generic[SelectType], Select[SelectType]):
     """Deferred select widget."""
@@ -61,8 +59,8 @@ class DeferredSelect(Generic[SelectType], Select[SelectType]):
 
     def _on_mount(self, _: events.Mount) -> None:
         """Handle mount event."""
-        if self._deferred_value and self._deferred_value != BLANK:
-            self.post_message(LogIt(f"Deferred value {self._deferred_value}."))
+        # if self._deferred_value and self._deferred_value != BLANK:
+        #     self.post_message(LogIt(f"Deferred value {self._deferred_value}."))
 
     @property
     def deferred_value(self) -> SelectType | NoSelection:
@@ -73,7 +71,7 @@ class DeferredSelect(Generic[SelectType], Select[SelectType]):
     def deferred_value(self, value: SelectType | NoSelection) -> None:
         """Set the deferred value."""
         self._deferred_value = value
-        if self._deferred_value == BLANK:
+        if not self._deferred_value or self._deferred_value == BLANK:
             self.value = BLANK
             return
         for opts in self._options:
@@ -93,14 +91,20 @@ class DeferredSelect(Generic[SelectType], Select[SelectType]):
             super().set_options(options)
 
         opts = [o[1] for o in self._options]
+        if len(opts) == 0:
+            return
+
         if old_value != BLANK and old_value in opts:
             with self.prevent(Select.Changed):
                 self.value = old_value
-        if self._deferred_value is BLANK:
-            return
-        if len(opts) == 0:
+                self._deferred_value = BLANK
+                return
+
+        if self._deferred_value is BLANK or not self._deferred_value:
             return
         if self._deferred_value in opts:
             with self.prevent(Select.Changed):
                 self.value = self._deferred_value
-        self._deferred_value = BLANK
+            self._deferred_value = BLANK
+            return
+        self.set_timer(0.1, self.set_options)

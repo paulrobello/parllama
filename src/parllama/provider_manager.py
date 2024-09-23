@@ -97,6 +97,9 @@ class ProviderManager(ParEventSystemBase):
                     raise ValueError(f"Unknown provider: {p}")
                 # print(new_list)
                 self.provider_models[p] = new_list
+                if self.app:
+                    self.app.post_message(ProviderModelsChanged(provider=p))
+
             except Exception as e:  # pylint: disable=broad-exception-caught
                 print(f"Error: {e}")
                 continue
@@ -125,8 +128,6 @@ class ProviderManager(ParEventSystemBase):
         """Save the models."""
         with open(self.cache_file, "w", encoding="utf-8") as f:
             json.dump(self.provider_models, f, indent=4)
-        if self.app:
-            self.app.post_message(ProviderModelsChanged())
 
     def load_models(self, refresh: bool = False) -> None:
         """Load the models."""

@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 from typing import Optional
 from typing import Tuple
@@ -19,6 +20,13 @@ from parllama.utils import image_to_chat_message
 
 
 @dataclass
+class ChatImage:
+    """Chat image."""
+
+    file_path: Path
+
+
+@dataclass
 class ParllamaChatMessage(ParEventSystemBase):
     """Chat message."""
 
@@ -28,7 +36,7 @@ class ParllamaChatMessage(ParEventSystemBase):
     content: str = ""
     "Content of the message. Response messages contains message fragments when streaming."
 
-    images: Optional[Sequence[Any]] = None
+    images: Optional[Sequence[str]] = None
     """
       Optional list of image data for multimodal models.
 
@@ -51,7 +59,7 @@ class ParllamaChatMessage(ParEventSystemBase):
         id: str | None = None,  # pylint: disable=redefined-builtin
         role: MessageRoles,
         content: str = "",
-        images: Optional[Sequence[Any]] = None,
+        images: Optional[Sequence[str]] = None,
         tool_calls: Optional[Sequence[ToolCall]] = None,
     ) -> None:
         """Initialize the chat message"""
@@ -85,11 +93,14 @@ class ParllamaChatMessage(ParEventSystemBase):
         """Convert a message to Langchain native format"""
         content = self.content
         if self.images:
-            for image in self.images:
+            image = self.images[0]
+            if Path(image).is_file():
                 content = [
                     {"type": "text", "text": self.content},
                     image_to_chat_message(image),
                 ]
+            else:
+                content = "Image is missing, ignore this message."
         return (
             self.role,
             content,

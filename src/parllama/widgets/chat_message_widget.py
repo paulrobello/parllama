@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Optional
+
+from rich_pixels import Pixels
 
 from textual import on
 from textual.app import ComposeResult
@@ -59,6 +62,13 @@ class ChatMessageWidget(Vertical, can_focus=True):
                 max-height: initial;
             }
         }
+        #image{
+            width: 19;
+            height: 10;
+            margin: 0;
+            padding: 0;
+            border: solid $accent;
+        }
     }
     ChatMessageWidget:focus {
         border: double $primary;
@@ -90,15 +100,33 @@ class ChatMessageWidget(Vertical, can_focus=True):
         self.placeholder.display = not is_final
         self.is_final = is_final
         self.border_title = self.msg.role
+        if self.msg.images:
+            self.border_subtitle = f"Image: {str(self.msg.images[0])}"
 
     async def on_mount(self):
         """Set up the widget once the DOM is ready."""
         # await self.update()
+        if self.msg.images:
+            if not Path(self.msg.images[0]).is_file():
+                self.query_one("#image", Static).update("Image not found")
+                return
+            height = 10
+            self.query_one("#image", Static).update(
+                Pixels.from_image_path(
+                    self.msg.images[0],
+                    resize=(
+                        int(height * 1.75),
+                        int(height * 1.75),
+                    ),
+                )
+            )
 
     def compose(self) -> ComposeResult:
         """Compose the content of the widget."""
         yield self.markdown
         yield self.placeholder
+        if self.msg.images:
+            yield Static(id="image", expand=True)
 
     @property
     def raw_text(self) -> str:

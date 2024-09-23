@@ -313,7 +313,7 @@ If you would like to auto check for updates, you can enable it in the Startup se
     @on(LocalModelDeleted)
     def on_model_deleted(self, event: LocalModelDeleted) -> None:
         """Local model has been deleted event"""
-        self.post_message_all(ProviderModelsChanged())
+        self.post_message_all(ProviderModelsChanged(provider=LlmProvider.OLLAMA))
         self.status_notify(f"Model {event.model_name} deleted.")
 
     @on(LocalModelPullRequested)
@@ -573,7 +573,7 @@ If you would like to auto check for updates, you can enable it in the Startup se
             ollama_dm.refresh_models()
             self.post_message_all(StatusMessage("Local model list refreshed"))
             self.post_message_all(LocalModelListLoaded())
-            self.post_message_all(ProviderModelsChanged())
+            self.post_message_all(ProviderModelsChanged(provider=LlmProvider.OLLAMA))
         except ConnectError as e:
             self.post_message(
                 LogIt(
