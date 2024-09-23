@@ -20,6 +20,8 @@ from parllama.chat_manager import ChatSession
 from parllama.chat_message import ParllamaChatMessage
 from parllama.messages.messages import SendToClipboard
 from parllama.models.ollama_data import MessageRoles
+from parllama.settings_manager import settings
+from parllama.utils import md5_hash
 
 
 class ChatMessageWidget(Vertical, can_focus=True):
@@ -107,7 +109,15 @@ class ChatMessageWidget(Vertical, can_focus=True):
         """Set up the widget once the DOM is ready."""
         # await self.update()
         if self.msg.images:
-            if not Path(self.msg.images[0]).is_file():
+            image_path = self.msg.images[0]
+            if image_path.startswith("http://") or image_path.startswith("https://"):
+                ext = image_path.split(".")[-1]
+                cache_file = (
+                    Path(settings.image_cache_dir) / f"{md5_hash(image_path)}.{ext}"
+                )
+                if cache_file.exists():
+                    image_path = cache_file
+            if not Path(image_path).is_file():
                 self.query_one("#image", Static).update("Image not found")
                 return
             height = 10

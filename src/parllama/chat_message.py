@@ -5,7 +5,6 @@ from __future__ import annotations
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
 from typing import Optional
 from typing import Tuple
@@ -16,14 +15,16 @@ from parllama.messages.par_chat_messages import ParChatUpdated
 from parllama.models.ollama_data import MessageRoles
 from parllama.models.ollama_data import ToolCall
 from parllama.par_event_system import ParEventSystemBase
-from parllama.utils import image_to_chat_message
+from parllama.settings_manager import fetch_and_cache_image
+from parllama.utils import b64_encode_image
 
 
-@dataclass
-class ChatImage:
-    """Chat image."""
-
-    file_path: Path
+def image_to_chat_message(image_bytes: bytes) -> dict[str, Any]:
+    """Convert an image to a chat message."""
+    return {
+        "type": "image_url",
+        "image_url": {"url": f"data:image/jpeg;base64,{b64_encode_image(image_bytes)}"},
+    }
 
 
 @dataclass
@@ -94,13 +95,14 @@ class ParllamaChatMessage(ParEventSystemBase):
         content = self.content
         if self.images:
             image = self.images[0]
-            if Path(image).is_file():
+            try:
                 content = [
                     {"type": "text", "text": self.content},
-                    image_to_chat_message(image),
+                    image_to_chat_message(fetch_and_cache_image(image)),
                 ]
-            else:
-                content = "Image is missing, ignore this message."
+            except Exception as e:  # pylint: disable=broad-except
+                content = str(e)
+                # content = "Image is missing, ignore this message."
         return (
             self.role,
             content,

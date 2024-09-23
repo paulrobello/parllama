@@ -26,7 +26,6 @@ from io import StringIO
 from os import listdir
 from os.path import isfile
 from os.path import join
-from pathlib import Path
 from re import Match
 from re import Pattern
 from typing import Any
@@ -740,16 +739,6 @@ def all_subclasses(cls) -> set[type]:
     )
 
 
-def b64_encode_image(image_path: str | Path) -> str:
+def b64_encode_image(image_path: bytes) -> str:
     """Encode an image as base64."""
-    if isinstance(image_path, str):
-        image_path = Path(image_path)
-    return base64.b64encode(image_path.read_bytes()).decode("utf-8")
-
-
-def image_to_chat_message(image_path: str | Path) -> dict[str, Any]:
-    """Convert an image to a chat message."""
-    return {
-        "type": "image_url",
-        "image_url": {"url": f"data:image/jpeg;base64,{b64_encode_image(image_path)}"},
-    }
+    return base64.b64encode(image_path).decode("utf-8")

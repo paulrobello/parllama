@@ -489,14 +489,18 @@ Chat Commands:
             if len(parts) < 3:
                 self.notify("Usage add.image FILE_NAME PROMPT", severity="error")
             v = parts[1].strip()
-            path = Path(v)
-            if not path.exists():
-                self.notify(f"Image {v} not found", severity="error")
-                return
+            if v.startswith("http://") or v.startswith("https://"):
+                msg = ParllamaChatMessage(role="user", content=v, images=[v])
+            else:
+                path = Path(v)
+                if not path.exists():
+                    self.notify(f"Image {v} not found", severity="error")
+                    return
+                msg = ParllamaChatMessage(
+                    role="user", content=v, images=[str(path.absolute())]
+                )
             v = " ".join(parts[2:])
-            msg = ParllamaChatMessage(
-                role="user", content=v, images=[str(path.absolute())]
-            )
+
             self.session.add_message(msg)
             self.post_message(ChatMessage(parent_id=self.session.id, message_id=msg.id))
             self.active_tab.do_send_message("")

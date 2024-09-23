@@ -5,11 +5,13 @@ from __future__ import annotations
 import os
 import shutil
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional
 
 from argparse import Namespace
 from datetime import datetime
 
+import requests
 import simplejson as json
 from pydantic import BaseModel
 
@@ -20,7 +22,7 @@ from parllama.llm_providers import (
     provider_config,
     LangChainConfig,
 )
-from parllama.utils import get_args
+from parllama.utils import get_args, md5_hash
 from parllama.utils import TabType
 from parllama.utils import valid_tabs
 
@@ -49,6 +51,7 @@ class Settings(BaseModel):
     settings_file: str = "settings.json"
     cache_dir: str = ""
     ollama_cache_dir: str = ""
+    image_cache_dir: str = ""
     chat_dir: str = ""
     prompt_dir: str = ""
     export_md_dir: str = ""
@@ -117,6 +120,7 @@ class Settings(BaseModel):
             or os.path.expanduser("~/.parllama")
         )
         self.cache_dir = os.path.join(self.data_dir, "cache")
+        self.image_cache_dir = os.path.join(self.cache_dir, "image")
         self.ollama_cache_dir = os.path.join(self.cache_dir, "ollama")
         self.chat_dir = os.path.join(self.data_dir, "chats")
         self.prompt_dir = os.path.join(self.data_dir, "prompts")
@@ -126,6 +130,7 @@ class Settings(BaseModel):
         self.provider_models_file = os.path.join(self.cache_dir, "provider_models.json")
 
         os.makedirs(self.cache_dir, exist_ok=True)
+        os.makedirs(self.image_cache_dir, exist_ok=True)
         os.makedirs(self.ollama_cache_dir, exist_ok=True)
         os.makedirs(self.chat_dir, exist_ok=True)
         os.makedirs(self.prompt_dir, exist_ok=True)
@@ -417,6 +422,32 @@ class Settings(BaseModel):
             os.remove(self.chat_history_file)
         except FileNotFoundError:
             pass
+
+
+def fetch_and_cache_image(image_path: str | Path) -> bytes:
+    """Fetch and cache an image."""
+    if isinstance(image_path, str):
+        image_path = image_path.strip()
+        if image_path.startswith("http://") or image_path.startswith("https://"):
+            ext = image_path.split(".")[-1]
+            cache_file = (
+                Path(settings.image_cache_dir) / f"{md5_hash(image_path)}.{ext}"
+            )
+            if not cache_file.exists():
+                headers = {
+                    "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"  # pylint: disable=line-too-long
+                }
+                data = requests.get(image_path, headers=headers, timeout=10).content
+                if not isinstance(data, bytes):
+                    raise FileNotFoundError("Failed to download image from URL")
+                cache_file.write_bytes(data)
+            else:
+                data = cache_file.read_bytes()
+            return data
+        image_path = Path(image_path)
+    if not image_path.exists():
+        raise FileNotFoundError(f"Image file not found: {image_path}")
+    return image_path.read_bytes()
 
 
 settings = Settings()
