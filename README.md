@@ -57,13 +57,15 @@ and runs on all major OS's including but not limited to Windows, Windows WSL, Ma
 ## Screenshots
 Supports Dark and Light mode as well as custom themes.
 
+![Chat Dark](https://raw.githubusercontent.com/paulrobello/parllama/main/docs/chat_dark_1.png)
+
+![Chat Image Dark](https://raw.githubusercontent.com/paulrobello/parllama/main/docs/chat_image_dark_1.png)
+
 ![Local Models Dark](https://raw.githubusercontent.com/paulrobello/parllama/main/docs/local_models_dark_1.png)
 
 ![Model View Dark](https://raw.githubusercontent.com/paulrobello/parllama/main/docs/models_view_dark_1.png)
 
 ![Site Models Dark](https://raw.githubusercontent.com/paulrobello/parllama/main/docs/site_models_dark_1.png)
-
-![Chat Dark](https://raw.githubusercontent.com/paulrobello/parllama/main/docs/chat_dark_1.png)
 
 ![Custom Prompt Dark](https://raw.githubusercontent.com/paulrobello/parllama/main/docs/custom_prompt_dark_1.png)
 

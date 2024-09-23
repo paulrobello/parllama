@@ -8,7 +8,7 @@ import warnings
 from typing import Any
 from typing import Optional
 
-import simplejson as json
+import orjson as json
 from dotenv import load_dotenv
 from langchain.chains.retrieval_qa.base import RetrievalQA
 from textual.app import App
@@ -65,7 +65,7 @@ class RagManager(ParEventSystemBase):
         if not os.path.exists(self._config_file):
             return
         with open(self._config_file, "rt", encoding="utf-8") as fh:
-            config = json.load(fh)
+            config = json.loads(fh.read())
 
         for store_config in config["stores"]:
             store_cls = StoreBase.get_class(store_config["class_name"])
@@ -74,8 +74,8 @@ class RagManager(ParEventSystemBase):
 
     def save(self) -> None:
         """Save the RAG configuration."""
-        with open(self._config_file, "wt", encoding="utf-8") as fh:
-            json.dump(self.to_json(), fh, indent=2, default=str)
+        with open(self._config_file, "wb") as fh:
+            fh.write(json.dumps(self.to_json(), str, json.OPT_INDENT_2))
 
     def add_store(self, store: StoreBase, save: bool = True) -> None:
         """Add store"""

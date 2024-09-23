@@ -12,7 +12,7 @@ from io import StringIO
 from typing import Optional
 
 import rich.repr
-import simplejson as json
+import orjson as json
 
 from parllama.chat_message import ParllamaChatMessage
 from parllama.messages.par_chat_messages import ParChatMessageDeleted
@@ -226,7 +226,7 @@ class ChatMessageContainer(ParEventSystemBase):
             ret.write(str(msg))
         return ret.getvalue()
 
-    def to_json(self, indent: int = 4) -> str:
+    def to_json(self) -> str:
         """Convert the chat session to JSON"""
         return json.dumps(
             {
@@ -235,9 +235,7 @@ class ChatMessageContainer(ParEventSystemBase):
                 "last_updated": self.last_updated.isoformat(),
                 "messages": [m.to_dict() for m in self.messages],
             },
-            default=str,
-            indent=indent,
-        )
+        ).decode("utf-8")
 
     def export_as_markdown(self, filename: str) -> bool:
         """Save the chat session to markdown file"""

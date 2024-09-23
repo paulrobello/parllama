@@ -168,6 +168,7 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
                 valid_commands,
                 case_sensitive=False,
             ),
+            history_file=Path(settings.chat_history_file),
         )
 
         self.send_button: Button = Button(
@@ -352,7 +353,7 @@ Chat Commands:
 /session.clear_system_prompt - Remove system prompt in current tab
 /session.to_prompt submit_on_load [prompt_name] - Copy current session to new custom prompt. submit_on_load = {0|1}
 /prompt.load prompt_name - Load a custom prompt using current tabs model and temperature
-/add.image [image_path] - Add an image to the active chat session
+/add.image image_path_or_url prompt - Add an image via path or url to the active chat session
 /history.clear - Clear chat input history
                         """,
                 )
@@ -489,17 +490,17 @@ Chat Commands:
             if len(parts) < 3:
                 self.notify("Usage add.image FILE_NAME PROMPT", severity="error")
             v = parts[1].strip()
+            p = " ".join(parts[2:])
             if v.startswith("http://") or v.startswith("https://"):
-                msg = ParllamaChatMessage(role="user", content=v, images=[v])
+                msg = ParllamaChatMessage(role="user", content=p, images=[v])
             else:
                 path = Path(v)
                 if not path.exists():
                     self.notify(f"Image {v} not found", severity="error")
                     return
                 msg = ParllamaChatMessage(
-                    role="user", content=v, images=[str(path.absolute())]
+                    role="user", content=p, images=[str(path.absolute())]
                 )
-            v = " ".join(parts[2:])
 
             self.session.add_message(msg)
             self.post_message(ChatMessage(parent_id=self.session.id, message_id=msg.id))

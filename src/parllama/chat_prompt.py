@@ -7,10 +7,11 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime
 from datetime import timezone
+from pathlib import Path
 
 import pytz
 import rich.repr
-import simplejson as json
+import orjson as json
 
 from parllama.chat_message import ParllamaChatMessage
 from parllama.chat_message_container import ChatMessageContainer
@@ -58,13 +59,12 @@ class ChatPrompt(ChatMessageContainer):
             return
         self._batching = True
 
-        file_path = os.path.join(settings.prompt_dir, self.id + ".json")
-        if not os.path.exists(file_path):
+        file_path = Path(settings.prompt_dir) / f"{self.id}.json"
+        if not file_path.exists():
             return
 
         try:
-            with open(file_path, mode="rt", encoding="utf-8") as fh:
-                data: dict = json.load(fh)
+            data: dict = json.loads(file_path.read_bytes())
             self.clear_messages()
             msgs = data["messages"] or []
             for m in msgs:
@@ -136,7 +136,7 @@ class ChatPrompt(ChatMessageContainer):
             return NotImplemented
         return self.id != other.id
 
-    def to_json(self, indent: int = 4) -> str:
+    def to_json(self) -> str:
         """Convert the chat session to JSON"""
         return json.dumps(
             {
@@ -148,9 +148,7 @@ class ChatPrompt(ChatMessageContainer):
                 "messages": [m.to_dict() for m in self.messages],
                 "source": self.source,
             },
-            default=str,
-            indent=indent,
-        )
+        ).decode("utf-8")
 
     @staticmethod
     def from_json(json_data: str, load_messages: bool = False) -> ChatPrompt:

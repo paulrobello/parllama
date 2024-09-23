@@ -98,7 +98,7 @@ class ParllamaChatMessage(ParEventSystemBase):
             try:
                 content = [
                     {"type": "text", "text": self.content},
-                    image_to_chat_message(fetch_and_cache_image(image)),
+                    image_to_chat_message(fetch_and_cache_image(image)[1]),
                 ]
             except Exception as e:  # pylint: disable=broad-except
                 content = str(e)

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Optional
 
 from rich_pixels import Pixels
@@ -20,8 +19,7 @@ from parllama.chat_manager import ChatSession
 from parllama.chat_message import ParllamaChatMessage
 from parllama.messages.messages import SendToClipboard
 from parllama.models.ollama_data import MessageRoles
-from parllama.settings_manager import settings
-from parllama.utils import md5_hash
+from parllama.settings_manager import fetch_and_cache_image
 
 
 class ChatMessageWidget(Vertical, can_focus=True):
@@ -109,21 +107,15 @@ class ChatMessageWidget(Vertical, can_focus=True):
         """Set up the widget once the DOM is ready."""
         # await self.update()
         if self.msg.images:
-            image_path = self.msg.images[0]
-            if image_path.startswith("http://") or image_path.startswith("https://"):
-                ext = image_path.split(".")[-1]
-                cache_file = (
-                    Path(settings.image_cache_dir) / f"{md5_hash(image_path)}.{ext}"
-                )
-                if cache_file.exists():
-                    image_path = cache_file
-            if not Path(image_path).is_file():
+            try:
+                image_path = fetch_and_cache_image(self.msg.images[0])[0]
+            except Exception:  # pylint: disable=broad-exception-caught
                 self.query_one("#image", Static).update("Image not found")
                 return
             height = 10
             self.query_one("#image", Static).update(
                 Pixels.from_image_path(
-                    self.msg.images[0],
+                    image_path,
                     resize=(
                         int(height * 1.75),
                         int(height * 1.75),

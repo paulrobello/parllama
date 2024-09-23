@@ -9,7 +9,7 @@ from textual.binding import Binding
 from textual.message import Message
 from textual.widgets import TextArea
 
-from parllama.messages.messages import ToggleInputMode
+from parllama.messages.messages import ToggleInputMode, HistoryPrev, HistoryNext
 
 
 class UserTextArea(TextArea):
@@ -40,25 +40,39 @@ class UserTextArea(TextArea):
         ),
     ]
 
-    last_input: str = ""
-
     def __init__(
         self,
         **kwargs,
     ) -> None:
         """Initialize the Input."""
         super().__init__(tab_behavior="indent", **kwargs)
-        self.last_input = ""
+        self._hit_boundary = False
 
     async def _on_key(self, event: events.Key) -> None:
         """Override tab, up and down key behavior."""
         self._restart_blink()
+        if event.key in ("up", "down"):
+            if event.key == "up" and self.cursor_at_first_line:
+                if self._hit_boundary:
+                    event.stop()
+                    event.prevent_default()
+
+                    self.post_message(HistoryPrev(input=self))
+                    return
+                self._hit_boundary = True
+            if event.key == "down" and self.cursor_at_last_line:
+                if self._hit_boundary:
+                    event.stop()
+                    event.prevent_default()
+
+                    self.post_message(HistoryNext(input=self))
+                    return
+                self._hit_boundary = True
+            return await super()._on_key(event)
+
+        self._hit_boundary = False
         if self.read_only:
             return
-
-        # key = event.key
-
-        # if key == "tab":
         return await super()._on_key(event)
 
     def action_submit(self) -> None:

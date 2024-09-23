@@ -10,11 +10,12 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import datetime
 from datetime import timezone
+from pathlib import Path
 from typing import Optional
 
 import pytz
 import rich.repr
-import simplejson as json
+import orjson as json
 from langchain_core.messages import BaseMessageChunk
 from textual.message_pump import MessagePump
 
@@ -99,12 +100,11 @@ class ChatSession(ChatMessageContainer):
         self._batching = True
         try:
             self._stream_stats = None
-            file_path = os.path.join(settings.chat_dir, self.id + ".json")
-            if not os.path.exists(file_path):
+            file_path = Path(settings.chat_dir) / f"{self.id}.json"
+            if not file_path.exists():
                 return
 
-            with open(file_path, mode="rt", encoding="utf-8") as fh:
-                data: dict = json.load(fh)
+            data: dict = json.loads(file_path.read_bytes())
 
             msgs = data["messages"] or []
             for m in msgs:
@@ -385,7 +385,7 @@ class ChatSession(ChatMessageContainer):
             return NotImplemented
         return self.id != other.id
 
-    def to_json(self, indent: int = 4) -> str:
+    def to_json(self) -> str:
         """Convert the chat session to JSON"""
         return json.dumps(
             {
@@ -400,9 +400,7 @@ class ChatSession(ChatMessageContainer):
                 "llm_config": self._llm_config.to_json(),
                 "messages": [m.to_dict() for m in self.messages],
             },
-            default=str,
-            indent=indent,
-        )
+        ).decode("utf-8")
 
     @staticmethod
     def from_json(json_data: str, load_messages: bool = False) -> ChatSession:

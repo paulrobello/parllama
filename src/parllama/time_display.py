@@ -6,8 +6,6 @@ from datetime import datetime
 from datetime import timezone
 from datetime import tzinfo
 
-import simplejson as json
-
 
 def format_datetime(dt: datetime | None, fmt: str = "%Y-%m-%d %H:%M:%S") -> str:
     """Convert a datetime object into a string in human-readable format.
@@ -57,12 +55,3 @@ def convert_to_local(utc_dt: datetime | str | None) -> datetime | None:
 def get_local_timezone() -> tzinfo | None:
     """Return the local timezone."""
     return datetime.now(timezone.utc).astimezone().tzinfo
-
-
-class DateTimeEncoder(json.JSONEncoder):
-    """JSONEncoder subclass that knows how to encode datetime objects."""
-
-    def default(self, o):  # type: ignore
-        if isinstance(o, datetime):
-            return o.isoformat()
-        return super().default(o)

@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import base64
 import os
+from pathlib import Path
 from typing import Any
 from typing import Optional
 
-import simplejson as json
+import orjson as json
 from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
@@ -15,7 +16,7 @@ from cryptography.hazmat.primitives.ciphers import algorithms
 from cryptography.hazmat.primitives.ciphers import Cipher
 from cryptography.hazmat.primitives.ciphers import modes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from simplejson import JSONDecodeError
+from orjson import JSONDecodeError
 from textual.app import App
 
 from parllama.par_event_system import ParEventSystemBase
@@ -38,7 +39,7 @@ class SecretsManager(ParEventSystemBase):
     """Used with password to derive the en/decryption key."""
     _secrets: dict[str, str]
     """Dict containing encrypted secrets."""
-    _secrets_file: str
+    _secrets_file: Path
     """JSON file containing encrypted secrets."""
 
     def __init__(self, secrets_file: str, **kwargs) -> None:
@@ -48,7 +49,7 @@ class SecretsManager(ParEventSystemBase):
         self._salt = gen_salt()
         self._key_secure = None
         self._key = None
-        self._secrets_file = secrets_file
+        self._secrets_file = Path(secrets_file)
 
     def set_app(self, app: Optional[App[Any]]) -> None:
         """Set the app and load existing sessions and prompts from storage"""
@@ -61,11 +62,10 @@ class SecretsManager(ParEventSystemBase):
     def _load_secrets(self) -> None:
         """Load secrets from the secrets file."""
         try:
-            with open(self._secrets_file, "r", encoding="utf-8") as file:
-                data = json.load(file)
-                self._salt = base64.b64decode(data.get("__salt__"))
-                self._key_secure = data.get("__key__")
-                self._secrets = data.get("secrets", {})
+            data = json.loads(self._secrets_file.read_bytes())
+            self._salt = base64.b64decode(data.get("__salt__"))
+            self._key_secure = data.get("__key__")
+            self._secrets = data.get("secrets", {})
         except FileNotFoundError:
             self._secrets = {}
             self._salt = gen_salt()
@@ -82,9 +82,7 @@ class SecretsManager(ParEventSystemBase):
             "__key__": self._key_secure,
             "secrets": self._secrets,
         }
-        with open(self._secrets_file, "w", encoding="utf-8") as file:
-            json.dump(data, file, ensure_ascii=False, indent=2)
-
+        self._secrets_file.write_bytes(json.dumps(data, str, json.OPT_INDENT_2))
         self.import_to_env(True)
 
     def _derive_key(self, password: str, alt_salt: bytes | None = None) -> bytes:

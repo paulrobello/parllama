@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from typing import Any
 from typing import Optional
 
 import google.generativeai as genai  # type: ignore
-import simplejson as json
+import orjson as json
 from dotenv import load_dotenv
 from groq import Groq
 from openai import OpenAI
@@ -56,7 +57,7 @@ class ProviderManager(ParEventSystemBase):
         self.provider_models = {}
         for p in llm_provider_types:
             self.provider_models[p] = []
-        self.cache_file = settings.provider_models_file
+        self.cache_file = Path(settings.provider_models_file)
 
     def set_app(self, app: Optional[App[Any]]) -> None:
         """Set the app."""
@@ -126,20 +127,19 @@ class ProviderManager(ParEventSystemBase):
 
     def save_models(self):
         """Save the models."""
-        with open(self.cache_file, "w", encoding="utf-8") as f:
-            json.dump(self.provider_models, f, indent=4)
+        self.cache_file.write_bytes(json.dumps(self.provider_models))
 
     def load_models(self, refresh: bool = False) -> None:
         """Load the models."""
-        if not os.path.exists(self.cache_file):
+        if not self.cache_file.exists():
             if self.app:
                 self.app.post_message(RefreshProviderModelsRequested(None))
             return
         if refresh:
             self.refresh_models()
             return
-        with open(self.cache_file, "r", encoding="utf-8") as f:
-            self.provider_models = json.load(f)
+
+        self.provider_models = json.loads(self.cache_file.read_bytes())
         if self.app:
             self.app.post_message(ProviderModelsChanged())
 
