@@ -22,6 +22,7 @@
 * [Custom Prompts](#Custom-Prompts)
 * [Secrets](#Secrets)
 * [Themes](#themes)
+* [Screen Help](./src/parllama/help.md)
 * [Contributing](#contributing)
 * [FAQ](#faq)
 * [Roadmap](#roadmap)

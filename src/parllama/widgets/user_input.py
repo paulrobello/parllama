@@ -172,6 +172,7 @@ class UserInput(Widget, can_focus=False, can_focus_children=True):
         if pos < 0 or pos >= len(self.input_history):
             with self.prevent(Input.Changed, TextArea.Changed, UserInput.Changed):
                 self.value = ""
+            self.post_message(self.Changed(input=self.control, value=self.value))
             return
 
         hist_item: dict[UserInputMode, str] = self.input_history[pos]
@@ -185,6 +186,7 @@ class UserInput(Widget, can_focus=False, can_focus_children=True):
             length_of_last_line = len(self.control.document[last_line])
 
             self.control.cursor_location = (last_line, length_of_last_line)
+        self.post_message(self.Changed(input=self.control, value=self.value))
 
     def save(self) -> None:
         """Save the input history if enabled."""
