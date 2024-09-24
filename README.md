@@ -394,11 +394,11 @@ if anything remains to be fixed before the commit is allowed.
 * Custom prompt library with import from Fabric
 * Auto complete of slash commands, input history, multi line edit
 * Ability to use cloud AI providers like OpenAI, Anthropic, Groq, and Google
+* Use images with vision capable LLMs
 
 ### Where we're going
 
 * RAG for local documents and web pages
-* Use images for vision based LLMs
 * Expand ability to import custom prompts of other tools
 * LLM tool use
 
@@ -409,6 +409,7 @@ if anything remains to be fixed before the commit is allowed.
 * Image support for models that support them using /add.image slash command. See the [Quick start image chat workflow](#quick-start-image-chat-workflow)
 * Add history support for both single and multi line input modes
 * Fixed crash on models that dont have a license
+* Fixed last model used not get used with new sessions
 
 ### v0.3.8
 * Major rework of core to support providers other than Ollama
