@@ -10,6 +10,7 @@ from collections.abc import Iterator
 from collections.abc import Mapping
 from datetime import datetime
 from datetime import timezone
+from pathlib import Path
 from typing import Any
 from typing import Literal
 from typing import Optional
@@ -19,7 +20,7 @@ import docker.types  # type: ignore
 import httpx
 import ollama
 import requests
-import simplejson as json
+import orjson as json
 from bs4 import BeautifulSoup
 from docker.models.containers import Container  # type: ignore
 from docker.types import CancellableStream
@@ -110,20 +111,17 @@ class OllamaDataManager(ParEventSystemBase):
         pattern = r"^(# Modelfile .*)\n(# To build.*)\n# (FROM .*\n)\n(FROM .*)\n(.*)$"
         replacement = r"\3\5"
         mfn = re.sub(r"[^\w_]", "", model.name)
-        cache_file = os.path.join(
-            settings.ollama_cache_dir, f"model_details-{mfn}.json"
-        )
+        cache_file = Path(settings.ollama_cache_dir) / f"model_details-{mfn}.json"
+
         model_data: Optional[Mapping[str, Any]] = None
-        if os.path.exists(cache_file):
-            with open(cache_file, "rt", encoding="utf-8") as f:
-                try:
-                    model_data = json.load(f)
-                except json.JSONDecodeError:
-                    model_data = None
+        if cache_file.exists():
+            try:
+                model_data = json.loads(cache_file.read_bytes())
+            except json.JSONDecodeError:
+                model_data = None
         if not model_data:
             model_data = ollama.Client(host=settings.ollama_host).show(model.name)
-            with open(cache_file, "wt", encoding="utf-8") as f:
-                json.dump(dict(model_data), f, indent=4, default=str)
+            cache_file.write_bytes(json.dumps(model_data))
 
         msp = ModelShowPayload(**model_data)
         msp.modelfile = re.sub(
@@ -218,18 +216,16 @@ class OllamaDataManager(ParEventSystemBase):
             namespace = "library"
         namespace = os.path.basename(namespace)
 
-        file_name = os.path.join(
-            settings.ollama_cache_dir, f"site_models-{namespace}.json"
-        )
-        if not force and os.path.exists(file_name):
+        file_name = Path(settings.ollama_cache_dir) / f"site_models-{namespace}.json"
+
+        if not force and file_name.exists():
             try:
-                with open(file_name, encoding="utf-8") as f:
-                    ret: SiteModelData = SiteModelData(**json.load(f))
-                    if ret.last_update and ret.last_update.timestamp() > (
-                        ret.last_update.timestamp() - 60 * 60 * 24
-                    ):
-                        self.site_models = [SiteModelListItem(m) for m in ret.models]
-                        return self.site_models
+                ret: SiteModelData = SiteModelData(**json.loads(file_name.read_bytes()))
+                if ret.last_update and ret.last_update.timestamp() > (
+                    ret.last_update.timestamp() - 60 * 60 * 24
+                ):
+                    self.site_models = [SiteModelListItem(m) for m in ret.models]
+                    return self.site_models
             except Exception as e:  # pylint: disable=broad-exception-caught
                 print(f"Error: {e}")
 
@@ -290,12 +286,11 @@ class OllamaDataManager(ParEventSystemBase):
                 break
 
         if len(models) > 0 and not settings.no_save:
-            with open(file_name, "w", encoding="utf-8") as f:
-                f.write(
-                    SiteModelData(
-                        models=models, last_update=datetime.now(timezone.utc)
-                    ).model_dump_json(indent=4)
-                )
+            file_name.write_text(
+                SiteModelData(
+                    models=models, last_update=datetime.now(timezone.utc)
+                ).model_dump_json(indent=4)
+            )
         self.site_models = [SiteModelListItem(m) for m in models]
         return self.site_models
 

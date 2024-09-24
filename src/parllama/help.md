@@ -101,6 +101,7 @@ Chat with local LLMs and manage saved sessions
 |----------|-----------------------------------------|
 | `ctrl+c` | Copy selected chat message to clipboard |
 | `e`      | Edit selected message                   |
+| `delete` | Delete selected message                 |
 | `escape` | Exit message edit mode                  |
 
 
@@ -129,6 +130,7 @@ Chat Commands:
 * /session.system_prompt [system_prompt] - Set system prompt in current tab
 * /session.to_prompt submit_on_load [prompt_name] - Copy current session to new custom prompt. submit_on_load = {0|1}
 * /prompt.load prompt_name - Load a custom prompt using current tabs model and temperature
+* /add.image image_path_or_url prompt - Add an image via path or url to the active chat session. Everything after the image path or url will be used as the prompt
 
 ## Prompts Tab
 Allows you to create, edit, import and execute custom prompts

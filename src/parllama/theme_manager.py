@@ -10,7 +10,7 @@ from typing import Literal
 from typing import Tuple
 from typing import TypeAlias
 
-import simplejson as json
+import orjson as json
 from textual.design import ColorSystem
 
 from parllama.par_event_system import ParEventSystemBase
@@ -45,24 +45,25 @@ class ThemeManager(ParEventSystemBase):
     """Theme manager for Textual"""
 
     themes: Themes
-    theme_folder: str
+    theme_folder: Path
 
     def __init__(self) -> None:
         """Initialize the theme manager"""
         super().__init__(id="theme_manager")
-        self.theme_folder = os.path.join(settings.data_dir, "themes")
+        self.theme_folder = Path(settings.data_dir) / "themes"
         self.themes = self.load_themes()
 
     def ensure_default_theme(self) -> None:
         """Ensure that the default theme exists."""
-        default_theme_file: str = os.path.join(
-            os.path.dirname(Path(__file__)), "themes", "par.json"
+        default_theme_file: Path = (
+            Path(os.path.dirname(Path(__file__))) / "themes" / "par.json"
         )
-        if not os.path.exists(self.theme_folder):
-            os.makedirs(self.theme_folder)
-        theme_file = os.path.join(self.theme_folder, "par.json")
 
-        if not os.path.exists(theme_file):
+        if not self.theme_folder.exists():
+            self.theme_folder.mkdir(parents=True, exist_ok=True)
+        theme_file: Path = self.theme_folder / "par.json"
+
+        if not theme_file.exists():
             shutil.copy(default_theme_file, theme_file)
 
     def load_theme(self, theme_name: str) -> Theme:
@@ -70,14 +71,14 @@ class ThemeManager(ParEventSystemBase):
 
         theme: Theme = {}
         theme_name = os.path.basename(theme_name)
-        with open(os.path.join(self.theme_folder, theme_name), encoding="utf-8") as f:
-            theme_def = json.load(f)
-            if "dark" not in theme_def and "light" not in theme_def:
-                raise ThemeModeError(theme_name)
+        theme_file: Path = Path(self.theme_folder) / theme_name
+        theme_def = json.loads(theme_file.read_bytes())
+        if "dark" not in theme_def and "light" not in theme_def:
+            raise ThemeModeError(theme_name)
 
-            for mode in ThemeModes:
-                if mode in theme_def:
-                    theme[mode] = ColorSystem(**theme_def[mode])
+        for mode in ThemeModes:
+            if mode in theme_def:
+                theme[mode] = ColorSystem(**theme_def[mode])
         return theme
 
     def load_themes(self) -> Themes:

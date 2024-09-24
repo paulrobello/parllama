@@ -147,19 +147,26 @@ class ProviderModelSelect(Container):
                 if msv in provider_manager.get_model_names(self.provider_select.value):  # type: ignore
                     self.model_select.deferred_value = msv
         else:
+            self.notify("no provider selected", severity="warning")
             self.model_select.set_options([])
         self.notify_changed()
 
     def notify_changed(self) -> None:
         """Notify changed"""
+        model_name = (
+            self.model_select.value if self.model_select.value != Select.BLANK else ""
+        )
+        if not model_name:
+            model_name = (
+                self.model_select.deferred_value
+                if self.model_select.deferred_value != Select.BLANK
+                else ""
+            )
+
         self.post_message(
             ProviderModelSelected(
                 provider=self.provider_select.value,  # pyright: ignore [reportArgumentType]
-                model_name=(  # pyright: ignore [reportArgumentType]
-                    self.model_select.value
-                    if self.model_select.value != Select.BLANK
-                    else ""
-                ),
+                model_name=model_name,  # pyright: ignore [reportArgumentType]
             )
         )
 
@@ -180,6 +187,8 @@ class ProviderModelSelect(Container):
     def on_provider_models_refreshed(self, event: ProviderModelsChanged) -> None:
         """Handle provider models refreshed event"""
         event.stop()
+        if event.provider and self.provider_select.value != event.provider:
+            return
         # self.app.post_message(LogIt("ProviderModelsChanged", notify=True))
         if self.provider_select.value == Select.BLANK:
             self.post_message(
@@ -189,6 +198,7 @@ class ProviderModelSelect(Container):
                 )
             )
             return
+
         opts = provider_manager.get_model_select_options(self.provider_select.value)  # type: ignore
         self.model_select.set_options(opts)
 

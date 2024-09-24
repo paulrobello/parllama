@@ -9,6 +9,7 @@ from typing import Optional
 
 from langchain._api import LangChainDeprecationWarning
 from langchain_anthropic import ChatAnthropic
+from langchain_community.embeddings import OllamaEmbeddings
 from langchain_community.llms.ollama import Ollama
 from langchain_core.embeddings import Embeddings
 from langchain_core.language_models import BaseChatModel
@@ -22,7 +23,6 @@ from langchain_openai import OpenAI
 from langchain_openai import OpenAIEmbeddings
 
 from parllama.llm_providers import LlmProvider, is_provider_api_key_set
-from parllama.par_ollama_embeddings import ParOllamaEmbeddings
 from parllama.settings_manager import settings
 
 warnings.simplefilter("ignore", category=LangChainDeprecationWarning)
@@ -100,8 +100,8 @@ class LlmConfig:
                 base_url=settings.ollama_host,
             )
         if self.mode == LlmMode.EMBEDDINGS:
-            return ParOllamaEmbeddings(
-                ollama_host=settings.ollama_host, model=self.model_name
+            return OllamaEmbeddings(
+                base_url=settings.ollama_host, model=self.model_name
             )
 
         raise ValueError(f"Invalid LLM mode '{self.mode}'")

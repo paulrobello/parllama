@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import csv
 import hashlib
 import io
@@ -736,3 +737,8 @@ def all_subclasses(cls) -> set[type]:
     return set(cls.__subclasses__()).union(
         [s for c in cls.__subclasses__() for s in all_subclasses(c)]
     )
+
+
+def b64_encode_image(image_path: bytes) -> str:
+    """Encode an image as base64."""
+    return base64.b64encode(image_path).decode("utf-8")

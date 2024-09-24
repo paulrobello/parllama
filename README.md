@@ -22,12 +22,14 @@
 * [Custom Prompts](#Custom-Prompts)
 * [Secrets](#Secrets)
 * [Themes](#themes)
+* [Screen Help](./src/parllama/help.md)
 * [Contributing](#contributing)
 * [FAQ](#faq)
 * [Roadmap](#roadmap)
     * [Where we are](#where-we-are)
     * [Where we're going](#where-were-going)
 * [What's new](#whats-new)
+    * [v0.3.9](#v039)
     * [v0.3.8](#v038)
     * [v0.3.7](#v037)
     * [v0.3.6](#v036)
@@ -56,13 +58,15 @@ and runs on all major OS's including but not limited to Windows, Windows WSL, Ma
 ## Screenshots
 Supports Dark and Light mode as well as custom themes.
 
+![Chat Dark](https://raw.githubusercontent.com/paulrobello/parllama/main/docs/chat_dark_1.png)
+
+![Chat Image Dark](https://raw.githubusercontent.com/paulrobello/parllama/main/docs/chat_image_dark_1.png)
+
 ![Local Models Dark](https://raw.githubusercontent.com/paulrobello/parllama/main/docs/local_models_dark_1.png)
 
 ![Model View Dark](https://raw.githubusercontent.com/paulrobello/parllama/main/docs/models_view_dark_1.png)
 
 ![Site Models Dark](https://raw.githubusercontent.com/paulrobello/parllama/main/docs/site_models_dark_1.png)
-
-![Chat Dark](https://raw.githubusercontent.com/paulrobello/parllama/main/docs/chat_dark_1.png)
 
 ![Custom Prompt Dark](https://raw.githubusercontent.com/paulrobello/parllama/main/docs/custom_prompt_dark_1.png)
 
@@ -282,7 +286,23 @@ make dev
 * Select a different model or change the temperature and ask the same questions.
 * Jump between the tabs to compare responses by click the tabs or using slash commands `/tab.1` and `/tab.2`
 * Press ^S to see all your past and current sessions. You can recall any past session by selecting it and pressing Enter or ^N if you want to load it into a new tab.
+* Press ^P to see / change your sessions config options such as provider, model, temperature, etc.
 * Type "/help" or "/?" to see what other slash commands are available.
+
+## Quick start image chat workflow
+* Start parllama.
+* Click the "Site" tab.
+* Use ^R to fetch the latest models from Ollama.com.
+* Use the "Filter Site models" text box and type "llava-llama3".
+* Find the entry with title of "llava-llama3".
+* Click the blue tag "8B" to update the search box to read "llava-llama3:8b".
+* Press ^P to pull the model from Ollama to your local machine. Depending on the size of the model and your internet connection this can take a few min.
+* Click the "Local" tab to see models that have been locally downloaded. If the download is complete and it isn't showing up here you may need to refresh the list with ^R.
+* Select the "llava-llama3" entry and press ^C to jump to the "Chat" tab and auto select the model.
+* Use a slash command to add an image and a prompt "/add.image PATH_TO_IMAGE describe whats happening in this image". It will take a few seconds for Ollama to load the model. After which the LLMs answer will stream in.
+* Towards the very top of the app you will see what model is loaded and what percent of it is loaded into the GPU / CPU. If a model cant be loaded 100% on the GPU it will run slower.
+* Type "/help" or "/?" to see what other slash commands are available.
+
 
 ## Custom Prompts
 You can create a library of custom prompts for easy starting of new chats.  
@@ -374,17 +394,22 @@ if anything remains to be fixed before the commit is allowed.
 * Custom prompt library with import from Fabric
 * Auto complete of slash commands, input history, multi line edit
 * Ability to use cloud AI providers like OpenAI, Anthropic, Groq, and Google
+* Use images with vision capable LLMs
 
 ### Where we're going
 
 * RAG for local documents and web pages
-* Use images for vision based LLMs
 * Expand ability to import custom prompts of other tools
 * LLM tool use
 
 
 ## What's new
 
+### v0.3.9
+* Image support for models that support them using /add.image slash command. See the [Quick start image chat workflow](#quick-start-image-chat-workflow)
+* Add history support for both single and multi line input modes
+* Fixed crash on models that dont have a license
+* Fixed last model used not get used with new sessions
 
 ### v0.3.8
 * Major rework of core to support providers other than Ollama

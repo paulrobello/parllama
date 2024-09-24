@@ -5,6 +5,7 @@ persistent=yes
 jobs=0
 suggestion-mode=yes
 py-version = 3.11.0
+extension-pkg-whitelist=orjson
 
 [FORMAT]
 max-line-length=120

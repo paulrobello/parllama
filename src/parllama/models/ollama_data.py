@@ -113,8 +113,8 @@ class ModelShowPayload(BaseModel):
 
     model_config = ConfigDict(protected_namespaces=())
     modelfile: str
-    parameters: str | None = None
-    license: str
+    parameters: Optional[str] = None
+    license: Optional[str] = None
     template: str
     details: ModelDetails  # omit if being combined with Model
     model_info: ModelInfo

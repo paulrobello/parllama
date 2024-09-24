@@ -61,7 +61,7 @@ class LlmProviderConfig:
 
 provider_config: dict[LlmProvider, LlmProviderConfig] = {
     LlmProvider.OLLAMA: LlmProviderConfig(
-        default_model="llama3.1:8b", supports_base_url=True, env_key_name=""
+        default_model="", supports_base_url=True, env_key_name=""
     ),
     LlmProvider.OPENAI: LlmProviderConfig(
         default_model="gpt-4o-mini",

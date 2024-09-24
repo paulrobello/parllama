@@ -11,6 +11,7 @@ from rich.console import RichCast
 from textual.message import Message
 from textual.message_pump import MessagePump
 from textual.notifications import SeverityLevel
+from textual.widgets import TextArea, Input
 
 from parllama.llm_providers import LlmProvider
 from parllama.messages.shared import SessionChanges
@@ -394,6 +395,8 @@ class RefreshProviderModelsRequested(AppRequest):
 class ProviderModelsChanged(Message):
     """Provider models refreshed."""
 
+    provider: Optional[LlmProvider] = None
+
 
 @dataclass
 class ProviderModelSelected(Message):
@@ -401,3 +404,29 @@ class ProviderModelSelected(Message):
 
     provider: LlmProvider
     model_name: str
+
+
+@dataclass
+class HistoryPrev(Message):
+    """Posted when the up arrow key is pressed."""
+
+    input: Input | TextArea
+    """The `Input` widget."""
+
+    @property
+    def control(self) -> Input | TextArea:
+        """Alias for self.input."""
+        return self.input
+
+
+@dataclass
+class HistoryNext(Message):
+    """Posted when the down arrow key is pressed."""
+
+    input: Input | TextArea
+    """The `Input` widget."""
+
+    @property
+    def control(self) -> Input | TextArea:
+        """Alias for self.input."""
+        return self.input

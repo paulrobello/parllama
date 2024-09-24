@@ -15,6 +15,16 @@ from parllama.messages.par_chat_messages import ParChatUpdated
 from parllama.models.ollama_data import MessageRoles
 from parllama.models.ollama_data import ToolCall
 from parllama.par_event_system import ParEventSystemBase
+from parllama.settings_manager import fetch_and_cache_image
+from parllama.utils import b64_encode_image
+
+
+def image_to_chat_message(image_bytes: bytes) -> dict[str, Any]:
+    """Convert an image to a chat message."""
+    return {
+        "type": "image_url",
+        "image_url": {"url": f"data:image/jpeg;base64,{b64_encode_image(image_bytes)}"},
+    }
 
 
 @dataclass
@@ -27,7 +37,7 @@ class ParllamaChatMessage(ParEventSystemBase):
     content: str = ""
     "Content of the message. Response messages contains message fragments when streaming."
 
-    images: Optional[Sequence[Any]] = None
+    images: Optional[Sequence[str]] = None
     """
       Optional list of image data for multimodal models.
 
@@ -50,7 +60,7 @@ class ParllamaChatMessage(ParEventSystemBase):
         id: str | None = None,  # pylint: disable=redefined-builtin
         role: MessageRoles,
         content: str = "",
-        images: Optional[Sequence[Any]] = None,
+        images: Optional[Sequence[str]] = None,
         tool_calls: Optional[Sequence[ToolCall]] = None,
     ) -> None:
         """Initialize the chat message"""
@@ -72,17 +82,30 @@ class ParllamaChatMessage(ParEventSystemBase):
             "id": self.id,
             "role": self.role,
             "content": self.content,
+            "images": self.images,
+            "tool_calls": self.tool_calls,
         }
 
     def to_ollama_native(self) -> OMessage:
         """Convert a message to Ollama native format"""
         return OMessage(role=self.role, content=self.content)
 
-    def to_langchain_native(self) -> Tuple[str, str]:
+    def to_langchain_native(self) -> Tuple[str, str | list[dict[str, Any]]]:
         """Convert a message to Langchain native format"""
+        content = self.content
+        if self.images:
+            image = self.images[0]
+            try:
+                content = [
+                    {"type": "text", "text": self.content},
+                    image_to_chat_message(fetch_and_cache_image(image)[1]),
+                ]
+            except Exception as e:  # pylint: disable=broad-except
+                content = str(e)
+                # content = "Image is missing, ignore this message."
         return (
             self.role,
-            self.content,
+            content,
         )
 
     def notify_changes(self) -> None:
@@ -98,6 +121,6 @@ class ParllamaChatMessage(ParEventSystemBase):
             id=uuid.uuid4().hex if new_id else self.id,
             role=self.role,
             content=self.content,
-            images=self.images,
+            images=[*self.images] if self.images else None,
             tool_calls=self.tool_calls,
         )

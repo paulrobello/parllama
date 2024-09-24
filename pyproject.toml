@@ -75,9 +75,8 @@ dependencies = [
     "rich",
     "semver",
     "sentence-transformers",
-    "simplejson",
     "sqlalchemy",
-    "textual[syntax]",
+    "textual[syntax]==0.79.0",
     "textual-fspicker",
     "tiktoken",
     "tokenizers",
@@ -86,6 +85,8 @@ dependencies = [
     "zipp",
     "unstructured",
     "watchdog>=4.0.2",
+    "rich-pixels>=3.0.1",
+    "orjson>=3.10.7",
 ]
 
 packages = [
@@ -123,6 +124,7 @@ dev-dependencies = [
     "typing-extensions",
     "types-simplejson",
     "pyinstrument>=4.7.3",
+    "types-orjson>=3.6.2",
 ]
 
 [tool.hatch.version]

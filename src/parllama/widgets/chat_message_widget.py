@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Optional
 
+from rich_pixels import Pixels
+
 from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
@@ -17,6 +19,7 @@ from parllama.chat_manager import ChatSession
 from parllama.chat_message import ParllamaChatMessage
 from parllama.messages.messages import SendToClipboard
 from parllama.models.ollama_data import MessageRoles
+from parllama.settings_manager import fetch_and_cache_image
 
 
 class ChatMessageWidget(Vertical, can_focus=True):
@@ -59,6 +62,13 @@ class ChatMessageWidget(Vertical, can_focus=True):
                 max-height: initial;
             }
         }
+        #image{
+            width: 19;
+            height: 10;
+            margin: 0;
+            padding: 0;
+            border: solid $accent;
+        }
     }
     ChatMessageWidget:focus {
         border: double $primary;
@@ -90,15 +100,35 @@ class ChatMessageWidget(Vertical, can_focus=True):
         self.placeholder.display = not is_final
         self.is_final = is_final
         self.border_title = self.msg.role
+        if self.msg.images:
+            self.border_subtitle = f"Image: {str(self.msg.images[0])}"
 
     async def on_mount(self):
         """Set up the widget once the DOM is ready."""
         # await self.update()
+        if self.msg.images:
+            try:
+                image_path = fetch_and_cache_image(self.msg.images[0])[0]
+            except Exception:  # pylint: disable=broad-exception-caught
+                self.query_one("#image", Static).update("Image not found")
+                return
+            height = 10
+            self.query_one("#image", Static).update(
+                Pixels.from_image_path(
+                    image_path,
+                    resize=(
+                        int(height * 1.75),
+                        int(height * 1.75),
+                    ),
+                )
+            )
 
     def compose(self) -> ComposeResult:
         """Compose the content of the widget."""
         yield self.markdown
         yield self.placeholder
+        if self.msg.images:
+            yield Static(id="image", expand=True)
 
     @property
     def raw_text(self) -> str:

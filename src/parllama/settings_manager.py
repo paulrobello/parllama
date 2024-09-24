@@ -5,12 +5,14 @@ from __future__ import annotations
 import os
 import shutil
 from dataclasses import dataclass
-from typing import Optional
+from pathlib import Path
+from typing import Optional, Tuple
 
 from argparse import Namespace
 from datetime import datetime
 
-import simplejson as json
+import requests
+import orjson as json
 from pydantic import BaseModel
 
 from parllama.llm_providers import (
@@ -20,7 +22,7 @@ from parllama.llm_providers import (
     provider_config,
     LangChainConfig,
 )
-from parllama.utils import get_args
+from parllama.utils import get_args, md5_hash
 from parllama.utils import TabType
 from parllama.utils import valid_tabs
 
@@ -49,6 +51,7 @@ class Settings(BaseModel):
     settings_file: str = "settings.json"
     cache_dir: str = ""
     ollama_cache_dir: str = ""
+    image_cache_dir: str = ""
     chat_dir: str = ""
     prompt_dir: str = ""
     export_md_dir: str = ""
@@ -117,6 +120,7 @@ class Settings(BaseModel):
             or os.path.expanduser("~/.parllama")
         )
         self.cache_dir = os.path.join(self.data_dir, "cache")
+        self.image_cache_dir = os.path.join(self.cache_dir, "image")
         self.ollama_cache_dir = os.path.join(self.cache_dir, "ollama")
         self.chat_dir = os.path.join(self.data_dir, "chats")
         self.prompt_dir = os.path.join(self.data_dir, "prompts")
@@ -126,6 +130,7 @@ class Settings(BaseModel):
         self.provider_models_file = os.path.join(self.cache_dir, "provider_models.json")
 
         os.makedirs(self.cache_dir, exist_ok=True)
+        os.makedirs(self.image_cache_dir, exist_ok=True)
         os.makedirs(self.ollama_cache_dir, exist_ok=True)
         os.makedirs(self.chat_dir, exist_ok=True)
         os.makedirs(self.prompt_dir, exist_ok=True)
@@ -217,137 +222,136 @@ class Settings(BaseModel):
     def load_from_file(self) -> None:
         """Load settings from file."""
         try:
-            with open(self.settings_file, "rt", encoding="utf-8") as f:
-                data = json.load(f)
-                url = data.get("ollama_host", self.ollama_host)
+            settings_file = Path(self.settings_file)
 
-                if url.startswith("http://") or url.startswith("https://"):
-                    self.ollama_host = url
-                else:
-                    print("ollama_host must start with http:// or https://")
+            data = json.loads(settings_file.read_bytes())
+            url = data.get("ollama_host", self.ollama_host)
 
-                saved_provider_api_keys = data.get("provider_api_keys") or {}
-                provider_api_keys: dict[LlmProvider, Optional[str]] = {}
-                for p in llm_provider_types:
-                    provider_api_keys[p] = None
+            if url.startswith("http://") or url.startswith("https://"):
+                self.ollama_host = url
+            else:
+                print("ollama_host must start with http:// or https://")
 
-                for k, v in saved_provider_api_keys.items():
-                    p: LlmProvider = provider_name_to_enum(k)
-                    provider_api_keys[p] = v or None
-                self.provider_api_keys = provider_api_keys
+            saved_provider_api_keys = data.get("provider_api_keys") or {}
+            provider_api_keys: dict[LlmProvider, Optional[str]] = {}
+            for p in llm_provider_types:
+                provider_api_keys[p] = None
 
-                saved_provider_base_urls = data.get("provider_base_urls") or {}
-                provider_base_urls: dict[LlmProvider, Optional[str]] = {}
-                for p in llm_provider_types:
-                    provider_base_urls[p] = None
+            for k, v in saved_provider_api_keys.items():
+                p: LlmProvider = provider_name_to_enum(k)
+                provider_api_keys[p] = v or None
+            self.provider_api_keys = provider_api_keys
 
-                for k, v in saved_provider_base_urls.items():
-                    provider_base_urls[provider_name_to_enum(k)] = v or None
+            saved_provider_base_urls = data.get("provider_base_urls") or {}
+            provider_base_urls: dict[LlmProvider, Optional[str]] = {}
+            for p in llm_provider_types:
+                provider_base_urls[p] = None
 
-                if not provider_base_urls[LlmProvider.OLLAMA]:
-                    provider_base_urls[LlmProvider.OLLAMA] = self.ollama_host
-                self.provider_base_urls = provider_base_urls
+            for k, v in saved_provider_base_urls.items():
+                provider_base_urls[provider_name_to_enum(k)] = v or None
 
-                saved_langchain_config = data.get("langchain_config") or {}
-                self.langchain_config = LangChainConfig(**saved_langchain_config)
+            if not provider_base_urls[LlmProvider.OLLAMA]:
+                provider_base_urls[LlmProvider.OLLAMA] = self.ollama_host
+            self.provider_base_urls = provider_base_urls
 
-                self.theme_name = data.get("theme_name", self.theme_name)
-                self.theme_mode = data.get("theme_mode", self.theme_mode)
-                self.site_models_namespace = data.get("site_models_namespace", "")
-                self.starting_tab = data.get(
-                    "starting_tab", data.get("starting_screen", "Local")
-                )
-                if self.starting_tab not in valid_tabs:
-                    self.starting_tab = "Local"
+            saved_langchain_config = data.get("langchain_config") or {}
+            self.langchain_config = LangChainConfig(**saved_langchain_config)
 
-                self.last_tab = data.get("last_tab", data.get("last_screen", "Local"))
-                if self.last_tab not in valid_tabs:
-                    self.last_tab = self.starting_tab
+            self.theme_name = data.get("theme_name", self.theme_name)
+            self.theme_mode = data.get("theme_mode", self.theme_mode)
+            self.site_models_namespace = data.get("site_models_namespace", "")
+            self.starting_tab = data.get(
+                "starting_tab", data.get("starting_screen", "Local")
+            )
+            if self.starting_tab not in valid_tabs:
+                self.starting_tab = "Local"
 
-                self.use_last_tab_on_startup = data.get(
-                    "use_last_tab_on_startup", self.use_last_tab_on_startup
-                )
-                last_llm_config = data.get("last_llm_config", {})
-                self.last_llm_config.provider = LlmProvider(
-                    data.get(
-                        "last_chat_provider",
-                        last_llm_config.get(
-                            "provider", self.last_llm_config.provider.value
-                        ),
-                    )
-                )
-                self.last_llm_config.model_name = data.get(
-                    "last_chat_model",
-                    last_llm_config.get("model_name", self.last_llm_config.model_name),
-                )
-                self.last_llm_config.temperature = data.get(
-                    "last_chat_temperature",
+            self.last_tab = data.get("last_tab", data.get("last_screen", "Local"))
+            if self.last_tab not in valid_tabs:
+                self.last_tab = self.starting_tab
+
+            self.use_last_tab_on_startup = data.get(
+                "use_last_tab_on_startup", self.use_last_tab_on_startup
+            )
+            last_llm_config = data.get("last_llm_config", {})
+            self.last_llm_config.provider = LlmProvider(
+                data.get(
+                    "last_chat_provider",
                     last_llm_config.get(
-                        "temperature", self.last_llm_config.temperature
+                        "provider", self.last_llm_config.provider.value
                     ),
                 )
-                self.last_chat_session_id = data.get(
-                    "last_chat_session_id", self.last_chat_session_id
-                )
-                self.max_log_lines = max(0, data.get("max_log_lines", 1000))
-                self.ollama_ps_poll_interval = data.get(
-                    "ollama_ps_poll_interval", self.ollama_ps_poll_interval
-                )
-                self.auto_name_session = data.get(
-                    "auto_name_session", self.auto_name_session
-                )
-                self.auto_name_session_llm_config = data.get(
-                    "auto_name_session_llm_config",
-                    {
-                        "provider": LlmProvider.OLLAMA,
-                        "model_name": "",
-                        "temperature": 0.5,
-                        "streaming": True,
-                    },
-                )
-                if self.auto_name_session_llm_config:
-                    if "class_name" in self.auto_name_session_llm_config:
-                        del self.auto_name_session_llm_config["class_name"]
+            )
+            self.last_llm_config.model_name = data.get(
+                "last_chat_model",
+                last_llm_config.get("model_name", self.last_llm_config.model_name),
+            )
+            self.last_llm_config.temperature = data.get(
+                "last_chat_temperature",
+                last_llm_config.get("temperature", self.last_llm_config.temperature),
+            )
+            self.last_chat_session_id = data.get(
+                "last_chat_session_id", self.last_chat_session_id
+            )
+            self.max_log_lines = max(0, data.get("max_log_lines", 1000))
+            self.ollama_ps_poll_interval = data.get(
+                "ollama_ps_poll_interval", self.ollama_ps_poll_interval
+            )
+            self.auto_name_session = data.get(
+                "auto_name_session", self.auto_name_session
+            )
+            self.auto_name_session_llm_config = data.get(
+                "auto_name_session_llm_config",
+                {
+                    "provider": LlmProvider.OLLAMA,
+                    "model_name": "",
+                    "temperature": 0.5,
+                    "streaming": True,
+                },
+            )
+            if self.auto_name_session_llm_config:
+                if "class_name" in self.auto_name_session_llm_config:
+                    del self.auto_name_session_llm_config["class_name"]
 
-                self.chat_tab_max_length = max(
-                    8, data.get("chat_tab_max_length", self.chat_tab_max_length)
-                )
-                self.check_for_updates = data.get(
-                    "check_for_updates", self.check_for_updates
-                )
-                self.new_version_notified = data.get(
-                    "new_version_notified", self.new_version_notified
-                )
-                lvc = data.get("last_version_check")
-                if lvc:
-                    self.last_version_check = datetime.fromisoformat(lvc)
-                else:
-                    self.last_version_check = None
+            self.chat_tab_max_length = max(
+                8, data.get("chat_tab_max_length", self.chat_tab_max_length)
+            )
+            self.check_for_updates = data.get(
+                "check_for_updates", self.check_for_updates
+            )
+            self.new_version_notified = data.get(
+                "new_version_notified", self.new_version_notified
+            )
+            lvc = data.get("last_version_check")
+            if lvc:
+                self.last_version_check = datetime.fromisoformat(lvc)
+            else:
+                self.last_version_check = None
 
-                self.show_first_run = data.get("show_first_run", self.show_first_run)
+            self.show_first_run = data.get("show_first_run", self.show_first_run)
 
-                self.return_to_single_line_on_submit = data.get(
-                    "return_to_single_line_on_submit",
-                    self.return_to_single_line_on_submit,
-                )
-                self.always_show_session_config = data.get(
-                    "always_show_session_config", self.always_show_session_config
-                )
-                self.close_session_config_on_submit = data.get(
-                    "close_session_config_on_submit",
-                    self.close_session_config_on_submit,
-                )
+            self.return_to_single_line_on_submit = data.get(
+                "return_to_single_line_on_submit",
+                self.return_to_single_line_on_submit,
+            )
+            self.always_show_session_config = data.get(
+                "always_show_session_config", self.always_show_session_config
+            )
+            self.close_session_config_on_submit = data.get(
+                "close_session_config_on_submit",
+                self.close_session_config_on_submit,
+            )
 
-                self.save_chat_input_history = data.get(
-                    "save_chat_input_history", self.save_chat_input_history
-                )
-                self.chat_input_history_length = data.get(
-                    "chat_input_history_length", self.chat_input_history_length
-                )
+            self.save_chat_input_history = data.get(
+                "save_chat_input_history", self.save_chat_input_history
+            )
+            self.chat_input_history_length = data.get(
+                "chat_input_history_length", self.chat_input_history_length
+            )
 
-                self.load_local_models_on_startup = data.get(
-                    "load_local_models_on_startup", self.load_local_models_on_startup
-                )
+            self.load_local_models_on_startup = data.get(
+                "load_local_models_on_startup", self.load_local_models_on_startup
+            )
             self.update_env()
         except FileNotFoundError:
             pass  # If file does not exist, continue with default settings
@@ -417,6 +421,32 @@ class Settings(BaseModel):
             os.remove(self.chat_history_file)
         except FileNotFoundError:
             pass
+
+
+def fetch_and_cache_image(image_path: str | Path) -> Tuple[Path, bytes]:
+    """Fetch and cache an image."""
+    if isinstance(image_path, str):
+        image_path = image_path.strip()
+        if image_path.startswith("http://") or image_path.startswith("https://"):
+            ext = image_path.split(".")[-1].lower()
+            cache_file = (
+                Path(settings.image_cache_dir) / f"{md5_hash(image_path)}.{ext}"
+            )
+            if not cache_file.exists():
+                headers = {
+                    "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"  # pylint: disable=line-too-long
+                }
+                data = requests.get(image_path, headers=headers, timeout=10).content
+                if not isinstance(data, bytes):
+                    raise FileNotFoundError("Failed to download image from URL")
+                cache_file.write_bytes(data)
+            else:
+                data = cache_file.read_bytes()
+            return cache_file, data
+        image_path = Path(image_path)
+    if not image_path.exists():
+        raise FileNotFoundError(f"Image file not found: {image_path}")
+    return image_path, image_path.read_bytes()
 
 
 settings = Settings()
