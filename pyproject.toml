@@ -76,7 +76,7 @@ dependencies = [
     "semver",
     "sentence-transformers",
     "sqlalchemy",
-    "textual[syntax]==0.79.0",
+    "textual[syntax]>=0.80.1",
     "textual-fspicker",
     "tiktoken",
     "tokenizers",

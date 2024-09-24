@@ -100,8 +100,8 @@ class ChatMessageWidget(Vertical, can_focus=True):
         self.placeholder.display = not is_final
         self.is_final = is_final
         self.border_title = self.msg.role
-        if self.msg.images:
-            self.border_subtitle = f"Image: {str(self.msg.images[0])}"
+        # if self.msg.images:
+        #     self.border_subtitle = f"Image: {str(self.msg.images[0])}"
 
     async def on_mount(self):
         """Set up the widget once the DOM is ready."""
