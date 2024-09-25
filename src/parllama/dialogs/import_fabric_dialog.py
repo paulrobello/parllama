@@ -18,7 +18,6 @@ from textual.widgets import Checkbox
 from textual.widgets import Label
 
 from parllama.messages.messages import ImportReady
-from parllama.messages.messages import LogIt
 from parllama.models.ollama_data import FullModel
 from parllama.prompt_utils.import_fabric import import_fabric_manager
 from parllama.utils import str_ellipsis
@@ -141,7 +140,7 @@ class ImportFabricDialog(ModalScreen[None]):
             self.notify("No prompts selected", severity="error", timeout=5)
             return
         import_fabric_manager.import_patterns()
-        self.app.post_message(LogIt(import_fabric_manager.import_ids))
+        # self.app.post_message(LogIt(import_fabric_manager.import_ids))
 
         with self.prevent(Focus):
             self.app.pop_screen()

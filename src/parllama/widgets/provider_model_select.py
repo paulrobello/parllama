@@ -9,7 +9,7 @@ from textual.app import ComposeResult
 from textual.containers import Container
 from textual.widgets import Select
 
-from parllama.llm_providers import LlmProvider, provider_config
+from parllama.llm_providers import LlmProvider, provider_config, is_provider_api_key_set
 from parllama.llm_providers import provider_select_options
 from parllama.messages.messages import LogIt, ProviderModelSelected
 from parllama.messages.messages import ProviderModelsChanged
@@ -57,7 +57,8 @@ class ProviderModelSelect(Container):
         super().__init__(**kwargs)
 
         self.update_settings = update_settings
-
+        if isinstance(provider, str):
+            provider = LlmProvider(provider)
         lp: LlmProvider = (
             provider or settings.last_llm_config.provider or LlmProvider.OLLAMA
         )
@@ -106,6 +107,13 @@ class ProviderModelSelect(Container):
                 ],
             )
         )
+        if self.provider_select.value != Select.BLANK and not is_provider_api_key_set(
+            self.provider_select.value  # type: ignore
+        ):
+            self.notify(
+                f"No API key for {self.provider_select.value.value}",  # type: ignore
+                severity="warning",
+            )
 
     async def on_unmount(self) -> None:
         """Remove dialog from updates when unmounted."""
@@ -135,6 +143,14 @@ class ProviderModelSelect(Container):
     def provider_select_changed(self) -> None:
         """Provider select changed, update control states and save provider name"""
         if self.provider_select.value != Select.BLANK:
+            if not is_provider_api_key_set(self.provider_select.value):  # type: ignore
+                self.notify(
+                    f"No API key set for {self.provider_select.value.value}",  # type: ignore
+                    severity="warning",
+                )
+                self.model_select.set_options([])
+                self.notify_changed()
+                return
             if self.update_settings:
                 settings.last_llm_config.provider = self.provider_select.value  # type: ignore
                 settings.save()

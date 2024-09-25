@@ -148,6 +148,8 @@ class ChatPrompt(ChatMessageContainer):
                 "messages": [m.to_dict() for m in self.messages],
                 "source": self.source,
             },
+            str,
+            json.OPT_INDENT_2,
         ).decode("utf-8")
 
     @staticmethod

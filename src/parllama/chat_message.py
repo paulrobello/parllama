@@ -21,7 +21,10 @@ from parllama.utils import b64_encode_image
 
 def try_get_image_type(image_path: str) -> Literal["jpeg", "png", "gif"]:
     """Get image type from image path."""
-    ext = image_path.split(".")[-1].lower()
+    if image_path.startswith("data:"):
+        ext = image_path.split(";")[0].split("/")[-1].lower()
+    else:
+        ext = image_path.split(".")[-1].lower()
     if ext in ["jpg", "jpeg"]:
         return "jpeg"
     if ext in ["png"]:
@@ -38,9 +41,7 @@ def image_to_base64(
     return f"data:image/{image_type};base64,{b64_encode_image(image_bytes)}"
 
 
-def image_to_chat_message(
-    image_url_str: str, image_type: Literal["jpeg", "png", "gif"] = "jpeg"
-) -> dict[str, Any]:
+def image_to_chat_message(image_url_str: str) -> dict[str, Any]:
     """Convert an image to a chat message."""
     return {
         "type": "image_url",

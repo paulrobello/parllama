@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import base64
 from typing import Optional
+import io
+
+from PIL import Image
 
 from rich_pixels import Pixels
 
@@ -16,7 +20,11 @@ from textual.widgets import Markdown, Static
 from textual.widgets import TextArea
 
 from parllama.chat_manager import ChatSession
-from parllama.chat_message import ParllamaChatMessage
+from parllama.chat_message import (
+    ParllamaChatMessage,
+    try_get_image_type,
+    image_to_base64,
+)
 from parllama.messages.messages import SendToClipboard
 from parllama.models.ollama_data import MessageRoles
 from parllama.settings_manager import fetch_and_cache_image
@@ -108,14 +116,20 @@ class ChatMessageWidget(Vertical, can_focus=True):
         # await self.update()
         if self.msg.images:
             try:
-                image_path = fetch_and_cache_image(self.msg.images[0])[0]
+                image = self.msg.images[0]
+                image_type = try_get_image_type(image)
+                if not image.startswith("data:"):
+                    image = image_to_base64(fetch_and_cache_image(image)[1], image_type)
+                    self.msg.images[0] = image
+                png_bytes = base64.b64decode(image.split(",", maxsplit=2)[1])
+                image = Image.open(io.BytesIO(png_bytes))
             except Exception:  # pylint: disable=broad-exception-caught
                 self.query_one("#image", Static).update("Image not found")
                 return
             height = 10
             self.query_one("#image", Static).update(
-                Pixels.from_image_path(
-                    image_path,
+                Pixels.from_image(
+                    image,
                     resize=(
                         int(height * 1.75),
                         int(height * 1.75),

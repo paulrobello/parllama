@@ -17,7 +17,7 @@ from textual.widgets import Static
 from parllama.chat_manager import chat_manager
 from parllama.chat_session import ChatSession
 from parllama.llm_config import LlmConfig
-from parllama.messages.messages import LogIt, ProviderModelSelected
+from parllama.messages.messages import ProviderModelSelected
 from parllama.messages.messages import PromptSelected
 from parllama.messages.messages import RegisterForUpdates
 from parllama.messages.messages import SessionSelected
@@ -242,18 +242,18 @@ SessionConfig {
 
     async def load_prompt(self, event: PromptSelected) -> bool:
         """Load a session"""
-        self.app.post_message(LogIt("SC load_prompt: " + event.prompt_id))
-        self.app.post_message(
-            LogIt(
-                f"{event.prompt_id},{event.llm_provider_name},{event.llm_model_name},{event.temperature}"
-            )
-        )
+        # self.app.post_message(LogIt("SC load_prompt: " + event.prompt_id))
+        # self.app.post_message(
+        #     LogIt(
+        #         f"{event.prompt_id},{event.llm_provider_name},{event.llm_model_name},{event.temperature}"
+        #     )
+        # )
         prompt = chat_manager.get_prompt(event.prompt_id)
         if prompt is None:
             self.notify(f"Prompt not found: {event.prompt_id}", severity="error")
             return False
         prompt.load()
-        self.app.post_message(LogIt(f"{prompt.id},{prompt.name}"))
+        # self.app.post_message(LogIt(f"{prompt.id},{prompt.name}"))
         old_session = self.session
         old_session.remove_sub(self)
         llm_config: LlmConfig = old_session.llm_config.clone()

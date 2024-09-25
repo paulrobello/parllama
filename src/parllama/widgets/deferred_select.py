@@ -87,7 +87,7 @@ class DeferredSelect(Generic[SelectType], Select[SelectType]):
         """Set the options for the Select."""
         old_value = self.value
 
-        if options:
+        if options is not None:
             super().set_options(options)
 
         opts = [o[1] for o in self._options]

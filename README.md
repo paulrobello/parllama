@@ -20,15 +20,15 @@
     * [Dev mode](#dev-mode)
 * [Quick start chat workflow](#quick-start-chat-workflow)
 * [Custom Prompts](#Custom-Prompts)
-* [Secrets](#Secrets)
 * [Themes](#themes)
-* [Screen Help](./src/parllama/help.md)
+* [Screen Help](https://raw.githubusercontent.com/paulrobello/parllama/main/src/parllama/help.md)
 * [Contributing](#contributing)
 * [FAQ](#faq)
 * [Roadmap](#roadmap)
     * [Where we are](#where-we-are)
     * [Where we're going](#where-were-going)
 * [What's new](#whats-new)
+    * [v0.3.10](#v0310)
     * [v0.3.9](#v039)
     * [v0.3.8](#v038)
     * [v0.3.7](#v037)
@@ -404,6 +404,10 @@ if anything remains to be fixed before the commit is allowed.
 
 
 ## What's new
+
+### v0.3.10
+* Fixed crash issues on fresh installs
+* Images are now stored in chat session json files
 
 ### v0.3.9
 * Image support for models that support them using /add.image slash command. See the [Quick start image chat workflow](#quick-start-image-chat-workflow)

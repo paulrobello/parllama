@@ -209,7 +209,7 @@ class ChatManager(ParEventSystemBase):
                     os.path.join(settings.chat_dir, f), mode="rt", encoding="utf-8"
                 ) as fh:
                     # data: dict = json.load(fh)
-                    session = ChatSession.from_json(fh.read())
+                    session = ChatSession.from_json(fh.read(), load_messages=False)
                     session.name_generated = True
                     self._id_to_session[session.id] = session
                     self.mount(session)

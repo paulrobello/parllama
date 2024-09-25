@@ -121,7 +121,7 @@ class OllamaDataManager(ParEventSystemBase):
                 model_data = None
         if not model_data:
             model_data = ollama.Client(host=settings.ollama_host).show(model.name)
-            cache_file.write_bytes(json.dumps(model_data))
+            cache_file.write_bytes(json.dumps(model_data, str, json.OPT_INDENT_2))
 
         msp = ModelShowPayload(**model_data)
         msp.modelfile = re.sub(
@@ -286,10 +286,14 @@ class OllamaDataManager(ParEventSystemBase):
                 break
 
         if len(models) > 0 and not settings.no_save:
-            file_name.write_text(
-                SiteModelData(
-                    models=models, last_update=datetime.now(timezone.utc)
-                ).model_dump_json(indent=4)
+            file_name.write_bytes(
+                json.dumps(
+                    SiteModelData(
+                        models=models, last_update=datetime.now(timezone.utc)
+                    ).model_dump(),
+                    str,
+                    json.OPT_INDENT_2,
+                )
             )
         self.site_models = [SiteModelListItem(m) for m in models]
         return self.site_models
