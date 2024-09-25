@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import time
 from pathlib import Path
 from typing import Any
 from typing import Optional
@@ -14,7 +15,7 @@ from groq import Groq
 from openai import OpenAI
 from textual.app import App
 
-from parllama.llm_providers import llm_provider_types
+from parllama.llm_providers import llm_provider_types, is_provider_api_key_set
 from parllama.llm_providers import LlmProvider
 from parllama.messages.messages import ProviderModelsChanged
 from parllama.messages.messages import RefreshProviderModelsRequested
@@ -64,12 +65,16 @@ class ProviderManager(ParEventSystemBase):
         super().set_app(app)
         self.load_models()
 
+    # pylint: disable=too-many-branches
     def refresh_models(self):
         """Refresh the models."""
         self.log_it("Refreshing provider models")
         for p in llm_provider_types:
             try:
                 new_list = []
+                if not is_provider_api_key_set(p):
+                    # self.log_it(f"Skipping {p} because it has no API key", notify=True)
+                    continue
                 if p == LlmProvider.OLLAMA:
                     new_list = ollama_dm.get_model_names()
                 elif p == LlmProvider.OPENAI:
@@ -127,19 +132,32 @@ class ProviderManager(ParEventSystemBase):
 
     def save_models(self):
         """Save the models."""
-        self.cache_file.write_bytes(json.dumps(self.provider_models))
+        self.cache_file.write_bytes(
+            json.dumps(
+                {k.value: v for k, v in self.provider_models.items()},
+                str,
+                json.OPT_INDENT_2,
+            )
+        )
 
     def load_models(self, refresh: bool = False) -> None:
         """Load the models."""
         if not self.cache_file.exists():
+            self.log_it("Models file does not exist, requesting refresh")
             if self.app:
                 self.app.post_message(RefreshProviderModelsRequested(None))
             return
+
+        if self.cache_file.stat().st_mtime < time.time() - 7 * 24 * 60 * 60:
+            self.log_it("Models file is older than 7 days requesting refresh")
+            refresh = True
+
         if refresh:
             self.refresh_models()
             return
 
-        self.provider_models = json.loads(self.cache_file.read_bytes())
+        provider_models = json.loads(self.cache_file.read_bytes())
+        self.provider_models = {LlmProvider(k): v for k, v in provider_models.items()}
         if self.app:
             self.app.post_message(ProviderModelsChanged())
 

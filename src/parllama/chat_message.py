@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 from typing import Optional
 from typing import Tuple
 
@@ -19,11 +19,33 @@ from parllama.settings_manager import fetch_and_cache_image
 from parllama.utils import b64_encode_image
 
 
-def image_to_chat_message(image_bytes: bytes) -> dict[str, Any]:
+def try_get_image_type(image_path: str) -> Literal["jpeg", "png", "gif"]:
+    """Get image type from image path."""
+    if image_path.startswith("data:"):
+        ext = image_path.split(";")[0].split("/")[-1].lower()
+    else:
+        ext = image_path.split(".")[-1].lower()
+    if ext in ["jpg", "jpeg"]:
+        return "jpeg"
+    if ext in ["png"]:
+        return "png"
+    if ext in ["gif"]:
+        return "gif"
+    raise ValueError(f"Unsupported image type: {ext}")
+
+
+def image_to_base64(
+    image_bytes: bytes, image_type: Literal["jpeg", "png", "gif"] = "jpeg"
+) -> str:
+    """Convert an image to base64 url."""
+    return f"data:image/{image_type};base64,{b64_encode_image(image_bytes)}"
+
+
+def image_to_chat_message(image_url_str: str) -> dict[str, Any]:
     """Convert an image to a chat message."""
     return {
         "type": "image_url",
-        "image_url": {"url": f"data:image/jpeg;base64,{b64_encode_image(image_bytes)}"},
+        "image_url": {"url": image_url_str},
     }
 
 
@@ -37,7 +59,7 @@ class ParllamaChatMessage(ParEventSystemBase):
     content: str = ""
     "Content of the message. Response messages contains message fragments when streaming."
 
-    images: Optional[Sequence[str]] = None
+    images: Optional[list[str]] = None
     """
       Optional list of image data for multimodal models.
 
@@ -60,7 +82,7 @@ class ParllamaChatMessage(ParEventSystemBase):
         id: str | None = None,  # pylint: disable=redefined-builtin
         role: MessageRoles,
         content: str = "",
-        images: Optional[Sequence[str]] = None,
+        images: Optional[list[str]] = None,
         tool_calls: Optional[Sequence[ToolCall]] = None,
     ) -> None:
         """Initialize the chat message"""
@@ -69,6 +91,13 @@ class ParllamaChatMessage(ParEventSystemBase):
         self.content = content
         self.images = images
         self.tool_calls = tool_calls
+
+        if self.images:
+            image = self.images[0]
+            if not image.startswith("data:"):
+                image_type = try_get_image_type(image)
+                image = image_to_base64(fetch_and_cache_image(image)[1], image_type)
+                self.images[0] = image
 
     def __str__(self) -> str:
         """Ollama message representation"""
@@ -98,7 +127,7 @@ class ParllamaChatMessage(ParEventSystemBase):
             try:
                 content = [
                     {"type": "text", "text": self.content},
-                    image_to_chat_message(fetch_and_cache_image(image)[1]),
+                    image_to_chat_message(image),
                 ]
             except Exception as e:  # pylint: disable=broad-except
                 content = str(e)

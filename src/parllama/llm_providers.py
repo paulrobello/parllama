@@ -28,14 +28,6 @@ class LlmProvider(str, Enum):
 
 
 llm_provider_types: list[LlmProvider] = list(LlmProvider)
-provider_select_options: list[tuple[str, LlmProvider]] = [
-    (
-        p,
-        LlmProvider(p),
-    )
-    for p in llm_provider_types
-]
-
 llm_provider_names: list[str] = [p.value.lower() for p in llm_provider_types]
 
 
@@ -87,11 +79,7 @@ provider_config: dict[LlmProvider, LlmProviderConfig] = {
 
 
 provider_env_key_names: dict[LlmProvider, str] = {
-    LlmProvider.OLLAMA: "",
-    LlmProvider.OPENAI: "OPENAI_API_KEY",
-    LlmProvider.GROQ: "GROQ_API_KEY",
-    LlmProvider.ANTHROPIC: "ANTHROPIC_API_KEY",
-    LlmProvider.GOOGLE: "GOOGLE_API_KEY",
+    k: v.env_key_name for k, v in provider_config.items()
 }
 
 
@@ -110,3 +98,14 @@ def is_provider_api_key_set(provider: LlmProvider) -> bool:
 def get_providers_with_api_keys() -> list[LlmProvider]:
     """Get providers with API keys."""
     return [p for p in LlmProvider if is_provider_api_key_set(p)]
+
+
+def get_provider_select_options() -> list[tuple[str, LlmProvider]]:
+    """Get provider select options."""
+    return [
+        (
+            p,
+            LlmProvider(p),
+        )
+        for p in get_providers_with_api_keys()
+    ]

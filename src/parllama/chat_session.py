@@ -219,9 +219,9 @@ class ChatSession(ChatMessageContainer):
             start_time = datetime.now(timezone.utc)
             ttft: float = 0.0  # time to first token
 
-            self.log_it(self._llm_config)
+            # self.log_it(self._llm_config)
             chat_history = [m.to_langchain_native() for m in self.messages]
-            self.log_it(chat_history)
+            # self.log_it(chat_history)
             stream: Iterator[
                 BaseMessageChunk
             ] = self._llm_config.build_chat_model().stream(
@@ -400,19 +400,23 @@ class ChatSession(ChatMessageContainer):
                 "llm_config": self._llm_config.to_json(),
                 "messages": [m.to_dict() for m in self.messages],
             },
+            str,
+            json.OPT_INDENT_2,
         ).decode("utf-8")
 
     @staticmethod
     def from_json(json_data: str, load_messages: bool = False) -> ChatSession:
         """Convert JSON to chat session"""
         data: dict = json.loads(json_data)
-
-        messages = data["messages"]
-        for m in messages:
-            # convert old format
-            if "message_id" in m:
-                m["id"] = "message_id"
-                del m["message_id"]
+        if load_messages:
+            messages = data["messages"]
+            for m in messages:
+                # convert old format
+                if "message_id" in m:
+                    m["id"] = "message_id"
+                    del m["message_id"]
+        else:
+            messages = []
         utc = pytz.UTC
         lc = data.get("llm_config")
         # adapt old format session

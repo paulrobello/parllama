@@ -75,6 +75,7 @@ class OptionsView(Horizontal):
     def __init__(self, **kwargs) -> None:
         """Initialise the screen."""
         super().__init__(**kwargs)
+        self._provider_changed = False
 
     def compose(self) -> ComposeResult:  # pylint: disable=too-many-statements
         """Compose the content of the view."""
@@ -457,18 +458,25 @@ class OptionsView(Horizontal):
             settings.ollama_host = ctrl.value
         elif ctrl.id == "openai_base_url":
             settings.provider_base_urls[LlmProvider.OPENAI] = ctrl.value or None
+            self._provider_changed = True
         elif ctrl.id == "openai_api_key":
             settings.provider_api_keys[LlmProvider.OPENAI] = ctrl.value or None
+            self._provider_changed = True
         elif ctrl.id == "groq_base_url":
             settings.provider_base_urls[LlmProvider.GROQ] = ctrl.value or None
+            self._provider_changed = True
         elif ctrl.id == "groq_api_key":
             settings.provider_api_keys[LlmProvider.GROQ] = ctrl.value or None
+            self._provider_changed = True
         elif ctrl.id == "anthropic_base_url":
             settings.provider_base_urls[LlmProvider.ANTHROPIC] = ctrl.value or None
+            self._provider_changed = True
         elif ctrl.id == "anthropic_api_key":
             settings.provider_api_keys[LlmProvider.ANTHROPIC] = ctrl.value or None
+            self._provider_changed = True
         elif ctrl.id == "google_api_key":
             settings.provider_api_keys[LlmProvider.GOOGLE] = ctrl.value or None
+            self._provider_changed = True
         elif ctrl.id == "ollama_ps_poll_interval":
             settings.ollama_ps_poll_interval = int(ctrl.value)
         elif ctrl.id == "chat_tab_max_length":
@@ -485,3 +493,5 @@ class OptionsView(Horizontal):
             self.notify(f"Unhandled input: {ctrl.id}", severity="error", timeout=8)
             return
         settings.save()
+        if self._provider_changed:
+            self._provider_changed = False

@@ -192,7 +192,9 @@ class UserInput(Widget, can_focus=False, can_focus_children=True):
         """Save the input history if enabled."""
         if not settings.save_chat_input_history or not self._history_file:
             return
-        self._history_file.write_bytes(json.dumps(self.input_history))
+        self._history_file.write_bytes(
+            json.dumps(self.input_history, str, json.OPT_INDENT_2)
+        )
 
     def load(self) -> None:
         """Load the input history if enabled."""

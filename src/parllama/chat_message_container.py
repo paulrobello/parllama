@@ -67,6 +67,11 @@ class ChatMessageContainer(ParEventSystemBase):
         self._loaded = messages is not None
         self._batching = False
 
+    def unload(self) -> None:
+        """Unload the messages"""
+        self._loaded = False
+        self.messages = []
+
     @property
     def is_loaded(self):
         """Check if the messages have been loaded"""
@@ -235,6 +240,8 @@ class ChatMessageContainer(ParEventSystemBase):
                 "last_updated": self.last_updated.isoformat(),
                 "messages": [m.to_dict() for m in self.messages],
             },
+            str,
+            json.OPT_INDENT_2,
         ).decode("utf-8")
 
     def export_as_markdown(self, filename: str) -> bool:

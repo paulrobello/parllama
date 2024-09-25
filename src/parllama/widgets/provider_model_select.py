@@ -9,8 +9,12 @@ from textual.app import ComposeResult
 from textual.containers import Container
 from textual.widgets import Select
 
-from parllama.llm_providers import LlmProvider, provider_config
-from parllama.llm_providers import provider_select_options
+from parllama.llm_providers import (
+    LlmProvider,
+    provider_config,
+    is_provider_api_key_set,
+    get_provider_select_options,
+)
 from parllama.messages.messages import LogIt, ProviderModelSelected
 from parllama.messages.messages import ProviderModelsChanged
 from parllama.messages.messages import RegisterForUpdates
@@ -57,13 +61,19 @@ class ProviderModelSelect(Container):
         super().__init__(**kwargs)
 
         self.update_settings = update_settings
-
-        lp: LlmProvider = (
-            provider or settings.last_llm_config.provider or LlmProvider.OLLAMA
-        )
+        if isinstance(provider, str):
+            provider = LlmProvider(provider)
+        opts = get_provider_select_options()
+        if provider not in opts:
+            provider = None
+        if not provider:
+            provider = settings.last_llm_config.provider
+        if provider not in opts:
+            provider = None
+        lp: LlmProvider = provider or LlmProvider.OLLAMA
         self.provider_select = DeferredSelect[LlmProvider](
             id="provider_name",
-            options=provider_select_options,
+            options=opts,
             allow_blank=False,
             value=lp,
         )
@@ -106,6 +116,13 @@ class ProviderModelSelect(Container):
                 ],
             )
         )
+        if self.provider_select.value != Select.BLANK and not is_provider_api_key_set(
+            self.provider_select.value  # type: ignore
+        ):
+            self.notify(
+                f"No API key for {self.provider_select.value.value}",  # type: ignore
+                severity="warning",
+            )
 
     async def on_unmount(self) -> None:
         """Remove dialog from updates when unmounted."""
@@ -135,6 +152,14 @@ class ProviderModelSelect(Container):
     def provider_select_changed(self) -> None:
         """Provider select changed, update control states and save provider name"""
         if self.provider_select.value != Select.BLANK:
+            if not is_provider_api_key_set(self.provider_select.value):  # type: ignore
+                self.notify(
+                    f"No API key set for {self.provider_select.value.value}",  # type: ignore
+                    severity="warning",
+                )
+                self.model_select.set_options([])
+                self.notify_changed()
+                return
             if self.update_settings:
                 settings.last_llm_config.provider = self.provider_select.value  # type: ignore
                 settings.save()
@@ -187,6 +212,8 @@ class ProviderModelSelect(Container):
     def on_provider_models_refreshed(self, event: ProviderModelsChanged) -> None:
         """Handle provider models refreshed event"""
         event.stop()
+        self.provider_select.set_options(get_provider_select_options())
+
         if event.provider and self.provider_select.value != event.provider:
             return
         # self.app.post_message(LogIt("ProviderModelsChanged", notify=True))
