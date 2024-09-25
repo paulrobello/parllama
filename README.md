@@ -408,6 +408,7 @@ if anything remains to be fixed before the commit is allowed.
 ### v0.3.10
 * Fixed crash issues on fresh installs
 * Images are now stored in chat session json files
+* Added API key checks for online providers
 
 ### v0.3.9
 * Image support for models that support them using /add.image slash command. See the [Quick start image chat workflow](#quick-start-image-chat-workflow)

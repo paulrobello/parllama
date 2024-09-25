@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import time
 from pathlib import Path
 from typing import Any
 from typing import Optional
@@ -142,9 +143,15 @@ class ProviderManager(ParEventSystemBase):
     def load_models(self, refresh: bool = False) -> None:
         """Load the models."""
         if not self.cache_file.exists():
+            self.log_it("Models file does not exist, requesting refresh")
             if self.app:
                 self.app.post_message(RefreshProviderModelsRequested(None))
             return
+
+        if self.cache_file.stat().st_mtime < time.time() - 7 * 24 * 60 * 60:
+            self.log_it("Models file is older than 7 days requesting refresh")
+            refresh = True
+
         if refresh:
             self.refresh_models()
             return
