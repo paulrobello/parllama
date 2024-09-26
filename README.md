@@ -21,13 +21,14 @@
 * [Quick start chat workflow](#quick-start-chat-workflow)
 * [Custom Prompts](#Custom-Prompts)
 * [Themes](#themes)
-* [Screen Help](https://raw.githubusercontent.com/paulrobello/parllama/main/src/parllama/help.md)
+* [Screen Help](https://github.com/paulrobello/parllama/blob/main/src/parllama/help.md)
 * [Contributing](#contributing)
 * [FAQ](#faq)
 * [Roadmap](#roadmap)
     * [Where we are](#where-we-are)
     * [Where we're going](#where-were-going)
 * [What's new](#whats-new)
+    * [v0.3.11](#v0311)* 
     * [v0.3.10](#v0310)
     * [v0.3.9](#v039)
     * [v0.3.8](#v038)
@@ -404,6 +405,10 @@ if anything remains to be fixed before the commit is allowed.
 
 
 ## What's new
+
+### v0.3.11
+
+* Image file picker added to /add.image command
 
 ### v0.3.10
 * Fixed crash issues on fresh installs
