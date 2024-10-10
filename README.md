@@ -50,7 +50,7 @@
 ![PyPI - License](https://img.shields.io/pypi/l/parllama)
 
 ## About
-PAR LLAMA is a TUI application designed for easy management and use of Ollama based LLMs.
+PAR LLAMA is a TUI (Text UI) application designed for easy management and use of Ollama based LLMs.
 The application was built with [Textual](https://textual.textualize.io/) and [Rich](https://github.com/Textualize/rich?tab=readme-ov-file)
 and runs on all major OS's including but not limited to Windows, Windows WSL, Mac, and Linux.
 
