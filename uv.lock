@@ -1443,6 +1443,21 @@ wheels = [
 ]
 
 [[package]]
+name = "langchain-aws"
+version = "0.2.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "boto3" },
+    { name = "langchain-core" },
+    { name = "numpy" },
+    { name = "pydantic" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/da/fd/3325e98c09331d4cca73e643cd7a75edf4f17460fc12ad22b20ab8be54dc/langchain_aws-0.2.2.tar.gz", hash = "sha256:38d2ea388c7a05fd4a615f815e5d8fe97b964643f09f95f454f074a03698c3e2", size = 70869 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ed/84/231c0d09d1621a1d4e9d1b2c7dfa4ad752ae6daa118eeace56c4f6a3eb58/langchain_aws-0.2.2-py3-none-any.whl", hash = "sha256:8f81e77a26361f11739039e097ebc316ed38219961ca649bc5c2ec58648a5d87", size = 84276 },
+]
+
+[[package]]
 name = "langchain-chroma"
 version = "0.1.4"
 source = { registry = "https://pypi.org/simple" }
@@ -2556,6 +2571,7 @@ dependencies = [
     { name = "jsonschema" },
     { name = "langchain" },
     { name = "langchain-anthropic" },
+    { name = "langchain-aws" },
     { name = "langchain-chroma" },
     { name = "langchain-community" },
     { name = "langchain-core" },
@@ -2646,6 +2662,7 @@ requires-dist = [
     { name = "jsonschema" },
     { name = "langchain" },
     { name = "langchain-anthropic" },
+    { name = "langchain-aws", specifier = ">=0.2.2" },
     { name = "langchain-chroma" },
     { name = "langchain-community" },
     { name = "langchain-core" },
