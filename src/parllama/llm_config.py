@@ -384,7 +384,7 @@ class LlmConfig:
     # pylint: disable=too-many-return-statements,too-many-branches
     def _build_llm(self) -> BaseLanguageModel | BaseChatModel | Embeddings:
         """Build the LLM."""
-        self.base_url = provider_base_urls[self.provider]
+        self.base_url = self.base_url or provider_base_urls[self.provider]
         if self.provider == LlmProvider.OLLAMA:
             return self._build_ollama_llm()
         if self.provider == LlmProvider.OPENAI:
