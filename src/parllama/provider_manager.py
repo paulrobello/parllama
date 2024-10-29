@@ -15,8 +15,8 @@ from groq import Groq
 from openai import OpenAI
 from textual.app import App
 
-from parllama.llm_providers import llm_provider_types, is_provider_api_key_set
-from parllama.llm_providers import LlmProvider
+from parllama.lib.llm_providers import llm_provider_types, is_provider_api_key_set
+from parllama.lib.llm_providers import LlmProvider
 from parllama.messages.messages import ProviderModelsChanged
 from parllama.messages.messages import RefreshProviderModelsRequested
 from parllama.ollama_data_manager import ollama_dm

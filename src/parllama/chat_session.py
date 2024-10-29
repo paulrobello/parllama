@@ -21,8 +21,8 @@ from textual.message_pump import MessagePump
 
 from parllama.chat_message import ParllamaChatMessage
 from parllama.chat_message_container import ChatMessageContainer
-from parllama.llm_config import LlmConfig
-from parllama.llm_providers import LlmProvider
+from parllama.lib.llm_config import LlmConfig
+from parllama.lib.llm_providers import LlmProvider
 from parllama.messages.messages import ChatGenerationAborted, ChatMessageDeleted
 from parllama.messages.messages import ChatMessage
 from parllama.messages.messages import SessionChanges

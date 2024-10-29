@@ -13,7 +13,7 @@ from textual.message_pump import MessagePump
 from parllama.chat_message import ParllamaChatMessage
 from parllama.chat_prompt import ChatPrompt
 from parllama.chat_session import ChatSession
-from parllama.llm_config import LlmConfig
+from parllama.lib.llm_config import LlmConfig
 from parllama.llm_session_name import llm_session_name
 from parllama.messages.messages import ChangeTab
 from parllama.messages.messages import PromptListChanged

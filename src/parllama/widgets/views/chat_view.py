@@ -22,7 +22,7 @@ from parllama.chat_manager import chat_manager
 from parllama.chat_manager import ChatSession
 from parllama.chat_message import ParllamaChatMessage
 from parllama.dialogs.information import InformationDialog
-from parllama.llm_providers import (
+from parllama.lib.llm_providers import (
     llm_provider_names,
     LlmProvider,
     get_provider_name_fuzzy,

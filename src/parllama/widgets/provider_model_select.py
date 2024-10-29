@@ -9,7 +9,7 @@ from textual.app import ComposeResult
 from textual.containers import Container
 from textual.widgets import Select
 
-from parllama.llm_providers import (
+from parllama.lib.llm_providers import (
     LlmProvider,
     provider_config,
     is_provider_api_key_set,

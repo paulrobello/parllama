@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from parllama.llm_config import LlmConfig
+from parllama.lib.llm_config import LlmConfig
 from parllama.messages.shared import SessionChanges
 from parllama.par_event_system import ParEventBase
 

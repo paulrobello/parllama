@@ -15,7 +15,7 @@ import requests
 import orjson as json
 from pydantic import BaseModel
 
-from parllama.llm_providers import (
+from parllama.lib.llm_providers import (
     LlmProvider,
     provider_name_to_enum,
     llm_provider_types,

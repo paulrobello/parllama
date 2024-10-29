@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from parllama.llm_config import LlmConfig
+from parllama.lib.llm_config import LlmConfig
 
 
 def llm_session_name(text: str, llm_config: Optional[LlmConfig] = None) -> str | None:

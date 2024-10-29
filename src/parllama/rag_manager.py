@@ -13,9 +13,9 @@ from dotenv import load_dotenv
 from langchain.chains.retrieval_qa.base import RetrievalQA
 from textual.app import App
 
-from parllama.llm_config import LlmConfig
-from parllama.llm_config import LlmMode
-from parllama.llm_providers import LlmProvider
+from parllama.lib.llm_config import LlmConfig
+from parllama.lib.llm_config import LlmMode
+from parllama.lib.llm_providers import LlmProvider
 from parllama.models.rag_datasource import DataSourceFile
 from parllama.models.rag_datasource import LoadSplitConfig
 from parllama.models.rag_stores import RagPipelineConfig

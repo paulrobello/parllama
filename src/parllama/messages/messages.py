@@ -13,7 +13,7 @@ from textual.message_pump import MessagePump
 from textual.notifications import SeverityLevel
 from textual.widgets import TextArea, Input
 
-from parllama.llm_providers import LlmProvider
+from parllama.lib.llm_providers import LlmProvider
 from parllama.messages.shared import SessionChanges
 from parllama.models.ollama_data import FullModel
 from parllama.utils import TabType

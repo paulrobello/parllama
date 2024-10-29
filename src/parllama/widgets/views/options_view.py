@@ -16,8 +16,8 @@ from textual.widgets import Select
 from textual.widgets import Static
 
 import parllama
-from parllama.llm_config import LlmConfig
-from parllama.llm_providers import LlmProvider
+from parllama.lib.llm_config import LlmConfig
+from parllama.lib.llm_providers import LlmProvider
 from parllama.messages.messages import ClearChatInputHistory, ProviderModelSelected
 from parllama.settings_manager import settings
 from parllama.theme_manager import theme_manager

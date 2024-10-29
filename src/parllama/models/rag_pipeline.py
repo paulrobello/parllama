@@ -23,7 +23,7 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.retrievers import BaseRetriever
 from langchain_core.vectorstores import VectorStore
 
-from parllama.llm_config import LlmConfig
+from parllama.lib.llm_config import LlmConfig
 from parllama.passthrough_document_transformer import PassthroughDocumentTransformer
 
 warnings.simplefilter("ignore", category=LangChainDeprecationWarning)

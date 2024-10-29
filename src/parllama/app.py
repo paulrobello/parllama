@@ -38,7 +38,7 @@ from parllama.chat_manager import chat_manager
 from parllama.chat_manager import ChatManager
 from parllama.dialogs.help_dialog import HelpDialog
 from parllama.dialogs.information import InformationDialog
-from parllama.llm_providers import LlmProvider
+from parllama.lib.llm_providers import LlmProvider
 from parllama.messages.messages import ChangeTab
 from parllama.messages.messages import ClearChatInputHistory
 from parllama.messages.messages import DeletePrompt

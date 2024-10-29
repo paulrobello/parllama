@@ -22,7 +22,7 @@ from langchain_core.retrievers import BaseRetriever
 from langchain_core.vectorstores import VectorStore
 from langchain_core.vectorstores import VectorStoreRetriever
 
-from parllama.llm_config import LlmConfig
+from parllama.lib.llm_config import LlmConfig
 from parllama.models.rag_base import RagBase
 from parllama.models.rag_pipeline import rag_pipeline
 from parllama.models.rag_pipeline import RagPipelineConfig

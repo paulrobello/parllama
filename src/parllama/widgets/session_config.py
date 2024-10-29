@@ -16,7 +16,7 @@ from textual.widgets import Static
 
 from parllama.chat_manager import chat_manager
 from parllama.chat_session import ChatSession
-from parllama.llm_config import LlmConfig
+from parllama.lib.llm_config import LlmConfig
 from parllama.messages.messages import ProviderModelSelected
 from parllama.messages.messages import PromptSelected
 from parllama.messages.messages import RegisterForUpdates
