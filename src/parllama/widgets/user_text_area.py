@@ -35,9 +35,7 @@ class UserTextArea(TextArea):
 
     BINDINGS = [
         Binding(key="ctrl+g", action="submit", description="Submit", show=True),
-        Binding(
-            key="ctrl+j", action="toggle_mode", description="Single Line", show=True
-        ),
+        Binding(key="ctrl+j", action="toggle_mode", description="Single Line", show=True),
     ]
 
     def __init__(

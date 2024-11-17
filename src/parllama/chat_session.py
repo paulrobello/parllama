@@ -9,9 +9,8 @@ import uuid
 from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import datetime
-from datetime import timezone
+from datetime import UTC
 from pathlib import Path
-from typing import Optional
 
 import pytz
 import rich.repr
@@ -51,15 +50,15 @@ class ChatSession(ChatMessageContainer):
     """Set to True if the session is currently generating"""
     _batching: bool
     """Set to True if the session is currently being batched"""
-    _stream_stats: Optional[TokenStats]
+    _stream_stats: TokenStats | None
     """Stream statistics"""
     _llm_config: LlmConfig
     """LLM configuration"""
-    _key_secure: Optional[str]
+    _key_secure: str | None
     """Encrypted current session password"""
-    _key: Optional[bytes]
+    _key: bytes | None
     """Decryption key derived from the password."""
-    _salt: Optional[bytes]
+    _salt: bytes | None
     """Used with password to derive the en/decryption key."""
 
     # pylint: disable=too-many-arguments
@@ -134,9 +133,7 @@ class ChatSession(ChatMessageContainer):
         """Delete the session"""
         self.post_message(ParSessionDelete(session_id=self.id))
 
-    def _notify_subs(
-        self, event: SessionMessage | ChatMessage | ChatMessageDeleted
-    ) -> None:
+    def _notify_subs(self, event: SessionMessage | ChatMessage | ChatMessageDeleted) -> None:
         """Notify all subscriptions"""
         for sub in self._subs:
             # self.log_it(f"notifying sub {sub.__class__.__name__ }", notify=True)
@@ -201,30 +198,24 @@ class ChatSession(ChatMessageContainer):
         """Send a chat message to LLM"""
         self._generating = True
         is_aborted = False
-        msg: Optional[ParllamaChatMessage] = None
+        msg: ParllamaChatMessage | None = None
         try:
             if from_user:
                 # self.log_it("CM adding user message")
                 msg = ParllamaChatMessage(role="user", content=from_user)
                 self.add_message(msg)
-                self._notify_subs(
-                    ChatMessage(parent_id=self.id, message_id=msg.id, is_final=True)
-                )
-                self.post_message(
-                    ParChatUpdated(parent_id=self.id, message_id=msg.id, is_final=True)
-                )
+                self._notify_subs(ChatMessage(parent_id=self.id, message_id=msg.id, is_final=True))
+                self.post_message(ParChatUpdated(parent_id=self.id, message_id=msg.id, is_final=True))
                 self.save()
 
             num_tokens: int = 0
-            start_time = datetime.now(timezone.utc)
+            start_time = datetime.now(UTC)
             ttft: float = 0.0  # time to first token
 
             # self.log_it(self._llm_config)
             chat_history = [m.to_langchain_native() for m in self.messages]
             # self.log_it(chat_history)
-            stream: Iterator[
-                BaseMessageChunk
-            ] = self._llm_config.build_chat_model().stream(
+            stream: Iterator[BaseMessageChunk] = self._llm_config.build_chat_model().stream(
                 chat_history  # type: ignore
             )
             # self.log_it("CM adding assistant message")
@@ -235,7 +226,7 @@ class ChatSession(ChatMessageContainer):
 
             for chunk in stream:
                 # self.log_it(chunk)
-                elapsed_time = datetime.now(timezone.utc) - start_time
+                elapsed_time = datetime.now(UTC) - start_time
                 if chunk.content:
                     if num_tokens == 0:
                         ttft = elapsed_time.total_seconds()
@@ -256,8 +247,7 @@ class ChatSession(ChatMessageContainer):
                     break
 
                 if (
-                    hasattr(chunk, "usage_metadata")
-                    and chunk.usage_metadata  # pyright: ignore [reportAttributeAccessIssue]
+                    hasattr(chunk, "usage_metadata") and chunk.usage_metadata  # pyright: ignore [reportAttributeAccessIssue]
                 ):
                     # self.log_it(chunk)
                     usage_metadata = (
@@ -282,41 +272,20 @@ class ChatSession(ChatMessageContainer):
                     if "model" in chunk.response_metadata:
                         self._stream_stats = TokenStats(
                             model=chunk.response_metadata.get("model") or "?",
-                            created_at=chunk.response_metadata.get("created_at")
-                            or datetime.now(),
-                            total_duration=chunk.response_metadata.get("total_duration")
-                            or 0,
-                            load_duration=chunk.response_metadata.get("load_duration")
-                            or 0,
-                            prompt_eval_count=chunk.response_metadata.get(
-                                "prompt_eval_count"
-                            )
-                            or 0,
-                            prompt_eval_duration=chunk.response_metadata.get(
-                                "prompt_eval_duration"
-                            )
-                            or 0,
+                            created_at=chunk.response_metadata.get("created_at") or datetime.now(),
+                            total_duration=chunk.response_metadata.get("total_duration") or 0,
+                            load_duration=chunk.response_metadata.get("load_duration") or 0,
+                            prompt_eval_count=chunk.response_metadata.get("prompt_eval_count") or 0,
+                            prompt_eval_duration=chunk.response_metadata.get("prompt_eval_duration") or 0,
                             eval_count=chunk.response_metadata.get("eval_count") or 0,
-                            eval_duration=int(
-                                chunk.response_metadata.get("eval_duration", 0)
-                                / 1_000_000_000
-                            )
-                            or 0,
+                            eval_duration=int(chunk.response_metadata.get("eval_duration", 0) / 1_000_000_000) or 0,
                             input_tokens=0,
                             output_tokens=0,
                             total_tokens=0,
                             time_til_first_token=int(ttft),
                         )
-                self._notify_subs(
-                    ChatMessage(
-                        parent_id=self.id, message_id=msg.id, is_final=not chunk.content
-                    )
-                )
-                self.post_message(
-                    ParChatUpdated(
-                        parent_id=self.id, message_id=msg.id, is_final=not chunk.content
-                    )
-                )
+                self._notify_subs(ChatMessage(parent_id=self.id, message_id=msg.id, is_final=not chunk.content))
+                self.post_message(ParChatUpdated(parent_id=self.id, message_id=msg.id, is_final=not chunk.content))
 
             self._changes.add("messages")
             self.save()
@@ -334,9 +303,7 @@ class ChatSession(ChatMessageContainer):
                     self.post_message(
                         ParSessionAutoName(
                             session_id=self.id,
-                            llm_config=LlmConfig(
-                                **settings.auto_name_session_llm_config
-                            ),
+                            llm_config=LlmConfig(**settings.auto_name_session_llm_config),
                             context=user_msg.content,
                         )
                     )
@@ -390,9 +357,7 @@ class ChatSession(ChatMessageContainer):
         return json.dumps(
             {
                 "id": self.id,
-                "_salt": (
-                    base64.b64encode(self._salt).decode("utf-8") if self._salt else None
-                ),
+                "_salt": (base64.b64encode(self._salt).decode("utf-8") if self._salt else None),
                 "__key__": self._key_secure,
                 "name": self.name,
                 "name_generated": self.name_generated,
@@ -429,12 +394,8 @@ class ChatSession(ChatMessageContainer):
         session = ChatSession(
             id=data.get("id", data.get("id", data.get("session_id"))),
             name=data.get("name", data.get("name", data.get("session_name"))),
-            last_updated=datetime.fromisoformat(data["last_updated"]).replace(
-                tzinfo=utc
-            ),
-            messages=(
-                [ParllamaChatMessage(**m) for m in messages] if load_messages else None
-            ),
+            last_updated=datetime.fromisoformat(data["last_updated"]).replace(tzinfo=utc),
+            messages=([ParllamaChatMessage(**m) for m in messages] if load_messages else None),
             llm_config=LlmConfig.from_json(lc),
         )
         session.name_generated = True
@@ -452,20 +413,16 @@ class ChatSession(ChatMessageContainer):
     def load_from_file(filename: str) -> ChatSession | None:
         """Load a chat session from a file"""
         try:
-            with open(
-                os.path.join(settings.chat_dir, filename), "rt", encoding="utf-8"
-            ) as f:
+            with open(os.path.join(settings.chat_dir, filename), encoding="utf-8") as f:
                 return ChatSession.from_json(f.read())
-        except (OSError, IOError):
+        except OSError:
             return None
 
     @property
     def is_valid(self) -> bool:
         """return true if session is valid"""
         return (
-            len(self.name) > 0
-            and len(self.llm_model_name) > 0
-            and self.llm_model_name not in ["Select.BLANK", "None"]
+            len(self.name) > 0 and len(self.llm_model_name) > 0 and self.llm_model_name not in ["Select.BLANK", "None"]
             # and len(self.messages) > 0
         )
 
@@ -480,7 +437,7 @@ class ChatSession(ChatMessageContainer):
             # self.log_it(f"CS is not dirty, not notifying: {self.name}")
             return False  # No need to save if no changes
 
-        self.last_updated = datetime.now(timezone.utc)
+        self.last_updated = datetime.now(UTC)
         if "system_prompt" in self._changes:
             msg = self.system_prompt
             if msg is not None:
@@ -503,12 +460,10 @@ class ChatSession(ChatMessageContainer):
 
         file_name = f"{self.id}.json"  # Use session ID as filename to avoid over
         try:
-            with open(
-                os.path.join(settings.chat_dir, file_name), "wt", encoding="utf-8"
-            ) as f:
+            with open(os.path.join(settings.chat_dir, file_name), "w", encoding="utf-8") as f:
                 f.write(self.to_json())
             return True
-        except (OSError, IOError):
+        except OSError:
             return False
 
     def stop_generation(self) -> None:
@@ -532,6 +487,4 @@ class ChatSession(ChatMessageContainer):
 
     def on_par_chat_message_deleted(self, event: ParChatMessageDeleted):
         """Handle ParChatMessageDeleted event"""
-        self._notify_subs(
-            ChatMessageDeleted(parent_id=event.parent_id, message_id=event.message_id)
-        )
+        self._notify_subs(ChatMessageDeleted(parent_id=event.parent_id, message_id=event.message_id))

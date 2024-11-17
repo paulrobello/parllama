@@ -6,7 +6,7 @@ import os
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
-from datetime import timezone
+from datetime import UTC
 from pathlib import Path
 
 import pytz
@@ -161,15 +161,9 @@ class ChatPrompt(ChatMessageContainer):
         return ChatPrompt(
             id=data["id"],
             name=data["name"],
-            last_updated=datetime.fromisoformat(data["last_updated"]).replace(
-                tzinfo=utc
-            ),
+            last_updated=datetime.fromisoformat(data["last_updated"]).replace(tzinfo=utc),
             description=data.get("description", ""),
-            messages=(
-                [ParllamaChatMessage(**m) for m in data["messages"]]
-                if load_messages
-                else None
-            ),
+            messages=([ParllamaChatMessage(**m) for m in data["messages"]] if load_messages else None),
             submit_on_load=data.get("submit_on_load", False),
             source=data.get("source"),
         )
@@ -178,11 +172,9 @@ class ChatPrompt(ChatMessageContainer):
     def load_from_file(filename: str) -> ChatPrompt | None:
         """Load a chat prompt from a file"""
         try:
-            with open(
-                os.path.join(settings.prompt_dir, filename), "rt", encoding="utf-8"
-            ) as f:
+            with open(os.path.join(settings.prompt_dir, filename), encoding="utf-8") as f:
                 return ChatPrompt.from_json(f.read())
-        except (OSError, IOError):
+        except OSError:
             return None
 
     @property
@@ -200,7 +192,7 @@ class ChatPrompt(ChatMessageContainer):
         if not self.is_dirty:
             # self.log_it(f"CP is not dirty, not notifying: {self.name}")
             return False  # No need to save if no changes
-        self.last_updated = datetime.now(timezone.utc)
+        self.last_updated = datetime.now(UTC)
         nc: PromptChanges = PromptChanges()
         for change in self._changes:
             if change in prompt_change_list:
@@ -215,12 +207,10 @@ class ChatPrompt(ChatMessageContainer):
 
         file_name = f"{self.id}.json"  # Use prompt ID as filename
         try:
-            with open(
-                os.path.join(settings.prompt_dir, file_name), "wt", encoding="utf-8"
-            ) as f:
+            with open(os.path.join(settings.prompt_dir, file_name), "w", encoding="utf-8") as f:
                 f.write(self.to_json())
             return True
-        except (OSError, IOError):
+        except OSError:
             return False
 
     def replace_messages(self, new_messages: list[ParllamaChatMessage]) -> None:

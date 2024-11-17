@@ -94,9 +94,7 @@ class SiteModelView(Container):
             id="namespace",
             placeholder="Namespace",
             value=settings.site_models_namespace or "",
-            suggester=SuggestFromList(
-                ollama_dm.list_site_cache_files(), case_sensitive=False
-            ),
+            suggester=SuggestFromList(ollama_dm.list_site_cache_files(), case_sensitive=False),
         )
         self.namespace_input.BINDINGS.append(
             Binding("tab", "cursor_right", "tab complete", show=True),
@@ -130,9 +128,7 @@ class SiteModelView(Container):
         )
         self.lv.loading = True
         self.app.post_message(
-            SiteModelsRefreshRequested(
-                widget=self, ollama_namespace=self.namespace_input.value, force=False
-            )
+            SiteModelsRefreshRequested(widget=self, ollama_namespace=self.namespace_input.value, force=False)
         )
 
     def _on_show(self, event: Show) -> None:
@@ -159,15 +155,11 @@ class SiteModelView(Container):
             self.app.post_message(
                 LocalModelPullRequested(
                     widget=self,
-                    model_name=self.namespace_input.value
-                    + "/"
-                    + self.search_input.value,
+                    model_name=self.namespace_input.value + "/" + self.search_input.value,
                 )
             )
         else:
-            self.app.post_message(
-                LocalModelPullRequested(widget=self, model_name=self.search_input.value)
-            )
+            self.app.post_message(LocalModelPullRequested(widget=self, model_name=self.search_input.value))
 
     def action_browser(self) -> None:
         """Open the model page on ollama.com in the browser."""
@@ -202,9 +194,7 @@ class SiteModelView(Container):
         """Request refresh the site models."""
         self.lv.loading = True
         self.app.post_message(
-            SiteModelsRefreshRequested(
-                widget=self, ollama_namespace=self.namespace_input.value, force=True
-            )
+            SiteModelsRefreshRequested(widget=self, ollama_namespace=self.namespace_input.value, force=True)
         )
 
     @on(Input.Submitted, "#namespace")
@@ -223,6 +213,4 @@ class SiteModelView(Container):
         self.lv.remove_children()
         self.lv.mount(*ollama_dm.site_models)
         self.lv.loading = False
-        self.namespace_input.suggester = SuggestFromList(
-            ollama_dm.list_site_cache_files(), case_sensitive=False
-        )
+        self.namespace_input.suggester = SuggestFromList(ollama_dm.list_site_cache_files(), case_sensitive=False)

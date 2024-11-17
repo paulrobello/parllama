@@ -6,7 +6,6 @@ import os
 import time
 import warnings
 from typing import Any
-from typing import Optional
 
 import orjson as json
 from dotenv import load_dotenv
@@ -48,7 +47,7 @@ class RagManager(ParEventSystemBase):
         """Return vector stores"""
         return self._vector_stores
 
-    def set_app(self, app: Optional[App[Any]]) -> None:
+    def set_app(self, app: App[Any] | None) -> None:
         """Set the app and load existing stores"""
         self.app = app  # pylint: disable=attribute-defined-outside-init
         self.load()
@@ -64,7 +63,7 @@ class RagManager(ParEventSystemBase):
         """Load the RAG configuration."""
         if not os.path.exists(self._config_file):
             return
-        with open(self._config_file, "rt", encoding="utf-8") as fh:
+        with open(self._config_file, encoding="utf-8") as fh:
             config = json.loads(fh.read())
 
         for store_config in config["stores"]:
@@ -189,9 +188,7 @@ if __name__ == "__main__":
         end_time = time.time()
         elapsed_time = end_time - start_time
         num_documents = new_store.num_documents
-        print(
-            f"Time taken to load data: {elapsed_time:.2f} seconds {(num_documents / elapsed_time):.2f} dps"
-        )
+        print(f"Time taken to load data: {elapsed_time:.2f} seconds {(num_documents / elapsed_time):.2f} dps")
 
     print(f"Number of chunks: {num_documents}")
     # # llm = ChatOllama(model="llama3.1:8b", temperature=0, base_url=settings.ollama_host)

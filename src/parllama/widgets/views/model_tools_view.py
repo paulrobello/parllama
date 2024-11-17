@@ -44,9 +44,7 @@ class ModelToolsView(Container):
     def compose(self) -> ComposeResult:
         """Compose the content of the view."""
         pub_key: str = ""
-        pub_key_path = os.path.join(
-            os.path.expanduser("~"), ".ollama", "id_ed25519.pub"
-        )
+        pub_key_path = os.path.join(os.path.expanduser("~"), ".ollama", "id_ed25519.pub")
         if os.path.exists(pub_key_path):
             with open(pub_key_path, encoding="utf-8") as f:
                 pub_key = f.read().strip()

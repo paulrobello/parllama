@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from datetime import timezone
+from datetime import UTC
 
 import httpx
 import requests
@@ -42,7 +42,7 @@ class UpdateManager(ParEventSystemBase):
         if not force:
             last_version_check = settings.last_version_check
             if last_version_check:
-                if (datetime.now(timezone.utc) - last_version_check).days < 1:
+                if (datetime.now(UTC) - last_version_check).days < 1:
                     return
         try:
             latest_version = await self.get_latest_version()
@@ -57,7 +57,7 @@ class UpdateManager(ParEventSystemBase):
                     )
                 else:
                     print(f"New version available: {latest_version}")
-            settings.last_version_check = datetime.now(timezone.utc)
+            settings.last_version_check = datetime.now(UTC)
             settings.save()
         except (ValueError, TypeError) as e:
             if self.app:

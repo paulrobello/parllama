@@ -36,9 +36,7 @@ def get_comments(youtube, video_id: str) -> list[dict]:
             response = request.execute()
             for item in response["items"]:
                 # Top-level comment
-                top_level_comment = item["snippet"]["topLevelComment"]["snippet"][
-                    "textDisplay"
-                ]
+                top_level_comment = item["snippet"]["topLevelComment"]["snippet"]["textDisplay"]
                 comments.append(top_level_comment)
 
                 # Check if there are replies in the thread
@@ -50,9 +48,7 @@ def get_comments(youtube, video_id: str) -> list[dict]:
 
             # Prepare the next page of comments, if available
             if "nextPageToken" in response:
-                request = youtube.commentThreads().list_next(
-                    previous_request=request, previous_response=response
-                )
+                request = youtube.commentThreads().list_next(previous_request=request, previous_response=response)
             else:
                 request = None
 
@@ -87,9 +83,7 @@ def fetch_yt_data(url: str, options: Any) -> dict[str, Any] | None:
         youtube = build("youtube", "v3", developerKey=api_key)
 
         # Get video details
-        video_response = (
-            youtube.videos().list(id=video_id, part="contentDetails,snippet").execute()
-        )
+        video_response = youtube.videos().list(id=video_id, part="contentDetails,snippet").execute()
 
         # Extract video duration and convert to minutes
         duration_iso = video_response["items"][0]["contentDetails"]["duration"]  # type: ignore
@@ -105,9 +99,7 @@ def fetch_yt_data(url: str, options: Any) -> dict[str, Any] | None:
 
         # Get video transcript
         try:
-            transcript_list = YouTubeTranscriptApi.get_transcript(
-                video_id, languages=[options.lang]
-            )
+            transcript_list = YouTubeTranscriptApi.get_transcript(video_id, languages=[options.lang])
             transcript_text = " ".join([item["text"] for item in transcript_list])
             transcript_text = transcript_text.replace("\n", " ")
         except Exception as e:
@@ -125,7 +117,7 @@ def fetch_yt_data(url: str, options: Any) -> dict[str, Any] | None:
             "metadata": metadata,
         }
         return output
-    except HttpError as e:
+    except HttpError:
         return None
         # print(
         #     f"Error: Failed to access YouTube API. Please check your YOUTUBE_API_KEY and ensure it is valid: {e}"
@@ -138,21 +130,11 @@ def main() -> None:
         description="yt (video meta) extracts metadata about a video, such as the transcript, the video's duration, and now comments. By Daniel Miessler."
     )
     parser.add_argument("url", help="YouTube video URL")
-    parser.add_argument(
-        "--duration", action="store_true", help="Output only the duration"
-    )
-    parser.add_argument(
-        "--transcript", action="store_true", help="Output only the transcript"
-    )
-    parser.add_argument(
-        "--comments", action="store_true", help="Output the comments on the video"
-    )
-    parser.add_argument(
-        "--metadata", action="store_true", help="Output the video metadata"
-    )
-    parser.add_argument(
-        "--lang", default="en", help="Language for the transcript (default: English)"
-    )
+    parser.add_argument("--duration", action="store_true", help="Output only the duration")
+    parser.add_argument("--transcript", action="store_true", help="Output only the transcript")
+    parser.add_argument("--comments", action="store_true", help="Output the comments on the video")
+    parser.add_argument("--metadata", action="store_true", help="Output the video metadata")
+    parser.add_argument("--lang", default="en", help="Language for the transcript (default: English)")
 
     args = parser.parse_args()
 

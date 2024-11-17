@@ -12,6 +12,7 @@ import humanize
 import ollama
 import pyperclip  # type: ignore
 from httpx import ConnectError
+from parllama.dialogs.theme_dialog import ThemeDialog
 from rich.columns import Columns
 from rich.console import ConsoleRenderable
 from rich.console import RenderableType
@@ -27,6 +28,7 @@ from textual.color import Color
 from textual.message import Message
 from textual.message_pump import MessagePump
 from textual.notifications import SeverityLevel
+from textual.theme import Theme
 from textual.timer import Timer
 from textual.widget import Widget
 from textual.widgets import Input
@@ -101,8 +103,8 @@ class ParLlamaApp(App[None]):
         Binding(key="ctrl+q", action="app.shutdown", description="Quit", show=True),
         Binding(
             key="f10",
-            action="toggle_dark",
-            description="Toggle Dark",
+            action="change_theme",
+            description="Change Theme",
             show=True,
             priority=True,
         ),
@@ -131,11 +133,11 @@ class ParLlamaApp(App[None]):
         """Initialize the application."""
         super().__init__()
         self.notify_subs = {"*": set[MessagePump]()}
+        theme_manager.set_app(self)
         provider_manager.set_app(self)
         secrets_manager.set_app(self)
         ollama_dm.set_app(self)
         chat_manager.set_app(self)
-        theme_manager.set_app(self)
         update_manager.set_app(self)
         import_fabric_manager.set_app(self)
         rag_manager.set_app(self)
@@ -143,30 +145,35 @@ class ParLlamaApp(App[None]):
         self.job_timer = None
         self.ps_timer = None
         self.title = __application_title__
-        self.dark = settings.theme_mode != "light"
-        self.design = theme_manager.get_theme(settings.theme_name)  # type: ignore
+
         self.job_queue = Queue[QueueJob]()
         self.is_busy = False
         self.is_refreshing = False
         self.last_status = ""
         self.main_screen = MainScreen()
+        if settings.theme_name not in theme_manager.list_themes():
+            settings.theme_name = f"{settings.theme_name}_{settings.theme_mode}"
+            if settings.theme_name not in theme_manager.list_themes():
+                settings.theme_name="par_dark"
 
-    def _watch_dark(self, value: bool) -> None:
-        """Watch the dark property and save pref to file."""
-        settings.theme_mode = "dark" if value else "light"
-        settings.save()
+        theme_manager.change_theme(settings.theme_name)
 
-    def get_css_variables(self) -> dict[str, str]:
-        """Get a mapping of variables used to pre-populate CSS.
-
-        May be implemented in a subclass to add new CSS variables.
-
-        Returns:
-            A mapping of variable name to value.
-        """
-        return theme_manager.get_color_system_for_theme_mode(
-            settings.theme_name, self.dark
-        ).generate()
+        # par_dark_theme = Theme(
+        #     name="par_dark",
+        #     primary="#e49500",
+        #     secondary="#6e4800",
+        #     accent="#6e4800",
+        #     foreground="#D8DEE9",
+        #     background="#121212",
+        #     success="#4EBF71",
+        #     warning="#da8b28",
+        #     error="#ba3c5b",
+        #     surface="#1e1e1e",
+        #     panel="#111",
+        #     dark=True,
+        # )
+        # self.register_theme(par_dark_theme)
+        # self.theme = "par_dark"
 
     async def on_mount(self) -> None:
         """Display the screen."""
@@ -239,12 +246,8 @@ If you would like to auto check for updates, you can enable it in the Startup se
         if not f:
             return
 
-        if isinstance(f, (Input, Select)):
-            self.app.post_message(
-                SendToClipboard(
-                    str(f.value) if f.value and f.value != Select.BLANK else ""
-                )
-            )
+        if isinstance(f, Input | Select):
+            self.app.post_message(SendToClipboard(str(f.value) if f.value and f.value != Select.BLANK else ""))
 
         if isinstance(f, TextArea):
             self.app.post_message(SendToClipboard(f.selected_text or f.text))
@@ -258,11 +261,7 @@ If you would like to auto check for updates, you can enable it in the Startup se
             pyperclip.copy(f.value)
             f.value = ""
         if isinstance(f, Select):
-            self.app.post_message(
-                SendToClipboard(
-                    str(f.value) if f.value and f.value != Select.BLANK else ""
-                )
-            )
+            self.app.post_message(SendToClipboard(str(f.value) if f.value and f.value != Select.BLANK else ""))
         if isinstance(f, TextArea):
             pyperclip.copy(f.selected_text or f.text)
             f.text = ""
@@ -281,9 +280,7 @@ If you would like to auto check for updates, you can enable it in the Startup se
     def on_model_push_requested(self, event: LocalModelPushRequested) -> None:
         """Push requested model event"""
         self.job_queue.put(PushModelJob(modelName=event.model_name))
-        self.main_screen.local_view.post_message(
-            SetModelNameLoading(event.model_name, True)
-        )
+        self.main_screen.local_view.post_message(SetModelNameLoading(event.model_name, True))
         # self.notify(f"Model push {msg.model_name} requested")
 
     @on(LocalModelCreateRequested)
@@ -301,12 +298,8 @@ If you would like to auto check for updates, you can enable it in the Startup se
     def on_local_model_delete(self, event: LocalModelDelete) -> None:
         """Delete local model event"""
         if not ollama_dm.delete_model(event.model_name):
-            self.main_screen.local_view.post_message(
-                SetModelNameLoading(event.model_name, False)
-            )
-            self.status_notify(
-                f"Error deleting model {event.model_name}.", severity="error"
-            )
+            self.main_screen.local_view.post_message(SetModelNameLoading(event.model_name, False))
+            self.status_notify(f"Error deleting model {event.model_name}.", severity="error")
             return
         self.post_message_all(LocalModelDeleted(event.model_name))
 
@@ -327,11 +320,7 @@ If you would like to auto check for updates, you can enable it in the Startup se
     @on(LocalModelCopyRequested)
     def on_local_model_copy_requested(self, event: LocalModelCopyRequested) -> None:
         """Local model copy request event"""
-        self.job_queue.put(
-            CopyModelJob(
-                modelName=event.src_model_name, dstModelName=event.dst_model_name
-            )
-        )
+        self.job_queue.put(CopyModelJob(modelName=event.src_model_name, dstModelName=event.dst_model_name))
 
     async def do_copy_local_model(self, event: CopyModelJob) -> None:
         """Copy local model"""
@@ -348,9 +337,7 @@ If you would like to auto check for updates, you can enable it in the Startup se
     def on_local_model_copied(self, event: LocalModelCopied) -> None:
         """Local model copied event"""
         if event.success:
-            self.status_notify(
-                f"Model {event.src_model_name} copied to {event.dst_model_name}"
-            )
+            self.status_notify(f"Model {event.src_model_name} copied to {event.dst_model_name}")
         else:
             self.status_notify(
                 f"Copying model {event.src_model_name} to {event.dst_model_name} failed",
@@ -367,22 +354,9 @@ If you would like to auto check for updates, you can enable it in the Startup se
                 last_status = msg["status"]
                 pb: ProgressBar | None = None
                 if "total" in msg and "completed" in msg:
-                    msg["percent"] = (
-                        str(int(msg["completed"] / msg["total"] * 100)) + "%"
-                    )
-                    primary_style = Style(
-                        color=theme_manager.get_color_system_for_theme_mode(
-                            settings.theme_name, self.dark
-                        ).primary.rich_color
-                    )
-                    background_style = Style(
-                        color=(
-                            theme_manager.get_color_system_for_theme_mode(
-                                settings.theme_name, self.dark
-                            ).surface
-                            or Color.parse("#111")
-                        ).rich_color
-                    )
+                    msg["percent"] = str(int(msg["completed"] / msg["total"] * 100)) + "%"
+                    primary_style = Style(color=Color.parse(self.current_theme.primary))
+                    background_style = Style(color=Color.parse(self.current_theme.surface or "#111"))
                     pb = ProgressBar(
                         total=msg["total"],
                         completed=msg["completed"],
@@ -411,9 +385,7 @@ If you would like to auto check for updates, you can enable it in the Startup se
                 self.post_message_all(StatusMessage(Columns(parts), log_it=False))
             return last_status
         except ollama.ResponseError as e:
-            self.post_message_all(
-                StatusMessage(Text.assemble(("error:" + str(e), "red")))
-            )
+            self.post_message_all(StatusMessage(Text.assemble(("error:" + str(e), "red"))))
             raise e
 
     async def do_pull(self, job: PullModelJob) -> None:
@@ -422,16 +394,10 @@ If you would like to auto check for updates, you can enable it in the Startup se
             res = ollama_dm.pull_model(job.modelName)
             last_status = await self.do_progress(job, res)
 
-            self.post_message_all(
-                LocalModelPulled(
-                    model_name=job.modelName, success=last_status == "success"
-                )
-            )
+            self.post_message_all(LocalModelPulled(model_name=job.modelName, success=last_status == "success"))
         except ollama.ResponseError as e:
             self.log_it(e)
-            self.post_message_all(
-                LocalModelPulled(model_name=job.modelName, success=False)
-            )
+            self.post_message_all(LocalModelPulled(model_name=job.modelName, success=False))
 
     async def do_push(self, job: PushModelJob) -> None:
         """Push a model to ollama.com"""
@@ -439,23 +405,15 @@ If you would like to auto check for updates, you can enable it in the Startup se
             res = ollama_dm.push_model(job.modelName)
             last_status = await self.do_progress(job, res)
 
-            self.post_message_all(
-                LocalModelPushed(
-                    model_name=job.modelName, success=last_status == "success"
-                )
-            )
+            self.post_message_all(LocalModelPushed(model_name=job.modelName, success=last_status == "success"))
         except ollama.ResponseError:
-            self.post_message_all(
-                LocalModelPushed(model_name=job.modelName, success=False)
-            )
+            self.post_message_all(LocalModelPushed(model_name=job.modelName, success=False))
 
     async def do_create_model(self, job: CreateModelJob) -> None:
         """Create a new local model"""
         try:
             self.main_screen.log_view.richlog.write(job.modelCode)
-            res = ollama_dm.create_model(
-                job.modelName, job.modelCode, job.quantizationLevel
-            )
+            res = ollama_dm.create_model(job.modelName, job.modelCode, job.quantizationLevel)
             last_status = await self.do_progress(job, res)
 
             self.main_screen.local_view.post_message(
@@ -610,18 +568,12 @@ If you would like to auto check for updates, you can enable it in the Startup se
         self.is_refreshing = True
         try:
             self.post_message_all(
-                StatusMessage(
-                    f"Site models for {msg.ollama_namespace or 'models'} refreshing... force={msg.force}"
-                )
+                StatusMessage(f"Site models for {msg.ollama_namespace or 'models'} refreshing... force={msg.force}")
             )
             ollama_dm.refresh_site_models(msg.ollama_namespace, None, msg.force)
-            self.main_screen.site_view.post_message(
-                SiteModelsLoaded(ollama_namespace=msg.ollama_namespace)
-            )
+            self.main_screen.site_view.post_message(SiteModelsLoaded(ollama_namespace=msg.ollama_namespace))
             self.post_message_all(
-                StatusMessage(
-                    f"Site models for {msg.ollama_namespace or 'models'} loaded. force={msg.force}"
-                )
+                StatusMessage(f"Site models for {msg.ollama_namespace or 'models'} loaded. force={msg.force}")
             )
 
         finally:
@@ -643,9 +595,7 @@ If you would like to auto check for updates, you can enable it in the Startup se
                 was_blank = True
                 continue
             was_blank = False
-            info = ret.models[
-                0
-            ]  # only take first one since ps status bar is a single line
+            info = ret.models[0]  # only take first one since ps status bar is a single line
             self.post_message_all(
                 PsMessage(
                     msg=Text.assemble(
@@ -663,9 +613,7 @@ If you would like to auto check for updates, you can enable it in the Startup se
 
     def status_notify(self, msg: str, severity: SeverityLevel = "information") -> None:
         """Show notification and update status bar"""
-        self.notify(
-            msg, severity=severity, timeout=5 if severity != "information" else 3
-        )
+        self.notify(msg, severity=severity, timeout=5 if severity != "information" else 3)
         self.main_screen.post_message(StatusMessage(msg))
 
     def post_message_all(self, event: Message) -> None:
@@ -691,9 +639,7 @@ If you would like to auto check for updates, you can enable it in the Startup se
         self.main_screen.change_tab(event.tab)
 
     @on(LocalCreateModelFromExistingRequested)
-    def on_create_model_from_existing_requested(
-        self, msg: LocalCreateModelFromExistingRequested
-    ) -> None:
+    def on_create_model_from_existing_requested(self, msg: LocalCreateModelFromExistingRequested) -> None:
         """Create model from existing event"""
         self.main_screen.create_view.name_input.value = f"my-{msg.model_name}"
         if not self.main_screen.create_view.name_input.value.endswith(":latest"):
@@ -762,9 +708,7 @@ If you would like to auto check for updates, you can enable it in the Startup se
     def on_session_to_prompt(self, event: SessionToPrompt) -> None:
         """Session to prompt event"""
         event.stop()
-        chat_manager.session_to_prompt(
-            event.session_id, event.submit_on_load, event.prompt_name
-        )
+        chat_manager.session_to_prompt(event.session_id, event.submit_on_load, event.prompt_name)
 
     @on(PromptListLoaded)
     def on_prompt_list_loaded(self, event: PromptListLoaded) -> None:
@@ -809,3 +753,9 @@ If you would like to auto check for updates, you can enable it in the Startup se
         """Provider models refreshed event"""
         event.stop()
         self.post_message_all(event)
+
+    @work
+    async def action_change_theme(self) -> None:
+        """An action to change the theme."""
+        theme = await self.push_screen_wait(ThemeDialog())
+        settings.theme_name = theme

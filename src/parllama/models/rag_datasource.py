@@ -9,7 +9,6 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from dataclasses import field
 from typing import Literal
-from typing import Optional
 
 from langchain_community.document_loaders import CSVLoader
 from langchain_community.document_loaders import DirectoryLoader
@@ -46,12 +45,10 @@ class LoadSplitConfig:
     """Configuration for splitting data."""
 
     mode: SplitMode = "token"
-    embeddings: Optional[Embeddings] = None
-    chunk_size: Optional[int] = 500
-    chunk_overlap: Optional[int] = 100
-    split_separators: Optional[list[str]] = field(
-        default_factory=lambda: ["\n", "\r\n", "\r"]
-    )
+    embeddings: Embeddings | None = None
+    chunk_size: int | None = 500
+    chunk_overlap: int | None = 100
+    split_separators: list[str] | None = field(default_factory=lambda: ["\n", "\r\n", "\r"])
 
 
 class DataSourceBase(RagBase, abc.ABC):
@@ -60,7 +57,7 @@ class DataSourceBase(RagBase, abc.ABC):
     source: str
     source_type: DataSourceType
     source_format: DateSourceFormatType = "auto"
-    _loader: Optional[BaseLoader] = None
+    _loader: BaseLoader | None = None
 
     def __init__(
         self,

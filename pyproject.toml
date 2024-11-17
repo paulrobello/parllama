@@ -113,9 +113,7 @@ build-backend = "hatchling.build"
 
 [tool.uv]
 dev-dependencies = [
-    "pylint",
     "pyright",
-    "black",
     "build",
     "twine",
     "types-pytz",
@@ -128,6 +126,7 @@ dev-dependencies = [
     "types-simplejson",
     "pyinstrument>=4.7.3",
     "types-orjson>=3.6.2",
+    "ruff>=0.7.4",
 ]
 
 [tool.hatch.version]

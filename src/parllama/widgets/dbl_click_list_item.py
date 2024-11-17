@@ -21,11 +21,11 @@ class DblClickListItem(ListItem):
             self.item = item
             super().__init__()
 
-    async def _on_click(self, _: events.Click) -> None:
+    def _on_click(self, _: events.Click) -> None:
         """Handle the click event and check for double click."""
         if time.time() - self.last_click < 0.5:
             self.post_message(self.DoubleClicked(self))
             self.last_click = 0
             return
-        await super()._on_click(_)
+        super()._on_click(_)
         self.last_click = time.time()

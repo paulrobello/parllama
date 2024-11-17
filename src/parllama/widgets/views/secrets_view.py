@@ -70,9 +70,7 @@ class SecretsView(Vertical):
 
     def compose(self) -> ComposeResult:  # pylint: disable=too-many-statements
         """Compose the content of the view."""
-        with self.prevent(
-            Input.Changed, Input.Submitted, Select.Changed, Checkbox.Changed
-        ):
+        with self.prevent(Input.Changed, Input.Submitted, Select.Changed, Checkbox.Changed):
             with Horizontal(classes="section") as vs:
                 vs.border_title = Text.assemble(
                     "Vault: ",
@@ -102,14 +100,10 @@ class SecretsView(Vertical):
                     ) as b:
                         b.tooltip = "Import all matching environment variables from your environment."
                     yield Button("Clear Vault", id="clear_vault")
-                    yield Static(
-                        "Enter password and press enter to set password / unlock."
-                    )
+                    yield Static("Enter password and press enter to set password / unlock.")
                     yield Static("Blank password locks vault.")
                     yield Static("Enter password and new password to change password.")
-                    yield Static(
-                        "Mouse over fields to see corresponding environment variables."
-                    )
+                    yield Static("Mouse over fields to see corresponding environment variables.")
 
             with Horizontal():
                 with Vertical(classes="column"):
@@ -118,9 +112,7 @@ class SecretsView(Vertical):
                         with Horizontal():
                             yield Label("OpenAI")
                             yield InputBlurSubmit(
-                                value=secrets_manager.get_secret(
-                                    "OPENAI_API_KEY", "", True
-                                ),
+                                value=secrets_manager.get_secret("OPENAI_API_KEY", "", True),
                                 id="OPENAI_API_KEY",
                                 disabled=secrets_manager.locked,
                                 tooltip="OPENAI_API_KEY",
@@ -129,9 +121,7 @@ class SecretsView(Vertical):
                         with Horizontal():
                             yield Label("Groq")
                             yield InputBlurSubmit(
-                                value=secrets_manager.get_secret(
-                                    "GROQ_API_KEY", "", True
-                                ),
+                                value=secrets_manager.get_secret("GROQ_API_KEY", "", True),
                                 id="GROQ_API_KEY",
                                 disabled=secrets_manager.locked,
                                 tooltip="GROQ_API_KEY",
@@ -140,9 +130,7 @@ class SecretsView(Vertical):
                         with Horizontal():
                             yield Label("Anthropic")
                             yield InputBlurSubmit(
-                                value=secrets_manager.get_secret(
-                                    "ANTHROPIC_API_KEY", "", True
-                                ),
+                                value=secrets_manager.get_secret("ANTHROPIC_API_KEY", "", True),
                                 id="ANTHROPIC_API_KEY",
                                 disabled=secrets_manager.locked,
                                 tooltip="ANTHROPIC_API_KEY",
@@ -151,9 +139,7 @@ class SecretsView(Vertical):
                         with Horizontal():
                             yield Label("GoogleAI")
                             yield InputBlurSubmit(
-                                value=secrets_manager.get_secret(
-                                    "GOOGLE_API_KEY", "", True
-                                ),
+                                value=secrets_manager.get_secret("GOOGLE_API_KEY", "", True),
                                 id="GOOGLE_API_KEY",
                                 disabled=secrets_manager.locked,
                                 tooltip="GOOGLE_API_KEY",
@@ -162,9 +148,7 @@ class SecretsView(Vertical):
                         with Horizontal():
                             yield Label("LangFlow")
                             yield InputBlurSubmit(
-                                value=secrets_manager.get_secret(
-                                    "LANGFLOW_API_KEY", "", True
-                                ),
+                                value=secrets_manager.get_secret("LANGFLOW_API_KEY", "", True),
                                 id="LANGFLOW_API_KEY",
                                 disabled=secrets_manager.locked,
                                 tooltip="LANGFLOW_API_KEY",
@@ -185,9 +169,7 @@ class SecretsView(Vertical):
                     with Horizontal():
                         yield Label("Tavily")
                         yield InputBlurSubmit(
-                            value=secrets_manager.get_secret(
-                                "TAVILY_API_KEY", "", True
-                            ),
+                            value=secrets_manager.get_secret("TAVILY_API_KEY", "", True),
                             id="TAVILY_API_KEY",
                             disabled=secrets_manager.locked,
                             tooltip="TAVILY_API_KEY",
@@ -196,9 +178,7 @@ class SecretsView(Vertical):
                     with Horizontal():
                         yield Label("Serper")
                         yield InputBlurSubmit(
-                            value=secrets_manager.get_secret(
-                                "SERPER_API_KEY", "", True
-                            ),
+                            value=secrets_manager.get_secret("SERPER_API_KEY", "", True),
                             id="SERPER_API_KEY",
                             disabled=secrets_manager.locked,
                             tooltip="SERPER_API_KEY",
@@ -296,9 +276,7 @@ class SecretsView(Vertical):
             return
         ctrl: Input = event.control
         if event.validation_result is not None and not event.validation_result.is_valid:
-            errors = ",".join(
-                [f.description or "Bad Value" for f in event.validation_result.failures]
-            )
+            errors = ",".join([f.description or "Bad Value" for f in event.validation_result.failures])
             self.notify(f"{ctrl.id} [{errors}]", severity="error", timeout=8)
             return
         if ctrl.id == "password":
@@ -326,9 +304,7 @@ class SecretsView(Vertical):
                 self.notify("New password same as old", severity="error", timeout=8)
                 return
             try:
-                secrets_manager.change_password(
-                    self.password_input.value, self.new_password_input.value
-                )
+                secrets_manager.change_password(self.password_input.value, self.new_password_input.value)
                 self.notify("Password Changed")
             except ValueError as e:
                 self.notify(str(e), severity="error", timeout=8)

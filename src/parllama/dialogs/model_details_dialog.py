@@ -78,21 +78,15 @@ class ModelDetailsDialog(ModalScreen[None]):
             vs.border_title = f"[ {self.model.name} ]"
             yield Button("Copy to create", id="copy_to_create")
             # yield FieldSet("Name", Static(self.model.name, message_id="name"))
-            yield FieldSet(
-                "Modified", Static(str(self.model.modified_at), id="modified_at")
-            )
+            yield FieldSet("Modified", Static(str(self.model.modified_at), id="modified_at"))
             exp = str(self.model.expires_at)
             if exp == "0001-01-01 00:00:00+00:00":
                 exp = "Never"
             yield FieldSet("Expires", Static(exp, id="expires_at"))
-            yield FieldSet(
-                "Size", Static(humanize.naturalsize(self.model.size), id="size")
-            )
+            yield FieldSet("Size", Static(humanize.naturalsize(self.model.size), id="size"))
             yield FieldSet("Digest", Static(self.model.digest, id="digest"))
             yield Static("")
-            ta = TextArea(
-                self.model.template or "", id="template", classes="editor height-auto"
-            )
+            ta = TextArea(self.model.template or "", id="template", classes="editor height-auto")
             ta.border_title = "Template"
             ta.read_only = True
             yield ta
@@ -109,23 +103,17 @@ class ModelDetailsDialog(ModalScreen[None]):
             with VerticalScroll(id="model_info") as vs2:
                 vs2.border_title = "Model Info"
                 if self.model.model_info:
-                    info = self.model.model_info.model_dump(
-                        mode="json", exclude_unset=True
-                    )
+                    info = self.model.model_info.model_dump(mode="json", exclude_unset=True)
                 else:
                     info = {}
                 yield Pretty(info)
 
-            ta = TextArea(
-                self.model.modelfile, id="modelfile", classes="editor height-10"
-            )
+            ta = TextArea(self.model.modelfile, id="modelfile", classes="editor height-10")
             ta.border_title = "Model file"
             ta.read_only = True
             yield ta
 
-            ta = TextArea(
-                self.model.license or "", id="license", classes="editor height-10"
-            )
+            ta = TextArea(self.model.license or "", id="license", classes="editor height-10")
             ta.border_title = "License"
             ta.read_only = True
             yield ta
@@ -133,11 +121,7 @@ class ModelDetailsDialog(ModalScreen[None]):
             messages: list[ollama.Message] = self.model.get_messages()
             system_msg: list[str] = self.model.get_system_messages()
 
-            msgs = [
-                f"* MESSAGE {m['role']} {m['content']}"
-                for m in messages
-                if "content" in m
-            ]
+            msgs = [f"* MESSAGE {m['role']} {m['content']}" for m in messages if "content" in m]
             for sys_msg in system_msg:
                 msgs.insert(0, f"* SYSTEM {sys_msg}")
             md = MarkdownViewer(

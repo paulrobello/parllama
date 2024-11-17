@@ -17,6 +17,6 @@ class SiteModelListView(ListView):
     def on_focus(self, value: bool) -> None:
         """Watch the focus property and select first visible item if none are selected."""
         if value and self.index is None:
-            items = [l for l in self.query(SiteModelListItem) if l.display]
+            items = [item for item in self.query(SiteModelListItem) if item.display]
             if len(items):
                 self.index = self.children.index(items[0])

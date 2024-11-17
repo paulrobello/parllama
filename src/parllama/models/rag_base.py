@@ -11,7 +11,9 @@ class RagBase(ParEventSystemBase):
     name: str = ""
 
     def __init__(
-        self, id: str | None = None, name: str = ""  # pylint: disable=redefined-builtin
+        self,
+        id: str | None = None,
+        name: str = "",  # pylint: disable=redefined-builtin
     ) -> None:
         super().__init__(id=id)
         self.name = name

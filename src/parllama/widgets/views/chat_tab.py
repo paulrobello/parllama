@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from functools import partial
-from typing import cast, Optional
+from typing import cast
 
 import humanize
 from rich.text import Text
@@ -62,9 +62,7 @@ class ChatTab(TabPane):
 
     busy: Reactive[bool] = Reactive(False)
 
-    def __init__(
-        self, user_input: UserInput, session_list: SessionList, **kwargs
-    ) -> None:
+    def __init__(self, user_input: UserInput, session_list: SessionList, **kwargs) -> None:
         """Initialise the view."""
         self.session_config = SessionConfig(id="session_config")
 
@@ -106,9 +104,7 @@ class ChatTab(TabPane):
             yield self.session_status_bar
             with self.vs:
                 yield from [
-                    ChatMessageWidget.mk_msg_widget(
-                        msg=m, session=self.session, is_final=True
-                    )
+                    ChatMessageWidget.mk_msg_widget(msg=m, session=self.session, is_final=True)
                     for m in self.session.messages
                 ]
 
@@ -189,21 +185,19 @@ class ChatTab(TabPane):
         if self.session.id != event.parent_id:
             self.notify("Chat session id missmatch", severity="error")
             return
-        msg: Optional[ParllamaChatMessage] = self.session[event.message_id]
+        msg: ParllamaChatMessage | None = self.session[event.message_id]
         if not msg:
             self.notify("Chat message not found", severity="error")
             return
 
-        msg_widget: Optional[ChatMessageWidget] = None
+        msg_widget: ChatMessageWidget | None = None
         for w in cast(list[ChatMessageWidget], self.query(f"#cm_{msg.id}")):
             msg_widget = w
             w.is_final = event.is_final or w.role == "system"
             await w.update()
             break
         if not msg_widget:
-            msg_widget = ChatMessageWidget.mk_msg_widget(
-                msg=msg, session=self.session, is_final=event.is_final
-            )
+            msg_widget = ChatMessageWidget.mk_msg_widget(msg=msg, session=self.session, is_final=event.is_final)
             if msg.role == "system":
                 await self.vs.mount(msg_widget, before=0)
             else:
@@ -248,9 +242,7 @@ class ChatTab(TabPane):
         await self.vs.remove_children(ChatMessageWidget)
         await self.vs.mount(
             *[
-                ChatMessageWidget.mk_msg_widget(
-                    msg=m, session=self.session, is_final=True
-                )
+                ChatMessageWidget.mk_msg_widget(msg=m, session=self.session, is_final=True)
                 for m in self.session.messages
             ]
         )
@@ -282,9 +274,7 @@ class ChatTab(TabPane):
         await self.vs.remove_children(ChatMessageWidget)
         await self.vs.mount(
             *[
-                ChatMessageWidget.mk_msg_widget(
-                    msg=m, session=self.session, is_final=True
-                )
+                ChatMessageWidget.mk_msg_widget(msg=m, session=self.session, is_final=True)
                 for m in self.session.messages
             ]
         )
@@ -342,17 +332,13 @@ class ChatTab(TabPane):
             humanize.intcomma(int(self.session.context_length / 3)),
             " / ",
             humanize.intcomma(
-                provider_manager.get_model_context_length(
-                    self.session.llm_provider_name, self.session.llm_model_name
-                )
+                provider_manager.get_model_context_length(self.session.llm_provider_name, self.session.llm_model_name)
             ),
         ]
         stats = self.session.stats
         if stats:
             if stats.eval_count:
-                parts.append(
-                    f" | Res Tkns / Sec: {stats.eval_count / (stats.eval_duration or 1):.1f}"
-                )
+                parts.append(f" | Res Tkns / Sec: {stats.eval_count / (stats.eval_duration or 1):.1f}")
 
         self.session_status_bar.update(Text.assemble(*parts))
         self.update_control_states()

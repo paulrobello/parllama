@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 from dataclasses import dataclass
-from typing import Literal, Optional, cast
+from typing import Literal, cast
 from typing import Self
 import orjson as json
 from textual import on
@@ -100,7 +100,7 @@ class UserInput(Widget, can_focus=False, can_focus_children=True):
     _input_position: int
     _last_input: str
     max_history_length: int
-    _history_file: Optional[Path]
+    _history_file: Path | None
 
     _input_mode = var[UserInputMode]("single_line", init=False)
     _input: InputWithHistory
@@ -111,7 +111,7 @@ class UserInput(Widget, can_focus=False, can_focus_children=True):
         id: str,  # pylint: disable=redefined-builtin
         suggester: Suggester | None = None,
         max_history_length: int = 100,
-        history_file: Optional[Path] = None,
+        history_file: Path | None = None,
     ) -> None:
         """Initialize the Input."""
         super().__init__(id=id)
@@ -192,9 +192,7 @@ class UserInput(Widget, can_focus=False, can_focus_children=True):
         """Save the input history if enabled."""
         if not settings.save_chat_input_history or not self._history_file:
             return
-        self._history_file.write_bytes(
-            json.dumps(self.input_history, str, json.OPT_INDENT_2)
-        )
+        self._history_file.write_bytes(json.dumps(self.input_history, str, json.OPT_INDENT_2))
 
     def load(self) -> None:
         """Load the input history if enabled."""
@@ -208,9 +206,7 @@ class UserInput(Widget, can_focus=False, can_focus_children=True):
             for item in history_data:
                 if isinstance(item, str):
                     history.append({"single_line": item})
-                elif isinstance(item, dict) and (
-                    "single_line" in item or "multi_line" in item
-                ):
+                elif isinstance(item, dict) and ("single_line" in item or "multi_line" in item):
                     history.append(item)
                 else:
                     continue

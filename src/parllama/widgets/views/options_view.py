@@ -80,9 +80,7 @@ class OptionsView(Horizontal):
     def compose(self) -> ComposeResult:  # pylint: disable=too-many-statements
         """Compose the content of the view."""
 
-        with self.prevent(
-            Input.Changed, Input.Submitted, Select.Changed, Checkbox.Changed
-        ):
+        with self.prevent(Input.Changed, Input.Submitted, Select.Changed, Checkbox.Changed):
             with Vertical(classes="column"):
                 with Vertical(classes="section") as vsa:
                     vsa.border_title = "About"
@@ -141,9 +139,7 @@ class OptionsView(Horizontal):
                             id="check_for_updates",
                         )
                         if settings.last_version_check:
-                            yield Label(
-                                f"Last check:\n{settings.last_version_check.strftime('%Y-%m-%d %H:%M:%S UTC')}"
-                            )
+                            yield Label(f"Last check:\n{settings.last_version_check.strftime('%Y-%m-%d %H:%M:%S UTC')}")
                         else:
                             yield Label("Last check: Never")
                     yield Label("Startup Tab")
@@ -168,14 +164,6 @@ class OptionsView(Horizontal):
                         options=theme_manager.theme_select_options(),
                         allow_blank=False,
                         id="theme_name",
-                    )
-
-                    yield Label("Mode")
-                    yield Select[str](
-                        value=settings.theme_mode,
-                        options=(("light", "light"), ("dark", "dark")),
-                        allow_blank=False,
-                        id="theme_mode",
                     )
 
                 with Vertical(classes="section") as vsc:
@@ -244,7 +232,6 @@ class OptionsView(Horizontal):
                         )
 
             with Vertical(classes="column"):
-
                 with Vertical(classes="section") as vso:
                     vso.border_title = "AI Providers"
                     yield Static("Provider Base URLs (leave empty to use default)")
@@ -306,16 +293,14 @@ class OptionsView(Horizontal):
                         aips4.border_title = "Anthropic"
                         yield Label("Base URL")
                         yield InputBlurSubmit(
-                            value=settings.provider_base_urls[LlmProvider.ANTHROPIC]
-                            or "",
+                            value=settings.provider_base_urls[LlmProvider.ANTHROPIC] or "",
                             valid_empty=True,
                             validators=HttpValidator(),
                             id="anthropic_base_url",
                         )
                         yield Label("API Key")
                         yield InputBlurSubmit(
-                            value=settings.provider_api_keys[LlmProvider.ANTHROPIC]
-                            or "",
+                            value=settings.provider_api_keys[LlmProvider.ANTHROPIC] or "",
                             valid_empty=True,
                             password=True,
                             id="anthropic_api_key",
@@ -392,15 +377,7 @@ class OptionsView(Horizontal):
         elif ctrl.id == "theme_name":
             if ctrl.value != Select.BLANK:
                 settings.theme_name = ctrl.value  # type: ignore
-                theme_manager.change_theme(
-                    settings.theme_name, settings.theme_mode == "dark"
-                )
-        elif ctrl.id == "theme_mode":
-            if ctrl.value != Select.BLANK:
-                settings.theme_mode = ctrl.value  # type: ignore
-                theme_manager.change_theme(
-                    settings.theme_name, settings.theme_mode == "dark"
-                )
+                theme_manager.change_theme(settings.theme_name)
         elif ctrl.id == "provider_name":
             pass
         elif ctrl.id == "model_name":
@@ -447,9 +424,7 @@ class OptionsView(Horizontal):
         event.stop()
         ctrl: Input = event.control
         if event.validation_result is not None and not event.validation_result.is_valid:
-            errors = ",".join(
-                [f.description or "Bad Value" for f in event.validation_result.failures]
-            )
+            errors = ",".join([f.description or "Bad Value" for f in event.validation_result.failures])
             self.notify(f"{ctrl.id} [{errors}]", severity="error", timeout=8)
             return
 

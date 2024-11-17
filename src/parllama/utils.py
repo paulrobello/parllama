@@ -71,9 +71,7 @@ valid_tabs: list[TabType] = [
 ]
 
 
-def id_generator(
-    size: int = 6, chars: str = string.ascii_uppercase + string.digits
-) -> str:
+def id_generator(size: int = 6, chars: str = string.ascii_uppercase + string.digits) -> str:
     """
     Generates a random string of uppercase letters and digits.
 
@@ -92,7 +90,7 @@ def json_serial(obj: Any) -> str:
     :return: The serialized object.
     """
 
-    if isinstance(obj, (datetime, date)):
+    if isinstance(obj, datetime | date):
         return obj.isoformat()
     raise TypeError(f"Type {type(obj)} not serializable")
 
@@ -149,11 +147,7 @@ def to_class_case(snake_str: str) -> str:
 def get_files(path: str, ext: str = "") -> list[str]:
     """Return list of file names in alphabetical order inside of provided path non-recursively.
     Omitting files not ending with ext."""
-    ret = [
-        f
-        for f in listdir(path)
-        if isfile(join(path, f)) and (not ext or not f.endswith(ext))
-    ]
+    ret = [f for f in listdir(path) if isfile(join(path, f)) and (not ext or not f.endswith(ext))]
     ret.sort()
     return ret
 
@@ -359,9 +353,7 @@ def override(cls):  # type: ignore
 
     def overrider(method):  # type: ignore
         if method.__name__ not in dir(cls):
-            raise AttributeError(
-                f"Method {method.__name__} is not overriding any method of {cls.__name__}."
-            )
+            raise AttributeError(f"Method {method.__name__} is not overriding any method of {cls.__name__}.")
         return method
 
     return overrider
@@ -418,9 +410,7 @@ def str_ellipsis(s: str, max_len: int, pad_char: str = " ") -> str:
     return s[: max_len - 3] + "..."
 
 
-def camel_to_snake(
-    name: str, _re_snake: Pattern[str] = re.compile("[a-z][A-Z]")
-) -> str:
+def camel_to_snake(name: str, _re_snake: Pattern[str] = re.compile("[a-z][A-Z]")) -> str:
     """Convert name from CamelCase to snake_case.
     Args:
         name: A symbol name, such as a class name.
@@ -443,12 +433,7 @@ def detect_syntax(text: str) -> str | None:
     if len(lines) > 0:
         line = lines[0]
         if line.startswith("#!"):
-            if (
-                line.endswith("/bash")
-                or line.endswith("/sh")
-                or line.endswith(" bash")
-                or line.endswith(" sh")
-            ):
+            if line.endswith("/bash") or line.endswith("/sh") or line.endswith(" bash") or line.endswith(" sh"):
                 return "bash"
     return None
 
@@ -522,16 +507,12 @@ def hash_list_by_key(data: list[dict], id_key: str = "message_id") -> dict:
 def run_shell_cmd(cmd: str) -> str | None:
     """Run a command and return the output."""
     try:
-        return subprocess.run(
-            cmd, shell=True, capture_output=True, check=True, encoding="utf-8"
-        ).stdout.strip()
-    except:  # pylint: disable=bare-except
+        return subprocess.run(cmd, shell=True, capture_output=True, check=True, encoding="utf-8").stdout.strip()
+    except Exception as _:
         return None
 
 
-def clamp_input_value(
-    input_widget: Input, min_value: int | None = None, max_value: int | None = None
-) -> int:
+def clamp_input_value(input_widget: Input, min_value: int | None = None, max_value: int | None = None) -> int:
     """Clamp the value of an input widget."""
     val: int = int(input_widget.value or 0)
     if min_value is not None and val < min_value:
@@ -688,16 +669,10 @@ def output_to_dicts(output: str) -> list[dict[str, Any]]:
 def run_cmd(params: list[str]) -> str | None:
     """Run a command and return the output."""
     try:
-        result = subprocess.run(
-            params, capture_output=True, text=True, check=True, universal_newlines=True
-        )
+        result = subprocess.run(params, capture_output=True, text=True, check=True)
         ret = result.stdout.strip()
         # Split the output into lines
-        lines = [
-            line
-            for line in ret.splitlines()
-            if not line.startswith("failed to get console mode")
-        ]
+        lines = [line for line in ret.splitlines() if not line.startswith("failed to get console mode")]
 
         # Get the last two lines
         return "\n".join(lines)
@@ -722,7 +697,7 @@ def read_env_file(filename: str) -> dict[str, str]:
     with open(filename, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
-            if not line or line.startswith("#") or not "=" in line:
+            if not line or line.startswith("#") or "=" not in line:
                 continue
             try:
                 key, value = line.split("=", 1)
@@ -734,9 +709,7 @@ def read_env_file(filename: str) -> dict[str, str]:
 
 def all_subclasses(cls) -> set[type]:
     """Return all subclasses of a given class."""
-    return set(cls.__subclasses__()).union(
-        [s for c in cls.__subclasses__() for s in all_subclasses(c)]
-    )
+    return set(cls.__subclasses__()).union([s for c in cls.__subclasses__() for s in all_subclasses(c)])
 
 
 def b64_encode_image(image_path: bytes) -> str:

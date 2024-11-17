@@ -5,8 +5,6 @@ from __future__ import annotations
 import warnings
 from dataclasses import dataclass
 from typing import Literal
-from typing import Optional
-from typing import Set
 
 from langchain.retrievers import ContextualCompressionRetriever
 from langchain.retrievers import MergerRetriever
@@ -39,24 +37,24 @@ retriever_filters: list[RetrieverFilters] = ["REDUNDANT", "RERANK", "REORDER"]
 class RagPipelineConfig:
     """Configuration for RagPipeline."""
 
-    requested_retrievers: Set[RetrieverType]
+    requested_retrievers: set[RetrieverType]
     """Retrievers to combine documents from. At least one retriever must be requested."""
-    requested_filters: Optional[Set[RetrieverFilters]] = None
+    requested_filters: set[RetrieverFilters] | None = None
     """Filters to apply to the retrieved documents. Can be None."""
     max_documents_to_return: int = 5
     """Maximum number of documents to return after merging and filtering."""
-    llm_config: Optional[LlmConfig] = None
+    llm_config: LlmConfig | None = None
     """Used by LLM retriever."""
-    rerank_llm_config: Optional[LlmConfig] = None
+    rerank_llm_config: LlmConfig | None = None
     """Used by RERANK filter."""
-    rerank_llm_prompt: Optional[PromptTemplate] = None
+    rerank_llm_prompt: PromptTemplate | None = None
     """Used by RERANK filter. Uses a default if not provided."""
 
 
 def rag_pipeline(
     *,
     vector_store: VectorStore,
-    embeddings: Optional[Embeddings] = None,
+    embeddings: Embeddings | None = None,
     config: RagPipelineConfig,
 ) -> BaseRetriever:
     """Create pipeline to retrieve and filter documents."""
@@ -105,9 +103,7 @@ def rag_pipeline(
         retrievers.append(retriever_sim_thresh)
 
     if "MMR" in config.requested_retrievers:
-        retriever_mmr = vector_store.as_retriever(
-            search_type="mmr", search_kwargs={"k": 5}
-        )
+        retriever_mmr = vector_store.as_retriever(search_type="mmr", search_kwargs={"k": 5})
         retrievers.append(retriever_mmr)
 
     merger = MergerRetriever(retrievers=retrievers)
@@ -116,9 +112,7 @@ def rag_pipeline(
     if "REDUNDANT" in config.requested_filters:
         if not embeddings:
             raise ValueError("REDUNDANT filter requested but embeddings not provided.")
-        filter_redundant = EmbeddingsRedundantFilter(
-            embeddings=embeddings, similarity_threshold=0.95
-        )
+        filter_redundant = EmbeddingsRedundantFilter(embeddings=embeddings, similarity_threshold=0.95)
         filters.append(filter_redundant)
 
     if "REORDER" in config.requested_filters:
@@ -128,14 +122,10 @@ def rag_pipeline(
     if "RERANK" in config.requested_filters:
         if not config.rerank_llm_config:
             raise ValueError("Reranker LLM config not provided")
-        reranker = LLMListwiseRerank.from_llm(
-            llm=config.rerank_llm_config.build_chat_model(), top_n=5
-        )
+        reranker = LLMListwiseRerank.from_llm(llm=config.rerank_llm_config.build_chat_model(), top_n=5)
         filters.append(reranker)
 
-    filters.append(
-        PassthroughDocumentTransformer(max_documents=config.max_documents_to_return)
-    )
+    filters.append(PassthroughDocumentTransformer(max_documents=config.max_documents_to_return))
 
     pipeline = DocumentCompressorPipeline(transformers=list(filters))
     return ContextualCompressionRetriever(

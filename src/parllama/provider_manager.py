@@ -6,7 +6,6 @@ import os
 import time
 from pathlib import Path
 from typing import Any
-from typing import Optional
 
 import google.generativeai as genai  # type: ignore
 import orjson as json
@@ -60,7 +59,7 @@ class ProviderManager(ParEventSystemBase):
             self.provider_models[p] = []
         self.cache_file = Path(settings.provider_models_file)
 
-    def set_app(self, app: Optional[App[Any]]) -> None:
+    def set_app(self, app: App[Any] | None) -> None:
         """Set the app."""
         super().set_app(app)
         self.load_models()

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
 
 from textual import on
 from textual.app import ComposeResult
@@ -52,8 +51,8 @@ class ProviderModelSelect(Container):
     def __init__(
         self,
         *,
-        provider: Optional[LlmProvider] = None,
-        model_name: Optional[str] = None,
+        provider: LlmProvider | None = None,
+        model_name: str | None = None,
         update_settings: bool = False,
         **kwargs,
     ) -> None:
@@ -82,20 +81,14 @@ class ProviderModelSelect(Container):
             id="model_name",
             options=provider_manager.get_model_select_options(lp),
             allow_blank=True,
-            value=(
-                model_name
-                or settings.last_llm_config.model_name
-                or provider_config[lp].default_model
-            ),
+            value=(model_name or settings.last_llm_config.model_name or provider_config[lp].default_model),
         )
 
     @property
     def provider_name(self) -> LlmProvider:
         """Get provider name"""
         return (  # pyright: ignore [reportReturnType]
-            self.provider_select.value
-            if self.provider_select.value != Select.BLANK
-            else LlmProvider.OLLAMA
+            self.provider_select.value if self.provider_select.value != Select.BLANK else LlmProvider.OLLAMA
         )
 
     @property
@@ -178,15 +171,9 @@ class ProviderModelSelect(Container):
 
     def notify_changed(self) -> None:
         """Notify changed"""
-        model_name = (
-            self.model_select.value if self.model_select.value != Select.BLANK else ""
-        )
+        model_name = self.model_select.value if self.model_select.value != Select.BLANK else ""
         if not model_name:
-            model_name = (
-                self.model_select.deferred_value
-                if self.model_select.deferred_value != Select.BLANK
-                else ""
-            )
+            model_name = self.model_select.deferred_value if self.model_select.deferred_value != Select.BLANK else ""
 
         self.post_message(
             ProviderModelSelected(

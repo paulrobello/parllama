@@ -104,9 +104,7 @@ class LocalModelGridList(Grid, can_focus=False):
                 if (num_items % 2 == 1) and current_index == num_items - 1:
                     return
                 num_cols = 2  # Assuming a 2-column grid
-                num_rows = (
-                    num_items + num_cols - 1
-                ) // num_cols  # Calculate the number of rows
+                num_rows = (num_items + num_cols - 1) // num_cols  # Calculate the number of rows
                 row = current_index // num_cols  # Calculate the current row
                 col = current_index % num_cols  # Calculate the current column
 
@@ -120,9 +118,7 @@ class LocalModelGridList(Grid, can_focus=False):
                         # Last row with an odd number of items, don't change the index
                         new_index = current_index
                     else:
-                        new_index = (
-                            num_items - 1
-                        )  # Move to the last item in the second column
+                        new_index = num_items - 1  # Move to the last item in the second column
 
                 self.selected = items[new_index]
                 return
@@ -140,9 +136,7 @@ class LocalModelGridList(Grid, can_focus=False):
                 if (num_items % 2 == 1) and current_index == num_items - 1:
                     return
                 num_cols = 2  # Assuming a 2-column grid
-                num_rows = (
-                    num_items + num_cols - 1
-                ) // num_cols  # Calculate the number of rows
+                num_rows = (num_items + num_cols - 1) // num_cols  # Calculate the number of rows
                 row = current_index // num_cols  # Calculate the current row
                 col = current_index % num_cols  # Calculate the current column
 
@@ -156,9 +150,7 @@ class LocalModelGridList(Grid, can_focus=False):
                         # Last row with an odd number of items, don't change the index
                         new_index = current_index
                     else:
-                        new_index = (
-                            num_items - 1
-                        )  # Move to the last item in the second column
+                        new_index = num_items - 1  # Move to the last item in the second column
 
                 self.selected = items[new_index]
                 return
@@ -172,12 +164,9 @@ class LocalModelGridList(Grid, can_focus=False):
         items = self.query(LocalModelListItem)
         for current_index, item in enumerate(items):
             if item == focused:
-
                 num_items = len(items)
                 num_cols = 2  # Assuming a 2-column grid
-                num_rows = (
-                    num_items + num_cols - 1
-                ) // num_cols  # Calculate the number of rows
+                num_rows = (num_items + num_cols - 1) // num_cols  # Calculate the number of rows
 
                 row = current_index // num_cols  # Calculate the current row
                 col = current_index % num_cols  # Calculate the current column
@@ -189,13 +178,9 @@ class LocalModelGridList(Grid, can_focus=False):
                 # Handle the case when there are an odd number of items and the last row has only one item
                 if new_index >= num_items:
                     if col == 0:
-                        new_index = (
-                            num_items - 1
-                        )  # Move to the last item in the first column
+                        new_index = num_items - 1  # Move to the last item in the first column
                     else:
-                        new_index = (
-                            num_items - 2
-                        )  # Move to the last item in the second column
+                        new_index = num_items - 2  # Move to the last item in the second column
 
                 self.selected = items[new_index]
                 return
@@ -211,9 +196,7 @@ class LocalModelGridList(Grid, can_focus=False):
             if item == focused:
                 num_items = len(items)
                 num_cols = 2  # Assuming a 2-column grid
-                num_rows = (
-                    num_items + num_cols - 1
-                ) // num_cols  # Calculate the number of rows
+                num_rows = (num_items + num_cols - 1) // num_cols  # Calculate the number of rows
 
                 row = current_index // num_cols  # Calculate the current row
                 col = current_index % num_cols  # Calculate the current column
@@ -233,9 +216,7 @@ class LocalModelGridList(Grid, can_focus=False):
         """Delete the selected item."""
         if not self.selected:
             return
-        self.post_message(
-            LocalModelDeleteRequested(widget=self, model_name=self.selected.model.name)
-        )
+        self.post_message(LocalModelDeleteRequested(widget=self, model_name=self.selected.model.name))
 
     def remove_item(self, model_name: str) -> None:
         """Remove a model from the list."""

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
 
 from rich.console import RenderableType
 from textual.events import Blur
@@ -14,7 +13,7 @@ class InputBlurSubmit(Input):
 
     _last_value: str = ""
 
-    def __init__(self, tooltip: Optional[RenderableType] = None, **kwargs) -> None:
+    def __init__(self, tooltip: RenderableType | None = None, **kwargs) -> None:
         """Initialise the widget."""
         super().__init__(**kwargs)
         self.tooltip = tooltip

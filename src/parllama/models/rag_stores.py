@@ -10,7 +10,6 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import cast
 from typing import Literal
-from typing import Optional
 
 import chromadb.api
 import chromadb.config
@@ -45,11 +44,11 @@ class StoreConfig:
     location_type: StoreLocationType = "Local"
     location: str = ""
     """Filename or URL of the store."""
-    username: Optional[str] = None
+    username: str | None = None
     """Store may require authentication."""
-    password: Optional[str] = None
+    password: str | None = None
     """Store may require authentication."""
-    token: Optional[str] = None
+    token: str | None = None
     """Store may require authentication."""
     purge_on_start: bool = False
     """Purge the store on startup"""
@@ -149,7 +148,7 @@ class VectorStoreBase(StoreBase, abc.ABC):
     """Base class for vector store."""
 
     # config: VectorStoreConfig
-    _embeddings: Optional[Embeddings] = None
+    _embeddings: Embeddings | None = None
     _dimension: int = 0
 
     # pylint: disable=too-many-arguments
@@ -162,9 +161,7 @@ class VectorStoreBase(StoreBase, abc.ABC):
     ) -> None:
         super().__init__(id=id, name=name, config=config)
 
-        config.collection_name = re.sub(
-            r"[^a-zA-Z0-9_]+", "_", config.collection_name
-        ).replace("__", "_")
+        config.collection_name = re.sub(r"[^a-zA-Z0-9_]+", "_", config.collection_name).replace("__", "_")
         if not config.collection_name:
             raise ValueError("collection_name must be provided")
         if not config.location:
@@ -237,9 +234,7 @@ class VectorStoreBase(StoreBase, abc.ABC):
         ret.sort(key=lambda x: x.metadata["score"], reverse=True)
         return ret
 
-    def query_sim_threshold(
-        self, query: str, threshold: float = 0.5, k: int = 5
-    ) -> list[Document]:
+    def query_sim_threshold(self, query: str, threshold: float = 0.5, k: int = 5) -> list[Document]:
         """Search the vector store for documents with similarity score greater than the threshold."""
         retriever_sim = self.vector_store.as_retriever(
             search_type="similarity_score_threshold",
@@ -249,13 +244,9 @@ class VectorStoreBase(StoreBase, abc.ABC):
 
     def rag_pipeline(self, config: RagPipelineConfig) -> BaseRetriever:
         """Create pipeline to retrieve and filter documents."""
-        return rag_pipeline(
-            vector_store=self.vector_store, embeddings=self.embeddings, config=config
-        )
+        return rag_pipeline(vector_store=self.vector_store, embeddings=self.embeddings, config=config)
 
-    def query_pipeline(
-        self, query: str, config: RagPipelineConfig
-    ) -> Sequence[Document]:
+    def query_pipeline(self, query: str, config: RagPipelineConfig) -> Sequence[Document]:
         """Create pipeline to retrieve and filter documents."""
         if not query:
             raise ValueError("Query must be provided.")
@@ -267,9 +258,9 @@ class VectorStoreBase(StoreBase, abc.ABC):
 class VectorStoreChroma(VectorStoreBase):
     """Base class for vector store."""
 
-    _client: Optional[chromadb.api.ClientAPI] = None
-    _chroma: Optional[Chroma] = None
-    _vector_store: Optional[Chroma] = None
+    _client: chromadb.api.ClientAPI | None = None
+    _chroma: Chroma | None = None
+    _vector_store: Chroma | None = None
 
     # pylint: disable=too-many-arguments
     def __init__(
@@ -281,9 +272,7 @@ class VectorStoreChroma(VectorStoreBase):
     ) -> None:
         super().__init__(id=id, name=name, config=config)
 
-        config.collection_name = re.sub(
-            r"[^a-zA-Z0-9_]+", "_", config.collection_name
-        ).replace("__", "_")
+        config.collection_name = re.sub(r"[^a-zA-Z0-9_]+", "_", config.collection_name).replace("__", "_")
         if not config.collection_name:
             raise ValueError("collection_name must be provided")
         if not config.location:
@@ -304,15 +293,11 @@ class VectorStoreChroma(VectorStoreBase):
     def _instantiate_store(self) -> None:
         """Instantiate the store."""
         if self.config.location_type == "Local":
-            self._client = chromadb.PersistentClient(
-                path=os.path.join(settings.data_dir, self.config.location)
-            )
+            self._client = chromadb.PersistentClient(path=os.path.join(settings.data_dir, self.config.location))
         else:
             self._client = chromadb.HttpClient(
                 host=self.config.location,
-                settings=chromadb.config.Settings(
-                    allow_reset=False, anonymized_telemetry=False
-                ),
+                settings=chromadb.config.Settings(allow_reset=False, anonymized_telemetry=False),
             )
         if self.config.purge_on_start:
             try:
@@ -343,8 +328,6 @@ class VectorStoreChroma(VectorStoreBase):
     def num_documents(self) -> int:
         """Get the number of documents in the vector store."""
         try:
-            return self.client.get_collection(
-                self.vector_config.collection_name
-            ).count()
+            return self.client.get_collection(self.vector_config.collection_name).count()
         except ValueError:
             return 0

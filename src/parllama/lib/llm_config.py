@@ -6,7 +6,6 @@ import os
 import warnings
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
 
 import boto3
 from botocore.config import Config
@@ -61,54 +60,54 @@ class LlmConfig:
     """The mode of the LLM. (Default: LlmMode.CHAT)"""
     streaming: bool = True
     """Whether to stream the results or not."""
-    base_url: Optional[str] = None
+    base_url: str | None = None
     """Base url the model is hosted under."""
-    timeout: Optional[int] = None
+    timeout: int | None = None
     """Timeout in seconds."""
     class_name: str = "LlmConfig"
     """Used for serialization."""
-    num_ctx: Optional[int] = None
+    num_ctx: int | None = None
     """Sets the size of the context window used to generate the
     next token. (Default: 2048)	"""
-    num_predict: Optional[int] = None
+    num_predict: int | None = None
     """Maximum number of tokens to predict when generating text.
     (Default: 128, -1 = infinite generation, -2 = fill context)"""
-    repeat_last_n: Optional[int] = None
+    repeat_last_n: int | None = None
     """Sets how far back for the model to look back to prevent
     repetition. (Default: 64, 0 = disabled, -1 = num_ctx)"""
-    repeat_penalty: Optional[float] = None
+    repeat_penalty: float | None = None
     """Sets how strongly to penalize repetitions. A higher value (e.g., 1.5)
     will penalize repetitions more strongly, while a lower value (e.g., 0.9)
     will be more lenient. (Default: 1.1)"""
-    mirostat: Optional[int] = None
+    mirostat: int | None = None
     """Enable Mirostat sampling for controlling perplexity.
     (default: 0, 0 = disabled, 1 = Mirostat, 2 = Mirostat 2.0)"""
-    mirostat_eta: Optional[float] = None
+    mirostat_eta: float | None = None
     """Influences how quickly the algorithm responds to feedback
     from the generated text. A lower learning rate will result in
     slower adjustments, while a higher learning rate will make
     the algorithm more responsive. (Default: 0.1)"""
-    mirostat_tau: Optional[float] = None
+    mirostat_tau: float | None = None
     """Controls the balance between coherence and diversity
     of the output. A lower value will result in more focused and
     coherent text. (Default: 5.0)"""
-    tfs_z: Optional[float] = None
+    tfs_z: float | None = None
     """Tail free sampling is used to reduce the impact of less probable
     tokens from the output. A higher value (e.g., 2.0) will reduce the
     impact more, while a value of 1.0 disables this setting. (default: 1)"""
-    top_k: Optional[int] = None
+    top_k: int | None = None
     """Reduces the probability of generating nonsense. A higher value (e.g. 100)
     will give more diverse answers, while a lower value (e.g. 10)
     will be more conservative. (Default: 40)"""
-    top_p: Optional[float] = None
+    top_p: float | None = None
     """Works together with top-k. A higher value (e.g., 0.95) will lead
     to more diverse text, while a lower value (e.g., 0.5) will
     generate more focused and conservative text. (Default: 0.9)"""
-    seed: Optional[int] = None
+    seed: int | None = None
     """Sets the random number seed to use for generation. Setting this
     to a specific number will make the model generate the same text for
     the same prompt."""
-    max_tokens: Optional[int] = None
+    max_tokens: int | None = None
     """Maximum number of tokens to generate."""
 
     def to_json(self) -> dict:
@@ -257,9 +256,7 @@ class LlmConfig:
         if self.provider != LlmProvider.GROQ:
             raise ValueError(f"LLM provider is'{self.provider}' but GROQ requested.")
         if self.mode == LlmMode.BASE:
-            raise ValueError(
-                f"{self.provider} provider does not support mode {self.mode}"
-            )
+            raise ValueError(f"{self.provider} provider does not support mode {self.mode}")
         if self.mode == LlmMode.CHAT:
             return ChatGroq(
                 model=self.model_name,
@@ -270,22 +267,16 @@ class LlmConfig:
                 max_tokens=self.max_tokens,
             )  # type: ignore
         if self.mode == LlmMode.EMBEDDINGS:
-            raise ValueError(
-                f"{self.provider} provider does not support mode {self.mode}"
-            )
+            raise ValueError(f"{self.provider} provider does not support mode {self.mode}")
 
         raise ValueError(f"Invalid LLM mode '{self.mode}'")
 
     def _build_anthropic_llm(self) -> BaseLanguageModel | BaseChatModel | Embeddings:
         """Build the ANTHROPIC LLM."""
         if self.provider != LlmProvider.ANTHROPIC:
-            raise ValueError(
-                f"LLM provider is'{self.provider}' but ANTHROPIC requested."
-            )
+            raise ValueError(f"LLM provider is'{self.provider}' but ANTHROPIC requested.")
         if self.mode == LlmMode.BASE:
-            raise ValueError(
-                f"{self.provider} provider does not support mode {self.mode}"
-            )
+            raise ValueError(f"{self.provider} provider does not support mode {self.mode}")
         if self.mode == LlmMode.CHAT:
             return ChatAnthropic(  # pyright: ignore [reportCallIssue]
                 model=self.model_name,  # pyright: ignore [reportCallIssue]
@@ -300,9 +291,7 @@ class LlmConfig:
                 max_tokens=self.max_tokens,  # pyright: ignore [reportCallIssue]
             )
         if self.mode == LlmMode.EMBEDDINGS:
-            raise ValueError(
-                f"{self.provider} provider does not support mode {self.mode}"
-            )
+            raise ValueError(f"{self.provider} provider does not support mode {self.mode}")
 
         raise ValueError(f"Invalid LLM mode '{self.mode}'")
 
@@ -318,9 +307,7 @@ class LlmConfig:
                 top_k=self.top_k,
                 top_p=self.top_p,
                 max_tokens=self.max_tokens,
-                safety_settings={
-                    HarmCategory.HARM_CATEGORY_UNSPECIFIED: HarmBlockThreshold.BLOCK_NONE
-                },
+                safety_settings={HarmCategory.HARM_CATEGORY_UNSPECIFIED: HarmBlockThreshold.BLOCK_NONE},
             )
         if self.mode == LlmMode.CHAT:
             return ChatGoogleGenerativeAI(
@@ -330,9 +317,7 @@ class LlmConfig:
                 top_k=self.top_k,
                 top_p=self.top_p,
                 max_tokens=self.max_tokens,
-                safety_settings={
-                    HarmCategory.HARM_CATEGORY_UNSPECIFIED: HarmBlockThreshold.BLOCK_NONE
-                },
+                safety_settings={HarmCategory.HARM_CATEGORY_UNSPECIFIED: HarmBlockThreshold.BLOCK_NONE},
             )
         if self.mode == LlmMode.EMBEDDINGS:
             return GoogleGenerativeAIEmbeddings(
@@ -398,9 +383,7 @@ class LlmConfig:
         if self.provider == LlmProvider.BEDROCK:
             return self._build_bedrock_llm()
 
-        raise ValueError(
-            f"Invalid LLM provider '{self.provider}' or mode '{self.mode}'"
-        )
+        raise ValueError(f"Invalid LLM provider '{self.provider}' or mode '{self.mode}'")
 
     def build_llm_model(self) -> BaseLanguageModel:
         """Build the LLM model."""

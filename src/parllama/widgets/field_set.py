@@ -59,9 +59,7 @@ class FieldSet(Widget):
     ) -> None:
         """Initialize the field set."""
         base_name = to_class_case(label.replace("/", ""))
-        super().__init__(
-            id=f"{base_name}FieldSet", name=f"{base_name}FieldSet", classes="field_set"
-        )
+        super().__init__(id=f"{base_name}FieldSet", name=f"{base_name}FieldSet", classes="field_set")
         self.show_copy_button = show_copy_button
         self._extra_children = extra_children
         self.input = input_widget
@@ -85,10 +83,8 @@ class FieldSet(Widget):
         """Copy field value."""
         event.stop()
 
-        if isinstance(self.input, (Input, Select)):
-            self.app.post_message(
-                SendToClipboard(str(self.input.value) if self.input.value else "")
-            )
+        if isinstance(self.input, Input | Select):
+            self.app.post_message(SendToClipboard(str(self.input.value) if self.input.value else ""))
         elif isinstance(self.input, TextArea):
             self.app.post_message(SendToClipboard(self.input.text))
         elif isinstance(self.input, HiddenInputField):

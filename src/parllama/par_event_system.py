@@ -7,9 +7,8 @@ from collections.abc import Awaitable
 from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any
-from typing import Callable
+from collections.abc import Callable
 from typing import ClassVar
-from typing import Optional
 
 import rich.repr
 from rich.console import ConsoleRenderable
@@ -69,10 +68,11 @@ class ParEventSystemBase:
 
     id: str
     parent: ParEventSystemBase | None
-    app: Optional[App[Any]]
+    app: App[Any] | None
 
     def __init__(
-        self, id: str | None = None  # pylint: disable=redefined-builtin
+        self,
+        id: str | None = None,  # pylint: disable=redefined-builtin
     ) -> None:
         """Initialize the system base and generate a unique id if not provided."""
         if not id:
@@ -81,21 +81,20 @@ class ParEventSystemBase:
         self.parent = None
         self.app = None
 
-    def set_app(self, app: Optional[App[Any]]) -> None:
+    def set_app(self, app: App[Any] | None) -> None:
         """Set the app"""
         self.app = app
 
-    def _get_dispatch_methods(
-        self, method_name: str
-    ) -> Iterable[tuple[type, Callable[[ParEventBase], Awaitable]]]:
+    def _get_dispatch_methods(self, method_name: str) -> Iterable[tuple[type, Callable[[ParEventBase], Awaitable]]]:
         """Gets handlers from MRO."""
         for cls in self.__class__.__mro__:
-            method = cls.__dict__.get(f"_{method_name}") or cls.__dict__.get(
-                method_name
-            )
+            method = cls.__dict__.get(f"_{method_name}") or cls.__dict__.get(method_name)
             if method is not None:
-                yield cls, method.__get__(  # pylint: disable=unnecessary-dunder-call
-                    self, cls
+                yield (
+                    cls,
+                    method.__get__(  # pylint: disable=unnecessary-dunder-call
+                        self, cls
+                    ),
                 )
 
     def post_message(self, event: ParEventBase) -> None:
@@ -128,9 +127,7 @@ class ParEventSystemBase:
         timeout: int = 5,
     ) -> None:
         """Log a message to the log view and optionally notify"""
-        self.post_message(
-            ParLogIt(msg=msg, notify=notify, severity=severity, timeout=timeout)
-        )
+        self.post_message(ParLogIt(msg=msg, notify=notify, severity=severity, timeout=timeout))
 
     def on_par_log_it(self, event: ParLogIt) -> None:
         """Handle a ParLogIt event"""

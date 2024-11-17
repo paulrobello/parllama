@@ -1,6 +1,7 @@
 """Deferred select widget."""
 
-from typing import Generic, Iterable, Optional
+from typing import Generic
+from collections.abc import Iterable
 
 import rich.repr
 from rich.console import RenderableType
@@ -26,9 +27,7 @@ class DeferredSelect(Generic[SelectType], Select[SelectType]):
         This message can be handled using a `on_bad_deferred_value` method.
         """
 
-        def __init__(
-            self, select: Select[SelectType], deferred_value: SelectType | NoSelection
-        ) -> None:
+        def __init__(self, select: Select[SelectType], deferred_value: SelectType | NoSelection) -> None:
             """
             Initialize the BadDeferredValue message.
             """
@@ -81,9 +80,7 @@ class DeferredSelect(Generic[SelectType], Select[SelectType]):
                 return
         self.set_timer(0.1, self.set_options)
 
-    def set_options(
-        self, options: Optional[Iterable[tuple[RenderableType, SelectType]]] = None
-    ) -> None:
+    def set_options(self, options: Iterable[tuple[RenderableType, SelectType]] | None = None) -> None:
         """Set the options for the Select."""
         old_value = self.value
 

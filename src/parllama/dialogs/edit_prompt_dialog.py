@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from datetime import timezone
+from datetime import UTC
 
 from textual import on
 from textual.app import ComposeResult
@@ -96,9 +96,7 @@ class EditPromptDialog(ModalScreen[bool]):
 
     def compose(self) -> ComposeResult:
         """Compose the content of the dialog."""
-        with self.prevent(
-            Input.Changed, TextArea.Changed, Select.Changed, Checkbox.Changed
-        ):
+        with self.prevent(Input.Changed, TextArea.Changed, Select.Changed, Checkbox.Changed):
             with VerticalScroll() as vs:
                 vs.border_title = "Custom Prompt Edit"
                 yield self.save_button
@@ -110,13 +108,9 @@ class EditPromptDialog(ModalScreen[bool]):
                 )
                 yield FieldSet(
                     "Submit on load",
-                    Checkbox(
-                        value=self.edit_prompt.submit_on_load, id="submit_on_load"
-                    ),
+                    Checkbox(value=self.edit_prompt.submit_on_load, id="submit_on_load"),
                 )
-                yield FieldSet(
-                    "Source", Input(value=self.edit_prompt.source, id="source")
-                )
+                yield FieldSet("Source", Input(value=self.edit_prompt.source, id="source"))
 
                 yield FieldSet(
                     "Last updated",
@@ -148,16 +142,12 @@ class EditPromptDialog(ModalScreen[bool]):
         """Copy model to create screen."""
         event.stop()
         if len(self.edit_prompt.messages) == 0:
-            self.notify(
-                "Prompt must have at least one message", severity="error", timeout=5
-            )
+            self.notify("Prompt must have at least one message", severity="error", timeout=5)
             return
         num_system_prompts = 0
         last_system_prompt_index = -1
         # remove empty messages and move system message to the top
-        self.edit_prompt.messages = [
-            m for m in self.edit_prompt.messages if m.content.strip()
-        ]
+        self.edit_prompt.messages = [m for m in self.edit_prompt.messages if m.content.strip()]
         for i, m in enumerate(self.edit_prompt.messages):
             if m.role == "system":
                 num_system_prompts += 1
@@ -176,15 +166,11 @@ class EditPromptDialog(ModalScreen[bool]):
 
         with self.prompt.batch_changes():
             self.prompt.name = self.query_one("#name", Input).value.strip()
-            self.prompt.description = self.query_one(
-                "#description", Input
-            ).value.strip()
+            self.prompt.description = self.query_one("#description", Input).value.strip()
             self.prompt.source = self.query_one("#source", Input).value.strip()
-            self.prompt.submit_on_load = self.query_one(
-                "#submit_on_load", Checkbox
-            ).value
+            self.prompt.submit_on_load = self.query_one("#submit_on_load", Checkbox).value
             self.prompt.replace_messages(self.edit_prompt.messages)
-            self.prompt.last_updated = datetime.now(timezone.utc)
+            self.prompt.last_updated = datetime.now(UTC)
         # self.post_message(LogIt(self.prompt))
         self.dismiss(True)
 

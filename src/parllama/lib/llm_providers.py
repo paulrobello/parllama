@@ -5,7 +5,6 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
 
 
 @dataclass
@@ -32,7 +31,7 @@ class LlmProvider(str, Enum):
 llm_provider_types: list[LlmProvider] = list(LlmProvider)
 llm_provider_names: list[str] = [p.value.lower() for p in llm_provider_types]
 
-provider_base_urls: dict[LlmProvider, Optional[str]] = {
+provider_base_urls: dict[LlmProvider, str | None] = {
     LlmProvider.OLLAMA: "http://localhost:11434",
     LlmProvider.OPENAI: None,
     LlmProvider.GROQ: None,
@@ -114,9 +113,7 @@ provider_config: dict[LlmProvider, LlmProviderConfig] = {
 }
 
 
-provider_env_key_names: dict[LlmProvider, str] = {
-    k: v.env_key_name for k, v in provider_config.items()
-}
+provider_env_key_names: dict[LlmProvider, str] = {k: v.env_key_name for k, v in provider_config.items()}
 
 
 def provider_name_to_enum(name: str) -> LlmProvider:

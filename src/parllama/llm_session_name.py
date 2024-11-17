@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Optional
 
 from parllama.lib.llm_config import LlmConfig
 
 
-def llm_session_name(text: str, llm_config: Optional[LlmConfig] = None) -> str | None:
+def llm_session_name(text: str, llm_config: LlmConfig | None = None) -> str | None:
     """Generate a session name from the given text using llm"""
     if not llm_config:
         return None

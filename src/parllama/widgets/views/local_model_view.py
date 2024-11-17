@@ -162,11 +162,7 @@ class LocalModelView(Container):
         self.notify("Queuing pull of all local models...")
         for item in self.grid.query(LocalModelListItem):
             item.loading = True
-            self.post_message(
-                LocalModelPullRequested(
-                    widget=self, model_name=item.model.name, notify=False
-                )
-            )
+            self.post_message(LocalModelPullRequested(widget=self, model_name=item.model.name, notify=False))
 
     def action_push_model(self) -> None:
         """Pull model"""
@@ -208,9 +204,7 @@ class LocalModelView(Container):
         """Delete model requested."""
         event.stop()
         self.app.push_screen(
-            YesNoDialog(
-                "Delete Model", "Delete model from local filesystem?", yes_first=False
-            ),
+            YesNoDialog("Delete Model", "Delete model from local filesystem?", yes_first=False),
             cast(
                 ScreenResultCallbackType[bool],
                 partial(self.confirm_delete_response, event.model_name),
@@ -302,6 +296,4 @@ class LocalModelView(Container):
         """Chat with model"""
         if not self.grid.selected:
             return
-        self.app.post_message(
-            ModelInteractRequested(model_name=self.grid.selected.model.name)
-        )
+        self.app.post_message(ModelInteractRequested(model_name=self.grid.selected.model.name))

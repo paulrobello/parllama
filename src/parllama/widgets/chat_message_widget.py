@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import base64
-from typing import Optional
 import io
 
 from PIL import Image
@@ -84,7 +83,7 @@ class ChatMessageWidget(Vertical, can_focus=True):
     """
     msg: ParllamaChatMessage
     markdown: Markdown
-    editor: Optional[TextArea] = None
+    editor: TextArea | None = None
     placeholder: Static
     session: ChatSession
     update_delay: float = 1
@@ -200,9 +199,7 @@ class ChatMessageWidget(Vertical, can_focus=True):
         self.session.save()
 
     @staticmethod
-    def mk_msg_widget(
-        msg: ParllamaChatMessage, session: ChatSession, is_final: bool = False
-    ) -> ChatMessageWidget:
+    def mk_msg_widget(msg: ParllamaChatMessage, session: ChatSession, is_final: bool = False) -> ChatMessageWidget:
         """Create a chat message widget."""
         if msg.role == "user":
             return UserChatMessage(msg=msg, session=session, is_final=is_final)

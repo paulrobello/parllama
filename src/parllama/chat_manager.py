@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 from typing import Any
-from typing import Optional
 
 from ollama import Options as OllamaOptions
 from textual.app import App
@@ -36,7 +35,7 @@ class ChatManager(ParEventSystemBase):
 
     options: OllamaOptions
     prompt_temperature: float
-    prompt_llm_name: Optional[str]
+    prompt_llm_name: str | None
 
     def __init__(self) -> None:
         """Initialize the chat manager"""
@@ -47,7 +46,7 @@ class ChatManager(ParEventSystemBase):
         self.prompt_temperature = 0.5
         self.prompt_llm_name = None
 
-    def set_app(self, app: Optional[App[Any]]) -> None:
+    def set_app(self, app: App[Any] | None) -> None:
         """Set the app and load existing sessions and prompts from storage"""
         super().set_app(app)
         self.load_sessions()
@@ -96,13 +95,11 @@ class ChatManager(ParEventSystemBase):
                 break
         return session_name
 
-    def mk_llm_session_name(self, text: str) -> Optional[str]:
+    def mk_llm_session_name(self, text: str) -> str | None:
         """Generate a unique LLM session name"""
         if not settings.auto_name_session_llm_config:
             return None
-        base_name = llm_session_name(
-            text, LlmConfig(**settings.auto_name_session_llm_config)
-        )
+        base_name = llm_session_name(text, LlmConfig(**settings.auto_name_session_llm_config))
         if not base_name:
             return None
         return self.mk_session_name(base_name)
@@ -128,9 +125,7 @@ class ChatManager(ParEventSystemBase):
         self.notify_sessions_changed()
         return session
 
-    def get_session(
-        self, session_id: str, widget: Optional[MessagePump] = None
-    ) -> Optional[ChatSession]:
+    def get_session(self, session_id: str, widget: MessagePump | None = None) -> ChatSession | None:
         """Get a chat session"""
         # self.log_it("get_session: " + session_id)
 
@@ -140,14 +135,12 @@ class ChatManager(ParEventSystemBase):
             session.add_sub(widget)
         return session
 
-    def get_prompt(self, prompt_id: str) -> Optional[ChatPrompt]:
+    def get_prompt(self, prompt_id: str) -> ChatPrompt | None:
         """Get a chat prompt"""
         # self.log_it("get_prompt: " + prompt_id)
         return self._id_to_prompt.get(prompt_id)
 
-    def get_session_by_name(
-        self, session_name: str, widget: Optional[MessagePump] = None
-    ) -> Optional[ChatSession]:
+    def get_session_by_name(self, session_name: str, widget: MessagePump | None = None) -> ChatSession | None:
         """Get a chat session by name"""
         for session in self._id_to_session.values():
             if session.name == session_name:
@@ -177,13 +170,13 @@ class ChatManager(ParEventSystemBase):
     def get_or_create_session(  # pylint: disable=too-many-arguments
         self,
         *,
-        session_id: Optional[str],
-        session_name: Optional[str],
+        session_id: str | None,
+        session_name: str | None,
         llm_config: LlmConfig,
         widget: MessagePump,
     ) -> ChatSession:
         """Get or create a chat session"""
-        session: Optional[ChatSession] = None
+        session: ChatSession | None = None
         if session_id:
             session = self.get_session(session_id)
         if session is None:
@@ -205,9 +198,7 @@ class ChatManager(ParEventSystemBase):
             if not f.endswith(".json"):
                 continue
             try:
-                with open(
-                    os.path.join(settings.chat_dir, f), mode="rt", encoding="utf-8"
-                ) as fh:
+                with open(os.path.join(settings.chat_dir, f), encoding="utf-8") as fh:
                     # data: dict = json.load(fh)
                     session = ChatSession.from_json(fh.read(), load_messages=False)
                     session.name_generated = True
@@ -222,11 +213,7 @@ class ChatManager(ParEventSystemBase):
         # self.log_it(
         #     f"CM Session {event.session_id} updated. [{','.join(event.changed)}]"
         # )
-        if (
-            "name" in event.changed
-            or "model" in event.changed
-            or "temperature" in event.changed
-        ):
+        if "name" in event.changed or "model" in event.changed or "temperature" in event.changed:
             self.notify_sessions_changed()
 
     def on_par_session_auto_name(self, event: ParSessionAutoName) -> None:
@@ -238,9 +225,7 @@ class ChatManager(ParEventSystemBase):
         new_name = llm_session_name(event.context, event.llm_config)
         if not new_name:
             return
-        self.log_it(
-            f"CM Session auto name {event.session_id} context: {event.context} named: {new_name}"
-        )
+        self.log_it(f"CM Session auto name {event.session_id} context: {event.context} named: {new_name}")
         session.name = self.mk_session_name(new_name)
         # self.log_it(f"CM Session {event.session_id} auto-named: {new_name}")
 
@@ -250,20 +235,16 @@ class ChatManager(ParEventSystemBase):
         self.delete_session(event.session_id)
 
     def session_to_prompt(
-        self, session_id: str, submit_on_load: bool, prompt_name: Optional[str] = None
-    ) -> Optional[ChatPrompt]:
+        self, session_id: str, submit_on_load: bool, prompt_name: str | None = None
+    ) -> ChatPrompt | None:
         """Copy a session to a new custom prompt"""
         session = self.get_session(session_id)
         if session is None:
-            self.log_it(
-                f"Chat session {session_id} not found", severity="error", notify=True
-            )
+            self.log_it(f"Chat session {session_id} not found", severity="error", notify=True)
             return None
         prompt_name = prompt_name or session.name
         messages = [
-            ParllamaChatMessage(
-                role=m.role, content=m.content, images=m.images, tool_calls=m.tool_calls
-            )
+            ParllamaChatMessage(role=m.role, content=m.content, images=m.images, tool_calls=m.tool_calls)
             for m in session.messages
         ]
         prompt = ChatPrompt(
@@ -278,9 +259,7 @@ class ChatManager(ParEventSystemBase):
         self.notify_prompts_changed()
         prompt.description = "-"
         prompt.save()
-        self.log_it(
-            f"Session {session.name or session.id} copied to prompt", notify=True
-        )
+        self.log_it(f"Session {session.name or session.id} copied to prompt", notify=True)
         if self.app:
             self.app.post_message(ChangeTab(tab="Prompts"))
         return prompt
@@ -308,7 +287,7 @@ class ChatManager(ParEventSystemBase):
         """Return a list of session names"""
         return [prompt.name for prompt in self._id_to_prompt.values()]
 
-    def get_prompt_by_name(self, name: str) -> Optional[ChatPrompt]:
+    def get_prompt_by_name(self, name: str) -> ChatPrompt | None:
         """Get a custom prompt by name"""
         name = name.strip().lower()
         for prompt in self._id_to_prompt.values():
@@ -323,9 +302,7 @@ class ChatManager(ParEventSystemBase):
             if not f.endswith(".json"):
                 continue
             try:
-                with open(
-                    os.path.join(settings.prompt_dir, f), mode="rt", encoding="utf-8"
-                ) as fh:
+                with open(os.path.join(settings.prompt_dir, f), encoding="utf-8") as fh:
                     prompt = ChatPrompt.from_json(fh.read())
                     self._id_to_prompt[prompt.id] = prompt
                     self.mount(prompt)

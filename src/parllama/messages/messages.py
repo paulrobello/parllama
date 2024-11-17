@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 from rich.console import ConsoleRenderable
 from rich.console import RenderableType
@@ -300,7 +299,7 @@ class SessionMessage(Message):
 class SessionToPrompt(SessionMessage):
     """Request session be copied to prompt."""
 
-    prompt_name: Optional[str] = None
+    prompt_name: str | None = None
     submit_on_load: bool = False
 
 
@@ -395,7 +394,7 @@ class RefreshProviderModelsRequested(AppRequest):
 class ProviderModelsChanged(Message):
     """Provider models refreshed."""
 
-    provider: Optional[LlmProvider] = None
+    provider: LlmProvider | None = None
 
 
 @dataclass

@@ -171,16 +171,10 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
             history_file=Path(settings.chat_history_file),
         )
 
-        self.send_button: Button = Button(
-            "Send", id="send_button", disabled=True, variant="success"
-        )
-        self.stop_button: Button = Button(
-            "Stop", id="stop_button", disabled=True, variant="error"
-        )
+        self.send_button: Button = Button("Send", id="send_button", disabled=True, variant="success")
+        self.stop_button: Button = Button("Stop", id="stop_button", disabled=True, variant="error")
         self.last_command = ""
-        self.provider_list_auto_complete_list = [
-            f"/session.provider {p}" for p in llm_provider_names
-        ]
+        self.provider_list_auto_complete_list = [f"/session.provider {p}" for p in llm_provider_names]
         self.model_list_auto_complete_list = []
         self.prompt_list_auto_complete_list = []
 
@@ -210,9 +204,7 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
                 ],
             )
         )
-        self.prompt_list_auto_complete_list = [
-            f"/prompt.load {prompt.name}" for prompt in chat_manager.sorted_prompts
-        ]
+        self.prompt_list_auto_complete_list = [f"/prompt.load {prompt.name}" for prompt in chat_manager.sorted_prompts]
 
     def _on_show(self, event: Show) -> None:
         """Handle show event"""
@@ -223,9 +215,7 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         """Prompt list changed"""
         event.stop()
         self.post_message(LogIt("Prompt list loaded"))
-        self.prompt_list_auto_complete_list = [
-            f"/prompt.load {prompt.name}" for prompt in chat_manager.sorted_prompts
-        ]
+        self.prompt_list_auto_complete_list = [f"/prompt.load {prompt.name}" for prompt in chat_manager.sorted_prompts]
         self.rebuild_suggester()
 
     @on(UserInput.Changed)
@@ -238,25 +228,17 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         """Update disabled state of controls based on model and user input values"""
         self.send_button.disabled = (
             self.active_tab.busy
-            or self.active_tab.session_config.provider_model_select.provider_select.value
-            == Select.BLANK
-            or self.active_tab.session_config.provider_model_select.model_select.value
-            == Select.BLANK
+            or self.active_tab.session_config.provider_model_select.provider_select.value == Select.BLANK
+            or self.active_tab.session_config.provider_model_select.model_select.value == Select.BLANK
             or len(self.user_input.value.strip()) == 0
         )
-        self.stop_button.disabled = (
-            not self.active_tab.busy or self.session.abort_pending
-        )
+        self.stop_button.disabled = not self.active_tab.busy or self.session.abort_pending
 
     @on(ProviderModelsChanged)
     def model_list_changed(self, evt: ProviderModelsChanged) -> None:
         """Model list changed"""
         evt.stop()
-        if (
-            not evt.provider
-            or self.session_config.provider_model_select.provider_select.value
-            != evt.provider
-        ):
+        if not evt.provider or self.session_config.provider_model_select.provider_select.value != evt.provider:
             return
         self.post_message(LogIt("Provider models changed"))
         self.model_list_auto_complete_list = [
@@ -273,9 +255,7 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         """Prompt list changed"""
         evt.stop()
         self.post_message(LogIt("Prompt list changed"))
-        self.prompt_list_auto_complete_list = [
-            f"/prompt.load {prompt.name}" for prompt in chat_manager.sorted_prompts
-        ]
+        self.prompt_list_auto_complete_list = [f"/prompt.load {prompt.name}" for prompt in chat_manager.sorted_prompts]
         self.rebuild_suggester()
 
     def rebuild_suggester(self) -> None:
@@ -400,9 +380,7 @@ Chat Commands:
                     severity="error",
                 )
                 return
-            self.active_tab.session_config.provider_model_select.provider_select.value = LlmProvider(
-                v
-            )
+            self.active_tab.session_config.provider_model_select.provider_select.value = LlmProvider(v)
             self.set_timer(0.1, self.user_input.focus)
         elif cmd == "session.model":
             self.active_tab.session_config.display = True
@@ -498,9 +476,7 @@ Chat Commands:
                 if not path.exists():
                     self.notify(f"Image {v} not found", severity="error")
                     return
-                msg = ParllamaChatMessage(
-                    role="user", content=p, images=[str(path.absolute())]
-                )
+                msg = ParllamaChatMessage(role="user", content=p, images=[str(path.absolute())])
 
             self.session.add_message(msg)
             self.post_message(ChatMessage(parent_id=self.session.id, message_id=msg.id))
