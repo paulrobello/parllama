@@ -9,23 +9,14 @@ from enum import Enum
 
 import boto3
 from botocore.config import Config
+
 from langchain._api import LangChainDeprecationWarning
 from langchain_core.embeddings import Embeddings
-from langchain_core.language_models import BaseChatModel
-from langchain_core.language_models import BaseLanguageModel
-from langchain_anthropic import ChatAnthropic
-from langchain_google_genai import (
-    ChatGoogleGenerativeAI,
-    GoogleGenerativeAI,
-    GoogleGenerativeAIEmbeddings,
-    HarmCategory,
-    HarmBlockThreshold,
-)
-from langchain_groq import ChatGroq
-from langchain_ollama import OllamaLLM, ChatOllama, OllamaEmbeddings
-from langchain_openai import OpenAI, ChatOpenAI, OpenAIEmbeddings
-from langchain_aws import BedrockLLM, ChatBedrockConverse, BedrockEmbeddings
+from langchain_core.language_models import BaseChatModel, BaseLanguageModel
 
+from pydantic import SecretStr
+
+# from langchain_experimental import
 from .llm_providers import LlmProvider, is_provider_api_key_set, provider_base_urls
 
 warnings.simplefilter("ignore", category=LangChainDeprecationWarning)
@@ -44,7 +35,6 @@ class LlmMode(str, Enum):
 llm_modes: list[LlmMode] = list(LlmMode)
 
 
-#  pylint: disable=too-many-instance-attributes
 @dataclass
 class LlmConfig:
     """Configuration for Llm."""
@@ -64,6 +54,8 @@ class LlmConfig:
     """Base url the model is hosted under."""
     timeout: int | None = None
     """Timeout in seconds."""
+    user_agent_appid: str | None = None
+    """App id to add to user agent for the API request. Can be used for authenticating"""
     class_name: str = "LlmConfig"
     """Used for serialization."""
     num_ctx: int | None = None
@@ -121,6 +113,7 @@ class LlmConfig:
             "streaming": self.streaming,
             "base_url": self.base_url,
             "timeout": self.timeout,
+            "user_agent_appid": self.user_agent_appid,
             "num_ctx": self.num_ctx,
             "num_predict": self.num_predict,
             "repeat_last_n": self.repeat_last_n,
@@ -171,6 +164,8 @@ class LlmConfig:
         if self.provider != LlmProvider.OLLAMA:
             raise ValueError(f"LLM provider is'{self.provider}' but OLLAMA requested.")
 
+        from langchain_ollama import OllamaLLM, ChatOllama, OllamaEmbeddings
+
         if self.mode == LlmMode.BASE:
             return OllamaLLM(
                 model=self.model_name,
@@ -216,10 +211,18 @@ class LlmConfig:
 
     def _build_openai_llm(self) -> BaseLanguageModel | BaseChatModel | Embeddings:
         """Build the OPENAI LLM."""
-        if self.provider != LlmProvider.OPENAI:
+        if self.provider not in [LlmProvider.OPENAI, LlmProvider.GITHUB]:
             raise ValueError(f"LLM provider is'{self.provider}' but OPENAI requested.")
+        if self.provider == LlmProvider.GITHUB:
+            api_key = SecretStr(os.environ.get("GITHUB_TOKEN", ""))
+        else:
+            api_key = SecretStr(os.environ.get("OPENAI_API_KEY", ""))
+
+        from langchain_openai import OpenAI, ChatOpenAI, OpenAIEmbeddings
+
         if self.mode == LlmMode.BASE:
             return OpenAI(
+                api_key=api_key,
                 model=self.model_name,
                 temperature=self.temperature,
                 streaming=self.streaming,
@@ -232,6 +235,7 @@ class LlmConfig:
             )
         if self.mode == LlmMode.CHAT:
             return ChatOpenAI(
+                api_key=api_key,
                 model=self.model_name,
                 temperature=self.temperature,
                 stream_usage=True,
@@ -244,6 +248,7 @@ class LlmConfig:
             )
         if self.mode == LlmMode.EMBEDDINGS:
             return OpenAIEmbeddings(
+                api_key=api_key,
                 model=self.model_name,
                 base_url=self.base_url,
                 timeout=self.timeout,
@@ -255,6 +260,9 @@ class LlmConfig:
         """Build the GROQ LLM."""
         if self.provider != LlmProvider.GROQ:
             raise ValueError(f"LLM provider is'{self.provider}' but GROQ requested.")
+
+        from langchain_groq import ChatGroq
+
         if self.mode == LlmMode.BASE:
             raise ValueError(f"{self.provider} provider does not support mode {self.mode}")
         if self.mode == LlmMode.CHAT:
@@ -275,6 +283,9 @@ class LlmConfig:
         """Build the ANTHROPIC LLM."""
         if self.provider != LlmProvider.ANTHROPIC:
             raise ValueError(f"LLM provider is'{self.provider}' but ANTHROPIC requested.")
+
+        from langchain_anthropic import ChatAnthropic
+
         if self.mode == LlmMode.BASE:
             raise ValueError(f"{self.provider} provider does not support mode {self.mode}")
         if self.mode == LlmMode.CHAT:
@@ -297,8 +308,18 @@ class LlmConfig:
 
     def _build_google_llm(self) -> BaseLanguageModel | BaseChatModel | Embeddings:
         """Build the GOOGLE LLM."""
+
         if self.provider != LlmProvider.GOOGLE:
             raise ValueError(f"LLM provider is'{self.provider}' but GOOGLE requested.")
+
+        from langchain_google_genai import (
+            ChatGoogleGenerativeAI,
+            GoogleGenerativeAI,
+            GoogleGenerativeAIEmbeddings,
+            HarmCategory,
+            HarmBlockThreshold,
+        )
+
         if self.mode == LlmMode.BASE:
             return GoogleGenerativeAI(
                 model=self.model_name,
@@ -332,14 +353,20 @@ class LlmConfig:
         if self.provider != LlmProvider.BEDROCK:
             raise ValueError(f"LLM provider is'{self.provider}' but BEDROCK requested.")
 
+        from langchain_aws import BedrockLLM, ChatBedrockConverse, BedrockEmbeddings
+
         session = boto3.Session(
-            region_name=os.environ.get("AWS_REGION"),
+            region_name=os.environ.get("AWS_REGION", "us-east-1"),
             profile_name=os.environ.get("AWS_PROFILE"),
+            aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
+            aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
+            aws_session_token=os.environ.get("AWS_SESSION_TOKEN"),
         )
-        config = Config(connect_timeout=self.timeout, read_timeout=self.timeout)
+        config = Config(connect_timeout=self.timeout, read_timeout=self.timeout, user_agent_appid=self.user_agent_appid)
         bedrock_client = session.client(
             "bedrock-runtime",
             config=config,
+            endpoint_url=self.base_url,
         )
 
         if self.mode == LlmMode.BASE:
@@ -349,6 +376,7 @@ class LlmConfig:
                 temperature=self.temperature,
                 streaming=self.streaming,
                 max_tokens=self.max_tokens,
+                endpoint_url=self.base_url,
             )
         if self.mode == LlmMode.CHAT:
             return ChatBedrockConverse(
@@ -357,22 +385,23 @@ class LlmConfig:
                 temperature=self.temperature,
                 max_tokens=self.max_tokens,
                 top_p=self.top_p,
+                endpoint_url=self.base_url,
             )
         if self.mode == LlmMode.EMBEDDINGS:
             return BedrockEmbeddings(
                 client=bedrock_client,
                 model_id=self.model_name or "amazon.titan-embed-text-v1",
+                endpoint_url=self.base_url,
             )
 
         raise ValueError(f"Invalid LLM mode '{self.mode}'")
 
-    # pylint: disable=too-many-return-statements,too-many-branches
     def _build_llm(self) -> BaseLanguageModel | BaseChatModel | Embeddings:
         """Build the LLM."""
         self.base_url = self.base_url or provider_base_urls[self.provider]
         if self.provider == LlmProvider.OLLAMA:
             return self._build_ollama_llm()
-        if self.provider == LlmProvider.OPENAI:
+        if self.provider in [LlmProvider.OPENAI, LlmProvider.GITHUB]:
             return self._build_openai_llm()
         if self.provider == LlmProvider.GROQ:
             return self._build_groq_llm()

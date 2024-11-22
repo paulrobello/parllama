@@ -1,13 +1,20 @@
 """Pricing lookup table."""
 
+from enum import StrEnum
+
 from rich.panel import Panel
 from rich.pretty import Pretty
 from rich.console import Console
 
 from .llm_config import LlmConfig
+from .llm_providers import LlmProvider
 
-# Initialize rich console
-console = Console(stderr=True)
+
+class PricingDisplay(StrEnum):
+    NONE = "none"
+    PRICE = "price"
+    DETAILS = "details"
+
 
 pricing_lookup = {
     "chatgpt-4o-latest": {
@@ -104,11 +111,41 @@ pricing_lookup = {
         "input": (3.0 / 1_000_000),
         "output": (15.0 / 1_000_000),
         "cache_read": 0.1,
-        "cache_write": 1.25,
+        "cache_write": 3.75,
     },
     "claude-3-5-sonnet-20241022": {
         "input": (3.0 / 1_000_000),
         "output": (15.0 / 1_000_000),
+        "cache_read": 0.1,
+        "cache_write": 3.75,
+    },
+    "claude-3-5-sonnet-latest": {
+        "input": (3.0 / 1_000_000),
+        "output": (15.0 / 1_000_000),
+        "cache_read": 0.1,
+        "cache_write": 3.75,
+    },
+    "anthropic.claude-3-5-sonnet-20241022-v2:0": {
+        "input": (3.0 / 1_000_000),
+        "output": (15.0 / 1_000_000),
+        "cache_read": 0.1,
+        "cache_write": 3.75,
+    },
+    "claude-3-5-haiku-20241022": {
+        "input": (1.0 / 1_000_000),
+        "output": (5.0 / 1_000_000),
+        "cache_read": 0.1,
+        "cache_write": 1.25,
+    },
+    "claude-3-5-haiku-latest": {
+        "input": (1.0 / 1_000_000),
+        "output": (5.0 / 1_000_000),
+        "cache_read": 0.1,
+        "cache_write": 1.25,
+    },
+    "anthropic.claude-3-5-haiku-20241022-v1:0": {
+        "input": (1.0 / 1_000_000),
+        "output": (5.0 / 1_000_000),
         "cache_read": 0.1,
         "cache_write": 1.25,
     },
@@ -133,7 +170,7 @@ pricing_lookup = {
 }
 
 
-def mk_usage_metadata() -> dict[str, int]:
+def mk_usage_metadata() -> dict[str, int | float]:
     """Create usage metadata"""
     return {
         "input_tokens": 0,
@@ -142,11 +179,18 @@ def mk_usage_metadata() -> dict[str, int]:
         "cache_write": 0,
         "cache_read": 0,
         "reasoning": 0,
+        "successful_requests": 0,
+        "tool_call_count": 0,
+        "total_cost": 0.0,
     }
 
 
-def get_api_call_cost(llm_config: LlmConfig, usage_metadata: dict[str, int], batch_pricing: bool = False) -> float:
+def get_api_call_cost(
+    llm_config: LlmConfig, usage_metadata: dict[str, int | float], batch_pricing: bool = False
+) -> float:
     """Get API call cost"""
+    if llm_config.provider in [LlmProvider.OLLAMA, LlmProvider.GITHUB, LlmProvider.GROQ]:
+        return 0
     batch_multiplier = 0.5 if batch_pricing else 1
     if llm_config.model_name in pricing_lookup:
         return (
@@ -169,7 +213,15 @@ def get_api_call_cost(llm_config: LlmConfig, usage_metadata: dict[str, int], bat
     return 0
 
 
-def accumulate_cost(response: object, usage_metadata: dict[str, int]) -> None:
+def accumulate_cost(response: object | dict, usage_metadata: dict[str, int | float]) -> None:
+    if isinstance(response, dict):
+        usage_metadata["input_tokens"] += response.get("input_tokens", 0)
+        usage_metadata["output_tokens"] += response.get("output_tokens", 0)
+        usage_metadata["total_tokens"] += response.get("input_tokens", 0) + response.get("output_tokens", 0)
+        usage_metadata["cache_write"] += response.get("cache_creation_input_tokens", 0)
+        usage_metadata["cache_read"] += response.get("cache_read_input_tokens", 0)
+        return
+
     if hasattr(response, "usage_metadata"):
         for key, value in response.usage_metadata.items():  # type: ignore
             if key in usage_metadata:
@@ -181,13 +233,31 @@ def accumulate_cost(response: object, usage_metadata: dict[str, int]) -> None:
                 usage_metadata["reasoning"] += value.get("reasoning", 0)
 
 
-def show_llm_cost(llm_config: LlmConfig, usage_metadata: dict[str, int]) -> None:
+def show_llm_cost(
+    llm_config: LlmConfig,
+    usage_metadata: dict[str, int | float],
+    *,
+    show_pricing: PricingDisplay = PricingDisplay.PRICE,
+    console: Console | None = None,
+) -> None:
     """Show LLM cost"""
-    cost = get_api_call_cost(llm_config, usage_metadata)
-    console.print(
-        Panel.fit(
-            Pretty(usage_metadata),
-            title=f"Cost ${cost:.4f}",
-            border_style="bold",
+    if show_pricing == PricingDisplay.NONE:
+        return
+    if not console:
+        console = Console(stderr=True)
+
+    if "total_cost" in usage_metadata:
+        cost = usage_metadata["total_cost"]
+    else:
+        cost = get_api_call_cost(llm_config, usage_metadata)
+
+    if show_pricing == PricingDisplay.DETAILS:
+        console.print(
+            Panel.fit(
+                Pretty(usage_metadata),
+                title=f"Cost ${cost:.4f}",
+                border_style="bold",
+            )
         )
-    )
+    else:
+        console.print(f"Cost ${cost:.4f}")
