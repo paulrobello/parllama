@@ -192,23 +192,40 @@ def get_api_call_cost(
     if llm_config.provider in [LlmProvider.OLLAMA, LlmProvider.GITHUB, LlmProvider.GROQ]:
         return 0
     batch_multiplier = 0.5 if batch_pricing else 1
-    if llm_config.model_name in pricing_lookup:
+    model_name = ""
+    if llm_config.model_name not in pricing_lookup:
+        keys = pricing_lookup.keys()
+        keys = sorted(keys, key=len, reverse=True)
+        for key in keys:
+            if key.endswith(llm_config.model_name) or llm_config.model_name.endswith(key):
+                model_name = key
+                break
+        if not model_name:
+            for key in keys:
+                if key.startswith(llm_config.model_name) or llm_config.model_name.startswith(key):
+                    model_name = key
+                    break
+    else:
+        model_name = llm_config.model_name
+
+    if model_name in pricing_lookup:
         return (
             (
                 (usage_metadata["input_tokens"] - usage_metadata["cache_read"] - usage_metadata["cache_write"])
-                * pricing_lookup[llm_config.model_name]["input"]
+                * pricing_lookup[model_name]["input"]
             )
             + (
                 usage_metadata["cache_read"]
-                * pricing_lookup[llm_config.model_name]["input"]
-                * pricing_lookup[llm_config.model_name]["cache_read"]
+                * pricing_lookup[model_name]["input"]
+                * pricing_lookup[model_name]["cache_read"]
             )
             + (
                 usage_metadata["cache_write"]
-                * pricing_lookup[llm_config.model_name]["input"]
-                * pricing_lookup[llm_config.model_name]["cache_write"]
+                * pricing_lookup[model_name]["input"]
+                * pricing_lookup[model_name]["cache_write"]
             )
-        ) + (usage_metadata["output_tokens"] * pricing_lookup[llm_config.model_name]["output"]) * batch_multiplier
+        ) + (usage_metadata["output_tokens"] * pricing_lookup[model_name]["output"]) * batch_multiplier
+
 
     return 0
 
