@@ -26,7 +26,7 @@ from parllama.models.rag_base import RagBase
 from parllama.models.rag_pipeline import rag_pipeline
 from parllama.models.rag_pipeline import RagPipelineConfig
 from parllama.settings_manager import settings
-from parllama.utils import all_subclasses
+from parllama.lib.utils import all_subclasses
 
 warnings.simplefilter("ignore", category=LangChainDeprecationWarning)
 

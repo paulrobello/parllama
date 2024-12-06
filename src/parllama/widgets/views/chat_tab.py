@@ -37,7 +37,7 @@ from parllama.ollama_data_manager import ollama_dm
 from parllama.provider_manager import provider_manager
 from parllama.screens.save_session import SaveSession
 from parllama.settings_manager import settings
-from parllama.utils import str_ellipsis
+from parllama.lib.utils import str_ellipsis
 from parllama.widgets.chat_message_list import ChatMessageList
 from parllama.widgets.chat_message_widget import ChatMessageWidget
 from parllama.widgets.session_config import SessionConfig
@@ -311,14 +311,14 @@ class ChatTab(TabPane):
         # event.stop()
         if "name" in event.changed:
             self.notify_tab_label_changed()
-        if "model_name" in event.changed or "messages" in event.changed:
+        if "model_name" in event.changed or "messages" in event.changed or "num_ctx" in event.changed:
             self.on_update_chat_status()
 
     @work(group="get_details", thread=True)
     async def get_model_details(self, model: FullModel) -> None:
         """Fetch model details"""
         ollama_dm.enrich_model_details(model)
-        if not model.model_info:
+        if not model.modelinfo:
             return
         self.post_message(UpdateChatStatus())
 
@@ -332,9 +332,15 @@ class ChatTab(TabPane):
             humanize.intcomma(int(self.session.context_length / 3)),
             " / ",
             humanize.intcomma(
-                provider_manager.get_model_context_length(self.session.llm_provider_name, self.session.llm_model_name)
+                self.session.llm_config.num_ctx
+                or (
+                    provider_manager.get_model_context_length(
+                        self.session.llm_provider_name, self.session.llm_model_name
+                    )
+                )
             ),
         ]
+
         stats = self.session.stats
         if stats:
             if stats.eval_count:

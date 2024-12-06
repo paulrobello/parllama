@@ -193,6 +193,18 @@ class ChatSession(ChatMessageContainer):
         self._changes.add("temperature")
         self.save()
 
+    @property
+    def num_ctx(self) -> int | None:
+        """Get the number of context tokens"""
+        return self._llm_config.num_ctx
+
+    @num_ctx.setter
+    def num_ctx(self, value: int | None) -> None:
+        """Set the number of context tokens"""
+        self._llm_config.num_ctx = value
+        self._changes.add("num_ctx")
+        self.save()
+
     # pylint: disable=too-many-branches, too-many-statements
     async def send_chat(self, from_user: str) -> bool:
         """Send a chat message to LLM"""

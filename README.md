@@ -408,6 +408,10 @@ if anything remains to be fixed before the commit is allowed.
 
 ### v0.3.11
 
+* Added ability to set max context size for Ollama and other providers that support it
+* Added theme selector
+* Varius bug fixes and performance improvements
+* Updated core AI library and dependencies
 * Image file picker added to /add.image command
 
 ### v0.3.10

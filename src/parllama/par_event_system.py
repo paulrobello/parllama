@@ -17,7 +17,7 @@ from textual.app import App
 from textual.notifications import SeverityLevel
 
 from parllama.messages.messages import LogIt
-from parllama.utils import camel_to_snake
+from parllama.lib.utils import camel_to_snake
 
 
 @rich.repr.auto

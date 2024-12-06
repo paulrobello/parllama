@@ -79,7 +79,7 @@ provider_default_embed_models: dict[LlmProvider, str] = {
     LlmProvider.ANTHROPIC: "",
     LlmProvider.GOOGLE: "text-embedding-005",
     LlmProvider.BEDROCK: "amazon.titan-embed-text-v2:0",
-    LlmProvider.GITHUB: "text-embedding-3-large"
+    LlmProvider.GITHUB: "text-embedding-3-large",
 }
 
 provider_env_key_names: dict[LlmProvider, str] = {

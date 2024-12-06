@@ -10,7 +10,7 @@ from textual.widgets import Button
 from textual.widgets import Input
 
 from parllama.icons import EYE_EMOJI
-from parllama.utils import to_class_case
+from parllama.lib.utils import to_class_case
 
 
 class HiddenInputField(Widget):

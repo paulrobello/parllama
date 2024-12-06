@@ -21,9 +21,8 @@ from parllama.lib.llm_providers import (
     provider_config,
     LangChainConfig,
 )
-from parllama.utils import get_args, md5_hash
-from parllama.utils import TabType
-from parllama.utils import valid_tabs
+from parllama.utils import get_args, TabType, valid_tabs
+from parllama.lib.utils import md5_hash
 
 
 @dataclass
@@ -33,6 +32,7 @@ class LastLlmConfig:
     provider: LlmProvider = LlmProvider.OLLAMA
     model_name: str = ""
     temperature: float = 0.5
+    num_ctx: int = 2048
 
 
 class Settings(BaseModel):

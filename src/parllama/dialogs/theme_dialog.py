@@ -27,7 +27,7 @@ class ThemeDialog(ModalScreen[str]):
         height: auto;
         width: auto;
         border: thick $primary;
-        border-title-color: $accent;
+        border-title-color: $primary;
     }
 
     ThemeDialog > Vertical > * {
@@ -90,7 +90,6 @@ class ThemeDialog(ModalScreen[str]):
     def on_radio_set_changed(self, event: RadioSet.Changed) -> None:
         """Set the theme."""
         if event.pressed.label.plain in self._themes:
-            event.control.value = True
             self.app.theme = event.pressed.label.plain
 
     def action_cancel_input(self) -> None:

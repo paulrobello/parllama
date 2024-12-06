@@ -14,7 +14,7 @@ from parllama.models.ollama_data import MessageRoles
 from parllama.models.ollama_data import ToolCall
 from parllama.par_event_system import ParEventSystemBase
 from parllama.settings_manager import fetch_and_cache_image
-from parllama.utils import b64_encode_image
+from parllama.lib.llm_image_utils import b64_encode_image
 
 
 def try_get_image_type(image_path: str) -> Literal["jpeg", "png", "gif"]:

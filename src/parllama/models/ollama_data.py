@@ -59,15 +59,15 @@ class ModelDetails(BaseModel):
 class ModelInfo(BaseModel):
     """Ollama Model Info."""
 
+    model_config = ConfigDict(extra="allow")
+
     general_architecture: str | None = Field(None, alias="general.architecture")
     general_file_type: int | None = Field(None, alias="general.file_type")
     general_parameter_count: int | None = Field(None, alias="general.parameter_count")
     general_quantization_version: int | None = Field(None, alias="general.quantization_version")
     llama_attention_head_count: int | None = Field(None, alias="llama.attention.head_count")
     llama_attention_head_count_kv: int | None = Field(None, alias="llama.attention.head_count_kv")
-    llama_attention_layer_norm_rms_epsilon: float | None = Field(
-        None, alias="llama.attention.layer_norm_rms_epsilon"
-    )
+    llama_attention_layer_norm_rms_epsilon: float | None = Field(None, alias="llama.attention.layer_norm_rms_epsilon")
     llama_block_count: int | None = Field(None, alias="llama.block_count")
     llama_context_length: int | None = Field(None, alias="llama.context_length")
     llama_embedding_length: int | None = Field(None, alias="llama.embedding_length")
@@ -93,7 +93,7 @@ class ModelShowPayload(BaseModel):
     license: str | None = None
     template: str
     details: ModelDetails  # omit if being combined with Model
-    model_info: ModelInfo
+    modelinfo: ModelInfo | None = None
 
 
 class Model(BaseModel):
@@ -122,7 +122,7 @@ class FullModel(Model):
     modelfile: str = ""
     parameters: str | None = None
     template: str | None = None
-    model_info: ModelInfo | None = None
+    modelinfo: ModelInfo | None = None
     _num_ctx: int = 0
 
     def get_messages(self) -> list[ollama.Message]:

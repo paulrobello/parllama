@@ -172,7 +172,7 @@ class LlmConfig:
                 temperature=self.temperature,
                 base_url=self.base_url or OLLAMA_HOST,
                 client_kwargs={"timeout": self.timeout},
-                num_ctx=self.num_ctx,
+                num_ctx=self.num_ctx or None,
                 num_predict=self.num_predict,
                 repeat_last_n=self.repeat_last_n,
                 repeat_penalty=self.repeat_penalty,
@@ -189,7 +189,7 @@ class LlmConfig:
                 temperature=self.temperature,
                 base_url=self.base_url or OLLAMA_HOST,
                 client_kwargs={"timeout": self.timeout},
-                num_ctx=self.num_ctx,
+                num_ctx=self.num_ctx or None,
                 num_predict=self.num_predict,
                 repeat_last_n=self.repeat_last_n,
                 repeat_penalty=self.repeat_penalty,
@@ -244,7 +244,7 @@ class LlmConfig:
                 timeout=self.timeout,
                 top_p=self.top_p,
                 seed=self.seed,
-                max_tokens=self.max_tokens,
+                max_tokens=self.max_tokens,  # type: ignore
             )
         if self.mode == LlmMode.EMBEDDINGS:
             return OpenAIEmbeddings(
@@ -385,7 +385,7 @@ class LlmConfig:
                 temperature=self.temperature,
                 max_tokens=self.max_tokens,
                 top_p=self.top_p,
-                endpoint_url=self.base_url,
+                endpoint_url=self.base_url, # type: ignore
             )
         if self.mode == LlmMode.EMBEDDINGS:
             return BedrockEmbeddings(

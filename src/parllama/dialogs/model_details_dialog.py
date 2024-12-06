@@ -68,7 +68,7 @@ class ModelDetailsDialog(ModalScreen[None]):
 
     def __init__(self, model: FullModel) -> None:
         super().__init__()
-        if not model.model_info:
+        if not model.modelinfo:
             ollama_dm.enrich_model_details(model)
         self.model = model
 
@@ -102,8 +102,8 @@ class ModelDetailsDialog(ModalScreen[None]):
 
             with VerticalScroll(id="model_info") as vs2:
                 vs2.border_title = "Model Info"
-                if self.model.model_info:
-                    info = self.model.model_info.model_dump(mode="json", exclude_unset=True)
+                if self.model.modelinfo:
+                    info = self.model.modelinfo.model_dump(mode="json", exclude_unset=True)
                 else:
                     info = {}
                 yield Pretty(info)

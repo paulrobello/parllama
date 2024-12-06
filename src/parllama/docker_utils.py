@@ -9,7 +9,7 @@ import docker.types  # type: ignore
 from docker import DockerClient
 from docker.models.containers import Container  # type: ignore
 
-from .utils import read_env_file
+from .lib.utils import read_env_file
 
 
 # pylint: disable=too-many-arguments,too-many-return-statements,too-many-branches

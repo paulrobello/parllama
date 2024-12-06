@@ -42,7 +42,7 @@ class ChatManager(ParEventSystemBase):
         super().__init__(id="chat_manager")
         self._id_to_session = {}
         self._id_to_prompt = {}
-        self.options = {}
+        self.options = OllamaOptions()
         self.prompt_temperature = 0.5
         self.prompt_llm_name = None
 

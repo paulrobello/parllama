@@ -94,6 +94,8 @@ class ThemeManager(ParEventSystemBase):
 
     def get_theme(self, theme_name: str) -> Theme:
         """Get theme by name"""
+        if not self.app:
+            raise Exception("App is not initialized")
         return self.app.available_themes[theme_name]
 
     def list_themes(self) -> list[str]:

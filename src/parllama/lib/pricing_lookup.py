@@ -17,21 +17,16 @@ class PricingDisplay(StrEnum):
 
 
 pricing_lookup = {
-    "chatgpt-4o-latest": {
-        "input": (5.0 / 1_000_000),
-        "output": (15.0 / 1_000_000),
-        "cache_read": 0.5,
-        "cache_write": 1,
-    },
+    # OpenAI
     "gpt-4o": {
         "input": (2.50 / 1_000_000),
         "output": (10.0 / 1_000_000),
         "cache_read": 0.5,
         "cache_write": 1,
     },
-    "gpt-4o-2024-08-06": {
-        "input": (2.50 / 1_000_000),
-        "output": (10.0 / 1_000_000),
+    "gpt-4o-latest": {
+        "input": (5.0 / 1_000_000),
+        "output": (15.0 / 1_000_000),
         "cache_read": 0.5,
         "cache_write": 1,
     },
@@ -47,31 +42,13 @@ pricing_lookup = {
         "cache_read": 0.5,
         "cache_write": 1,
     },
-    "gpt-4o-mini-2024-07-18": {
-        "input": (0.15 / 1_000_000),
-        "output": (0.6 / 1_000_000),
-        "cache_read": 0.5,
-        "cache_write": 1,
-    },
     "o1-preview": {
         "input": (15.0 / 1_000_000),
         "output": (60.0 / 1_000_000),
         "cache_read": 0.5,
         "cache_write": 1,
     },
-    "o1-preview-2024-09-12": {
-        "input": (15.0 / 1_000_000),
-        "output": (60.0 / 1_000_000),
-        "cache_read": 0.5,
-        "cache_write": 1,
-    },
     "o1-mini": {
-        "input": (3.0 / 1_000_000),
-        "output": (12.0 / 1_000_000),
-        "cache_read": 0.5,
-        "cache_write": 1,
-    },
-    "o1-mini-2024-09-12": {
         "input": (3.0 / 1_000_000),
         "output": (12.0 / 1_000_000),
         "cache_read": 0.5,
@@ -107,6 +84,7 @@ pricing_lookup = {
         "cache_read": 0.5,
         "cache_write": 1,
     },
+    # Anthropic
     "claude-3-5-sonnet-20240620": {
         "input": (3.0 / 1_000_000),
         "output": (15.0 / 1_000_000),
@@ -125,12 +103,6 @@ pricing_lookup = {
         "cache_read": 0.1,
         "cache_write": 3.75,
     },
-    "anthropic.claude-3-5-sonnet-20241022-v2:0": {
-        "input": (3.0 / 1_000_000),
-        "output": (15.0 / 1_000_000),
-        "cache_read": 0.1,
-        "cache_write": 3.75,
-    },
     "claude-3-5-haiku-20241022": {
         "input": (1.0 / 1_000_000),
         "output": (5.0 / 1_000_000),
@@ -138,12 +110,6 @@ pricing_lookup = {
         "cache_write": 1.25,
     },
     "claude-3-5-haiku-latest": {
-        "input": (1.0 / 1_000_000),
-        "output": (5.0 / 1_000_000),
-        "cache_read": 0.1,
-        "cache_write": 1.25,
-    },
-    "anthropic.claude-3-5-haiku-20241022-v1:0": {
         "input": (1.0 / 1_000_000),
         "output": (5.0 / 1_000_000),
         "cache_read": 0.1,
@@ -166,6 +132,68 @@ pricing_lookup = {
         "output": (75.0 / 1_000_000),
         "cache_read": 0.1,
         "cache_write": 1.25,
+    },
+    # AWS
+    "amazon.nova-micro-v1:0": {
+        "input": (0.035 / 1_000_000),
+        "output": (0.14 / 1_000_000),
+        "cache_read": 0.25,
+        "cache_write": 1,
+    },
+    "amazon.nova-lite-v1:0": {
+        "input": (0.06 / 1_000_000),
+        "output": (0.24 / 1_000_000),
+        "cache_read": 0.25,
+        "cache_write": 1,
+    },
+    "amazon.nova-pro-v1:0": {
+        "input": (0.8 / 1_000_000),
+        "output": (3.2 / 1_000_000),
+        "cache_read": 0.25,
+        "cache_write": 1,
+    },
+    "anthropic.claude-3-5-haiku-20241022-v1:0": {
+        "input": (1.0 / 1_000_000),
+        "output": (5.0 / 1_000_000),
+        "cache_read": 0.1,
+        "cache_write": 1.25,
+    },
+    "anthropic.claude-3-5-sonnet-20240620-v1:0": {
+        "input": (3.0 / 1_000_000),
+        "output": (15.0 / 1_000_000),
+        "cache_read": 0.1,
+        "cache_write": 3.75,
+    },
+    "anthropic.claude-3-5-sonnet-20241022-v2:0": {
+        "input": (3.0 / 1_000_000),
+        "output": (15.0 / 1_000_000),
+        "cache_read": 0.1,
+        "cache_write": 3.75,
+    },
+    # Google
+    "flash1.5": {
+        "input": (0.075 / 1_000_000),
+        "output": (0.30 / 1_000_000),
+        "cache_read": 0.25,
+        "cache_write": 1,
+    },
+    "flash1.5-8b": {
+        "input": (0.0375 / 1_000_000),
+        "output": (0.15 / 1_000_000),
+        "cache_read": 0.27,
+        "cache_write": 1,
+    },
+    "pro1.5": {
+        "input": (1.25 / 1_000_000),
+        "output": (10.0 / 1_000_000),
+        "cache_read": 0.25,
+        "cache_write": 1,
+    },
+    "pro1.0": {
+        "input": (0.5 / 1_000_000),
+        "output": (1.5 / 1_000_000),
+        "cache_read": 1,
+        "cache_write": 1,
     },
 }
 
@@ -225,7 +253,6 @@ def get_api_call_cost(
                 * pricing_lookup[model_name]["cache_write"]
             )
         ) + (usage_metadata["output_tokens"] * pricing_lookup[model_name]["output"]) * batch_multiplier
-
 
     return 0
 

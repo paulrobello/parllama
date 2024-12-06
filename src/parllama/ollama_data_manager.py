@@ -24,17 +24,14 @@ from bs4 import BeautifulSoup
 from docker.models.containers import Container  # type: ignore
 from docker.types import CancellableStream
 from httpx import Response
+from ollama import StatusResponse
 
 from parllama.docker_utils import start_docker_container
-from parllama.models.ollama_data import FullModel
-from parllama.models.ollama_data import ModelListPayload
-from parllama.models.ollama_data import ModelShowPayload
-from parllama.models.ollama_data import SiteModel
-from parllama.models.ollama_data import SiteModelData
+from parllama.models.ollama_data import FullModel, ModelInfo, ModelShowPayload,SiteModel,SiteModelData
 from parllama.models.ollama_ps import OllamaPsResponse
 from parllama.par_event_system import ParEventSystemBase
 from parllama.settings_manager import settings
-from parllama.utils import run_cmd
+from parllama.lib.utils import run_cmd
 from parllama.widgets.local_model_list_item import LocalModelListItem
 from parllama.widgets.site_model_list_item import SiteModelListItem
 
@@ -116,28 +113,35 @@ class OllamaDataManager(ParEventSystemBase):
         if cache_file.exists():
             try:
                 model_data = json.loads(cache_file.read_bytes())
-            except json.JSONDecodeError:
+                if not isinstance(model_data, dict):
+                    raise ValueError("Bad data")
+                ModelShowPayload(**model_data)
+            except Exception as _:
+                cache_file.unlink()
                 model_data = None
         if not model_data:
-            model_data = ollama.Client(host=settings.ollama_host).show(model.name)
+            model_data = ollama.Client(host=settings.ollama_host).show(model.name).model_dump()
             cache_file.write_bytes(json.dumps(model_data, str, json.OPT_INDENT_2))
-
+        if "modelinfo" in model_data:
+            model_data["modelinfo"] = ModelInfo(**model_data["modelinfo"])
         msp = ModelShowPayload(**model_data)
         msp.modelfile = re.sub(pattern, replacement, msp.modelfile, flags=re.MULTILINE | re.IGNORECASE)
         model.parameters = msp.parameters
         model.template = msp.template
         model.modelfile = msp.modelfile
-        model.model_info = msp.model_info
+        model.modelinfo = msp.modelinfo
         model.license = msp.license
 
     @staticmethod
     def _get_all_model_data() -> list[LocalModelListItem]:
         """Get all model data."""
         all_models: list[LocalModelListItem] = []
-        res = ModelListPayload(**ollama.Client(host=settings.ollama_host).list())
+        res = ollama.Client(host=settings.ollama_host).list()
 
         for model in res.models:
-            res3 = FullModel(**model.model_dump())
+            if not model.model:
+                continue
+            res3 = FullModel(**model.model_dump(), name=model.model)
             all_models.append(LocalModelListItem(res3))
             # break
         return all_models
@@ -298,7 +302,7 @@ class OllamaDataManager(ParEventSystemBase):
         )  # type: ignore
 
     @staticmethod
-    def copy_model(src_name: str, dst_name: str) -> Mapping[str, Any]:
+    def copy_model(src_name: str, dst_name: str) -> StatusResponse:
         """Copy local model to new name"""
         return ollama.Client(host=settings.ollama_host).copy(source=src_name, destination=dst_name)
 
@@ -363,10 +367,10 @@ class OllamaDataManager(ParEventSystemBase):
         if not model:
             self.log_it("Model not found: " + model_name)
             return 2048
-        if not model.model_info:
+        if not model.modelinfo:
             self.log_it("Model info not loaded: " + model_name)
             self.enrich_model_details(model)
-            if not model.model_info:
+            if not model.modelinfo:
                 self.log_it("Model load failed: " + model_name)
                 return 2048
         return model.num_ctx()

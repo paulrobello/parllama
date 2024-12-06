@@ -38,11 +38,14 @@ SessionConfig {
     height: 1fr;
     dock: right;
     padding: 1;
+    #session_name_input {
+        width: 41;
+    }
     #temperature_input {
         width: 12;
     }
-    #session_name_input {
-        width: 41;
+    #num_ctx_input {
+        width: 15;
     }
     #new_button {
         margin-left: 2;
@@ -72,6 +75,14 @@ SessionConfig {
             value=(f"{settings.last_llm_config.temperature:.2f}"),
             max_length=4,
             restrict=r"^\d?\.?\d?\d?$",
+            valid_empty=False,
+        )
+
+        self.num_ctx_input: InputBlurSubmit = InputBlurSubmit(
+            id="num_ctx_input",
+            value=str(settings.last_llm_config.num_ctx or 2048),
+            max_length=6,
+            type="integer",
             valid_empty=False,
         )
 
@@ -120,9 +131,13 @@ SessionConfig {
             yield Label("Name")
             yield self.session_name_input
         yield self.provider_model_select
-        with Horizontal():
+        with Horizontal(classes="height-3"):
             yield Label("Temperature")
             yield self.temperature_input
+        with Horizontal(classes="height-3"):
+            with Label("Max Context Size") as lbl:
+                lbl.tooltip = "0 = default. Ollama default is 2048"
+            yield self.num_ctx_input
 
     async def action_new_session(self, session_name: str = "New Chat") -> None:
         """Start new session"""
@@ -175,6 +190,19 @@ SessionConfig {
         except ValueError:
             return
         self.session.temperature = settings.last_llm_config.temperature
+        settings.save()
+
+    @on(Input.Submitted, "#num_ctx_input")
+    def num_ctx_input_changed(self, event: Message) -> None:
+        """Handle num_ctx input change"""
+        event.stop()
+        if not self.num_ctx_input.value:
+            return
+        try:
+            settings.last_llm_config.num_ctx = int(self.num_ctx_input.value)
+        except ValueError:
+            return
+        self.session.num_ctx = settings.last_llm_config.num_ctx
         settings.save()
 
     @on(Input.Submitted, "#session_name_input")
