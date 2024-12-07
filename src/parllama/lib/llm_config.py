@@ -211,7 +211,7 @@ class LlmConfig:
 
     def _build_openai_llm(self) -> BaseLanguageModel | BaseChatModel | Embeddings:
         """Build the OPENAI LLM."""
-        if self.provider not in [LlmProvider.OPENAI, LlmProvider.GITHUB]:
+        if self.provider not in [LlmProvider.OPENAI, LlmProvider.GITHUB, LlmProvider.LLAMACPP]:
             raise ValueError(f"LLM provider is'{self.provider}' but OPENAI requested.")
         if self.provider == LlmProvider.GITHUB:
             api_key = SecretStr(os.environ.get("GITHUB_TOKEN", ""))
@@ -401,7 +401,7 @@ class LlmConfig:
         self.base_url = self.base_url or provider_base_urls[self.provider]
         if self.provider == LlmProvider.OLLAMA:
             return self._build_ollama_llm()
-        if self.provider in [LlmProvider.OPENAI, LlmProvider.GITHUB]:
+        if self.provider in [LlmProvider.OPENAI, LlmProvider.GITHUB, LlmProvider.LLAMACPP]:
             return self._build_openai_llm()
         if self.provider == LlmProvider.GROQ:
             return self._build_groq_llm()

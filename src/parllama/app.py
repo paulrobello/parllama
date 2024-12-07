@@ -12,6 +12,8 @@ import humanize
 import ollama
 import pyperclip  # type: ignore
 from httpx import ConnectError
+from ollama import ProgressResponse
+
 from parllama.dialogs.theme_dialog import ThemeDialog
 from rich.columns import Columns
 from rich.console import ConsoleRenderable
@@ -341,38 +343,40 @@ If you would like to auto check for updates, you can enable it in the Startup se
                 severity="error",
             )
 
-    async def do_progress(self, job: QueueJob, res: Iterator[dict[str, Any]]) -> str:
+    async def do_progress(self, job: QueueJob, res: Iterator[ProgressResponse]) -> str:
         """Update progress bar embedded in status bar"""
         try:
             last_status = ""
             for msg in res:
                 if settings.shutting_down:
                     break
-                last_status = msg["status"]
+
+                last_status = msg.status or ""
                 pb: ProgressBar | None = None
-                if "total" in msg and "completed" in msg:
-                    msg["percent"] = str(int(msg["completed"] / msg["total"] * 100)) + "%"
+                percent = ""
+                if msg.total and msg.completed:
+                    percent = str(int(msg.completed / msg.total * 100)) + "%"
                     primary_style = Style(color=Color.parse(self.current_theme.primary).rich_color)
                     background_style = Style(color=Color.parse(self.current_theme.surface or "#111").rich_color)
                     pb = ProgressBar(
-                        total=msg["total"],
-                        completed=msg["completed"],
+                        total=msg.total or 0,
+                        completed=msg.completed or 0,
                         width=25,
                         style=background_style,
                         complete_style=primary_style,
                         finished_style=primary_style,
                     )
                 else:
-                    msg["percent"] = ""
-                if msg["percent"] and msg["status"] == "success":
-                    msg["percent"] = "100%"
+                    percent = ""
+                if percent and msg.status == "success":
+                    percent = "100%"
                 parts: list[RenderableType] = [
                     Text.assemble(
                         job.modelName,
                         " ",
-                        msg["status"],
+                        msg.status,
                         " ",
-                        msg["percent"],
+                        percent,
                         " ",
                     )
                 ]
@@ -388,7 +392,7 @@ If you would like to auto check for updates, you can enable it in the Startup se
     async def do_pull(self, job: PullModelJob) -> None:
         """Pull a model from ollama.com"""
         try:
-            res = ollama_dm.pull_model(job.modelName)
+            res: Iterator[ProgressResponse] = ollama_dm.pull_model(job.modelName)
             last_status = await self.do_progress(job, res)
 
             self.post_message_all(LocalModelPulled(model_name=job.modelName, success=last_status == "success"))
@@ -399,7 +403,7 @@ If you would like to auto check for updates, you can enable it in the Startup se
     async def do_push(self, job: PushModelJob) -> None:
         """Push a model to ollama.com"""
         try:
-            res = ollama_dm.push_model(job.modelName)
+            res: Iterator[ProgressResponse] = ollama_dm.push_model(job.modelName)
             last_status = await self.do_progress(job, res)
 
             self.post_message_all(LocalModelPushed(model_name=job.modelName, success=last_status == "success"))

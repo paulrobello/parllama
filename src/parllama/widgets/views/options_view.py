@@ -17,7 +17,7 @@ from textual.widgets import Static
 
 import parllama
 from parllama.lib.llm_config import LlmConfig
-from parllama.lib.llm_providers import LlmProvider
+from parllama.lib.llm_providers import LlmProvider, provider_base_urls
 from parllama.messages.messages import ClearChatInputHistory, ProviderModelSelected
 from parllama.settings_manager import settings
 from parllama.theme_manager import theme_manager
@@ -314,6 +314,16 @@ class OptionsView(Horizontal):
                             password=True,
                             id="google_api_key",
                         )
+                    with Vertical(classes="section") as aips2:
+                        aips2.border_title = "LlamaCPP"
+                        yield Label("Base URL")
+                        yield InputBlurSubmit(
+                            value=settings.provider_base_urls[LlmProvider.LLAMACPP] or provider_base_urls[LlmProvider.LLAMACPP],
+                            valid_empty=True,
+                            validators=HttpValidator(),
+                            id="llamacpp_base_url",
+                        )
+
                     with Vertical(classes="section") as aips5:
                         aips5.border_title = "Langchain"
                         yield Label("Base URL")
@@ -451,6 +461,9 @@ class OptionsView(Horizontal):
             self._provider_changed = True
         elif ctrl.id == "google_api_key":
             settings.provider_api_keys[LlmProvider.GOOGLE] = ctrl.value or None
+            self._provider_changed = True
+        elif ctrl.id == "llamacpp_base_url":
+            settings.provider_base_urls[LlmProvider.LLAMACPP] = ctrl.value or None
             self._provider_changed = True
         elif ctrl.id == "ollama_ps_poll_interval":
             settings.ollama_ps_poll_interval = int(ctrl.value)

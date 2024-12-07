@@ -304,6 +304,16 @@ make dev
 * Towards the very top of the app you will see what model is loaded and what percent of it is loaded into the GPU / CPU. If a model cant be loaded 100% on the GPU it will run slower.
 * Type "/help" or "/?" to see what other slash commands are available.
 
+## LlamaCPP support
+Parllama supports LlamaCPP running OpenAI server mode. Parllama will use the default base_url of http://127.0.0.1:8080. This can be configured on the Options tab.  
+To start a LlamaCPP server run the following command in separate terminal:  
+```bash
+llama-server -m PATH_TO_MODEL
+```
+or
+```bash
+llama-server -mu URL_TO_MODEL
+```
 
 ## Custom Prompts
 You can create a library of custom prompts for easy starting of new chats.  
@@ -409,6 +419,7 @@ if anything remains to be fixed before the commit is allowed.
 ### v0.3.11
 
 * Added ability to set max context size for Ollama and other providers that support it
+* Limited support for LLamaCpp running in OpenAI Mode.
 * Added theme selector
 * Varius bug fixes and performance improvements
 * Updated core AI library and dependencies

@@ -23,7 +23,9 @@ class SiteModelListItem(ListItem):
         background: $background;
         border: solid $accent;
         border-title-color: $primary;
-
+        &.-highlight {
+            border-title-color: $accent;
+        }
         Static {
             width: 1fr;
             max-height: 3;

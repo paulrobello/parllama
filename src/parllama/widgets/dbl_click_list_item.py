@@ -11,7 +11,11 @@ from textual.widgets import ListItem
 
 class DblClickListItem(ListItem):
     """Double clickable List Item."""
-
+    DEFAULT_CSS = """
+    DblClickListItem {
+        height: auto;
+    }
+    """
     last_click: float = 0
 
     class DoubleClicked(Message):

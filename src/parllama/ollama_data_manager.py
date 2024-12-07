@@ -24,7 +24,7 @@ from bs4 import BeautifulSoup
 from docker.models.containers import Container  # type: ignore
 from docker.types import CancellableStream
 from httpx import Response
-from ollama import StatusResponse
+from ollama import StatusResponse, ProgressResponse
 
 from parllama.docker_utils import start_docker_container
 from parllama.models.ollama_data import FullModel, ModelInfo, ModelShowPayload,SiteModel,SiteModelData
@@ -160,18 +160,18 @@ class OllamaDataManager(ParEventSystemBase):
         return [model.model.name for model in self.models]
 
     @staticmethod
-    def pull_model(model_name: str) -> Iterator[dict[str, Any]]:
+    def pull_model(model_name: str) ->  Iterator[ProgressResponse]:
         """Pull a model."""
         return ollama.Client(host=settings.ollama_host).pull(model_name, stream=True)  # type: ignore
 
     @staticmethod
-    def push_model(model_name: str) -> Iterator[dict[str, Any]]:
+    def push_model(model_name: str) -> Iterator[ProgressResponse]:
         """Push a model."""
         return ollama.Client(host=settings.ollama_host).push(model_name, stream=True)  # type: ignore
 
     def delete_model(self, model_name: str) -> bool:
         """Delete a model."""
-        ret = ollama.Client(host=settings.ollama_host).delete(model_name).get("status", False)
+        ret = ollama.Client(host=settings.ollama_host).delete(model_name).status or False
         # ret = True
         if not ret:
             return False
@@ -292,7 +292,7 @@ class OllamaDataManager(ParEventSystemBase):
         model_name: str,
         model_code: str,
         quantize_level: str | None = None,
-    ) -> Iterator[dict[str, Any]]:
+    ) -> Iterator[ProgressResponse]:
         """Create a new model."""
         return ollama.Client(host=settings.ollama_host).create(
             model=model_name,

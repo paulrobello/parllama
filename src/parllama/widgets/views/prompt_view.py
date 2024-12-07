@@ -52,6 +52,9 @@ class PromptView(Container):
         #prompt_list {
             width: 1fr;
             height: 1fr;
+            ListItem {
+                height: 6;
+            }
         }
     }
     """

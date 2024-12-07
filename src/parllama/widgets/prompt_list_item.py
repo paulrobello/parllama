@@ -21,6 +21,10 @@ class PromptListItem(DblClickListItem, can_focus=False, can_focus_children=True)
         padding-left: 1;
         padding-right: 1;
         border: solid $secondary;
+        border-title-color: $primary;
+        &.-highlight {
+            border-title-color: $accent;
+        }
         *:hover {
             background: transparent;
         }
@@ -32,11 +36,11 @@ class PromptListItem(DblClickListItem, can_focus=False, can_focus_children=True)
         """Initialise the view."""
         super().__init__(**kwargs)
         self.prompt = prompt
+        self.border_title = self.prompt.name
 
     def compose(self) -> ComposeResult:
         """Compose the content of the view."""
         with Vertical():
-            yield Label(self.prompt.name)
             yield Label(self.prompt.description or "-")
             yield Label(
                 Text.assemble(

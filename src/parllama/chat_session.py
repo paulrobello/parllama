@@ -235,69 +235,87 @@ class ChatSession(ChatMessageContainer):
             self.add_message(msg)
             self._notify_subs(ChatMessage(parent_id=self.id, message_id=msg.id))
             self.post_message(ParChatUpdated(parent_id=self.id, message_id=msg.id))
+            try:
+                for chunk in stream:
+                    self.log_it(chunk)
+                    elapsed_time = datetime.now(UTC) - start_time
+                    if chunk.content:
+                        if num_tokens == 0:
+                            ttft = elapsed_time.total_seconds()
+                        num_tokens += 1
+                        if isinstance(chunk.content, str):
+                            msg.content += chunk.content
 
-            for chunk in stream:
-                # self.log_it(chunk)
-                elapsed_time = datetime.now(UTC) - start_time
-                if chunk.content:
-                    if num_tokens == 0:
-                        ttft = elapsed_time.total_seconds()
-                    num_tokens += 1
-                    if isinstance(chunk.content, str):
-                        msg.content += chunk.content
+                    if self._abort:
+                        is_aborted = True
+                        try:
+                            msg.content += "\n\nAborted..."
+                            self._notify_subs(ChatGenerationAborted(self.id))
+                            stream.close()  # type: ignore
+                        except Exception:  # pylint:disable=broad-except
+                            pass
+                        finally:
+                            self._abort = False
+                        break
 
-                if self._abort:
-                    is_aborted = True
-                    try:
-                        msg.content += "\n\nAborted..."
-                        self._notify_subs(ChatGenerationAborted(self.id))
-                        stream.close()  # type: ignore
-                    except Exception:  # pylint:disable=broad-except
-                        pass
-                    finally:
-                        self._abort = False
-                    break
-
-                if (
-                    hasattr(chunk, "usage_metadata") and chunk.usage_metadata  # pyright: ignore [reportAttributeAccessIssue]
-                ):
-                    # self.log_it(chunk)
-                    usage_metadata = (
-                        chunk.usage_metadata  # pyright: ignore [reportAttributeAccessIssue]
-                    )
-                    self._stream_stats = TokenStats(
-                        model=self._llm_config.model_name,
-                        created_at=datetime.now(),
-                        total_duration=int(elapsed_time.total_seconds()),
-                        load_duration=0,
-                        prompt_eval_count=usage_metadata["input_tokens"],
-                        prompt_eval_duration=0,
-                        eval_count=usage_metadata["output_tokens"],
-                        eval_duration=int(elapsed_time.total_seconds() - ttft),
-                        input_tokens=usage_metadata["input_tokens"],
-                        output_tokens=usage_metadata["output_tokens"],
-                        total_tokens=usage_metadata["total_tokens"],
-                        time_til_first_token=int(ttft),
-                    )
-                    # self.log_it(self._stream_stats)
-                if hasattr(chunk, "response_metadata"):
-                    if "model" in chunk.response_metadata:
+                    if (
+                        hasattr(chunk, "usage_metadata") and chunk.usage_metadata  # pyright: ignore [reportAttributeAccessIssue]
+                    ):
+                        # self.log_it(chunk)
+                        usage_metadata = (
+                            chunk.usage_metadata  # pyright: ignore [reportAttributeAccessIssue]
+                        )
                         self._stream_stats = TokenStats(
-                            model=chunk.response_metadata.get("model") or "?",
-                            created_at=chunk.response_metadata.get("created_at") or datetime.now(),
-                            total_duration=chunk.response_metadata.get("total_duration") or 0,
-                            load_duration=chunk.response_metadata.get("load_duration") or 0,
-                            prompt_eval_count=chunk.response_metadata.get("prompt_eval_count") or 0,
-                            prompt_eval_duration=chunk.response_metadata.get("prompt_eval_duration") or 0,
-                            eval_count=chunk.response_metadata.get("eval_count") or 0,
-                            eval_duration=int(chunk.response_metadata.get("eval_duration", 0) / 1_000_000_000) or 0,
-                            input_tokens=0,
-                            output_tokens=0,
-                            total_tokens=0,
+                            model=self._llm_config.model_name,
+                            created_at=datetime.now(),
+                            total_duration=int(elapsed_time.total_seconds()),
+                            load_duration=0,
+                            prompt_eval_count=usage_metadata["input_tokens"],
+                            prompt_eval_duration=0,
+                            eval_count=usage_metadata["output_tokens"],
+                            eval_duration=int(elapsed_time.total_seconds() - ttft),
+                            input_tokens=usage_metadata["input_tokens"],
+                            output_tokens=usage_metadata["output_tokens"],
+                            total_tokens=usage_metadata["total_tokens"],
                             time_til_first_token=int(ttft),
                         )
-                self._notify_subs(ChatMessage(parent_id=self.id, message_id=msg.id, is_final=not chunk.content))
-                self.post_message(ParChatUpdated(parent_id=self.id, message_id=msg.id, is_final=not chunk.content))
+                        # self.log_it(self._stream_stats)
+                    if hasattr(chunk, "response_metadata"):
+                        if "model" in chunk.response_metadata:
+                            self._stream_stats = TokenStats(
+                                model=chunk.response_metadata.get("model") or "?",
+                                created_at=chunk.response_metadata.get("created_at") or datetime.now(),
+                                total_duration=chunk.response_metadata.get("total_duration") or 0,
+                                load_duration=chunk.response_metadata.get("load_duration") or 0,
+                                prompt_eval_count=chunk.response_metadata.get("prompt_eval_count") or 0,
+                                prompt_eval_duration=chunk.response_metadata.get("prompt_eval_duration") or 0,
+                                eval_count=chunk.response_metadata.get("eval_count") or 0,
+                                eval_duration=int(chunk.response_metadata.get("eval_duration", 0) / 1_000_000_000) or 0,
+                                input_tokens=0,
+                                output_tokens=0,
+                                total_tokens=0,
+                                time_til_first_token=int(ttft),
+                            )
+                    self._notify_subs(ChatMessage(parent_id=self.id, message_id=msg.id, is_final=not chunk.content))
+                    self.post_message(ParChatUpdated(parent_id=self.id, message_id=msg.id, is_final=not chunk.content))
+            except Exception as e:  # pylint: disable=broad-except
+                err_msg = str(e)
+                if self._llm_config.provider == LlmProvider.LLAMACPP and err_msg.startswith(
+                    "object of type 'NoneType' has no len()"
+                ):
+                    self._notify_subs(ChatMessage(parent_id=self.id, message_id=msg.id, is_final=True))
+                    self.post_message(ParChatUpdated(parent_id=self.id, message_id=msg.id, is_final=True))
+                else:
+                    self.log_it(e)
+                    self.log_it("Error generating message", notify=True, severity="error")
+                    if msg is not None:
+                        # err_msg = f"{err_msg}\n{traceback.format_exc()}"
+                        if err_msg[18:].startswith("{"):
+                            err_dict = ast.literal_eval(err_msg[18:])
+                            err_msg = err_dict.get("error", {}).get("message") or err_msg
+
+                        msg.content += f"\n\n{err_msg}"
+                        msg.content = msg.content.strip()
 
             self._changes.add("messages")
             self.save()
@@ -328,11 +346,13 @@ class ChatSession(ChatMessageContainer):
                     err_dict = ast.literal_eval(err_msg[18:])
                     err_msg = err_dict.get("error", {}).get("message") or err_msg
 
+                # err_msg = f"{err_msg}\n{traceback.format_exc()}"
+
                 msg.content += f"\n\n{err_msg}"
                 msg.content = msg.content.strip()
                 self._changes.add("messages")
                 self.save()
-                self._notify_subs(ChatMessage(parent_id=self.id, message_id=msg.id))
+                self._notify_subs(ChatMessage(parent_id=self.id, message_id=msg.id, is_final=True))
                 return False
         finally:
             self._generating = False
