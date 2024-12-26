@@ -6,27 +6,25 @@ import abc
 import os
 import warnings
 from abc import abstractmethod
-from dataclasses import dataclass
-from dataclasses import field
+from dataclasses import dataclass, field
 from typing import Literal
 
-from langchain_community.document_loaders import CSVLoader
-from langchain_community.document_loaders import DirectoryLoader
-from langchain_community.document_loaders import PyPDFLoader
-from langchain_community.document_loaders import TextLoader
-from langchain_community.document_loaders import UnstructuredHTMLLoader
-from langchain_community.document_loaders import UnstructuredMarkdownLoader
-from langchain_community.document_loaders import WebBaseLoader
+from langchain_community.document_loaders import (
+    CSVLoader,
+    DirectoryLoader,
+    PyPDFLoader,
+    TextLoader,
+    UnstructuredHTMLLoader,
+    UnstructuredMarkdownLoader,
+    WebBaseLoader,
+)
 from langchain_community.document_transformers import MarkdownifyTransformer
 from langchain_core._api import LangChainDeprecationWarning
 from langchain_core.document_loaders import BaseLoader
-from langchain_core.documents import BaseDocumentTransformer
-from langchain_core.documents import Document
+from langchain_core.documents import BaseDocumentTransformer, Document
 from langchain_core.embeddings import Embeddings
 from langchain_experimental.text_splitter import SemanticChunker
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_text_splitters import TextSplitter
-from langchain_text_splitters import TokenTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter, TextSplitter, TokenTextSplitter
 
 from parllama.models.rag_base import RagBase
 

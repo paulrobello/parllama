@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
+from par_ai_core.utils import to_class_case
 from textual import on
 from textual.app import ComposeResult
 from textual.containers import Horizontal
 from textual.widget import Widget
-from textual.widgets import Button
-from textual.widgets import Input
+from textual.widgets import Button, Input
 
 from parllama.icons import EYE_EMOJI
-from parllama.lib.utils import to_class_case
 
 
 class HiddenInputField(Widget):

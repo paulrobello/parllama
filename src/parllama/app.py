@@ -4,26 +4,20 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Iterator
-from queue import Empty
-from queue import Queue
-from typing import Any
+from queue import Empty, Queue
 
 import humanize
 import ollama
 import pyperclip  # type: ignore
 from httpx import ConnectError
 from ollama import ProgressResponse
-
-from parllama.dialogs.theme_dialog import ThemeDialog
+from par_ai_core.llm_providers import LlmProvider
 from rich.columns import Columns
-from rich.console import ConsoleRenderable
-from rich.console import RenderableType
-from rich.console import RichCast
+from rich.console import ConsoleRenderable, RenderableType, RichCast
 from rich.progress_bar import ProgressBar
 from rich.style import Style
 from rich.text import Text
-from textual import on
-from textual import work
+from textual import on, work
 from textual.app import App
 from textual.binding import Binding
 from textual.color import Color
@@ -32,16 +26,13 @@ from textual.message_pump import MessagePump
 from textual.notifications import SeverityLevel
 from textual.timer import Timer
 from textual.widget import Widget
-from textual.widgets import Input
-from textual.widgets import Select
-from textual.widgets import TextArea
+from textual.widgets import Input, Select, TextArea
 
 from parllama import __application_title__
-from parllama.chat_manager import chat_manager
-from parllama.chat_manager import ChatManager
+from parllama.chat_manager import ChatManager, chat_manager
 from parllama.dialogs.help_dialog import HelpDialog
 from parllama.dialogs.information import InformationDialog
-from parllama.lib.llm_providers import LlmProvider
+from parllama.dialogs.theme_dialog import ThemeDialog
 from parllama.messages.messages import (
     ChangeTab,
     ClearChatInputHistory,
@@ -73,11 +64,11 @@ from parllama.messages.messages import (
     SessionListChanged,
     SessionSelected,
     SessionToPrompt,
+    SetModelNameLoading,
     SiteModelsLoaded,
     SiteModelsRefreshRequested,
     StatusMessage,
     UnRegisterForUpdates,
-    SetModelNameLoading,
 )
 from parllama.models.jobs import CopyModelJob, CreateModelJob, PullModelJob, PushModelJob, QueueJob
 from parllama.ollama_data_manager import ollama_dm
@@ -149,7 +140,6 @@ class ParLlamaApp(App[None]):
         self.is_busy = False
         self.is_refreshing = False
         self.last_status = ""
-        self.main_screen = MainScreen()
         if settings.theme_name not in theme_manager.list_themes():
             settings.theme_name = f"{settings.theme_name}_{settings.theme_mode}"
             if settings.theme_name not in theme_manager.list_themes():
@@ -157,25 +147,10 @@ class ParLlamaApp(App[None]):
 
         theme_manager.change_theme(settings.theme_name)
 
-        # par_dark_theme = Theme(
-        #     name="par_dark",
-        #     primary="#e49500",
-        #     secondary="#6e4800",
-        #     accent="#6e4800",
-        #     foreground="#D8DEE9",
-        #     background="#121212",
-        #     success="#4EBF71",
-        #     warning="#da8b28",
-        #     error="#ba3c5b",
-        #     surface="#1e1e1e",
-        #     panel="#111",
-        #     dark=True,
-        # )
-        # self.register_theme(par_dark_theme)
-        # self.theme = "par_dark"
 
     async def on_mount(self) -> None:
         """Display the screen."""
+        self.main_screen = MainScreen()
 
         await self.push_screen(self.main_screen)
         if settings.check_for_updates:

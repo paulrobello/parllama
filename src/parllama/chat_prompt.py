@@ -5,20 +5,17 @@ from __future__ import annotations
 import os
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
-from datetime import UTC
+from datetime import UTC, datetime
 from pathlib import Path
 
+import orjson as json
 import pytz
 import rich.repr
-import orjson as json
 
 from parllama.chat_message import ParllamaChatMessage
 from parllama.chat_message_container import ChatMessageContainer
-from parllama.messages.par_prompt_messages import ParPromptDelete
-from parllama.messages.par_prompt_messages import ParPromptUpdated
-from parllama.messages.shared import prompt_change_list
-from parllama.messages.shared import PromptChanges
+from parllama.messages.par_prompt_messages import ParPromptDelete, ParPromptUpdated
+from parllama.messages.shared import PromptChanges, prompt_change_list
 from parllama.settings_manager import settings
 
 

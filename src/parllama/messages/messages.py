@@ -4,15 +4,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from rich.console import ConsoleRenderable
-from rich.console import RenderableType
-from rich.console import RichCast
+from par_ai_core.llm_providers import LlmProvider
+from rich.console import ConsoleRenderable, RenderableType, RichCast
 from textual.message import Message
 from textual.message_pump import MessagePump
 from textual.notifications import SeverityLevel
-from textual.widgets import TextArea, Input
+from textual.widgets import Input, TextArea
 
-from parllama.lib.llm_providers import LlmProvider
 from parllama.messages.shared import SessionChanges
 from parllama.models.ollama_data import FullModel
 from parllama.utils import TabType

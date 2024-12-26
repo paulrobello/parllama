@@ -3,46 +3,44 @@
 from __future__ import annotations
 
 import re
-from typing import cast
 from pathlib import Path
+from typing import cast
 
+from par_ai_core.llm_providers import (
+    LlmProvider,
+    get_provider_name_fuzzy,
+    llm_provider_names,
+)
 from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal
-from textual.containers import Vertical
+from textual.containers import Horizontal, Vertical
 from textual.events import Show
 from textual.suggester import SuggestFromList
-from textual.widgets import Button
-from textual.widgets import ContentSwitcher
-from textual.widgets import Select
-from textual.widgets import TabbedContent
+from textual.widgets import Button, ContentSwitcher, Select, TabbedContent
 
-from parllama.chat_manager import chat_manager
-from parllama.chat_manager import ChatSession
+from parllama.chat_manager import ChatSession, chat_manager
 from parllama.chat_message import ParllamaChatMessage
 from parllama.dialogs.information import InformationDialog
-from parllama.lib.llm_providers import (
-    llm_provider_names,
-    LlmProvider,
-    get_provider_name_fuzzy,
+from parllama.messages.messages import (
+    ChangeTab,
+    ChatGenerationAborted,
+    ChatMessage,
+    ChatMessageSent,
+    ClearChatInputHistory,
+    DeleteSession,
+    LogIt,
+    PromptListChanged,
+    PromptListLoaded,
+    PromptSelected,
+    ProviderModelsChanged,
+    RegisterForUpdates,
+    SessionSelected,
+    SessionToPrompt,
+    SessionUpdated,
+    UpdateChatControlStates,
+    UpdateTabLabel,
 )
-from parllama.messages.messages import ChangeTab, ProviderModelsChanged
-from parllama.messages.messages import ChatGenerationAborted
-from parllama.messages.messages import ChatMessage
-from parllama.messages.messages import ChatMessageSent
-from parllama.messages.messages import ClearChatInputHistory
-from parllama.messages.messages import DeleteSession
-from parllama.messages.messages import LogIt
-from parllama.messages.messages import PromptListChanged
-from parllama.messages.messages import PromptListLoaded
-from parllama.messages.messages import PromptSelected
-from parllama.messages.messages import RegisterForUpdates
-from parllama.messages.messages import SessionSelected
-from parllama.messages.messages import SessionToPrompt
-from parllama.messages.messages import SessionUpdated
-from parllama.messages.messages import UpdateChatControlStates
-from parllama.messages.messages import UpdateTabLabel
 from parllama.provider_manager import provider_manager
 from parllama.settings_manager import settings
 from parllama.widgets.session_config import SessionConfig

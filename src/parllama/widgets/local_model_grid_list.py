@@ -7,8 +7,7 @@ from textual.containers import Grid
 from textual.reactive import Reactive
 from textual.widget import Widget
 
-from parllama.messages.messages import LocalModelDeleteRequested
-from parllama.messages.messages import ShowLocalModel
+from parllama.messages.messages import LocalModelDeleteRequested, ShowLocalModel
 from parllama.widgets.local_model_list_item import LocalModelListItem
 
 

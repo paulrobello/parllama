@@ -6,23 +6,17 @@ import os
 from typing import Any
 
 from ollama import Options as OllamaOptions
+from par_ai_core.llm_config import LlmConfig
 from textual.app import App
 from textual.message_pump import MessagePump
 
 from parllama.chat_message import ParllamaChatMessage
 from parllama.chat_prompt import ChatPrompt
 from parllama.chat_session import ChatSession
-from parllama.lib.llm_config import LlmConfig
 from parllama.llm_session_name import llm_session_name
-from parllama.messages.messages import ChangeTab
-from parllama.messages.messages import PromptListChanged
-from parllama.messages.messages import PromptListLoaded
-from parllama.messages.messages import SessionListChanged
-from parllama.messages.par_prompt_messages import ParPromptDelete
-from parllama.messages.par_prompt_messages import ParPromptUpdated
-from parllama.messages.par_session_messages import ParSessionAutoName
-from parllama.messages.par_session_messages import ParSessionDelete
-from parllama.messages.par_session_messages import ParSessionUpdated
+from parllama.messages.messages import ChangeTab, PromptListChanged, PromptListLoaded, SessionListChanged
+from parllama.messages.par_prompt_messages import ParPromptDelete, ParPromptUpdated
+from parllama.messages.par_session_messages import ParSessionAutoName, ParSessionDelete, ParSessionUpdated
 from parllama.par_event_system import ParEventSystemBase
 from parllama.settings_manager import settings
 

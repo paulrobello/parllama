@@ -4,25 +4,26 @@ from __future__ import annotations
 
 import os
 import shutil
+from argparse import Namespace
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
-from argparse import Namespace
-from datetime import datetime
-
-import requests
 import orjson as json
-from pydantic import BaseModel
-
-from parllama.lib.llm_providers import (
+import par_ai_core.llm_providers
+import requests
+from par_ai_core.llm_config import LlmMode
+from par_ai_core.llm_providers import (
+    LangChainConfig,
     LlmProvider,
-    provider_name_to_enum,
     llm_provider_types,
     provider_config,
-    LangChainConfig,
+    provider_name_to_enum,
 )
-from parllama.utils import get_args, TabType, valid_tabs
-from parllama.lib.utils import md5_hash
+from par_ai_core.utils import md5_hash
+from pydantic import BaseModel
+
+from parllama.utils import TabType, get_args, valid_tabs
 
 
 @dataclass
@@ -77,20 +78,18 @@ class Settings(BaseModel):
     ollama_host: str = "http://localhost:11434"
     ollama_ps_poll_interval: int = 3
     load_local_models_on_startup: bool = True
-    provider_base_urls: dict[LlmProvider, str | None] = {
-        LlmProvider.OLLAMA: "http://localhost:11434",
-        LlmProvider.OPENAI: None,
-        LlmProvider.GROQ: None,
-        LlmProvider.ANTHROPIC: None,
-        LlmProvider.GOOGLE: None,
-    }
+    provider_base_urls: dict[LlmProvider, str | None] = par_ai_core.llm_providers.provider_base_urls
 
     provider_api_keys: dict[LlmProvider, str | None] = {
         LlmProvider.OLLAMA: None,
+        LlmProvider.LLAMACPP: None,
+        LlmProvider.XAI: None,
         LlmProvider.OPENAI: None,
         LlmProvider.GROQ: None,
         LlmProvider.ANTHROPIC: None,
         LlmProvider.GOOGLE: None,
+        LlmProvider.BEDROCK: None,
+        LlmProvider.GITHUB: None,
     }
 
     langchain_config: LangChainConfig = LangChainConfig()
@@ -284,12 +283,20 @@ class Settings(BaseModel):
             self.auto_name_session_llm_config = data.get(
                 "auto_name_session_llm_config",
                 {
+                    "class_name": "LlmConfig",
                     "provider": LlmProvider.OLLAMA,
+                    "mode": LlmMode.CHAT,
                     "model_name": "",
                     "temperature": 0.5,
                     "streaming": True,
                 },
             )
+            if isinstance(self.auto_name_session_llm_config["provider"], str):
+                self.auto_name_session_llm_config["provider"] = LlmProvider(self.auto_name_session_llm_config["provider"])
+
+            if isinstance(self.auto_name_session_llm_config["mode"], str):
+                self.auto_name_session_llm_config["mode"] = LlmMode(self.auto_name_session_llm_config["mode"])
+
             if self.auto_name_session_llm_config:
                 if "class_name" in self.auto_name_session_llm_config:
                     del self.auto_name_session_llm_config["class_name"]

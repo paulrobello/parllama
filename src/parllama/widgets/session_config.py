@@ -2,28 +2,24 @@
 
 from __future__ import annotations
 
+from par_ai_core.llm_config import LlmConfig
 from textual import on
 from textual.app import ComposeResult
-from textual.containers import Horizontal
-from textual.containers import VerticalScroll
+from textual.containers import Horizontal, VerticalScroll
 from textual.message import Message
-from textual.widgets import Button
-from textual.widgets import Input
-from textual.widgets import Label
-from textual.widgets import Rule
-from textual.widgets import Select
-from textual.widgets import Static
+from textual.widgets import Button, Input, Label, Rule, Select, Static
 
 from parllama.chat_manager import chat_manager
 from parllama.chat_session import ChatSession
-from parllama.lib.llm_config import LlmConfig
-from parllama.messages.messages import ProviderModelSelected
-from parllama.messages.messages import PromptSelected
-from parllama.messages.messages import RegisterForUpdates
-from parllama.messages.messages import SessionSelected
-from parllama.messages.messages import SessionUpdated
-from parllama.messages.messages import UnRegisterForUpdates
-from parllama.messages.messages import UpdateChatStatus
+from parllama.messages.messages import (
+    PromptSelected,
+    ProviderModelSelected,
+    RegisterForUpdates,
+    SessionSelected,
+    SessionUpdated,
+    UnRegisterForUpdates,
+    UpdateChatStatus,
+)
 from parllama.settings_manager import settings
 from parllama.widgets.input_blur_submit import InputBlurSubmit
 from parllama.widgets.provider_model_select import ProviderModelSelect

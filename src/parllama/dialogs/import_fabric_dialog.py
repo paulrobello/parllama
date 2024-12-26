@@ -4,23 +4,18 @@ from __future__ import annotations
 
 from typing import cast
 
-from textual import on
-from textual import work
+from par_ai_core.utils import str_ellipsis
+from textual import on, work
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal
-from textual.containers import Vertical
-from textual.containers import VerticalScroll
+from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.events import Focus
 from textual.screen import ModalScreen
-from textual.widgets import Button
-from textual.widgets import Checkbox
-from textual.widgets import Label
+from textual.widgets import Button, Checkbox, Label
 
 from parllama.messages.messages import ImportReady
 from parllama.models.ollama_data import FullModel
 from parllama.prompt_utils.import_fabric import import_fabric_manager
-from parllama.lib.utils import str_ellipsis
 
 
 class ImportFabricDialog(ModalScreen[None]):

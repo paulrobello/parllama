@@ -1,7 +1,7 @@
 """Deferred select widget."""
 
-from typing import Generic
 from collections.abc import Iterable
+from typing import Generic
 
 import rich.repr
 from rich.console import RenderableType
@@ -9,9 +9,9 @@ from textual import events
 from textual.message import Message
 from textual.widgets import Select
 from textual.widgets._select import (
-    SelectType,
-    NoSelection,
     BLANK,
+    NoSelection,
+    SelectType,
 )  # pylint: disable=unused-import
 
 

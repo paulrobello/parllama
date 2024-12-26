@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-
-from parllama.lib.llm_config import LlmConfig
+from par_ai_core.llm_config import LlmConfig, llm_run_manager
 
 
 def llm_session_name(text: str, llm_config: LlmConfig | None = None) -> str | None:
     """Generate a session name from the given text using llm"""
     if not llm_config:
         return None
-    ret = llm_config.build_chat_model().invoke(
+    chat_model = llm_config.build_chat_model()
+    ret = chat_model.invoke(
         [
             (
                 "system",
@@ -33,6 +33,7 @@ Examples:
     """,
             ),
             ("user", text),
-        ]
+        ],
+        config=llm_run_manager.get_runnable_config(chat_model.name or ""),
     )
     return str(ret.content).strip()

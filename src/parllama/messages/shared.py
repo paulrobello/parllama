@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal
-from typing import TypeAlias
+from typing import Literal, TypeAlias
 
 # TODO change to enums
 SessionChanges: TypeAlias = set[Literal["name", "provider", "model", "temperature", "options", "messages", "num_ctx"]]

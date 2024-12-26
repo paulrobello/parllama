@@ -6,23 +6,20 @@ import base64
 import io
 
 from PIL import Image
-
 from rich_pixels import Pixels
-
 from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Vertical
-from textual.events import Mount, Show, Hide, Unmount
+from textual.events import Hide, Mount, Show, Unmount
 from textual.message import Message
-from textual.widgets import Markdown, Static
-from textual.widgets import TextArea
+from textual.widgets import Markdown, Static, TextArea
 
 from parllama.chat_manager import ChatSession
 from parllama.chat_message import (
     ParllamaChatMessage,
-    try_get_image_type,
     image_to_base64,
+    try_get_image_type,
 )
 from parllama.messages.messages import SendToClipboard
 from parllama.models.ollama_data import MessageRoles

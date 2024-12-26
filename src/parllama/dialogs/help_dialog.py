@@ -8,15 +8,11 @@ from typing import Final
 
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Center
-from textual.containers import Vertical
-from textual.containers import VerticalScroll
+from textual.containers import Center, Vertical, VerticalScroll
 from textual.screen import ModalScreen
-from textual.widgets import Button
-from textual.widgets import Markdown
+from textual.widgets import Button, Markdown
 
-from parllama import __application_title__
-from parllama import __version__
+from parllama import __application_title__, __version__
 
 HELP: Final[str] = f"""
 # {__application_title__} v{__version__} Help

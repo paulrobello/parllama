@@ -3,19 +3,12 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping
-from collections.abc import Sequence
-from datetime import datetime
-from datetime import UTC
-from typing import Any
-from typing import cast
-from typing import Literal
-from typing import TypeAlias
+from collections.abc import Mapping, Sequence
+from datetime import UTC, datetime
+from typing import Any, Literal, TypeAlias, cast
 
 import ollama
-from pydantic import BaseModel
-from pydantic import ConfigDict
-from pydantic import Field
+from pydantic import BaseModel, ConfigDict, Field
 
 MessageRoles: TypeAlias = Literal["user", "assistant", "system", "tool"]
 MessageRoleSelectOptions: list[tuple[str, MessageRoles]] = [

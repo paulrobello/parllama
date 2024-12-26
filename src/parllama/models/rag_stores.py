@@ -8,8 +8,7 @@ import re
 import warnings
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import cast
-from typing import Literal
+from typing import Literal, cast
 
 import chromadb.api
 import chromadb.config
@@ -18,15 +17,13 @@ from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_core.retrievers import BaseRetriever
-from langchain_core.vectorstores import VectorStore
-from langchain_core.vectorstores import VectorStoreRetriever
+from langchain_core.vectorstores import VectorStore, VectorStoreRetriever
+from par_ai_core.llm_config import LlmConfig
+from par_ai_core.utils import all_subclasses
 
-from parllama.lib.llm_config import LlmConfig
 from parllama.models.rag_base import RagBase
-from parllama.models.rag_pipeline import rag_pipeline
-from parllama.models.rag_pipeline import RagPipelineConfig
+from parllama.models.rag_pipeline import RagPipelineConfig, rag_pipeline
 from parllama.settings_manager import settings
-from parllama.lib.utils import all_subclasses
 
 warnings.simplefilter("ignore", category=LangChainDeprecationWarning)
 

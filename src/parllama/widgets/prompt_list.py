@@ -13,10 +13,7 @@ from textual.widgets import ListView
 
 from parllama.chat_manager import chat_manager
 from parllama.dialogs.edit_prompt_dialog import EditPromptDialog
-from parllama.messages.messages import PromptDeleteRequested
-from parllama.messages.messages import PromptListChanged
-from parllama.messages.messages import PromptSelected
-from parllama.messages.messages import RegisterForUpdates
+from parllama.messages.messages import PromptDeleteRequested, PromptListChanged, PromptSelected, RegisterForUpdates
 from parllama.widgets.dbl_click_list_item import DblClickListItem
 from parllama.widgets.prompt_list_item import PromptListItem
 

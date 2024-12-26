@@ -2,22 +2,16 @@
 
 from __future__ import annotations
 
+from par_ai_core.llm_config import LlmConfig
+from par_ai_core.llm_providers import LlmProvider, provider_base_urls
 from textual import on
 from textual.app import ComposeResult
-from textual.containers import Horizontal
-from textual.containers import Vertical
+from textual.containers import Horizontal, Vertical
 from textual.events import Show
 from textual.validation import Integer
-from textual.widgets import Button
-from textual.widgets import Checkbox
-from textual.widgets import Input
-from textual.widgets import Label
-from textual.widgets import Select
-from textual.widgets import Static
+from textual.widgets import Button, Checkbox, Input, Label, Select, Static
 
 import parllama
-from parllama.lib.llm_config import LlmConfig
-from parllama.lib.llm_providers import LlmProvider, provider_base_urls
 from parllama.messages.messages import ClearChatInputHistory, ProviderModelSelected
 from parllama.settings_manager import settings
 from parllama.theme_manager import theme_manager
@@ -223,7 +217,7 @@ class OptionsView(Horizontal):
                         )
                         yield Label("LLM used for auto name")
                         if settings.auto_name_session_llm_config:
-                            llmc = LlmConfig(**settings.auto_name_session_llm_config)
+                            llmc = LlmConfig.from_json(settings.auto_name_session_llm_config)
                         else:
                             llmc = None
                         yield ProviderModelSelect(
@@ -318,7 +312,8 @@ class OptionsView(Horizontal):
                         aips2.border_title = "LlamaCPP"
                         yield Label("Base URL")
                         yield InputBlurSubmit(
-                            value=settings.provider_base_urls[LlmProvider.LLAMACPP] or provider_base_urls[LlmProvider.LLAMACPP],
+                            value=settings.provider_base_urls[LlmProvider.LLAMACPP]
+                            or provider_base_urls[LlmProvider.LLAMACPP],
                             valid_empty=True,
                             validators=HttpValidator(),
                             id="llamacpp_base_url",

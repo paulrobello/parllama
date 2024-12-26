@@ -5,18 +5,12 @@ from __future__ import annotations
 from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Container
-from textual.containers import Horizontal
-from textual.containers import VerticalScroll
+from textual.containers import Container, Horizontal, VerticalScroll
 from textual.events import Show
-from textual.widgets import Button
-from textual.widgets import Input
-from textual.widgets import Label
-from textual.widgets import TextArea
+from textual.widgets import Button, Input, Label, TextArea
 
 from parllama.dialogs.error_dialog import ErrorDialog
-from parllama.messages.messages import ChangeTab
-from parllama.messages.messages import LocalModelCreateRequested
+from parllama.messages.messages import ChangeTab, LocalModelCreateRequested
 
 
 class ModelCreateView(Container):

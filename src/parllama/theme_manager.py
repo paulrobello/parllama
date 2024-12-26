@@ -5,9 +5,7 @@ from __future__ import annotations
 import os
 import shutil
 from pathlib import Path
-from typing import Any
-from typing import Literal
-from typing import TypeAlias
+from typing import Any, Literal, TypeAlias
 
 import orjson as json
 from textual.app import App

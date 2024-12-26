@@ -7,20 +7,17 @@ from typing import cast
 from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Container
-from textual.containers import Horizontal
-from textual.containers import Vertical
+from textual.containers import Container, Horizontal, Vertical
 from textual.events import Show
 from textual.suggester import SuggestFromList
-from textual.widgets import Input
-from textual.widgets import ListView
-from textual.widgets import Static
-from textual.widgets import TabbedContent
+from textual.widgets import Input, ListView, Static, TabbedContent
 
-from parllama.messages.messages import LocalModelPullRequested
-from parllama.messages.messages import RegisterForUpdates
-from parllama.messages.messages import SiteModelsLoaded
-from parllama.messages.messages import SiteModelsRefreshRequested
+from parllama.messages.messages import (
+    LocalModelPullRequested,
+    RegisterForUpdates,
+    SiteModelsLoaded,
+    SiteModelsRefreshRequested,
+)
 from parllama.ollama_data_manager import ollama_dm
 from parllama.settings_manager import settings
 from parllama.widgets.input_tab_complete import InputTabComplete

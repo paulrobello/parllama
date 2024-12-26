@@ -10,11 +10,7 @@ from textual.binding import Binding
 from textual.containers import VerticalScroll
 from textual.events import Focus
 from textual.screen import ModalScreen
-from textual.widgets import Button
-from textual.widgets import MarkdownViewer
-from textual.widgets import Pretty
-from textual.widgets import Static
-from textual.widgets import TextArea
+from textual.widgets import Button, MarkdownViewer, Pretty, Static, TextArea
 
 from parllama.messages.messages import LocalCreateModelFromExistingRequested
 from parllama.models.ollama_data import FullModel

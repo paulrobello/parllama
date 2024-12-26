@@ -2,21 +2,14 @@
 
 from __future__ import annotations
 
-from argparse import ArgumentParser
-from argparse import Namespace
-from typing import Literal
-from typing import TypeAlias
+from argparse import ArgumentParser, Namespace
+from typing import Literal, TypeAlias
 
-from textual.widgets import Button
-from textual.widgets import Input
+from textual.widgets import Button, Input
 from textual.widgets.button import ButtonVariant
 
-from parllama import __application_binary__
-from parllama import __application_title__
-from parllama import __version__
-from parllama.icons import HEAVY_PLUS_SIGN_EMOJI
-from parllama.icons import PENCIL_EMOJI
-from parllama.icons import TRASH_EMOJI
+from parllama import __application_binary__, __application_title__, __version__
+from parllama.icons import HEAVY_PLUS_SIGN_EMOJI, PENCIL_EMOJI, TRASH_EMOJI
 
 DECIMAL_PRECESSION = 5
 

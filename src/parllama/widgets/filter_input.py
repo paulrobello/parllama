@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-from textual.binding import Binding
-from textual.binding import BindingType
+from textual.binding import Binding, BindingType
 from textual.widgets import Input
 
 

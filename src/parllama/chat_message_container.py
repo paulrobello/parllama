@@ -6,12 +6,11 @@ import os
 from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import datetime
-from datetime import UTC
+from datetime import UTC, datetime
 from io import StringIO
 
-import rich.repr
 import orjson as json
+import rich.repr
 
 from parllama.chat_message import ParllamaChatMessage
 from parllama.messages.par_chat_messages import ParChatMessageDeleted

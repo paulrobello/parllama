@@ -6,22 +6,18 @@ import warnings
 from dataclasses import dataclass
 from typing import Literal
 
-from langchain.retrievers import ContextualCompressionRetriever
-from langchain.retrievers import MergerRetriever
-from langchain.retrievers import MultiQueryRetriever
+from langchain.retrievers import ContextualCompressionRetriever, MergerRetriever, MultiQueryRetriever
 from langchain.retrievers.document_compressors.base import DocumentCompressorPipeline
 from langchain.retrievers.document_compressors.listwise_rerank import LLMListwiseRerank
-from langchain_community.document_transformers import EmbeddingsRedundantFilter
-from langchain_community.document_transformers import LongContextReorder
+from langchain_community.document_transformers import EmbeddingsRedundantFilter, LongContextReorder
 from langchain_core._api import LangChainDeprecationWarning
-from langchain_core.documents import BaseDocumentCompressor
-from langchain_core.documents import BaseDocumentTransformer
+from langchain_core.documents import BaseDocumentCompressor, BaseDocumentTransformer
 from langchain_core.embeddings import Embeddings
 from langchain_core.prompts import PromptTemplate
 from langchain_core.retrievers import BaseRetriever
 from langchain_core.vectorstores import VectorStore
+from par_ai_core.llm_config import LlmConfig
 
-from parllama.lib.llm_config import LlmConfig
 from parllama.passthrough_document_transformer import PassthroughDocumentTransformer
 
 warnings.simplefilter("ignore", category=LangChainDeprecationWarning)

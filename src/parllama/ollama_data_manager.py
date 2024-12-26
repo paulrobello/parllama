@@ -6,35 +6,31 @@ import functools
 import os.path
 import re
 import shutil
-from collections.abc import Iterator
-from collections.abc import Mapping
-from datetime import datetime
-from datetime import UTC
+from collections.abc import Iterator, Mapping
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
-from typing import Literal
+from typing import Any, Literal
 
 import docker.errors  # type: ignore
 import docker.types  # type: ignore
 import httpx
 import ollama
-import requests
 import orjson as json
+import requests
 from bs4 import BeautifulSoup
 from docker.models.containers import Container  # type: ignore
 from docker.types import CancellableStream
 from httpx import Response
-from ollama import StatusResponse, ProgressResponse
+from ollama import ProgressResponse, StatusResponse
+from par_ai_core.utils import run_cmd
 
 from parllama.docker_utils import start_docker_container
-from parllama.models.ollama_data import FullModel, ModelInfo, ModelShowPayload,SiteModel,SiteModelData
+from parllama.models.ollama_data import FullModel, ModelInfo, ModelShowPayload, SiteModel, SiteModelData
 from parllama.models.ollama_ps import OllamaPsResponse
 from parllama.par_event_system import ParEventSystemBase
 from parllama.settings_manager import settings
-from parllama.lib.utils import run_cmd
 from parllama.widgets.local_model_list_item import LocalModelListItem
 from parllama.widgets.site_model_list_item import SiteModelListItem
-
 
 ps_pattern = re.compile(
     r"(?P<NAME>\S+)\s+(?P<ID>\S+)\s+(?P<SIZE>\d+\.\d+\s+\S+)\s+(?P<PROCESSOR>\d+%(?:/\d+%)?\s+\S+)\s+(?P<UNTIL>.+)"
@@ -160,7 +156,7 @@ class OllamaDataManager(ParEventSystemBase):
         return [model.model.name for model in self.models]
 
     @staticmethod
-    def pull_model(model_name: str) ->  Iterator[ProgressResponse]:
+    def pull_model(model_name: str) -> Iterator[ProgressResponse]:
         """Pull a model."""
         return ollama.Client(host=settings.ollama_host).pull(model_name, stream=True)  # type: ignore
 

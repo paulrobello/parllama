@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
-
 from dataclasses import dataclass
-from typing import Literal, cast
-from typing import Self
+from pathlib import Path
+from typing import Literal, Self, cast
+
 import orjson as json
 from textual import on
 from textual.app import ComposeResult
@@ -15,15 +13,14 @@ from textual.message import Message
 from textual.reactive import var
 from textual.suggester import Suggester
 from textual.widget import Widget
-from textual.widgets import Input
-from textual.widgets import TextArea
+from textual.widgets import Input, TextArea
 
 from parllama.messages.messages import (
-    ToggleInputMode,
-    HistoryPrev,
-    HistoryNext,
     ClearChatInputHistory,
+    HistoryNext,
+    HistoryPrev,
     RegisterForUpdates,
+    ToggleInputMode,
 )
 from parllama.settings_manager import settings
 from parllama.widgets.input_with_history import InputWithHistory

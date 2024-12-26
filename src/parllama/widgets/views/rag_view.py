@@ -3,14 +3,9 @@
 from __future__ import annotations
 
 from textual.app import ComposeResult
-from textual.containers import Horizontal
-from textual.containers import Vertical
+from textual.containers import Horizontal, Vertical
 from textual.events import Show
-from textual.widgets import Checkbox
-from textual.widgets import Input
-from textual.widgets import Select
-from textual.widgets import Static
-from textual.widgets import TextArea
+from textual.widgets import Checkbox, Input, Select, Static, TextArea
 
 
 class RagView(Horizontal):

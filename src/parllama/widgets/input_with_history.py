@@ -5,8 +5,7 @@ from __future__ import annotations
 from textual import events
 from textual.binding import Binding
 
-from parllama.messages.messages import HistoryPrev, HistoryNext
-from parllama.messages.messages import ToggleInputMode
+from parllama.messages.messages import HistoryNext, HistoryPrev, ToggleInputMode
 from parllama.widgets.input_tab_complete import InputTabComplete
 
 

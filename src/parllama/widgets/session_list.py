@@ -9,15 +9,10 @@ from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Vertical
-from textual.widgets import ListView
-from textual.widgets import Rule
-from textual.widgets import Static
+from textual.widgets import ListView, Rule, Static
 
 from parllama.chat_manager import chat_manager
-from parllama.messages.messages import DeleteSession
-from parllama.messages.messages import RegisterForUpdates
-from parllama.messages.messages import SessionListChanged
-from parllama.messages.messages import SessionSelected
+from parllama.messages.messages import DeleteSession, RegisterForUpdates, SessionListChanged, SessionSelected
 from parllama.widgets.dbl_click_list_item import DblClickListItem
 from parllama.widgets.session_list_item import SessionListItem
 

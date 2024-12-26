@@ -6,13 +6,9 @@ import os
 
 from textual import on
 from textual.app import ComposeResult
-from textual.containers import Container
-from textual.containers import Vertical
-from textual.containers import VerticalScroll
+from textual.containers import Container, Vertical, VerticalScroll
 from textual.events import Show
-from textual.widgets import Button
-from textual.widgets import ContentSwitcher
-from textual.widgets import Static
+from textual.widgets import Button, ContentSwitcher, Static
 
 from parllama.messages.messages import ChangeTab
 from parllama.widgets.clickable_label import CopyToClipboardLabel

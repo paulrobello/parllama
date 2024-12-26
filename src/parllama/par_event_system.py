@@ -3,21 +3,17 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import Awaitable
-from collections.abc import Iterable
+from collections.abc import Awaitable, Callable, Iterable
 from dataclasses import dataclass
-from typing import Any
-from collections.abc import Callable
-from typing import ClassVar
+from typing import Any, ClassVar
 
 import rich.repr
-from rich.console import ConsoleRenderable
-from rich.console import RichCast
+from par_ai_core.utils import camel_to_snake
+from rich.console import ConsoleRenderable, RichCast
 from textual.app import App
 from textual.notifications import SeverityLevel
 
 from parllama.messages.messages import LogIt
-from parllama.lib.utils import camel_to_snake
 
 
 @rich.repr.auto

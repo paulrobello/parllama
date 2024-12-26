@@ -2,22 +2,24 @@
 
 from __future__ import annotations
 
-
+from par_ai_core.llm_providers import (
+    LlmProvider,
+    get_provider_select_options,
+    is_provider_api_key_set,
+    provider_config,
+)
 from textual import on
 from textual.app import ComposeResult
 from textual.containers import Container
 from textual.widgets import Select
 
-from parllama.lib.llm_providers import (
-    LlmProvider,
-    provider_config,
-    is_provider_api_key_set,
-    get_provider_select_options,
+from parllama.messages.messages import (
+    LogIt,
+    ProviderModelsChanged,
+    ProviderModelSelected,
+    RegisterForUpdates,
+    UnRegisterForUpdates,
 )
-from parllama.messages.messages import LogIt, ProviderModelSelected
-from parllama.messages.messages import ProviderModelsChanged
-from parllama.messages.messages import RegisterForUpdates
-from parllama.messages.messages import UnRegisterForUpdates
 from parllama.provider_manager import provider_manager
 from parllama.settings_manager import settings
 from parllama.widgets.deferred_select import DeferredSelect

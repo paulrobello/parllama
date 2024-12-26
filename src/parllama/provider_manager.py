@@ -12,13 +12,11 @@ import orjson as json
 from dotenv import load_dotenv
 from groq import Groq
 from openai import OpenAI
+from par_ai_core.llm_providers import LlmProvider, is_provider_api_key_set, llm_provider_types, provider_base_urls
+from par_ai_core.pricing_lookup import pricing_lookup
 from textual.app import App
 
-from parllama.lib.llm_providers import llm_provider_types, is_provider_api_key_set, provider_base_urls
-from parllama.lib.llm_providers import LlmProvider
-from parllama.lib.pricing_lookup import pricing_lookup
-from parllama.messages.messages import ProviderModelsChanged
-from parllama.messages.messages import RefreshProviderModelsRequested
+from parllama.messages.messages import ProviderModelsChanged, RefreshProviderModelsRequested
 from parllama.ollama_data_manager import ollama_dm
 from parllama.par_event_system import ParEventSystemBase
 from parllama.settings_manager import settings

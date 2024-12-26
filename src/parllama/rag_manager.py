@@ -10,18 +10,18 @@ from typing import Any
 import orjson as json
 from dotenv import load_dotenv
 from langchain.chains.retrieval_qa.base import RetrievalQA
+from par_ai_core.llm_config import LlmConfig, LlmMode
+from par_ai_core.llm_providers import LlmProvider
 from textual.app import App
 
-from parllama.lib.llm_config import LlmConfig
-from parllama.lib.llm_config import LlmMode
-from parllama.lib.llm_providers import LlmProvider
-from parllama.models.rag_datasource import DataSourceFile
-from parllama.models.rag_datasource import LoadSplitConfig
-from parllama.models.rag_stores import RagPipelineConfig
-from parllama.models.rag_stores import StoreBase
-from parllama.models.rag_stores import VectorStoreBase
-from parllama.models.rag_stores import VectorStoreChroma
-from parllama.models.rag_stores import VectorStoreConfig
+from parllama.models.rag_datasource import DataSourceFile, LoadSplitConfig
+from parllama.models.rag_stores import (
+    RagPipelineConfig,
+    StoreBase,
+    VectorStoreBase,
+    VectorStoreChroma,
+    VectorStoreConfig,
+)
 from parllama.par_event_system import ParEventSystemBase
 from parllama.settings_manager import settings
 

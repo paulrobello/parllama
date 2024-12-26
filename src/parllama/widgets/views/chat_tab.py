@@ -7,37 +7,36 @@ from functools import partial
 from typing import cast
 
 import humanize
+from par_ai_core.utils import str_ellipsis
 from rich.text import Text
-from textual import on
-from textual import work
+from textual import on, work
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Vertical
 from textual.events import Show
 from textual.reactive import Reactive
-from textual.widgets import Static
-from textual.widgets import TabbedContent
-from textual.widgets import TabPane
+from textual.widgets import Static, TabbedContent, TabPane
 
-from parllama.chat_manager import chat_manager
-from parllama.chat_manager import ChatSession
+from parllama.chat_manager import ChatSession, chat_manager
 from parllama.chat_message import ParllamaChatMessage
-from parllama.messages.messages import ChatMessage, ChatMessageDeleted
-from parllama.messages.messages import ChatMessageSent
-from parllama.messages.messages import DeleteSession
-from parllama.messages.messages import PromptSelected
-from parllama.messages.messages import SessionSelected
-from parllama.messages.messages import SessionUpdated
-from parllama.messages.messages import UnRegisterForUpdates
-from parllama.messages.messages import UpdateChatControlStates
-from parllama.messages.messages import UpdateChatStatus
-from parllama.messages.messages import UpdateTabLabel
+from parllama.messages.messages import (
+    ChatMessage,
+    ChatMessageDeleted,
+    ChatMessageSent,
+    DeleteSession,
+    PromptSelected,
+    SessionSelected,
+    SessionUpdated,
+    UnRegisterForUpdates,
+    UpdateChatControlStates,
+    UpdateChatStatus,
+    UpdateTabLabel,
+)
 from parllama.models.ollama_data import FullModel
 from parllama.ollama_data_manager import ollama_dm
 from parllama.provider_manager import provider_manager
 from parllama.screens.save_session import SaveSession
 from parllama.settings_manager import settings
-from parllama.lib.utils import str_ellipsis
 from parllama.widgets.chat_message_list import ChatMessageList
 from parllama.widgets.chat_message_widget import ChatMessageWidget
 from parllama.widgets.session_config import SessionConfig

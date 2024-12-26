@@ -94,6 +94,9 @@ dependencies = [
     "selenium>=4.27.1",
     "webdriver-manager>=4.0.2",
     "playwright>=1.49.0",
+    "par-ai-core",
+    "langchain-xai>=0.1.1",
+    "dacite>=1.8.1",
 ]
 
 packages = [
@@ -132,6 +135,9 @@ dev-dependencies = [
     "types-orjson>=3.6.2",
     "ruff>=0.7.4",
 ]
+
+[tool.uv.sources]
+par-ai-core = { path = "../par_ai_core" }
 
 [tool.hatch.version]
 path = "src/parllama/__init__.py"

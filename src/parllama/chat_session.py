@@ -8,29 +8,29 @@ import os
 import uuid
 from collections.abc import Iterator
 from dataclasses import dataclass
-from datetime import datetime
-from datetime import UTC
+from datetime import UTC, datetime
 from pathlib import Path
 
+import orjson as json
 import pytz
 import rich.repr
-import orjson as json
 from langchain_core.messages import BaseMessageChunk
+from par_ai_core.llm_config import LlmConfig, llm_run_manager
+from par_ai_core.llm_providers import LlmProvider
 from textual.message_pump import MessagePump
 
 from parllama.chat_message import ParllamaChatMessage
 from parllama.chat_message_container import ChatMessageContainer
-from parllama.lib.llm_config import LlmConfig
-from parllama.lib.llm_providers import LlmProvider
-from parllama.messages.messages import ChatGenerationAborted, ChatMessageDeleted
-from parllama.messages.messages import ChatMessage
-from parllama.messages.messages import SessionChanges
-from parllama.messages.messages import SessionMessage
-from parllama.messages.messages import SessionUpdated
-from parllama.messages.par_chat_messages import ParChatUpdated, ParChatMessageDeleted
-from parllama.messages.par_session_messages import ParSessionAutoName
-from parllama.messages.par_session_messages import ParSessionDelete
-from parllama.messages.par_session_messages import ParSessionUpdated
+from parllama.messages.messages import (
+    ChatGenerationAborted,
+    ChatMessage,
+    ChatMessageDeleted,
+    SessionChanges,
+    SessionMessage,
+    SessionUpdated,
+)
+from parllama.messages.par_chat_messages import ParChatMessageDeleted, ParChatUpdated
+from parllama.messages.par_session_messages import ParSessionAutoName, ParSessionDelete, ParSessionUpdated
 from parllama.messages.shared import session_change_list
 from parllama.models.token_stats import TokenStats
 from parllama.settings_manager import settings
@@ -227,8 +227,9 @@ class ChatSession(ChatMessageContainer):
             # self.log_it(self._llm_config)
             chat_history = [m.to_langchain_native() for m in self.messages]
             # self.log_it(chat_history)
-            stream: Iterator[BaseMessageChunk] = self._llm_config.build_chat_model().stream(
-                chat_history  # type: ignore
+            chat_model = self._llm_config.build_chat_model()
+            stream: Iterator[BaseMessageChunk] = chat_model.stream(
+                chat_history, config=llm_run_manager.get_runnable_config(chat_model.name or "")
             )
             # self.log_it("CM adding assistant message")
             msg = ParllamaChatMessage(role="assistant")

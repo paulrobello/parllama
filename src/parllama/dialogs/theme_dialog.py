@@ -5,11 +5,9 @@ from __future__ import annotations
 from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal
-from textual.containers import Vertical
+from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
-from textual.widgets import Button, RadioSet, RadioButton
-from textual.widgets import Input
+from textual.widgets import Button, Input, RadioButton, RadioSet
 
 
 class ThemeDialog(ModalScreen[str]):
