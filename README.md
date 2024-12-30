@@ -392,13 +392,18 @@ if anything remains to be fixed before the commit is allowed.
   * A: ParLlama by default does not require any network / internet access unless you enable checking for updates or want to import / use data from an online source.
 * Q: Does ParLlama run on ARM?
   * A: Short answer is yes. ParLlama should run any place python does. It has been tested on Windows 11 x64, Windows WSL x64, Mac OSX intel and silicon
-* Q: Does Parllama require Ollama be installed locally?
+* Q: Does ParLlama require Ollama be installed locally?
   * A: No. ParLlama has options to connect to remote Ollama instances
+* Q: Does ParLlama require Ollama?
+  * A: No. ParLlama can be used with most online AI providers
+* Q: Does ParLlama support vision LLMS?
+  * A: Yes. If the selected provider / model supports vision you can add images to the chat via /slash commands 
 
 ## Roadmap
 
 ### Where we are
 * Initial release - Find, maintain and create new models
+* Theme support
 * Connect to remote instances
 * Chat with history / conversation management
 * Chat tabs allow chat with multiple models at same time
@@ -409,6 +414,8 @@ if anything remains to be fixed before the commit is allowed.
 
 ### Where we're going
 
+* Better image support via file pickers
+* Ability to copy code and other sub sections from chat
 * RAG for local documents and web pages
 * Expand ability to import custom prompts of other tools
 * LLM tool use
@@ -423,7 +430,7 @@ if anything remains to be fixed before the commit is allowed.
 * Added theme selector
 * Varius bug fixes and performance improvements
 * Updated core AI library and dependencies
-* Image file picker added to /add.image command
+* Fixed crash due to upstream library update
 
 ### v0.3.10
 * Fixed crash issues on fresh installs
