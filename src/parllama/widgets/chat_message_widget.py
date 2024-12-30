@@ -14,6 +14,7 @@ from textual.containers import Vertical
 from textual.events import Hide, Mount, Show, Unmount
 from textual.message import Message
 from textual.widgets import Markdown, Static, TextArea
+from textual.widgets._markdown import MarkdownFence
 
 from parllama.chat_manager import ChatSession
 from parllama.chat_message import (
@@ -31,6 +32,7 @@ class ChatMessageWidget(Vertical, can_focus=True):
 
     BINDINGS = [
         Binding(key="ctrl+c", action="copy_to_clipboard", show=True),
+        Binding(key="ctrl+shift+c", action="copy_fence_clipboard", show=True),
         Binding(key="e", action="edit_item", description="Edit", show=True),
         Binding(key="escape", action="exit_edit", show=False, priority=True),
         Binding(
@@ -104,6 +106,7 @@ class ChatMessageWidget(Vertical, can_focus=True):
         self.placeholder.display = not is_final
         self.is_final = is_final
         self.border_title = self.msg.role
+        self.fence_num: int = -1
         # if self.msg.images:
         #     self.border_subtitle = f"Image: {str(self.msg.images[0])}"
 
@@ -207,6 +210,20 @@ class ChatMessageWidget(Vertical, can_focus=True):
     def action_copy_to_clipboard(self) -> None:
         """Copy focused widget value to clipboard"""
         self.app.post_message(SendToClipboard(self.raw_text))
+
+    def action_copy_fence_clipboard(self) -> None:
+        """Copy focused widget value to clipboard"""
+        fences = self.markdown.query(MarkdownFence)
+        if not fences:
+            self.fence_num = -1
+            self.notify("No markdown fences found", severity="warning")
+            return
+        self.fence_num += 1
+        if self.fence_num >= len(fences):
+            self.fence_num = 0
+        fence: MarkdownFence = fences[self.fence_num]
+        self.notify(f"Fence {self.fence_num+1} of {len(fences)} type: {fence.lexer}")
+        self.app.post_message(SendToClipboard(fence.code))
 
     @on(Mount)
     @on(Unmount)

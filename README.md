@@ -25,7 +25,7 @@
 * [Contributing](#contributing)
 * [FAQ](#faq)
 * [Roadmap](#roadmap)
-    * [Where we are](#where-we-are)
+    * [Where we are](#where-we-are)Ï
     * [Where we're going](#where-were-going)
 * [What's new](#whats-new)
     * [v0.3.11](#v0311)* 
@@ -427,6 +427,7 @@ if anything remains to be fixed before the commit is allowed.
 
 * Added ability to set max context size for Ollama and other providers that support it
 * Limited support for LLamaCpp running in OpenAI Mode.
+* Added ability to cycle through fences in selected chat message and copy to clipboard with `ctrl+shift+c`
 * Added theme selector
 * Varius bug fixes and performance improvements
 * Updated core AI library and dependencies
