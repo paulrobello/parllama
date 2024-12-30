@@ -8,8 +8,7 @@ import docker.errors  # type: ignore
 import docker.types  # type: ignore
 from docker import DockerClient
 from docker.models.containers import Container  # type: ignore
-
-from .utils import read_env_file
+from par_ai_core.utils import read_env_file
 
 
 # pylint: disable=too-many-arguments,too-many-return-statements,too-many-branches

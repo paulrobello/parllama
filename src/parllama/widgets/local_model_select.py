@@ -6,9 +6,7 @@ from textual import on
 from textual.message import Message
 from textual.widgets import Select
 
-from parllama.messages.messages import LocalModelDeleted
-from parllama.messages.messages import LocalModelListLoaded
-from parllama.messages.messages import RegisterForUpdates
+from parllama.messages.messages import LocalModelDeleted, LocalModelListLoaded, RegisterForUpdates
 from parllama.ollama_data_manager import ollama_dm
 from parllama.settings_manager import settings
 

@@ -3,46 +3,44 @@
 from __future__ import annotations
 
 import re
-from typing import cast
 from pathlib import Path
+from typing import cast
 
+from par_ai_core.llm_providers import (
+    LlmProvider,
+    get_provider_name_fuzzy,
+    llm_provider_names,
+)
 from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal
-from textual.containers import Vertical
+from textual.containers import Horizontal, Vertical
 from textual.events import Show
 from textual.suggester import SuggestFromList
-from textual.widgets import Button
-from textual.widgets import ContentSwitcher
-from textual.widgets import Select
-from textual.widgets import TabbedContent
+from textual.widgets import Button, ContentSwitcher, Select, TabbedContent
 
-from parllama.chat_manager import chat_manager
-from parllama.chat_manager import ChatSession
+from parllama.chat_manager import ChatSession, chat_manager
 from parllama.chat_message import ParllamaChatMessage
 from parllama.dialogs.information import InformationDialog
-from parllama.llm_providers import (
-    llm_provider_names,
-    LlmProvider,
-    get_provider_name_fuzzy,
+from parllama.messages.messages import (
+    ChangeTab,
+    ChatGenerationAborted,
+    ChatMessage,
+    ChatMessageSent,
+    ClearChatInputHistory,
+    DeleteSession,
+    LogIt,
+    PromptListChanged,
+    PromptListLoaded,
+    PromptSelected,
+    ProviderModelsChanged,
+    RegisterForUpdates,
+    SessionSelected,
+    SessionToPrompt,
+    SessionUpdated,
+    UpdateChatControlStates,
+    UpdateTabLabel,
 )
-from parllama.messages.messages import ChangeTab, ProviderModelsChanged
-from parllama.messages.messages import ChatGenerationAborted
-from parllama.messages.messages import ChatMessage
-from parllama.messages.messages import ChatMessageSent
-from parllama.messages.messages import ClearChatInputHistory
-from parllama.messages.messages import DeleteSession
-from parllama.messages.messages import LogIt
-from parllama.messages.messages import PromptListChanged
-from parllama.messages.messages import PromptListLoaded
-from parllama.messages.messages import PromptSelected
-from parllama.messages.messages import RegisterForUpdates
-from parllama.messages.messages import SessionSelected
-from parllama.messages.messages import SessionToPrompt
-from parllama.messages.messages import SessionUpdated
-from parllama.messages.messages import UpdateChatControlStates
-from parllama.messages.messages import UpdateTabLabel
 from parllama.provider_manager import provider_manager
 from parllama.settings_manager import settings
 from parllama.widgets.session_config import SessionConfig
@@ -171,16 +169,10 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
             history_file=Path(settings.chat_history_file),
         )
 
-        self.send_button: Button = Button(
-            "Send", id="send_button", disabled=True, variant="success"
-        )
-        self.stop_button: Button = Button(
-            "Stop", id="stop_button", disabled=True, variant="error"
-        )
+        self.send_button: Button = Button("Send", id="send_button", disabled=True, variant="success")
+        self.stop_button: Button = Button("Stop", id="stop_button", disabled=True, variant="error")
         self.last_command = ""
-        self.provider_list_auto_complete_list = [
-            f"/session.provider {p}" for p in llm_provider_names
-        ]
+        self.provider_list_auto_complete_list = [f"/session.provider {p}" for p in llm_provider_names]
         self.model_list_auto_complete_list = []
         self.prompt_list_auto_complete_list = []
 
@@ -210,9 +202,7 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
                 ],
             )
         )
-        self.prompt_list_auto_complete_list = [
-            f"/prompt.load {prompt.name}" for prompt in chat_manager.sorted_prompts
-        ]
+        self.prompt_list_auto_complete_list = [f"/prompt.load {prompt.name}" for prompt in chat_manager.sorted_prompts]
 
     def _on_show(self, event: Show) -> None:
         """Handle show event"""
@@ -223,9 +213,7 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         """Prompt list changed"""
         event.stop()
         self.post_message(LogIt("Prompt list loaded"))
-        self.prompt_list_auto_complete_list = [
-            f"/prompt.load {prompt.name}" for prompt in chat_manager.sorted_prompts
-        ]
+        self.prompt_list_auto_complete_list = [f"/prompt.load {prompt.name}" for prompt in chat_manager.sorted_prompts]
         self.rebuild_suggester()
 
     @on(UserInput.Changed)
@@ -238,25 +226,17 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         """Update disabled state of controls based on model and user input values"""
         self.send_button.disabled = (
             self.active_tab.busy
-            or self.active_tab.session_config.provider_model_select.provider_select.value
-            == Select.BLANK
-            or self.active_tab.session_config.provider_model_select.model_select.value
-            == Select.BLANK
+            or self.active_tab.session_config.provider_model_select.provider_select.value == Select.BLANK
+            or self.active_tab.session_config.provider_model_select.model_select.value == Select.BLANK
             or len(self.user_input.value.strip()) == 0
         )
-        self.stop_button.disabled = (
-            not self.active_tab.busy or self.session.abort_pending
-        )
+        self.stop_button.disabled = not self.active_tab.busy or self.session.abort_pending
 
     @on(ProviderModelsChanged)
     def model_list_changed(self, evt: ProviderModelsChanged) -> None:
         """Model list changed"""
         evt.stop()
-        if (
-            not evt.provider
-            or self.session_config.provider_model_select.provider_select.value
-            != evt.provider
-        ):
+        if not evt.provider or self.session_config.provider_model_select.provider_select.value != evt.provider:
             return
         self.post_message(LogIt("Provider models changed"))
         self.model_list_auto_complete_list = [
@@ -273,9 +253,7 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         """Prompt list changed"""
         evt.stop()
         self.post_message(LogIt("Prompt list changed"))
-        self.prompt_list_auto_complete_list = [
-            f"/prompt.load {prompt.name}" for prompt in chat_manager.sorted_prompts
-        ]
+        self.prompt_list_auto_complete_list = [f"/prompt.load {prompt.name}" for prompt in chat_manager.sorted_prompts]
         self.rebuild_suggester()
 
     def rebuild_suggester(self) -> None:
@@ -400,9 +378,7 @@ Chat Commands:
                     severity="error",
                 )
                 return
-            self.active_tab.session_config.provider_model_select.provider_select.value = LlmProvider(
-                v
-            )
+            self.active_tab.session_config.provider_model_select.provider_select.value = LlmProvider(v)
             self.set_timer(0.1, self.user_input.focus)
         elif cmd == "session.model":
             self.active_tab.session_config.display = True
@@ -481,7 +457,7 @@ Chat Commands:
             await self.active_tab.load_prompt(
                 PromptSelected(
                     prompt_id=prompt.id,
-                    llm_model_name=None,
+                    model_name=None,
                     temperature=None,
                 )
             )
@@ -498,9 +474,7 @@ Chat Commands:
                 if not path.exists():
                     self.notify(f"Image {v} not found", severity="error")
                     return
-                msg = ParllamaChatMessage(
-                    role="user", content=p, images=[str(path.absolute())]
-                )
+                msg = ParllamaChatMessage(role="user", content=p, images=[str(path.absolute())])
 
             self.session.add_message(msg)
             self.post_message(ChatMessage(parent_id=self.session.id, message_id=msg.id))

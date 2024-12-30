@@ -6,13 +6,11 @@ import os
 from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import datetime
-from datetime import timezone
+from datetime import UTC, datetime
 from io import StringIO
-from typing import Optional
 
-import rich.repr
 import orjson as json
+import rich.repr
 
 from parllama.chat_message import ParllamaChatMessage
 from parllama.messages.par_chat_messages import ParChatMessageDeleted
@@ -63,7 +61,7 @@ class ChatMessageContainer(ParEventSystemBase):
             self.messages.append(msg)
             self._id_to_msg[msg.id] = msg
             self.mount(msg)
-        self.last_updated = last_updated or datetime.now(timezone.utc)
+        self.last_updated = last_updated or datetime.now(UTC)
         self._loaded = messages is not None
         self._batching = False
 
@@ -94,7 +92,7 @@ class ChatMessageContainer(ParEventSystemBase):
         else:
             self.messages.append(msg)
         self._id_to_msg[msg.id] = msg
-        self.last_updated = datetime.now(timezone.utc)
+        self.last_updated = datetime.now(UTC)
         self.mount(msg)
         self._changes.add("messages")
         self._loaded = True
@@ -126,20 +124,18 @@ class ChatMessageContainer(ParEventSystemBase):
 
     # system prompt setter
     @system_prompt.setter
-    def system_prompt(self, value: Optional[ParllamaChatMessage]) -> None:
+    def system_prompt(self, value: ParllamaChatMessage | None) -> None:
         """Set system prompt"""
         if not value:
             if len(self.messages) == 0 or self.messages[0].role != "system":
                 return
             msg = self.messages.pop(0)
-            self.last_updated = datetime.now(timezone.utc)
+            self.last_updated = datetime.now(UTC)
             self._changes.add("messages")
             self._changes.add("system_prompt")
             self.save()
             if msg.parent:
-                self.post_message(
-                    ParChatMessageDeleted(parent_id=msg.parent.id, message_id=msg.id)
-                )
+                self.post_message(ParChatMessageDeleted(parent_id=msg.parent.id, message_id=msg.id))
             return
 
         if len(self.messages) > 0 and self.messages[0].role == "system":
@@ -147,7 +143,7 @@ class ChatMessageContainer(ParEventSystemBase):
             if msg.content == value.content:
                 return
             msg.content = value.content
-            self.last_updated = datetime.now(timezone.utc)
+            self.last_updated = datetime.now(UTC)
             self._changes.add("messages")
             self._changes.add("system_prompt")
             self.save()
@@ -178,7 +174,7 @@ class ChatMessageContainer(ParEventSystemBase):
         """Get the number of messages"""
         return len(self.messages)
 
-    def __getitem__(self, msg_id: str) -> Optional[ParllamaChatMessage]:
+    def __getitem__(self, msg_id: str) -> ParllamaChatMessage | None:
         """Get a message"""
         return self._id_to_msg.get(msg_id)
 
@@ -188,7 +184,7 @@ class ChatMessageContainer(ParEventSystemBase):
             if msg.id == msg_id:
                 self._id_to_msg[msg_id] = value
                 self.messages[i] = value
-                self.last_updated = datetime.now(timezone.utc)
+                self.last_updated = datetime.now(UTC)
                 self._changes.add("messages")
                 self.save()
                 return
@@ -200,14 +196,10 @@ class ChatMessageContainer(ParEventSystemBase):
         for i, msg in enumerate(self.messages):
             if msg.id == key:
                 if msg.parent:
-                    self.post_message(
-                        ParChatMessageDeleted(
-                            parent_id=msg.parent.id, message_id=msg.id
-                        )
-                    )
+                    self.post_message(ParChatMessageDeleted(parent_id=msg.parent.id, message_id=msg.id))
 
                 msg = self.messages.pop(i)
-                self.last_updated = datetime.now(timezone.utc)
+                self.last_updated = datetime.now(UTC)
                 if msg.role == "system":
                     self._changes.add("system_prompt")
                 self._changes.add("messages")
@@ -247,12 +239,10 @@ class ChatMessageContainer(ParEventSystemBase):
     def export_as_markdown(self, filename: str) -> bool:
         """Save the chat session to markdown file"""
         try:
-            with open(
-                os.path.join(settings.export_md_dir, filename), "wt", encoding="utf-8"
-            ) as f:
+            with open(os.path.join(settings.export_md_dir, filename), "w", encoding="utf-8") as f:
                 f.write(str(self))
             return True
-        except (OSError, IOError):
+        except OSError:
             return False
 
     @property

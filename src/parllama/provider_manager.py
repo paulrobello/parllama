@@ -6,19 +6,17 @@ import os
 import time
 from pathlib import Path
 from typing import Any
-from typing import Optional
 
 import google.generativeai as genai  # type: ignore
 import orjson as json
 from dotenv import load_dotenv
 from groq import Groq
 from openai import OpenAI
+from par_ai_core.llm_providers import LlmProvider, is_provider_api_key_set, llm_provider_types, provider_base_urls
+from par_ai_core.pricing_lookup import pricing_lookup
 from textual.app import App
 
-from parllama.llm_providers import llm_provider_types, is_provider_api_key_set
-from parllama.llm_providers import LlmProvider
-from parllama.messages.messages import ProviderModelsChanged
-from parllama.messages.messages import RefreshProviderModelsRequested
+from parllama.messages.messages import ProviderModelsChanged, RefreshProviderModelsRequested
 from parllama.ollama_data_manager import ollama_dm
 from parllama.par_event_system import ParEventSystemBase
 from parllama.settings_manager import settings
@@ -58,9 +56,10 @@ class ProviderManager(ParEventSystemBase):
         self.provider_models = {}
         for p in llm_provider_types:
             self.provider_models[p] = []
+        self.provider_models[LlmProvider.LLAMACPP] = ["default"]
         self.cache_file = Path(settings.provider_models_file)
 
-    def set_app(self, app: Optional[App[Any]]) -> None:
+    def set_app(self, app: App[Any] | None) -> None:
         """Set the app."""
         super().set_app(app)
         self.load_models()
@@ -77,23 +76,23 @@ class ProviderManager(ParEventSystemBase):
                     continue
                 if p == LlmProvider.OLLAMA:
                     new_list = ollama_dm.get_model_names()
+                elif p == LlmProvider.LLAMACPP:
+                    models = OpenAI(base_url=settings.provider_base_urls[p] or provider_base_urls[p]).models.list()
+                    data = sorted(models.data, key=lambda m: m.created, reverse=True)
+                    for m in data:
+                        new_list.append(m.id or "default")
                 elif p == LlmProvider.OPENAI:
-                    models = OpenAI().models.list()
+                    models = OpenAI(base_url=settings.provider_base_urls[p] or provider_base_urls[p]).models.list()
                     data = sorted(models.data, key=lambda m: m.created, reverse=True)
                     for m in data:
                         new_list.append(m.id)
                 elif p == LlmProvider.GROQ:
-                    models = Groq().models.list()
+                    models = Groq(base_url=settings.provider_base_urls[p] or provider_base_urls[p]).models.list()
                     data = sorted(models.data, key=lambda m: m.created, reverse=True)
                     for m in data:
                         new_list.append(m.id)
                 elif p == LlmProvider.ANTHROPIC:
-                    new_list = [
-                        "claude-3-haiku-20240307",
-                        "claude-3-sonnet-20240229",
-                        "claude-3-opus-20240229",
-                        "claude-3-5-sonnet-20240620",
-                    ]
+                    new_list = [m for m in pricing_lookup.keys() if m.startswith("claude-3-5-")]
                 elif p == LlmProvider.GOOGLE:
                     genai.configure(api_key=os.environ.get("GOOGLE_API_KEY"))
                     data = sorted(list(genai.list_models()), key=lambda m: m.name)
@@ -102,6 +101,7 @@ class ProviderManager(ParEventSystemBase):
                 else:
                     raise ValueError(f"Unknown provider: {p}")
                 # print(new_list)
+
                 self.provider_models[p] = new_list
                 if self.app:
                     self.app.post_message(ProviderModelsChanged(provider=p))
@@ -158,6 +158,8 @@ class ProviderManager(ParEventSystemBase):
 
         provider_models = json.loads(self.cache_file.read_bytes())
         self.provider_models = {LlmProvider(k): v for k, v in provider_models.items()}
+        self.provider_models[LlmProvider.LLAMACPP] = ["default"]
+
         if self.app:
             self.app.post_message(ProviderModelsChanged())
 

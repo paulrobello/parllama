@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 from textual.app import ComposeResult
-from textual.containers import Horizontal
-from textual.containers import Vertical
-from textual.widgets import ListItem
-from textual.widgets import Static
+from textual.containers import Horizontal, Vertical
+from textual.widgets import ListItem, Static
 
 from parllama.models.ollama_data import SiteModel
 
@@ -23,7 +21,9 @@ class SiteModelListItem(ListItem):
         background: $background;
         border: solid $accent;
         border-title-color: $primary;
-
+        &.-highlight {
+            border-title-color: $accent;
+        }
         Static {
             width: 1fr;
             max-height: 3;

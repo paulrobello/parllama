@@ -6,39 +6,31 @@ import functools
 import os.path
 import re
 import shutil
-from collections.abc import Iterator
-from collections.abc import Mapping
-from datetime import datetime
-from datetime import timezone
+from collections.abc import Iterator, Mapping
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
-from typing import Literal
-from typing import Optional
+from typing import Any, Literal
 
 import docker.errors  # type: ignore
 import docker.types  # type: ignore
 import httpx
 import ollama
-import requests
 import orjson as json
+import requests
 from bs4 import BeautifulSoup
 from docker.models.containers import Container  # type: ignore
 from docker.types import CancellableStream
 from httpx import Response
+from ollama import ProgressResponse, StatusResponse
+from par_ai_core.utils import run_cmd
 
 from parllama.docker_utils import start_docker_container
-from parllama.models.ollama_data import FullModel
-from parllama.models.ollama_data import ModelListPayload
-from parllama.models.ollama_data import ModelShowPayload
-from parllama.models.ollama_data import SiteModel
-from parllama.models.ollama_data import SiteModelData
+from parllama.models.ollama_data import FullModel, ModelInfo, ModelShowPayload, SiteModel, SiteModelData
 from parllama.models.ollama_ps import OllamaPsResponse
 from parllama.par_event_system import ParEventSystemBase
 from parllama.settings_manager import settings
-from parllama.utils import run_cmd
 from parllama.widgets.local_model_list_item import LocalModelListItem
 from parllama.widgets.site_model_list_item import SiteModelListItem
-
 
 ps_pattern = re.compile(
     r"(?P<NAME>\S+)\s+(?P<ID>\S+)\s+(?P<SIZE>\d+\.\d+\s+\S+)\s+(?P<PROCESSOR>\d+%(?:/\d+%)?\s+\S+)\s+(?P<UNTIL>.+)"
@@ -89,7 +81,7 @@ class OllamaDataManager(ParEventSystemBase):
         api_ret = api_model_ps()
         if not self.ollama_bin:
             return api_ret
-        ret: Optional[str] = run_cmd([self.ollama_bin, "ps"])
+        ret: str | None = run_cmd([self.ollama_bin, "ps"])
 
         if not ret:
             return api_ret
@@ -113,34 +105,39 @@ class OllamaDataManager(ParEventSystemBase):
         mfn = re.sub(r"[^\w_]", "", model.name)
         cache_file = Path(settings.ollama_cache_dir) / f"model_details-{mfn}.json"
 
-        model_data: Optional[Mapping[str, Any]] = None
+        model_data: Mapping[str, Any] | None = None
         if cache_file.exists():
             try:
                 model_data = json.loads(cache_file.read_bytes())
-            except json.JSONDecodeError:
+                if not isinstance(model_data, dict):
+                    raise ValueError("Bad data")
+                ModelShowPayload(**model_data)
+            except Exception as _:
+                cache_file.unlink()
                 model_data = None
         if not model_data:
-            model_data = ollama.Client(host=settings.ollama_host).show(model.name)
+            model_data = ollama.Client(host=settings.ollama_host).show(model.name).model_dump()
             cache_file.write_bytes(json.dumps(model_data, str, json.OPT_INDENT_2))
-
+        if "modelinfo" in model_data:
+            model_data["modelinfo"] = ModelInfo(**model_data["modelinfo"])
         msp = ModelShowPayload(**model_data)
-        msp.modelfile = re.sub(
-            pattern, replacement, msp.modelfile, flags=re.MULTILINE | re.IGNORECASE
-        )
+        msp.modelfile = re.sub(pattern, replacement, msp.modelfile, flags=re.MULTILINE | re.IGNORECASE)
         model.parameters = msp.parameters
         model.template = msp.template
         model.modelfile = msp.modelfile
-        model.model_info = msp.model_info
+        model.modelinfo = msp.modelinfo
         model.license = msp.license
 
     @staticmethod
     def _get_all_model_data() -> list[LocalModelListItem]:
         """Get all model data."""
         all_models: list[LocalModelListItem] = []
-        res = ModelListPayload(**ollama.Client(host=settings.ollama_host).list())
+        res = ollama.Client(host=settings.ollama_host).list()
 
         for model in res.models:
-            res3 = FullModel(**model.model_dump())
+            if not model.model:
+                continue
+            res3 = FullModel(**model.model_dump(), name=model.model)
             all_models.append(LocalModelListItem(res3))
             # break
         return all_models
@@ -159,22 +156,18 @@ class OllamaDataManager(ParEventSystemBase):
         return [model.model.name for model in self.models]
 
     @staticmethod
-    def pull_model(model_name: str) -> Iterator[dict[str, Any]]:
+    def pull_model(model_name: str) -> Iterator[ProgressResponse]:
         """Pull a model."""
         return ollama.Client(host=settings.ollama_host).pull(model_name, stream=True)  # type: ignore
 
     @staticmethod
-    def push_model(model_name: str) -> Iterator[dict[str, Any]]:
+    def push_model(model_name: str) -> Iterator[ProgressResponse]:
         """Push a model."""
         return ollama.Client(host=settings.ollama_host).push(model_name, stream=True)  # type: ignore
 
     def delete_model(self, model_name: str) -> bool:
         """Delete a model."""
-        ret = (
-            ollama.Client(host=settings.ollama_host)
-            .delete(model_name)
-            .get("status", False)
-        )
+        ret = ollama.Client(host=settings.ollama_host).delete(model_name).status or False
         # ret = True
         if not ret:
             return False
@@ -221,9 +214,7 @@ class OllamaDataManager(ParEventSystemBase):
         if not force and file_name.exists():
             try:
                 ret: SiteModelData = SiteModelData(**json.loads(file_name.read_bytes()))
-                if ret.last_update and ret.last_update.timestamp() > (
-                    ret.last_update.timestamp() - 60 * 60 * 24
-                ):
+                if ret.last_update and ret.last_update.timestamp() > (ret.last_update.timestamp() - 60 * 60 * 24):
                     self.site_models = [SiteModelListItem(m) for m in ret.models]
                     return self.site_models
             except Exception as e:  # pylint: disable=broad-exception-caught
@@ -238,9 +229,7 @@ class OllamaDataManager(ParEventSystemBase):
             url = url_base
             if namespace == "models":
                 url += f"?sort={cat}"
-            response = requests.get(
-                url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10
-            )
+            response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
             soup = BeautifulSoup(response.content.decode("utf-8"), "html.parser")
             for card in soup.find_all("li", class_="items-baseline"):
                 meta_data = {
@@ -253,9 +242,7 @@ class OllamaDataManager(ParEventSystemBase):
                     "updated": "",
                 }
 
-                pres = card.find_all(
-                    "span", class_=["flex", "items-center"], recursive=True
-                )
+                pres = card.find_all("span", class_=["flex", "items-center"], recursive=True)
                 pres = [p.text.strip() for p in pres]
                 pres = [p for p in pres if p]
 
@@ -288,9 +275,7 @@ class OllamaDataManager(ParEventSystemBase):
         if len(models) > 0 and not settings.no_save:
             file_name.write_bytes(
                 json.dumps(
-                    SiteModelData(
-                        models=models, last_update=datetime.now(timezone.utc)
-                    ).model_dump(),
+                    SiteModelData(models=models, last_update=datetime.now(UTC)).model_dump(),
                     str,
                     json.OPT_INDENT_2,
                 )
@@ -303,7 +288,7 @@ class OllamaDataManager(ParEventSystemBase):
         model_name: str,
         model_code: str,
         quantize_level: str | None = None,
-    ) -> Iterator[dict[str, Any]]:
+    ) -> Iterator[ProgressResponse]:
         """Create a new model."""
         return ollama.Client(host=settings.ollama_host).create(
             model=model_name,
@@ -313,16 +298,12 @@ class OllamaDataManager(ParEventSystemBase):
         )  # type: ignore
 
     @staticmethod
-    def copy_model(src_name: str, dst_name: str) -> Mapping[str, Any]:
+    def copy_model(src_name: str, dst_name: str) -> StatusResponse:
         """Copy local model to new name"""
-        return ollama.Client(host=settings.ollama_host).copy(
-            source=src_name, destination=dst_name
-        )
+        return ollama.Client(host=settings.ollama_host).copy(source=src_name, destination=dst_name)
 
     @staticmethod
-    def quantize_model(
-        model_name: str, quantize_level: str = "q4_0"
-    ) -> str | Container | CancellableStream:
+    def quantize_model(model_name: str, quantize_level: str = "q4_0") -> str | Container | CancellableStream:
         """
         Quantize a model
 
@@ -360,9 +341,7 @@ class OllamaDataManager(ParEventSystemBase):
             raise ret
 
         if not os.path.exists(quantized_model_file):
-            raise FileNotFoundError(
-                f"Quantized model does not exist: {quantized_model_file}"
-            )
+            raise FileNotFoundError(f"Quantized model does not exist: {quantized_model_file}")
         if isinstance(ret, str):
             return ret
 
@@ -384,10 +363,10 @@ class OllamaDataManager(ParEventSystemBase):
         if not model:
             self.log_it("Model not found: " + model_name)
             return 2048
-        if not model.model_info:
+        if not model.modelinfo:
             self.log_it("Model info not loaded: " + model_name)
             self.enrich_model_details(model)
-            if not model.model_info:
+            if not model.modelinfo:
                 self.log_it("Model load failed: " + model_name)
                 return 2048
         return model.num_ctx()

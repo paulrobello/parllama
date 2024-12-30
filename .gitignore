@@ -23,6 +23,7 @@
 **/build/
 **/dist/
 **/parllama.egg-info/
+**/.DS_Store
 /quantize_model/
 /quantize_workspace/
 /notes.md

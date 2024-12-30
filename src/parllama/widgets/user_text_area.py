@@ -9,7 +9,7 @@ from textual.binding import Binding
 from textual.message import Message
 from textual.widgets import TextArea
 
-from parllama.messages.messages import ToggleInputMode, HistoryPrev, HistoryNext
+from parllama.messages.messages import HistoryNext, HistoryPrev, ToggleInputMode
 
 
 class UserTextArea(TextArea):
@@ -35,9 +35,7 @@ class UserTextArea(TextArea):
 
     BINDINGS = [
         Binding(key="ctrl+g", action="submit", description="Submit", show=True),
-        Binding(
-            key="ctrl+j", action="toggle_mode", description="Single Line", show=True
-        ),
+        Binding(key="ctrl+j", action="toggle_mode", description="Single Line", show=True),
     ]
 
     def __init__(

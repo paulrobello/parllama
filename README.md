@@ -21,13 +21,14 @@
 * [Quick start chat workflow](#quick-start-chat-workflow)
 * [Custom Prompts](#Custom-Prompts)
 * [Themes](#themes)
-* [Screen Help](https://raw.githubusercontent.com/paulrobello/parllama/main/src/parllama/help.md)
+* [Screen Help](https://github.com/paulrobello/parllama/blob/main/src/parllama/help.md)
 * [Contributing](#contributing)
 * [FAQ](#faq)
 * [Roadmap](#roadmap)
-    * [Where we are](#where-we-are)
+    * [Where we are](#where-we-are)Ï
     * [Where we're going](#where-were-going)
 * [What's new](#whats-new)
+    * [v0.3.11](#v0311)* 
     * [v0.3.10](#v0310)
     * [v0.3.9](#v039)
     * [v0.3.8](#v038)
@@ -49,7 +50,7 @@
 ![PyPI - License](https://img.shields.io/pypi/l/parllama)
 
 ## About
-PAR LLAMA is a TUI application designed for easy management and use of Ollama based LLMs.
+PAR LLAMA is a TUI (Text UI) application designed for easy management and use of Ollama based LLMs.
 The application was built with [Textual](https://textual.textualize.io/) and [Rich](https://github.com/Textualize/rich?tab=readme-ov-file)
 and runs on all major OS's including but not limited to Windows, Windows WSL, Mac, and Linux.
 
@@ -303,6 +304,16 @@ make dev
 * Towards the very top of the app you will see what model is loaded and what percent of it is loaded into the GPU / CPU. If a model cant be loaded 100% on the GPU it will run slower.
 * Type "/help" or "/?" to see what other slash commands are available.
 
+## LlamaCPP support
+Parllama supports LlamaCPP running OpenAI server mode. Parllama will use the default base_url of http://127.0.0.1:8080. This can be configured on the Options tab.  
+To start a LlamaCPP server run the following command in separate terminal:  
+```bash
+llama-server -m PATH_TO_MODEL
+```
+or
+```bash
+llama-server -mu URL_TO_MODEL
+```
 
 ## Custom Prompts
 You can create a library of custom prompts for easy starting of new chats.  
@@ -381,13 +392,18 @@ if anything remains to be fixed before the commit is allowed.
   * A: ParLlama by default does not require any network / internet access unless you enable checking for updates or want to import / use data from an online source.
 * Q: Does ParLlama run on ARM?
   * A: Short answer is yes. ParLlama should run any place python does. It has been tested on Windows 11 x64, Windows WSL x64, Mac OSX intel and silicon
-* Q: Does Parllama require Ollama be installed locally?
+* Q: Does ParLlama require Ollama be installed locally?
   * A: No. ParLlama has options to connect to remote Ollama instances
+* Q: Does ParLlama require Ollama?
+  * A: No. ParLlama can be used with most online AI providers
+* Q: Does ParLlama support vision LLMS?
+  * A: Yes. If the selected provider / model supports vision you can add images to the chat via /slash commands 
 
 ## Roadmap
 
 ### Where we are
 * Initial release - Find, maintain and create new models
+* Theme support
 * Connect to remote instances
 * Chat with history / conversation management
 * Chat tabs allow chat with multiple models at same time
@@ -398,12 +414,24 @@ if anything remains to be fixed before the commit is allowed.
 
 ### Where we're going
 
+* Better image support via file pickers
+* Ability to copy code and other sub sections from chat
 * RAG for local documents and web pages
 * Expand ability to import custom prompts of other tools
 * LLM tool use
 
 
 ## What's new
+
+### v0.3.11
+
+* Added ability to set max context size for Ollama and other providers that support it
+* Limited support for LLamaCpp running in OpenAI Mode.
+* Added ability to cycle through fences in selected chat message and copy to clipboard with `ctrl+shift+c`
+* Added theme selector
+* Varius bug fixes and performance improvements
+* Updated core AI library and dependencies
+* Fixed crash due to upstream library update
 
 ### v0.3.10
 * Fixed crash issues on fresh installs

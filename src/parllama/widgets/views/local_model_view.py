@@ -8,32 +8,31 @@ from typing import cast
 from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Container
-from textual.containers import VerticalScroll
-from textual.events import Focus
-from textual.events import Show
+from textual.containers import Container, VerticalScroll
+from textual.events import Focus, Show
 from textual.screen import ScreenResultCallbackType
 from textual.widget import Widget
-from textual.widgets import Input
-from textual.widgets import TabbedContent
+from textual.widgets import Input, TabbedContent
 
 from parllama.dialogs.input_dialog import InputDialog
 from parllama.dialogs.model_details_dialog import ModelDetailsDialog
 from parllama.dialogs.yes_no_dialog import YesNoDialog
-from parllama.messages.messages import LocalModelCopied
-from parllama.messages.messages import LocalModelCopyRequested
-from parllama.messages.messages import LocalModelDelete
-from parllama.messages.messages import LocalModelDeleted
-from parllama.messages.messages import LocalModelDeleteRequested
-from parllama.messages.messages import LocalModelListLoaded
-from parllama.messages.messages import LocalModelListRefreshRequested
-from parllama.messages.messages import LocalModelPulled
-from parllama.messages.messages import LocalModelPullRequested
-from parllama.messages.messages import LocalModelPushRequested
-from parllama.messages.messages import ModelInteractRequested
-from parllama.messages.messages import RegisterForUpdates
-from parllama.messages.messages import SetModelNameLoading
-from parllama.messages.messages import ShowLocalModel
+from parllama.messages.messages import (
+    LocalModelCopied,
+    LocalModelCopyRequested,
+    LocalModelDelete,
+    LocalModelDeleted,
+    LocalModelDeleteRequested,
+    LocalModelListLoaded,
+    LocalModelListRefreshRequested,
+    LocalModelPulled,
+    LocalModelPullRequested,
+    LocalModelPushRequested,
+    ModelInteractRequested,
+    RegisterForUpdates,
+    SetModelNameLoading,
+    ShowLocalModel,
+)
 from parllama.ollama_data_manager import ollama_dm
 from parllama.settings_manager import settings
 from parllama.widgets.filter_input import FilterInput
@@ -162,11 +161,7 @@ class LocalModelView(Container):
         self.notify("Queuing pull of all local models...")
         for item in self.grid.query(LocalModelListItem):
             item.loading = True
-            self.post_message(
-                LocalModelPullRequested(
-                    widget=self, model_name=item.model.name, notify=False
-                )
-            )
+            self.post_message(LocalModelPullRequested(widget=self, model_name=item.model.name, notify=False))
 
     def action_push_model(self) -> None:
         """Pull model"""
@@ -208,9 +203,7 @@ class LocalModelView(Container):
         """Delete model requested."""
         event.stop()
         self.app.push_screen(
-            YesNoDialog(
-                "Delete Model", "Delete model from local filesystem?", yes_first=False
-            ),
+            YesNoDialog("Delete Model", "Delete model from local filesystem?", yes_first=False),
             cast(
                 ScreenResultCallbackType[bool],
                 partial(self.confirm_delete_response, event.model_name),
@@ -302,6 +295,4 @@ class LocalModelView(Container):
         """Chat with model"""
         if not self.grid.selected:
             return
-        self.app.post_message(
-            ModelInteractRequested(model_name=self.grid.selected.model.name)
-        )
+        self.app.post_message(ModelInteractRequested(model_name=self.grid.selected.model.name))

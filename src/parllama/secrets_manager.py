@@ -6,15 +6,12 @@ import base64
 import os
 from pathlib import Path
 from typing import Any
-from typing import Optional
 
 import orjson as json
 from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.ciphers import algorithms
-from cryptography.hazmat.primitives.ciphers import Cipher
-from cryptography.hazmat.primitives.ciphers import modes
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from orjson import JSONDecodeError
 from textual.app import App
@@ -51,7 +48,7 @@ class SecretsManager(ParEventSystemBase):
         self._key = None
         self._secrets_file = Path(secrets_file)
 
-    def set_app(self, app: Optional[App[Any]]) -> None:
+    def set_app(self, app: App[Any] | None) -> None:
         """Set the app and load existing sessions and prompts from storage"""
         super().set_app(app)
         self._load_secrets()
@@ -103,9 +100,7 @@ class SecretsManager(ParEventSystemBase):
         """Checks if a password is set."""
         return self._key_secure is not None
 
-    def change_password(
-        self, old_password: str, new_password: str, no_raise: bool = False
-    ) -> None:
+    def change_password(self, old_password: str, new_password: str, no_raise: bool = False) -> None:
         """Changes the password and re-encrypts existing secrets."""
         if not self.has_password:
             self.unlock(new_password)
@@ -179,9 +174,7 @@ class SecretsManager(ParEventSystemBase):
         self._secrets[key] = encrypted_value
         self._save_secrets()
 
-    def get_secret(
-        self, key: str, default: Optional[str] = None, no_raise: bool = False
-    ) -> str:
+    def get_secret(self, key: str, default: str | None = None, no_raise: bool = False) -> str:
         """Decrypts and returns the secret associated with the given key."""
         if self.locked:
             if no_raise:
@@ -202,9 +195,7 @@ class SecretsManager(ParEventSystemBase):
                 return default or ""
             raise e
 
-    def get_secret_with_pw(
-        self, key: str, password: str, no_raise: bool = False
-    ) -> str:
+    def get_secret_with_pw(self, key: str, password: str, no_raise: bool = False) -> str:
         """Returns secret associated with the given key, using the provided password if vault is locked."""
         try:
             if self.locked:
@@ -239,9 +230,7 @@ class SecretsManager(ParEventSystemBase):
             self._save_secrets()
         else:
             if no_raise:
-                self.log_it(
-                    f"No secret found for key: {key}", notify=True, severity="warning"
-                )
+                self.log_it(f"No secret found for key: {key}", notify=True, severity="warning")
                 return
             raise KeyError(f"No secret found for key: {key}")
 

@@ -6,8 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from textual.app import App
-from textual_fspicker import FileSave
-from textual_fspicker import Filters
+from textual_fspicker import FileSave, Filters
 
 
 ##############################################################################

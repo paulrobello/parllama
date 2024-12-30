@@ -2,19 +2,15 @@
 
 from __future__ import annotations
 
+from par_ai_core.utils import to_class_case
 from textual import on
 from textual.app import ComposeResult
 from textual.containers import Horizontal
 from textual.widget import Widget
-from textual.widgets import Button
-from textual.widgets import Input
-from textual.widgets import Label
-from textual.widgets import Select
-from textual.widgets import TextArea
+from textual.widgets import Button, Input, Label, Select, TextArea
 
 from parllama.icons import COPY_EMOJI
 from parllama.messages.messages import SendToClipboard
-from parllama.utils import to_class_case
 from parllama.widgets.hidden_input import HiddenInputField
 
 
@@ -59,9 +55,7 @@ class FieldSet(Widget):
     ) -> None:
         """Initialize the field set."""
         base_name = to_class_case(label.replace("/", ""))
-        super().__init__(
-            id=f"{base_name}FieldSet", name=f"{base_name}FieldSet", classes="field_set"
-        )
+        super().__init__(id=f"{base_name}FieldSet", name=f"{base_name}FieldSet", classes="field_set")
         self.show_copy_button = show_copy_button
         self._extra_children = extra_children
         self.input = input_widget
@@ -85,10 +79,8 @@ class FieldSet(Widget):
         """Copy field value."""
         event.stop()
 
-        if isinstance(self.input, (Input, Select)):
-            self.app.post_message(
-                SendToClipboard(str(self.input.value) if self.input.value else "")
-            )
+        if isinstance(self.input, Input | Select):
+            self.app.post_message(SendToClipboard(str(self.input.value) if self.input.value else ""))
         elif isinstance(self.input, TextArea):
             self.app.post_message(SendToClipboard(self.input.text))
         elif isinstance(self.input, HiddenInputField):

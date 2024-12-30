@@ -6,13 +6,9 @@ import os
 
 from textual import on
 from textual.app import ComposeResult
-from textual.containers import Container
-from textual.containers import Vertical
-from textual.containers import VerticalScroll
+from textual.containers import Container, Vertical, VerticalScroll
 from textual.events import Show
-from textual.widgets import Button
-from textual.widgets import ContentSwitcher
-from textual.widgets import Static
+from textual.widgets import Button, ContentSwitcher, Static
 
 from parllama.messages.messages import ChangeTab
 from parllama.widgets.clickable_label import CopyToClipboardLabel
@@ -44,9 +40,7 @@ class ModelToolsView(Container):
     def compose(self) -> ComposeResult:
         """Compose the content of the view."""
         pub_key: str = ""
-        pub_key_path = os.path.join(
-            os.path.expanduser("~"), ".ollama", "id_ed25519.pub"
-        )
+        pub_key_path = os.path.join(os.path.expanduser("~"), ".ollama", "id_ed25519.pub")
         if os.path.exists(pub_key_path):
             with open(pub_key_path, encoding="utf-8") as f:
                 pub_key = f.read().strip()

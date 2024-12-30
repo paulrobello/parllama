@@ -5,8 +5,7 @@ from __future__ import annotations
 from textual import events
 from textual.binding import Binding
 
-from parllama.messages.messages import HistoryPrev, HistoryNext
-from parllama.messages.messages import ToggleInputMode
+from parllama.messages.messages import HistoryNext, HistoryPrev, ToggleInputMode
 from parllama.widgets.input_tab_complete import InputTabComplete
 
 
@@ -14,9 +13,7 @@ class InputWithHistory(InputTabComplete):
     """Input widget with special tab completion and history."""
 
     BINDINGS = [
-        Binding(
-            key="ctrl+j", action="toggle_mode", description="Multi Line", show=True
-        ),
+        Binding(key="ctrl+j", action="toggle_mode", description="Multi Line", show=True),
     ]
 
     def __init__(
@@ -33,11 +30,7 @@ class InputWithHistory(InputTabComplete):
             self._cursor_visible = True
             if self.cursor_blink and self._blink_timer:
                 self._blink_timer.reset()
-            if (
-                self._cursor_at_end
-                and self._suggestion
-                and self.value != self._suggestion
-            ):
+            if self._cursor_at_end and self._suggestion and self.value != self._suggestion:
                 self.value = self._suggestion
                 self.cursor_position = len(self.value)
                 if self.submit_on_complete:

@@ -4,23 +4,20 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Iterator
-from queue import Empty
-from queue import Queue
-from typing import Any
+from queue import Empty, Queue
 
+import clipman as clipboard
 import humanize
 import ollama
-import pyperclip  # type: ignore
 from httpx import ConnectError
+from ollama import ProgressResponse
+from par_ai_core.llm_providers import LlmProvider
 from rich.columns import Columns
-from rich.console import ConsoleRenderable
-from rich.console import RenderableType
-from rich.console import RichCast
+from rich.console import ConsoleRenderable, RenderableType, RichCast
 from rich.progress_bar import ProgressBar
 from rich.style import Style
 from rich.text import Text
-from textual import on
-from textual import work
+from textual import on, work
 from textual.app import App
 from textual.binding import Binding
 from textual.color import Color
@@ -29,60 +26,54 @@ from textual.message_pump import MessagePump
 from textual.notifications import SeverityLevel
 from textual.timer import Timer
 from textual.widget import Widget
-from textual.widgets import Input
-from textual.widgets import Select
-from textual.widgets import TextArea
+from textual.widgets import Input, Select, TextArea
 
 from parllama import __application_title__
-from parllama.chat_manager import chat_manager
-from parllama.chat_manager import ChatManager
+from parllama.chat_manager import ChatManager, chat_manager
 from parllama.dialogs.help_dialog import HelpDialog
 from parllama.dialogs.information import InformationDialog
-from parllama.llm_providers import LlmProvider
-from parllama.messages.messages import ChangeTab
-from parllama.messages.messages import ClearChatInputHistory
-from parllama.messages.messages import DeletePrompt
-from parllama.messages.messages import DeleteSession
-from parllama.messages.messages import LocalCreateModelFromExistingRequested
-from parllama.messages.messages import LocalModelCopied
-from parllama.messages.messages import LocalModelCopyRequested
-from parllama.messages.messages import LocalModelCreated
-from parllama.messages.messages import LocalModelCreateRequested
-from parllama.messages.messages import LocalModelDelete
-from parllama.messages.messages import LocalModelDeleted
-from parllama.messages.messages import LocalModelListLoaded
-from parllama.messages.messages import LocalModelListRefreshRequested
-from parllama.messages.messages import LocalModelPulled
-from parllama.messages.messages import LocalModelPullRequested
-from parllama.messages.messages import LocalModelPushed
-from parllama.messages.messages import LocalModelPushRequested
-from parllama.messages.messages import LogIt
-from parllama.messages.messages import ModelInteractRequested
-from parllama.messages.messages import PromptListChanged
-from parllama.messages.messages import PromptListLoaded
-from parllama.messages.messages import PromptSelected
-from parllama.messages.messages import ProviderModelsChanged
-from parllama.messages.messages import PsMessage
-from parllama.messages.messages import RefreshProviderModelsRequested
-from parllama.messages.messages import RegisterForUpdates
-from parllama.messages.messages import SendToClipboard
-from parllama.messages.messages import SessionListChanged
-from parllama.messages.messages import SessionSelected
-from parllama.messages.messages import SessionToPrompt
-from parllama.messages.messages import SetModelNameLoading
-from parllama.messages.messages import SiteModelsLoaded
-from parllama.messages.messages import SiteModelsRefreshRequested
-from parllama.messages.messages import StatusMessage
-from parllama.messages.messages import UnRegisterForUpdates
-from parllama.models.jobs import CopyModelJob
-from parllama.models.jobs import CreateModelJob
-from parllama.models.jobs import PullModelJob
-from parllama.models.jobs import PushModelJob
-from parllama.models.jobs import QueueJob
+from parllama.dialogs.theme_dialog import ThemeDialog
+from parllama.messages.messages import (
+    ChangeTab,
+    ClearChatInputHistory,
+    DeletePrompt,
+    DeleteSession,
+    LocalCreateModelFromExistingRequested,
+    LocalModelCopied,
+    LocalModelCopyRequested,
+    LocalModelCreated,
+    LocalModelCreateRequested,
+    LocalModelDelete,
+    LocalModelDeleted,
+    LocalModelListLoaded,
+    LocalModelListRefreshRequested,
+    LocalModelPulled,
+    LocalModelPullRequested,
+    LocalModelPushed,
+    LocalModelPushRequested,
+    LogIt,
+    ModelInteractRequested,
+    PromptListChanged,
+    PromptListLoaded,
+    PromptSelected,
+    ProviderModelsChanged,
+    PsMessage,
+    RefreshProviderModelsRequested,
+    RegisterForUpdates,
+    SendToClipboard,
+    SessionListChanged,
+    SessionSelected,
+    SessionToPrompt,
+    SetModelNameLoading,
+    SiteModelsLoaded,
+    SiteModelsRefreshRequested,
+    StatusMessage,
+    UnRegisterForUpdates,
+)
+from parllama.models.jobs import CopyModelJob, CreateModelJob, PullModelJob, PushModelJob, QueueJob
 from parllama.ollama_data_manager import ollama_dm
 from parllama.prompt_utils.import_fabric import import_fabric_manager
 from parllama.provider_manager import provider_manager
-from parllama.rag_manager import rag_manager
 from parllama.screens.main_screen import MainScreen
 from parllama.secrets_manager import secrets_manager
 from parllama.settings_manager import settings
@@ -101,8 +92,8 @@ class ParLlamaApp(App[None]):
         Binding(key="ctrl+q", action="app.shutdown", description="Quit", show=True),
         Binding(
             key="f10",
-            action="toggle_dark",
-            description="Toggle Dark",
+            action="change_theme",
+            description="Change Theme",
             show=True,
             priority=True,
         ),
@@ -131,45 +122,32 @@ class ParLlamaApp(App[None]):
         """Initialize the application."""
         super().__init__()
         self.notify_subs = {"*": set[MessagePump]()}
+        theme_manager.set_app(self)
         provider_manager.set_app(self)
         secrets_manager.set_app(self)
         ollama_dm.set_app(self)
         chat_manager.set_app(self)
-        theme_manager.set_app(self)
         update_manager.set_app(self)
         import_fabric_manager.set_app(self)
-        rag_manager.set_app(self)
 
         self.job_timer = None
         self.ps_timer = None
         self.title = __application_title__
-        self.dark = settings.theme_mode != "light"
-        self.design = theme_manager.get_theme(settings.theme_name)  # type: ignore
+
         self.job_queue = Queue[QueueJob]()
         self.is_busy = False
         self.is_refreshing = False
         self.last_status = ""
-        self.main_screen = MainScreen()
+        if settings.theme_name not in theme_manager.list_themes():
+            settings.theme_name = f"{settings.theme_name}_{settings.theme_mode}"
+            if settings.theme_name not in theme_manager.list_themes():
+                settings.theme_name = "par_dark"
 
-    def _watch_dark(self, value: bool) -> None:
-        """Watch the dark property and save pref to file."""
-        settings.theme_mode = "dark" if value else "light"
-        settings.save()
-
-    def get_css_variables(self) -> dict[str, str]:
-        """Get a mapping of variables used to pre-populate CSS.
-
-        May be implemented in a subclass to add new CSS variables.
-
-        Returns:
-            A mapping of variable name to value.
-        """
-        return theme_manager.get_color_system_for_theme_mode(
-            settings.theme_name, self.dark
-        ).generate()
+        theme_manager.change_theme(settings.theme_name)
 
     async def on_mount(self) -> None:
         """Display the screen."""
+        self.main_screen = MainScreen()
 
         await self.push_screen(self.main_screen)
         if settings.check_for_updates:
@@ -239,12 +217,8 @@ If you would like to auto check for updates, you can enable it in the Startup se
         if not f:
             return
 
-        if isinstance(f, (Input, Select)):
-            self.app.post_message(
-                SendToClipboard(
-                    str(f.value) if f.value and f.value != Select.BLANK else ""
-                )
-            )
+        if isinstance(f, Input | Select):
+            self.app.post_message(SendToClipboard(str(f.value) if f.value and f.value != Select.BLANK else ""))
 
         if isinstance(f, TextArea):
             self.app.post_message(SendToClipboard(f.selected_text or f.text))
@@ -255,16 +229,12 @@ If you would like to auto check for updates, you can enable it in the Startup se
         if not f:
             return
         if isinstance(f, Input):
-            pyperclip.copy(f.value)
+            clipboard.copy(f.value)
             f.value = ""
         if isinstance(f, Select):
-            self.app.post_message(
-                SendToClipboard(
-                    str(f.value) if f.value and f.value != Select.BLANK else ""
-                )
-            )
+            self.app.post_message(SendToClipboard(str(f.value) if f.value and f.value != Select.BLANK else ""))
         if isinstance(f, TextArea):
-            pyperclip.copy(f.selected_text or f.text)
+            clipboard.copy(f.selected_text or f.text)
             f.text = ""
 
     @on(SendToClipboard)
@@ -273,7 +243,7 @@ If you would like to auto check for updates, you can enable it in the Startup se
         # works for remote ssh sessions
         self.copy_to_clipboard(event.message)
         # works for local sessions
-        pyperclip.copy(event.message)
+        clipboard.copy(event.message)
         if event.notify:
             self.notify("Copied to clipboard")
 
@@ -281,9 +251,7 @@ If you would like to auto check for updates, you can enable it in the Startup se
     def on_model_push_requested(self, event: LocalModelPushRequested) -> None:
         """Push requested model event"""
         self.job_queue.put(PushModelJob(modelName=event.model_name))
-        self.main_screen.local_view.post_message(
-            SetModelNameLoading(event.model_name, True)
-        )
+        self.main_screen.local_view.post_message(SetModelNameLoading(event.model_name, True))
         # self.notify(f"Model push {msg.model_name} requested")
 
     @on(LocalModelCreateRequested)
@@ -301,12 +269,8 @@ If you would like to auto check for updates, you can enable it in the Startup se
     def on_local_model_delete(self, event: LocalModelDelete) -> None:
         """Delete local model event"""
         if not ollama_dm.delete_model(event.model_name):
-            self.main_screen.local_view.post_message(
-                SetModelNameLoading(event.model_name, False)
-            )
-            self.status_notify(
-                f"Error deleting model {event.model_name}.", severity="error"
-            )
+            self.main_screen.local_view.post_message(SetModelNameLoading(event.model_name, False))
+            self.status_notify(f"Error deleting model {event.model_name}.", severity="error")
             return
         self.post_message_all(LocalModelDeleted(event.model_name))
 
@@ -327,11 +291,7 @@ If you would like to auto check for updates, you can enable it in the Startup se
     @on(LocalModelCopyRequested)
     def on_local_model_copy_requested(self, event: LocalModelCopyRequested) -> None:
         """Local model copy request event"""
-        self.job_queue.put(
-            CopyModelJob(
-                modelName=event.src_model_name, dstModelName=event.dst_model_name
-            )
-        )
+        self.job_queue.put(CopyModelJob(modelName=event.src_model_name, dstModelName=event.dst_model_name))
 
     async def do_copy_local_model(self, event: CopyModelJob) -> None:
         """Copy local model"""
@@ -348,114 +308,85 @@ If you would like to auto check for updates, you can enable it in the Startup se
     def on_local_model_copied(self, event: LocalModelCopied) -> None:
         """Local model copied event"""
         if event.success:
-            self.status_notify(
-                f"Model {event.src_model_name} copied to {event.dst_model_name}"
-            )
+            self.status_notify(f"Model {event.src_model_name} copied to {event.dst_model_name}")
         else:
             self.status_notify(
                 f"Copying model {event.src_model_name} to {event.dst_model_name} failed",
                 severity="error",
             )
 
-    async def do_progress(self, job: QueueJob, res: Iterator[dict[str, Any]]) -> str:
+    async def do_progress(self, job: QueueJob, res: Iterator[ProgressResponse]) -> str:
         """Update progress bar embedded in status bar"""
         try:
             last_status = ""
             for msg in res:
                 if settings.shutting_down:
                     break
-                last_status = msg["status"]
+
+                last_status = msg.status or ""
                 pb: ProgressBar | None = None
-                if "total" in msg and "completed" in msg:
-                    msg["percent"] = (
-                        str(int(msg["completed"] / msg["total"] * 100)) + "%"
-                    )
-                    primary_style = Style(
-                        color=theme_manager.get_color_system_for_theme_mode(
-                            settings.theme_name, self.dark
-                        ).primary.rich_color
-                    )
-                    background_style = Style(
-                        color=(
-                            theme_manager.get_color_system_for_theme_mode(
-                                settings.theme_name, self.dark
-                            ).surface
-                            or Color.parse("#111")
-                        ).rich_color
-                    )
+                percent = ""
+                if msg.total and msg.completed:
+                    percent = str(int(msg.completed / msg.total * 100)) + "%"
+                    primary_style = Style(color=Color.parse(self.current_theme.primary).rich_color)
+                    background_style = Style(color=Color.parse(self.current_theme.surface or "#111").rich_color)
                     pb = ProgressBar(
-                        total=msg["total"],
-                        completed=msg["completed"],
+                        total=msg.total or 0,
+                        completed=msg.completed or 0,
                         width=25,
                         style=background_style,
                         complete_style=primary_style,
                         finished_style=primary_style,
                     )
                 else:
-                    msg["percent"] = ""
-                if msg["percent"] and msg["status"] == "success":
-                    msg["percent"] = "100%"
+                    percent = ""
+                if percent and msg.status == "success":
+                    percent = "100%"
                 parts: list[RenderableType] = [
                     Text.assemble(
                         job.modelName,
                         " ",
-                        msg["status"],
+                        msg.status or "",
                         " ",
-                        msg["percent"],
+                        percent,
                         " ",
                     )
-                ]
+                ]  # type: ignore
                 if pb:
                     parts.append(pb)
 
                 self.post_message_all(StatusMessage(Columns(parts), log_it=False))
             return last_status
         except ollama.ResponseError as e:
-            self.post_message_all(
-                StatusMessage(Text.assemble(("error:" + str(e), "red")))
-            )
+            self.post_message_all(StatusMessage(Text.assemble(("error:" + str(e), "red"))))
             raise e
 
     async def do_pull(self, job: PullModelJob) -> None:
         """Pull a model from ollama.com"""
         try:
-            res = ollama_dm.pull_model(job.modelName)
+            res: Iterator[ProgressResponse] = ollama_dm.pull_model(job.modelName)
             last_status = await self.do_progress(job, res)
 
-            self.post_message_all(
-                LocalModelPulled(
-                    model_name=job.modelName, success=last_status == "success"
-                )
-            )
+            self.post_message_all(LocalModelPulled(model_name=job.modelName, success=last_status == "success"))
         except ollama.ResponseError as e:
             self.log_it(e)
-            self.post_message_all(
-                LocalModelPulled(model_name=job.modelName, success=False)
-            )
+            self.post_message_all(LocalModelPulled(model_name=job.modelName, success=False))
 
     async def do_push(self, job: PushModelJob) -> None:
         """Push a model to ollama.com"""
         try:
-            res = ollama_dm.push_model(job.modelName)
+            res: Iterator[ProgressResponse] = ollama_dm.push_model(job.modelName)
             last_status = await self.do_progress(job, res)
 
-            self.post_message_all(
-                LocalModelPushed(
-                    model_name=job.modelName, success=last_status == "success"
-                )
-            )
+            self.post_message_all(LocalModelPushed(model_name=job.modelName, success=last_status == "success"))
         except ollama.ResponseError:
-            self.post_message_all(
-                LocalModelPushed(model_name=job.modelName, success=False)
-            )
+            self.post_message_all(LocalModelPushed(model_name=job.modelName, success=False))
 
     async def do_create_model(self, job: CreateModelJob) -> None:
         """Create a new local model"""
         try:
             self.main_screen.log_view.richlog.write(job.modelCode)
-            res = ollama_dm.create_model(
-                job.modelName, job.modelCode, job.quantizationLevel
-            )
+            res = ollama_dm.create_model(job.modelName, job.modelCode, job.quantizationLevel)
             last_status = await self.do_progress(job, res)
 
             self.main_screen.local_view.post_message(
@@ -610,18 +541,12 @@ If you would like to auto check for updates, you can enable it in the Startup se
         self.is_refreshing = True
         try:
             self.post_message_all(
-                StatusMessage(
-                    f"Site models for {msg.ollama_namespace or 'models'} refreshing... force={msg.force}"
-                )
+                StatusMessage(f"Site models for {msg.ollama_namespace or 'models'} refreshing... force={msg.force}")
             )
             ollama_dm.refresh_site_models(msg.ollama_namespace, None, msg.force)
-            self.main_screen.site_view.post_message(
-                SiteModelsLoaded(ollama_namespace=msg.ollama_namespace)
-            )
+            self.main_screen.site_view.post_message(SiteModelsLoaded(ollama_namespace=msg.ollama_namespace))
             self.post_message_all(
-                StatusMessage(
-                    f"Site models for {msg.ollama_namespace or 'models'} loaded. force={msg.force}"
-                )
+                StatusMessage(f"Site models for {msg.ollama_namespace or 'models'} loaded. force={msg.force}")
             )
 
         finally:
@@ -643,9 +568,7 @@ If you would like to auto check for updates, you can enable it in the Startup se
                 was_blank = True
                 continue
             was_blank = False
-            info = ret.models[
-                0
-            ]  # only take first one since ps status bar is a single line
+            info = ret.models[0]  # only take first one since ps status bar is a single line
             self.post_message_all(
                 PsMessage(
                     msg=Text.assemble(
@@ -663,9 +586,7 @@ If you would like to auto check for updates, you can enable it in the Startup se
 
     def status_notify(self, msg: str, severity: SeverityLevel = "information") -> None:
         """Show notification and update status bar"""
-        self.notify(
-            msg, severity=severity, timeout=5 if severity != "information" else 3
-        )
+        self.notify(msg, severity=severity, timeout=5 if severity != "information" else 3)
         self.main_screen.post_message(StatusMessage(msg))
 
     def post_message_all(self, event: Message) -> None:
@@ -691,9 +612,7 @@ If you would like to auto check for updates, you can enable it in the Startup se
         self.main_screen.change_tab(event.tab)
 
     @on(LocalCreateModelFromExistingRequested)
-    def on_create_model_from_existing_requested(
-        self, msg: LocalCreateModelFromExistingRequested
-    ) -> None:
+    def on_create_model_from_existing_requested(self, msg: LocalCreateModelFromExistingRequested) -> None:
         """Create model from existing event"""
         self.main_screen.create_view.name_input.value = f"my-{msg.model_name}"
         if not self.main_screen.create_view.name_input.value.endswith(":latest"):
@@ -762,9 +681,7 @@ If you would like to auto check for updates, you can enable it in the Startup se
     def on_session_to_prompt(self, event: SessionToPrompt) -> None:
         """Session to prompt event"""
         event.stop()
-        chat_manager.session_to_prompt(
-            event.session_id, event.submit_on_load, event.prompt_name
-        )
+        chat_manager.session_to_prompt(event.session_id, event.submit_on_load, event.prompt_name)
 
     @on(PromptListLoaded)
     def on_prompt_list_loaded(self, event: PromptListLoaded) -> None:
@@ -809,3 +726,9 @@ If you would like to auto check for updates, you can enable it in the Startup se
         """Provider models refreshed event"""
         event.stop()
         self.post_message_all(event)
+
+    @work
+    async def action_change_theme(self) -> None:
+        """An action to change the theme."""
+        theme = await self.push_screen_wait(ThemeDialog())
+        settings.theme_name = theme

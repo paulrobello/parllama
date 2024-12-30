@@ -3,24 +3,15 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping
-from collections.abc import Sequence
-from datetime import datetime
-from datetime import timezone
-from typing import Any
-from typing import cast
-from typing import Literal
-from typing import Optional
-from typing import Tuple
-from typing import TypeAlias
+from collections.abc import Mapping, Sequence
+from datetime import UTC, datetime
+from typing import Any, Literal, TypeAlias, cast
 
 import ollama
-from pydantic import BaseModel
-from pydantic import ConfigDict
-from pydantic import Field
+from pydantic import BaseModel, ConfigDict, Field
 
 MessageRoles: TypeAlias = Literal["user", "assistant", "system", "tool"]
-MessageRoleSelectOptions: list[Tuple[str, MessageRoles]] = [
+MessageRoleSelectOptions: list[tuple[str, MessageRoles]] = [
     ("user", "user"),
     ("assistant", "assistant"),
     ("system", "system"),
@@ -44,7 +35,7 @@ class SiteModelData(BaseModel):
     """Ollama Site Model Data."""
 
     models: list[SiteModel]
-    last_update: datetime = datetime.now(timezone.utc)
+    last_update: datetime = datetime.now(UTC)
 
 
 class ModelDetails(BaseModel):
@@ -61,51 +52,29 @@ class ModelDetails(BaseModel):
 class ModelInfo(BaseModel):
     """Ollama Model Info."""
 
-    general_architecture: Optional[str] = Field(None, alias="general.architecture")
-    general_file_type: Optional[int] = Field(None, alias="general.file_type")
-    general_parameter_count: Optional[int] = Field(
-        None, alias="general.parameter_count"
-    )
-    general_quantization_version: Optional[int] = Field(
-        None, alias="general.quantization_version"
-    )
-    llama_attention_head_count: Optional[int] = Field(
-        None, alias="llama.attention.head_count"
-    )
-    llama_attention_head_count_kv: Optional[int] = Field(
-        None, alias="llama.attention.head_count_kv"
-    )
-    llama_attention_layer_norm_rms_epsilon: Optional[float] = Field(
-        None, alias="llama.attention.layer_norm_rms_epsilon"
-    )
-    llama_block_count: Optional[int] = Field(None, alias="llama.block_count")
-    llama_context_length: Optional[int] = Field(None, alias="llama.context_length")
-    llama_embedding_length: Optional[int] = Field(None, alias="llama.embedding_length")
-    llama_feed_forward_length: Optional[int] = Field(
-        None, alias="llama.feed_forward_length"
-    )
-    llama_rope_dimension_count: Optional[int] = Field(
-        None, alias="llama.rope.dimension_count"
-    )
-    llama_rope_freq_base: Optional[int] = Field(None, alias="llama.rope.freq_base")
-    llama_vocab_size: Optional[int] = Field(None, alias="llama.vocab_size")
-    tokenizer_ggml_bos_token_id: Optional[int] = Field(
-        None, alias="tokenizer.ggml.bos_token_id"
-    )
-    tokenizer_ggml_eos_token_id: Optional[int] = Field(
-        None, alias="tokenizer.ggml.eos_token_id"
-    )
-    tokenizer_ggml_merges: Optional[list[str]] = Field(
-        None, alias="tokenizer.ggml.merges"
-    )
-    tokenizer_ggml_model: Optional[str] = Field(None, alias="tokenizer.ggml.model")
-    tokenizer_ggml_pre: Optional[str] = Field(None, alias="tokenizer.ggml.pre")
-    tokenizer_ggml_token_type: Optional[list[str]] = Field(
-        None, alias="tokenizer.ggml.token_type"
-    )
-    tokenizer_ggml_tokens: Optional[list[str]] = Field(
-        None, alias="tokenizer.ggml.tokens"
-    )
+    model_config = ConfigDict(extra="allow")
+
+    general_architecture: str | None = Field(None, alias="general.architecture")
+    general_file_type: int | None = Field(None, alias="general.file_type")
+    general_parameter_count: int | None = Field(None, alias="general.parameter_count")
+    general_quantization_version: int | None = Field(None, alias="general.quantization_version")
+    llama_attention_head_count: int | None = Field(None, alias="llama.attention.head_count")
+    llama_attention_head_count_kv: int | None = Field(None, alias="llama.attention.head_count_kv")
+    llama_attention_layer_norm_rms_epsilon: float | None = Field(None, alias="llama.attention.layer_norm_rms_epsilon")
+    llama_block_count: int | None = Field(None, alias="llama.block_count")
+    llama_context_length: int | None = Field(None, alias="llama.context_length")
+    llama_embedding_length: int | None = Field(None, alias="llama.embedding_length")
+    llama_feed_forward_length: int | None = Field(None, alias="llama.feed_forward_length")
+    llama_rope_dimension_count: int | None = Field(None, alias="llama.rope.dimension_count")
+    llama_rope_freq_base: int | None = Field(None, alias="llama.rope.freq_base")
+    llama_vocab_size: int | None = Field(None, alias="llama.vocab_size")
+    tokenizer_ggml_bos_token_id: int | None = Field(None, alias="tokenizer.ggml.bos_token_id")
+    tokenizer_ggml_eos_token_id: int | None = Field(None, alias="tokenizer.ggml.eos_token_id")
+    tokenizer_ggml_merges: list[str] | None = Field(None, alias="tokenizer.ggml.merges")
+    tokenizer_ggml_model: str | None = Field(None, alias="tokenizer.ggml.model")
+    tokenizer_ggml_pre: str | None = Field(None, alias="tokenizer.ggml.pre")
+    tokenizer_ggml_token_type: list[str] | None = Field(None, alias="tokenizer.ggml.token_type")
+    tokenizer_ggml_tokens: list[str] | None = Field(None, alias="tokenizer.ggml.tokens")
 
 
 class ModelShowPayload(BaseModel):
@@ -113,11 +82,11 @@ class ModelShowPayload(BaseModel):
 
     model_config = ConfigDict(protected_namespaces=())
     modelfile: str
-    parameters: Optional[str] = None
-    license: Optional[str] = None
+    parameters: str | None = None
+    license: str | None = None
     template: str
     details: ModelDetails  # omit if being combined with Model
-    model_info: ModelInfo
+    modelinfo: ModelInfo | None = None
 
 
 class Model(BaseModel):
@@ -146,7 +115,7 @@ class FullModel(Model):
     modelfile: str = ""
     parameters: str | None = None
     template: str | None = None
-    model_info: ModelInfo | None = None
+    modelinfo: ModelInfo | None = None
     _num_ctx: int = 0
 
     def get_messages(self) -> list[ollama.Message]:
@@ -199,7 +168,7 @@ class ToolCallFunction(BaseModel):
     name: str
     "Name of the function."
 
-    arguments: Optional[Mapping[str, Any]] = None
+    arguments: Mapping[str, Any] | None = None
     "Arguments of the function."
 
 
@@ -220,7 +189,7 @@ class OllamaChunkMessage(BaseModel):
 
     content: str = ""
     "Content of the message. Response messages contains message fragments when streaming."
-    images: Optional[Sequence[Any]] = None
+    images: Sequence[Any] | None = None
     """
       Optional list of image data for multimodal models.
 
@@ -232,7 +201,7 @@ class OllamaChunkMessage(BaseModel):
       Valid image formats depend on the model. See the model card for more information.
       """
 
-    tool_calls: Optional[Sequence[ToolCall]] = None
+    tool_calls: Sequence[ToolCall] | None = None
     """
     Tools calls to be made by the model.
     """
@@ -245,10 +214,10 @@ class OllamaChatChunk(BaseModel):
     created_at: datetime
     message: OllamaChunkMessage
     done: bool
-    done_reason: Optional[str] = None
-    total_duration: Optional[int] = None
-    load_duration: Optional[int] = None
-    prompt_eval_count: Optional[int] = None
-    prompt_eval_duration: Optional[int] = None
-    eval_count: Optional[int] = None
-    eval_duration: Optional[int] = None
+    done_reason: str | None = None
+    total_duration: int | None = None
+    load_duration: int | None = None
+    prompt_eval_count: int | None = None
+    prompt_eval_duration: int | None = None
+    eval_count: int | None = None
+    eval_duration: int | None = None

@@ -3,27 +3,24 @@
 from __future__ import annotations
 
 import base64
-from typing import Optional
 import io
 
 from PIL import Image
-
 from rich_pixels import Pixels
-
 from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Vertical
-from textual.events import Mount, Show, Hide, Unmount
+from textual.events import Hide, Mount, Show, Unmount
 from textual.message import Message
-from textual.widgets import Markdown, Static
-from textual.widgets import TextArea
+from textual.widgets import Markdown, Static, TextArea
+from textual.widgets._markdown import MarkdownFence
 
 from parllama.chat_manager import ChatSession
 from parllama.chat_message import (
     ParllamaChatMessage,
-    try_get_image_type,
     image_to_base64,
+    try_get_image_type,
 )
 from parllama.messages.messages import SendToClipboard
 from parllama.models.ollama_data import MessageRoles
@@ -35,6 +32,7 @@ class ChatMessageWidget(Vertical, can_focus=True):
 
     BINDINGS = [
         Binding(key="ctrl+c", action="copy_to_clipboard", show=True),
+        Binding(key="ctrl+shift+c", action="copy_fence_clipboard", show=True),
         Binding(key="e", action="edit_item", description="Edit", show=True),
         Binding(key="escape", action="exit_edit", show=False, priority=True),
         Binding(
@@ -84,7 +82,7 @@ class ChatMessageWidget(Vertical, can_focus=True):
     """
     msg: ParllamaChatMessage
     markdown: Markdown
-    editor: Optional[TextArea] = None
+    editor: TextArea | None = None
     placeholder: Static
     session: ChatSession
     update_delay: float = 1
@@ -108,6 +106,7 @@ class ChatMessageWidget(Vertical, can_focus=True):
         self.placeholder.display = not is_final
         self.is_final = is_final
         self.border_title = self.msg.role
+        self.fence_num: int = -1
         # if self.msg.images:
         #     self.border_subtitle = f"Image: {str(self.msg.images[0])}"
 
@@ -200,9 +199,7 @@ class ChatMessageWidget(Vertical, can_focus=True):
         self.session.save()
 
     @staticmethod
-    def mk_msg_widget(
-        msg: ParllamaChatMessage, session: ChatSession, is_final: bool = False
-    ) -> ChatMessageWidget:
+    def mk_msg_widget(msg: ParllamaChatMessage, session: ChatSession, is_final: bool = False) -> ChatMessageWidget:
         """Create a chat message widget."""
         if msg.role == "user":
             return UserChatMessage(msg=msg, session=session, is_final=is_final)
@@ -213,6 +210,20 @@ class ChatMessageWidget(Vertical, can_focus=True):
     def action_copy_to_clipboard(self) -> None:
         """Copy focused widget value to clipboard"""
         self.app.post_message(SendToClipboard(self.raw_text))
+
+    def action_copy_fence_clipboard(self) -> None:
+        """Copy focused widget value to clipboard"""
+        fences = self.markdown.query(MarkdownFence)
+        if not fences:
+            self.fence_num = -1
+            self.notify("No markdown fences found", severity="warning")
+            return
+        self.fence_num += 1
+        if self.fence_num >= len(fences):
+            self.fence_num = 0
+        fence: MarkdownFence = fences[self.fence_num]
+        self.notify(f"Fence {self.fence_num+1} of {len(fences)} type: {fence.lexer}")
+        self.app.post_message(SendToClipboard(fence.code))
 
     @on(Mount)
     @on(Unmount)

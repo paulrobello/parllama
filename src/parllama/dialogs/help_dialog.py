@@ -8,19 +8,13 @@ from typing import Final
 
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Center
-from textual.containers import Vertical
-from textual.containers import VerticalScroll
+from textual.containers import Center, Vertical, VerticalScroll
 from textual.screen import ModalScreen
-from textual.widgets import Button
-from textual.widgets import Markdown
+from textual.widgets import Button, Markdown
 
-from parllama import __application_title__
-from parllama import __version__
+from parllama import __application_title__, __version__
 
-HELP: Final[
-    str
-] = f"""
+HELP: Final[str] = f"""
 # {__application_title__} v{__version__} Help
 
 Welcome to {__application_title__} Help!
@@ -57,9 +51,7 @@ class HelpDialog(ModalScreen[None]):
 
     def compose(self) -> ComposeResult:
         """Compose the help screen."""
-        with open(
-            f"{os.path.dirname(Path(__file__).parent)}/help.md", encoding="utf-8"
-        ) as f:
+        with open(f"{os.path.dirname(Path(__file__).parent)}/help.md", encoding="utf-8") as f:
             help_text = f.read()
         with Vertical():
             with VerticalScroll():

@@ -7,26 +7,18 @@ from typing import cast
 
 from textual import on
 from textual.app import ComposeResult
-from textual.containers import Container
-from textual.containers import Horizontal
-from textual.containers import Vertical
+from textual.containers import Container, Horizontal, Vertical
 from textual.events import Show
 from textual.message import Message
 from textual.screen import ScreenResultCallbackType
-from textual.widgets import Button
-from textual.widgets import Input
-from textual.widgets import Label
-from textual.widgets import Select
+from textual.widgets import Button, Input, Label, Select
 
 from parllama.chat_manager import chat_manager
 from parllama.chat_prompt import ChatPrompt
 from parllama.dialogs.edit_prompt_dialog import EditPromptDialog
 from parllama.dialogs.import_fabric_dialog import ImportFabricDialog
 from parllama.dialogs.yes_no_dialog import YesNoDialog
-from parllama.messages.messages import DeletePrompt
-from parllama.messages.messages import PromptDeleteRequested
-from parllama.messages.messages import PromptSelected
-from parllama.messages.messages import RegisterForUpdates
+from parllama.messages.messages import DeletePrompt, PromptDeleteRequested, PromptSelected, RegisterForUpdates
 from parllama.settings_manager import settings
 from parllama.widgets.input_blur_submit import InputBlurSubmit
 from parllama.widgets.prompt_list import PromptList
@@ -52,6 +44,9 @@ class PromptView(Container):
         #prompt_list {
             width: 1fr;
             height: 1fr;
+            ListItem {
+                height: 6;
+            }
         }
     }
     """
@@ -169,10 +164,10 @@ class PromptView(Container):
         except ValueError:
             event.temperature = None
         if self.provider_model_select.is_valid():
-            event.llm_provider_name = self.provider_model_select.provider_select.value.value  # type: ignore
-            event.llm_model_name = self.provider_model_select.model_select.value  # type: ignore
+            event.llm_provider = self.provider_model_select.provider_select.value  # type: ignore
+            event.model_name = self.provider_model_select.model_select.value  # type: ignore
         else:
-            event.llm_model_name = None
+            event.model_name = None
 
     @on(Button.Pressed, "#import")
     def import_prompts(self, event: Message) -> None:

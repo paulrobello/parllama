@@ -8,17 +8,10 @@ from rich.console import RenderableType
 from textual import on
 from textual.app import ComposeResult
 from textual.screen import Screen
-from textual.widgets import Footer
-from textual.widgets import Header
-from textual.widgets import Static
-from textual.widgets import TabbedContent
-from textual.widgets import TabPane
+from textual.widgets import Footer, Header, Static, TabbedContent, TabPane
 
-from parllama.messages.messages import ModelInteractRequested
-from parllama.messages.messages import PsMessage
-from parllama.messages.messages import StatusMessage
-from parllama.settings_manager import settings
-from parllama.settings_manager import TabType
+from parllama.messages.messages import ModelInteractRequested, PsMessage, StatusMessage
+from parllama.settings_manager import TabType, settings
 from parllama.widgets.views.chat_view import ChatView
 from parllama.widgets.views.create_model_view import ModelCreateView
 from parllama.widgets.views.local_model_view import LocalModelView

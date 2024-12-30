@@ -30,9 +30,7 @@ class ImportFabricManager(ParEventSystemBase):
         self.prompts = []
         self.id_to_prompt = {}
         self.import_ids = set()
-        self.repo_zip_url = (
-            "https://github.com/danielmiessler/fabric/archive/refs/heads/main.zip"
-        )
+        self.repo_zip_url = "https://github.com/danielmiessler/fabric/archive/refs/heads/main.zip"
         self._cache_folder = os.path.join(settings.cache_dir, "fabric_prompts")
         self._last_folder: str | None = None
 
@@ -62,13 +60,9 @@ class ImportFabricManager(ParEventSystemBase):
             self.download_zip(self.repo_zip_url, zip_path)
             extracted_folder_path = self.extract_zip(zip_path, temp_dir)
             # The patterns folder will be inside "fabric-main" after extraction
-            patterns_source_path = os.path.join(
-                extracted_folder_path, "fabric-main", "patterns"
-            )
+            patterns_source_path = os.path.join(extracted_folder_path, "fabric-main", "patterns")
             if not os.path.exists(patterns_source_path):
-                raise FileNotFoundError(
-                    "Patterns folder not found in the downloaded zip."
-                )
+                raise FileNotFoundError("Patterns folder not found in the downloaded zip.")
             shutil.copytree(patterns_source_path, self._cache_folder)
 
     def read_patterns(self, force: bool = False) -> list[ChatPrompt]:
@@ -89,23 +83,17 @@ class ImportFabricManager(ParEventSystemBase):
 
         pattern_folder_list = os.listdir(self._cache_folder)
         for pattern_name in pattern_folder_list:
-            src_prompt_path = os.path.join(
-                self._cache_folder, pattern_name, "system.md"
-            )
+            src_prompt_path = os.path.join(self._cache_folder, pattern_name, "system.md")
             if not os.path.exists(src_prompt_path):
                 continue
-            with open(src_prompt_path, "rt", encoding="utf-8") as f:
+            with open(src_prompt_path, encoding="utf-8") as f:
                 prompt_content = ""
                 for line in f.readlines():
-                    if line.upper().startswith("# INPUT") or line.upper().startswith(
-                        "INPUT:"
-                    ):
+                    if line.upper().startswith("# INPUT") or line.upper().startswith("INPUT:"):
                         break
                     prompt_content += line + "\n"
                 prompt_content = prompt_content.strip()
-                prompt: ChatPrompt = self.markdown_to_prompt(
-                    pattern_name, prompt_content
-                )
+                prompt: ChatPrompt = self.markdown_to_prompt(pattern_name, prompt_content)
                 self.prompts.append(prompt)
                 self.id_to_prompt[prompt.id] = prompt
         return self.prompts
@@ -156,20 +144,15 @@ class ImportFabricManager(ParEventSystemBase):
         """Test importing fabric prompts."""
         with open(
             "d:/repos/parllama/fabric_samples/extract_wisdom/system.md",
-            "rt",
             encoding="utf-8",
         ) as f:
             prompt_content = ""
             for line in f.readlines():
-                if line.upper().startswith("# INPUT") or line.upper().startswith(
-                    "INPUT:"
-                ):
+                if line.upper().startswith("# INPUT") or line.upper().startswith("INPUT:"):
                     break
                 prompt_content += line + "\n"
             prompt_content = prompt_content.strip()
-            prompt: ChatPrompt = self.markdown_to_prompt(
-                "extract_wisdom", prompt_content
-            )
+            prompt: ChatPrompt = self.markdown_to_prompt("extract_wisdom", prompt_content)
         chat_manager.add_prompt(prompt)
         prompt.is_dirty = True
         prompt.save()

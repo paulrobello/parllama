@@ -6,17 +6,14 @@ import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, Literal
-from typing import Optional
-from typing import Tuple
 
 from ollama import Message as OMessage
+from par_ai_core.llm_image_utils import b64_encode_image
 
 from parllama.messages.par_chat_messages import ParChatUpdated
-from parllama.models.ollama_data import MessageRoles
-from parllama.models.ollama_data import ToolCall
+from parllama.models.ollama_data import MessageRoles, ToolCall
 from parllama.par_event_system import ParEventSystemBase
 from parllama.settings_manager import fetch_and_cache_image
-from parllama.utils import b64_encode_image
 
 
 def try_get_image_type(image_path: str) -> Literal["jpeg", "png", "gif"]:
@@ -34,9 +31,7 @@ def try_get_image_type(image_path: str) -> Literal["jpeg", "png", "gif"]:
     raise ValueError(f"Unsupported image type: {ext}")
 
 
-def image_to_base64(
-    image_bytes: bytes, image_type: Literal["jpeg", "png", "gif"] = "jpeg"
-) -> str:
+def image_to_base64(image_bytes: bytes, image_type: Literal["jpeg", "png", "gif"] = "jpeg") -> str:
     """Convert an image to base64 url."""
     return f"data:image/{image_type};base64,{b64_encode_image(image_bytes)}"
 
@@ -59,7 +54,7 @@ class ParllamaChatMessage(ParEventSystemBase):
     content: str = ""
     "Content of the message. Response messages contains message fragments when streaming."
 
-    images: Optional[list[str]] = None
+    images: list[str] | None = None
     """
       Optional list of image data for multimodal models.
 
@@ -71,7 +66,7 @@ class ParllamaChatMessage(ParEventSystemBase):
       Valid image formats depend on the model. See the model card for more information.
       """
 
-    tool_calls: Optional[Sequence[ToolCall]] = None
+    tool_calls: Sequence[ToolCall] | None = None
     """
     Tools calls to be made by the model.
     """
@@ -82,8 +77,8 @@ class ParllamaChatMessage(ParEventSystemBase):
         id: str | None = None,  # pylint: disable=redefined-builtin
         role: MessageRoles,
         content: str = "",
-        images: Optional[list[str]] = None,
-        tool_calls: Optional[Sequence[ToolCall]] = None,
+        images: list[str] | None = None,
+        tool_calls: Sequence[ToolCall] | None = None,
     ) -> None:
         """Initialize the chat message"""
         super().__init__(id=id)
@@ -119,7 +114,7 @@ class ParllamaChatMessage(ParEventSystemBase):
         """Convert a message to Ollama native format"""
         return OMessage(role=self.role, content=self.content)
 
-    def to_langchain_native(self) -> Tuple[str, str | list[dict[str, Any]]]:
+    def to_langchain_native(self) -> tuple[str, str | list[dict[str, Any]]]:
         """Convert a message to Langchain native format"""
         content = self.content
         if self.images:

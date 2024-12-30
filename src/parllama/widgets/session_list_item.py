@@ -17,6 +17,7 @@ class SessionListItem(DblClickListItem, can_focus=False, can_focus_children=True
     DEFAULT_CSS = """
     SessionListItem {
       height: 4;
+      max-height: 4;
       width: 1fr;
       padding-left: 1;
       padding-right: 1;
@@ -34,9 +35,7 @@ class SessionListItem(DblClickListItem, can_focus=False, can_focus_children=True
         with Vertical():
             yield Label(self.session.name)
             temp = f"{self.session.temperature:.2f}"
-            yield Label(
-                Text.assemble(self.session.llm_model_name, " ", f"Temp: {temp}")
-            )
+            yield Label(Text.assemble(self.session.llm_model_name, " ", f"Temp: {temp}"))
             yield Label(
                 Text.assemble(
                     "Last updated: ",

@@ -2,28 +2,25 @@
 
 from __future__ import annotations
 
+from par_ai_core.llm_config import LlmConfig
+from par_ai_core.llm_providers import LlmProvider
 from textual import on
 from textual.app import ComposeResult
-from textual.containers import Horizontal
-from textual.containers import VerticalScroll
+from textual.containers import Horizontal, VerticalScroll
 from textual.message import Message
-from textual.widgets import Button
-from textual.widgets import Input
-from textual.widgets import Label
-from textual.widgets import Rule
-from textual.widgets import Select
-from textual.widgets import Static
+from textual.widgets import Button, Input, Label, Rule, Select, Static
 
 from parllama.chat_manager import chat_manager
 from parllama.chat_session import ChatSession
-from parllama.llm_config import LlmConfig
-from parllama.messages.messages import ProviderModelSelected
-from parllama.messages.messages import PromptSelected
-from parllama.messages.messages import RegisterForUpdates
-from parllama.messages.messages import SessionSelected
-from parllama.messages.messages import SessionUpdated
-from parllama.messages.messages import UnRegisterForUpdates
-from parllama.messages.messages import UpdateChatStatus
+from parllama.messages.messages import (
+    PromptSelected,
+    ProviderModelSelected,
+    RegisterForUpdates,
+    SessionSelected,
+    SessionUpdated,
+    UnRegisterForUpdates,
+    UpdateChatStatus,
+)
 from parllama.settings_manager import settings
 from parllama.widgets.input_blur_submit import InputBlurSubmit
 from parllama.widgets.provider_model_select import ProviderModelSelect
@@ -38,11 +35,14 @@ SessionConfig {
     height: 1fr;
     dock: right;
     padding: 1;
+    #session_name_input {
+        width: 41;
+    }
     #temperature_input {
         width: 12;
     }
-    #session_name_input {
-        width: 41;
+    #num_ctx_input {
+        width: 15;
     }
     #new_button {
         margin-left: 2;
@@ -75,6 +75,14 @@ SessionConfig {
             valid_empty=False,
         )
 
+        self.num_ctx_input: InputBlurSubmit = InputBlurSubmit(
+            id="num_ctx_input",
+            value=str(settings.last_llm_config.num_ctx or 2048),
+            max_length=6,
+            type="integer",
+            valid_empty=False,
+        )
+
         self.session_name_input: InputBlurSubmit = InputBlurSubmit(
             id="session_name_input",
             value=session_name,
@@ -85,7 +93,7 @@ SessionConfig {
             session_id=None,
             session_name=session_name,
             llm_config=LlmConfig(
-                provider=self.provider_model_select.provider_name,
+                provider=LlmProvider(self.provider_model_select.provider_name),
                 model_name=self.provider_model_select.model_name,
                 temperature=self.get_temperature(),
             ),
@@ -120,9 +128,13 @@ SessionConfig {
             yield Label("Name")
             yield self.session_name_input
         yield self.provider_model_select
-        with Horizontal():
+        with Horizontal(classes="height-3"):
             yield Label("Temperature")
             yield self.temperature_input
+        with Horizontal(classes="height-3"):
+            with Label("Max Context Size") as lbl:
+                lbl.tooltip = "0 = default. Ollama default is 2048"
+            yield self.num_ctx_input
 
     async def action_new_session(self, session_name: str = "New Chat") -> None:
         """Start new session"""
@@ -133,7 +145,7 @@ SessionConfig {
             self.session = chat_manager.new_session(
                 session_name=session_name,
                 llm_config=LlmConfig(
-                    provider=self.provider_model_select.provider_name,
+                    provider=LlmProvider(self.provider_model_select.provider_name),
                     model_name=self.provider_model_select.model_name,
                     temperature=self.get_temperature(),
                 ),
@@ -175,6 +187,19 @@ SessionConfig {
         except ValueError:
             return
         self.session.temperature = settings.last_llm_config.temperature
+        settings.save()
+
+    @on(Input.Submitted, "#num_ctx_input")
+    def num_ctx_input_changed(self, event: Message) -> None:
+        """Handle num_ctx input change"""
+        event.stop()
+        if not self.num_ctx_input.value:
+            return
+        try:
+            settings.last_llm_config.num_ctx = int(self.num_ctx_input.value)
+        except ValueError:
+            return
+        self.session.num_ctx = settings.last_llm_config.num_ctx
         settings.save()
 
     @on(Input.Submitted, "#session_name_input")
@@ -227,15 +252,11 @@ SessionConfig {
 
         with self.prevent(Input.Changed, Select.Changed):
             self.session_name_input.value = self.session.name
-            self.provider_model_select.provider_select.value = (
-                self.session.llm_provider_name
-            )
+            self.provider_model_select.provider_select.value = self.session.llm_provider_name
             self.provider_model_select.provider_select_changed()
             self.provider_model_select.set_model_name(self.session.llm_model_name)
             if self.provider_model_select.model_select.value == Select.BLANK:
-                self.notify(
-                    "Model defined in session is not installed", severity="warning"
-                )
+                self.notify("Model defined in session is not installed", severity="warning")
             self.temperature_input.value = str(self.session.temperature)
 
         return True
@@ -259,10 +280,10 @@ SessionConfig {
         llm_config: LlmConfig = old_session.llm_config.clone()
         if event.temperature is not None:
             llm_config.temperature = event.temperature
-        if event.llm_provider_name:
-            llm_config.provider = event.llm_provider_name
-        if event.llm_model_name:
-            llm_config.model_name = event.llm_model_name
+        if event.llm_provider:
+            llm_config.provider = event.llm_provider
+        if event.model_name:
+            llm_config.model_name = event.model_name
         self.session = chat_manager.new_session(
             session_name=prompt.name or old_session.name,
             llm_config=llm_config,

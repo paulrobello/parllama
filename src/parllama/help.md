@@ -97,12 +97,13 @@ Chat with local LLMs and manage saved sessions
 | `ctrl+g`      | Submit multi line edit content                  |
 
 ### Message List keys
-| Key      | Command                                 |
-|----------|-----------------------------------------|
-| `ctrl+c` | Copy selected chat message to clipboard |
-| `e`      | Edit selected message                   |
-| `delete` | Delete selected message                 |
-| `escape` | Exit message edit mode                  |
+| Key            | Command                                                             |
+|----------------|---------------------------------------------------------------------|
+| `ctrl+c`       | Copy selected chat message to clipboard                             |
+| `ctrl+shift+c` | Cycle through fences in selected chat message and copy to clipboard |
+| `e`            | Edit selected message                                               |
+| `delete`       | Delete selected message                                             |
+| `escape`       | Exit message edit mode                                              |
 
 
 ### Chat Tab Session Panel keys

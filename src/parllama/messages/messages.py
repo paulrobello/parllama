@@ -3,17 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
-from rich.console import ConsoleRenderable
-from rich.console import RenderableType
-from rich.console import RichCast
+from par_ai_core.llm_providers import LlmProvider
+from rich.console import ConsoleRenderable, RenderableType, RichCast
 from textual.message import Message
 from textual.message_pump import MessagePump
 from textual.notifications import SeverityLevel
-from textual.widgets import TextArea, Input
+from textual.widgets import Input, TextArea
 
-from parllama.llm_providers import LlmProvider
 from parllama.messages.shared import SessionChanges
 from parllama.models.ollama_data import FullModel
 from parllama.utils import TabType
@@ -272,8 +269,8 @@ class PromptSelected(PromptMessage):
     """Notify that a prompt has been selected."""
 
     temperature: float | None = None
-    llm_provider_name: LlmProvider | None = None
-    llm_model_name: str | None = None
+    llm_provider: LlmProvider | None = None
+    model_name: str | None = None
 
 
 @dataclass
@@ -300,7 +297,7 @@ class SessionMessage(Message):
 class SessionToPrompt(SessionMessage):
     """Request session be copied to prompt."""
 
-    prompt_name: Optional[str] = None
+    prompt_name: str | None = None
     submit_on_load: bool = False
 
 
@@ -395,7 +392,7 @@ class RefreshProviderModelsRequested(AppRequest):
 class ProviderModelsChanged(Message):
     """Provider models refreshed."""
 
-    provider: Optional[LlmProvider] = None
+    provider: LlmProvider | None = None
 
 
 @dataclass

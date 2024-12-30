@@ -3,12 +3,10 @@
 lib    := parllama
 run    := uv run
 python := $(run) python
-lint   := $(run) pylint
+ruff   := $(run) ruff
 pyright := $(run) pyright
 twine  := $(run) twine
 build  := $(python) -m build
-black  := $(run) black
-isort  := $(run) isort
 
 export UV_LINK_MODE=copy
 export PIPENV_VERBOSITY=-1
@@ -103,9 +101,18 @@ shell:			# Start shell inside of .venv
 	$(run) bash
 ##############################################################################
 # Checking/testing/linting/etc.
+.PHONY: format
+format:                         # Reformat the code with ruff.
+	$(ruff) format src/$(lib)
+
 .PHONY: lint
-lint:				# Run Pylint over the library
-	$(lint) $(lib)
+lint:                           # Run ruff lint over the library
+	$(ruff) check src/$(lib) --fix
+
+.PHONY: lint-unsafe
+lint-unsafe:                           # Run ruff lint over the library
+	$(ruff) check src/$(lib) --fix --unsafe-fixes
+
 
 .PHONY: typecheck
 typecheck:			# Perform static type checks with pyright
@@ -155,11 +162,6 @@ dist: packagecheck		# Upload to pypi
 .PHONY: get-venv-name
 get-venv-name:
 	$(run) which python
-
-.PHONY: ugly
-ugly:				# Reformat the code with black.
-#	$(isort) $(lib)
-	$(black) $(lib)
 
 .PHONY: repl
 repl:				# Start a Python REPL

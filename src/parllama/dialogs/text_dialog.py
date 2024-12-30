@@ -5,11 +5,9 @@ from __future__ import annotations
 from rich.text import TextType
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Center
-from textual.containers import Vertical
+from textual.containers import Center, Vertical
 from textual.screen import ModalScreen
-from textual.widgets import Button
-from textual.widgets import Static
+from textual.widgets import Button, Static
 from textual.widgets._button import ButtonVariant
 
 

@@ -55,15 +55,11 @@ class LocalModelListItem(Widget, can_focus=True):
         self.border_title = self.model.name
         with Vertical():
             # yield FieldSet("Name", Static(self.model.name, message_id="name"))
-            yield FieldSet(
-                "Modified", Static(str(self.model.modified_at), id="modified_at")
-            )
+            yield FieldSet("Modified", Static(str(self.model.modified_at), id="modified_at"))
             exp = str(self.model.expires_at)
             if exp in ["None", "0001-01-01 00:00:00+00:00"]:
                 exp = "Never"
             yield FieldSet("Expires", Static(exp, id="expires_at"))
-            yield FieldSet(
-                "Size", Static(humanize.naturalsize(self.model.size), id="size")
-            )
+            yield FieldSet("Size", Static(humanize.naturalsize(self.model.size), id="size"))
             yield Static("Digest:")
             yield Static(self.model.digest, id="digest")

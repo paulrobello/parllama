@@ -13,10 +13,7 @@ from textual.widgets import ListView
 
 from parllama.chat_manager import chat_manager
 from parllama.dialogs.edit_prompt_dialog import EditPromptDialog
-from parllama.messages.messages import PromptDeleteRequested
-from parllama.messages.messages import PromptListChanged
-from parllama.messages.messages import PromptSelected
-from parllama.messages.messages import RegisterForUpdates
+from parllama.messages.messages import PromptDeleteRequested, PromptListChanged, PromptSelected, RegisterForUpdates
 from parllama.widgets.dbl_click_list_item import DblClickListItem
 from parllama.widgets.prompt_list_item import PromptListItem
 
@@ -56,11 +53,7 @@ class PromptList(Vertical, can_focus=False, can_focus_children=True):
 
     def on_mount(self) -> None:
         """Register for updates"""
-        self.app.post_message(
-            RegisterForUpdates(
-                widget=self, event_names=["PromptListChanged", "PromptSelected"]
-            )
-        )
+        self.app.post_message(RegisterForUpdates(widget=self, event_names=["PromptListChanged", "PromptSelected"]))
 
     def compose(self) -> ComposeResult:
         """Compose the content of the view."""
@@ -73,14 +66,10 @@ class PromptList(Vertical, can_focus=False, can_focus_children=True):
 
     def action_delete_item(self) -> None:
         """Handle delete item action."""
-        selected_item: PromptListItem = cast(
-            PromptListItem, self.list_view.highlighted_child
-        )
+        selected_item: PromptListItem = cast(PromptListItem, self.list_view.highlighted_child)
         if not selected_item:
             return
-        self.post_message(
-            PromptDeleteRequested(widget=self, prompt_id=selected_item.prompt.id)
-        )
+        self.post_message(PromptDeleteRequested(widget=self, prompt_id=selected_item.prompt.id))
         self.set_timer(0.1, self.list_view.focus)
         self.set_timer(0.2, partial(self.focus_next_item, self.list_view.index or 0))
 
@@ -96,9 +85,7 @@ class PromptList(Vertical, can_focus=False, can_focus_children=True):
         """Handle prompt list changed event."""
         event.stop()
         # self.notify("SL prompt list changed")
-        selected_item: PromptListItem = cast(
-            PromptListItem, self.list_view.highlighted_child
-        )
+        selected_item: PromptListItem = cast(PromptListItem, self.list_view.highlighted_child)
         # self.app.post_message(LogIt("PL Recompose: Prompt list changed"))
         await self.recompose()
         if not selected_item:
@@ -111,9 +98,7 @@ class PromptList(Vertical, can_focus=False, can_focus_children=True):
     @on(DblClickListItem.DoubleClicked)
     def action_load_item(self) -> None:
         """Handle list view selected event."""
-        selected_item: PromptListItem = cast(
-            PromptListItem, self.list_view.highlighted_child
-        )
+        selected_item: PromptListItem = cast(PromptListItem, self.list_view.highlighted_child)
         if not selected_item:
             return
         self.post_message(PromptSelected(selected_item.prompt.id))
@@ -130,9 +115,7 @@ class PromptList(Vertical, can_focus=False, can_focus_children=True):
 
     def action_edit_item(self) -> None:
         """Handle edit item action."""
-        selected_item: PromptListItem = cast(
-            PromptListItem, self.list_view.highlighted_child
-        )
+        selected_item: PromptListItem = cast(PromptListItem, self.list_view.highlighted_child)
         if not selected_item:
             return
         self.app.push_screen(EditPromptDialog(selected_item.prompt))

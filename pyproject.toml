@@ -1,7 +1,7 @@
 [project]
 name = "parllama"
 dynamic = ["version"]
-description = "Terminal UI for Ollama"
+description = "Terminal UI for Ollama and other LLM providers"
 readme = "README.md"
 url = "https://github.com/paulrobello/parllama"
 license = { file = "LICENSE" }
@@ -14,79 +14,40 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Terminals",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Typing :: Typed"
 ]
-keywords = ["ollama", "ai","terminal", "tui"]
+keywords = ["ollama", "llamacpp", "openai", "anthropic", "groq", "grok", "ai", "terminal", "tui"]
 
 requires-python = ">=3.11"
 dependencies = [
-    "anthropic",
-    "argparse",
-    "asyncio",
-    "attrs",
-    "beautifulsoup4",
-    "build",
-    "certifi",
-    "charset-normalizer",
-    "chromadb",
-    "cryptography",
-    "docker",
-    "google-api-core[grpc]",
-    "google-api-python-client",
-    "google-auth",
-    "google-auth-httplib2",
-    "google-generativeai",
-    "groq",
-    "httpx",
-    "huggingface-hub",
-    "humanize",
-    "isodate2",
-    "jsonschema",
-    "langchain",
-    "langchain-anthropic",
-    "langchain-chroma",
-    "langchain-community",
-    "langchain-core",
-    "langchain-experimental",
-    "langchain-google-community",
-    "langchain-google-genai",
-    "langchain-groq",
-    "langchain-huggingface",
-    "langchain-ollama",
-    "langchain-openai",
-    "langchain-text-splitters",
-    "langchainhub",
-    "langgraph",
-    "langsmith",
-    "markdownify",
-    "ollama",
-    "openai",
-    "pydantic",
-    "pydantic-core",
-    "pypdf",
-    "pyperclip",
-    "python-dotenv",
-    "pytz",
-    "requests",
-    "requests-file",
-    "requests-oauthlib",
-    "rich",
-    "semver",
-    "sentence-transformers",
-    "sqlalchemy",
-    "textual[syntax]>=0.80.1",
-    "textual-fspicker",
-    "tiktoken",
-    "tokenizers",
-    "urllib3",
-    "youtube-transcript-api",
-    "zipp",
-    "unstructured",
-    "watchdog>=4.0.2",
+    "argparse>=1.4.0",
+    "asyncio>=3.4.3",
+    "attrs>=24.3.0",
+    "beautifulsoup4>=4.12.3",
+    "build>=1.2.2.post1",
+    "cryptography>=44.0.0",
+    "docker>=7.1.0",
+    "httpx>=0.27.2",
+    "humanize>=4.11.0",
+    "langchain>=0.3.13",
+    "ollama>=0.4.4",
+    "pydantic>=2.10.4",
+    "pydantic-core>=2.27.2",
+    "python-dotenv>=1.0.1",
+    "pytz>=2024.2",
+    "requests>=2.32.3",
+    "rich>=13.9.4",
+    "semver>=3.0.2",
+    "textual[syntax]>=1.0.0",
+    "textual-fspicker>=0.0.11",
+    "urllib3>=2.3.0",
     "rich-pixels>=3.0.1",
     "orjson>=3.10.7",
+    "par-ai-core",
+    "clipman>=3.3.1",
 ]
 
 packages = [
@@ -108,23 +69,22 @@ parllama = "parllama.__main__:run"
 requires = ["hatchling", "wheel"]
 build-backend = "hatchling.build"
 
-[tool.uv]
-dev-dependencies = [
-    "pylint",
-    "pyright",
-    "black",
-    "build",
-    "twine",
-    "types-pytz",
-    "textual-dev",
-    "types-requests",
-    "types-beautifulsoup4",
-    "pre-commit",
-    "google-api-python-client-stubs",
-    "typing-extensions",
-    "types-simplejson",
+[dependency-groups]
+dev = [
+    "pyright>=1.1.391",
+    "build>=1.2.2.post1",
+    "twine>=6.0.1",
+    "types-pytz>=2024.2.0.20241221",
+    "textual-dev>=1.7.0",
+    "types-requests>=2.32.0.20241016",
+    "types-beautifulsoup4>=4.12.0.20241020",
+    "pre-commit>=4.0.1",
+    "google-api-python-client-stubs>=1.28.0",
+    "typing-extensions>=4.12.2",
+    "types-simplejson>=3.19.0.20241221",
     "pyinstrument>=4.7.3",
     "types-orjson>=3.6.2",
+    "ruff>=0.7.4",
 ]
 
 [tool.hatch.version]
@@ -135,9 +95,6 @@ packages = ["src/parllama"]
 include = [
     "*.py",
     "py.typed",
-    "*.png",
-    "*.md",
-    "*.tcss",
     "*.png",
     "*.md",
     "*.tcss"

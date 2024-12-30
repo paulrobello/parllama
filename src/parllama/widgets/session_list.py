@@ -9,15 +9,10 @@ from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Vertical
-from textual.widgets import ListView
-from textual.widgets import Rule
-from textual.widgets import Static
+from textual.widgets import ListView, Rule, Static
 
 from parllama.chat_manager import chat_manager
-from parllama.messages.messages import DeleteSession
-from parllama.messages.messages import RegisterForUpdates
-from parllama.messages.messages import SessionListChanged
-from parllama.messages.messages import SessionSelected
+from parllama.messages.messages import DeleteSession, RegisterForUpdates, SessionListChanged, SessionSelected
 from parllama.widgets.dbl_click_list_item import DblClickListItem
 from parllama.widgets.session_list_item import SessionListItem
 
@@ -58,11 +53,7 @@ class SessionList(Vertical, can_focus=False, can_focus_children=True):
 
     async def on_mount(self) -> None:
         """Set up the dialog once the DOM is ready."""
-        self.app.post_message(
-            RegisterForUpdates(
-                widget=self, event_names=["SessionListChanged", "SessionSelected"]
-            )
-        )
+        self.app.post_message(RegisterForUpdates(widget=self, event_names=["SessionListChanged", "SessionSelected"]))
 
     def compose(self) -> ComposeResult:
         """Compose the content of the view."""
@@ -75,9 +66,7 @@ class SessionList(Vertical, can_focus=False, can_focus_children=True):
 
     def action_delete_item(self) -> None:
         """Handle delete item action."""
-        selected_item: SessionListItem = cast(
-            SessionListItem, self.list_view.highlighted_child
-        )
+        selected_item: SessionListItem = cast(SessionListItem, self.list_view.highlighted_child)
         if not selected_item:
             return
         self.app.post_message(DeleteSession(session_id=selected_item.session.id))
@@ -96,9 +85,7 @@ class SessionList(Vertical, can_focus=False, can_focus_children=True):
         """Handle session list changed event."""
         event.stop()
         # self.notify("SL session list changed")
-        selected_item: SessionListItem = cast(
-            SessionListItem, self.list_view.highlighted_child
-        )
+        selected_item: SessionListItem = cast(SessionListItem, self.list_view.highlighted_child)
         # self.app.post_message(LogIt("SL Recompose: Session list changed"))
         await self.recompose()
         if not selected_item:
@@ -111,9 +98,7 @@ class SessionList(Vertical, can_focus=False, can_focus_children=True):
     @on(DblClickListItem.DoubleClicked)
     def action_load_item(self) -> None:
         """Handle list view selected event."""
-        selected_item: SessionListItem = cast(
-            SessionListItem, self.list_view.highlighted_child
-        )
+        selected_item: SessionListItem = cast(SessionListItem, self.list_view.highlighted_child)
         if not selected_item:
             return
         self.app.post_message(SessionSelected(selected_item.session.id, new_tab=False))
@@ -121,9 +106,7 @@ class SessionList(Vertical, can_focus=False, can_focus_children=True):
 
     def action_load_item_new(self) -> None:
         """Handle list view selected event."""
-        selected_item: SessionListItem = cast(
-            SessionListItem, self.list_view.highlighted_child
-        )
+        selected_item: SessionListItem = cast(SessionListItem, self.list_view.highlighted_child)
         if not selected_item:
             return
         self.app.post_message(SessionSelected(selected_item.session.id, new_tab=True))

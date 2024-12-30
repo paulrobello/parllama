@@ -2,23 +2,24 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
+from par_ai_core.llm_providers import (
+    LlmProvider,
+    get_provider_select_options,
+    is_provider_api_key_set,
+    provider_config,
+)
 from textual import on
 from textual.app import ComposeResult
 from textual.containers import Container
 from textual.widgets import Select
 
-from parllama.llm_providers import (
-    LlmProvider,
-    provider_config,
-    is_provider_api_key_set,
-    get_provider_select_options,
+from parllama.messages.messages import (
+    LogIt,
+    ProviderModelsChanged,
+    ProviderModelSelected,
+    RegisterForUpdates,
+    UnRegisterForUpdates,
 )
-from parllama.messages.messages import LogIt, ProviderModelSelected
-from parllama.messages.messages import ProviderModelsChanged
-from parllama.messages.messages import RegisterForUpdates
-from parllama.messages.messages import UnRegisterForUpdates
 from parllama.provider_manager import provider_manager
 from parllama.settings_manager import settings
 from parllama.widgets.deferred_select import DeferredSelect
@@ -52,8 +53,8 @@ class ProviderModelSelect(Container):
     def __init__(
         self,
         *,
-        provider: Optional[LlmProvider] = None,
-        model_name: Optional[str] = None,
+        provider: LlmProvider | None = None,
+        model_name: str | None = None,
         update_settings: bool = False,
         **kwargs,
     ) -> None:
@@ -82,20 +83,14 @@ class ProviderModelSelect(Container):
             id="model_name",
             options=provider_manager.get_model_select_options(lp),
             allow_blank=True,
-            value=(
-                model_name
-                or settings.last_llm_config.model_name
-                or provider_config[lp].default_model
-            ),
+            value=(model_name or settings.last_llm_config.model_name or provider_config[lp].default_model),
         )
 
     @property
     def provider_name(self) -> LlmProvider:
         """Get provider name"""
         return (  # pyright: ignore [reportReturnType]
-            self.provider_select.value
-            if self.provider_select.value != Select.BLANK
-            else LlmProvider.OLLAMA
+            self.provider_select.value if self.provider_select.value != Select.BLANK else LlmProvider.OLLAMA
         )
 
     @property
@@ -178,15 +173,9 @@ class ProviderModelSelect(Container):
 
     def notify_changed(self) -> None:
         """Notify changed"""
-        model_name = (
-            self.model_select.value if self.model_select.value != Select.BLANK else ""
-        )
+        model_name = self.model_select.value if self.model_select.value != Select.BLANK else ""
         if not model_name:
-            model_name = (
-                self.model_select.deferred_value
-                if self.model_select.deferred_value != Select.BLANK
-                else ""
-            )
+            model_name = self.model_select.deferred_value if self.model_select.deferred_value != Select.BLANK else ""
 
         self.post_message(
             ProviderModelSelected(
