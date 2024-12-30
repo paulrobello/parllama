@@ -1,18 +1,16 @@
-name: Publish 🐍 📦 to PyPI
+name: Publish 🐍 📦 to TestPyPI
 
 on:
   workflow_dispatch:
-  release:
-    types: [ published ]
 
 jobs:
-  publish-to-pypi:
+  publish-to-testpypi:
     if: github.event_name == 'workflow_dispatch'  # Only allow manual triggers
-    name: Publish 🐍 distribution 📦 to PyPI
+    name: Publish 🐍 distribution 📦 to TestPyPI
     runs-on: ubuntu-latest
     environment:
-      name: pypi
-      url: https://pypi.org/p/parllama
+      name: testpypi
+      url: https://test.pypi.org/p/parllama
     permissions:
       id-token: write  # IMPORTANT: mandatory for trusted publishing
 
@@ -39,19 +37,18 @@ jobs:
         with:
           path: dist
           key: ${{ runner.os }}-3.11-${{ runner.architecture }}-${{ hashFiles('**/pyproject.toml') }}-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-3.11-${{ runner.architecture }}-${{ hashFiles('**/pyproject.toml') }}-
-            ${{ runner.os }}-3.11-${{ runner.architecture }}-${{ env.VERSION }}-
-            ${{ runner.os }}-3.11-${{ runner.architecture }}-
           fail-on-cache-miss: true
 
-      - name: Publish distribution 📦 to PyPI
+      - name: Publish distribution 📦 to TestPyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          skip-existing: true
 
       - name: Discord notification
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         uses: Ilshidur/action-discord@master
         with:
-          args: 'The project {{ EVENT_PAYLOAD.repository.full_name }} ${{ env.VERSION }} has been published to PyPI.'
+          args: 'The project {{ EVENT_PAYLOAD.repository.full_name }} ${{ env.VERSION }} has been published to TestPyPI.'
         continue-on-error: true

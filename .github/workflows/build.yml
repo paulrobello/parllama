@@ -1,0 +1,100 @@
+name: Build and Test 🐍 distribution 📦
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build:
+    name: Build distribution 📦
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+      - name: Install dependencies
+        run: |
+          uv sync
+      - name: Static Typecheck
+        run: |
+          make checkall
+      - name: Package
+        run: make packagecheck
+      - name: Cache build artifacts
+        uses: actions/cache@v4
+        with:
+          path: dist
+          key: ${{ runner.os }}-3.11-${{ runner.architecture }}-${{ hashFiles('**/pyproject.toml') }}-${{ github.sha }}
+      - name: Store the distribution packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-package-distributions-ubuntu-latest-3.11-x64
+          path: dist/
+
+  tag-version:
+    name: Tag Version
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Grant write access to the repository
+    needs:
+      - build # Wait for all build jobs to complete
+    if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+      - name: Configure Git
+        run: |
+          git config --global user.name "${{ github.actor }}"
+          git config --global user.email "${{ github.event.pusher.email }}"
+      - name: Get version from __init__.py
+        id: get_version
+        run: |
+          echo "VERSION=$(uv run python -c "from src.parllama import __version__; print(__version__)")" >> $GITHUB_ENV
+          echo "Version extracted: ${{ env.VERSION }}"
+      - name: App VERSION
+        run: echo "VERSION is ${{ env.VERSION }}"
+      - name: Fetch all tags
+        run: git fetch --tags
+      - name: Check if tag exists
+        id: check_tag
+        run: |
+          TAG_EXISTS=$(git tag --list "v${{ env.VERSION }}")
+          if [ -z "$TAG_EXISTS" ]; then
+            echo "TAG_EXISTS=false" >> $GITHUB_ENV
+          else
+            echo "TAG_EXISTS=true" >> $GITHUB_ENV
+          fi
+      - name: Delete existing tag locally and remotely
+        if: env.TAG_EXISTS == 'true'
+        env:
+          VERSION: ${{ env.VERSION }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git tag -d "v$VERSION"
+          git push --delete origin "v$VERSION"
+      - name: Create new tag
+        env:
+          VERSION: ${{ env.VERSION }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if ! git tag -a "v$VERSION" -m "Version $VERSION"; then
+            echo "Failed to create tag"
+            exit 1
+          fi
+          if ! git push origin "v$VERSION"; then
+            echo "Failed to push tag"
+            exit 1
+          fi
