@@ -95,9 +95,12 @@ packages = ["src/parllama"]
 include = [
     "*.py",
     "py.typed",
-    "*.png",
-    "*.md",
-    "*.tcss"
+    "*/*.gif",
+    "*/*.png",
+    "*/*.jpg",
+    "*/*.html",
+    "*/*.md",
+    "*/*.tcss",
 ]
 
 [tool.hatch.build.targets.sdist]
