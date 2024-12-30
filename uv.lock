@@ -1228,15 +1228,6 @@ wheels = [
 ]
 
 [[package]]
-name = "isodate2"
-version = "0.9.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/da/7c/08297948c8b7e56ab0f24100eb23facfc7913fce2ea4ff264308c6f989b2/isodate2-0.9.0.tar.gz", hash = "sha256:5b0aa4b267cf1e6d2a16fbd62528b556cc7a3422ac81cb5464031172ba618dbf", size = 31747 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/72/6a/2184c48b48a2adbad501b7134c82bac39c48760a8589a44971e05ec14450/isodate2-0.9.0-py3-none-any.whl", hash = "sha256:1fdf6b33b1118c8e5995dd9ea1b48b54a39bfaa0527abc15e5379d31b3aff0fc", size = 26489 },
-]
-
-[[package]]
 name = "jaraco-classes"
 version = "3.4.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2362,7 +2353,7 @@ wheels = [
 [[package]]
 name = "par-ai-core"
 version = "0.1.7"
-source = { directory = "../par_ai_core" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "beautifulsoup4" },
     { name = "boto3" },
@@ -2399,60 +2390,9 @@ dependencies = [
     { name = "webdriver-manager" },
     { name = "youtube-transcript-api" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "beautifulsoup4", specifier = ">=4.12.3" },
-    { name = "boto3", specifier = ">=1.34.0" },
-    { name = "botocore", specifier = ">=1.34.0" },
-    { name = "html2text", specifier = ">=2024.2.26" },
-    { name = "langchain", specifier = ">=0.2.14" },
-    { name = "langchain-anthropic", specifier = ">=0.1.23" },
-    { name = "langchain-aws", specifier = ">=0.1.18" },
-    { name = "langchain-chroma", specifier = ">=0.1.3" },
-    { name = "langchain-community", specifier = ">=0.2.12" },
-    { name = "langchain-core", specifier = ">=0.2.34" },
-    { name = "langchain-experimental", specifier = ">=0.0.65" },
-    { name = "langchain-google-community", specifier = ">=2.0.3" },
-    { name = "langchain-google-genai", specifier = ">=1.0.10" },
-    { name = "langchain-groq", specifier = ">=0.1.9" },
-    { name = "langchain-ollama", specifier = ">=0.1.1" },
-    { name = "langchain-openai", specifier = ">=0.1.22" },
-    { name = "langchain-qdrant", specifier = ">=0.1.3" },
-    { name = "langchain-text-splitters", specifier = ">=0.2.4" },
-    { name = "langchain-xai", specifier = ">=0.1.0" },
-    { name = "langgraph", specifier = ">=0.2.14" },
-    { name = "markdownify", specifier = ">=0.13.1" },
-    { name = "orjson", specifier = ">=3.10.7" },
-    { name = "playwright", specifier = ">=1.47.0" },
-    { name = "praw", specifier = ">=7.8.1" },
-    { name = "pydantic", specifier = ">=2.8.2" },
-    { name = "pydantic-core", specifier = ">=2.20.1" },
-    { name = "python-dotenv", specifier = ">=1.0.1" },
-    { name = "requests", specifier = ">=2.32.3" },
-    { name = "rich", specifier = ">=13.7.1" },
-    { name = "selenium", specifier = ">=4.25.0" },
-    { name = "strenum", specifier = ">=0.4.15" },
-    { name = "tavily-python", specifier = ">=0.5.0" },
-    { name = "webdriver-manager", specifier = ">=4.0.2" },
-    { name = "youtube-transcript-api", specifier = ">=0.6.3" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "build", specifier = ">=1.2.1" },
-    { name = "pdoc3", specifier = ">=0.11.5" },
-    { name = "pre-commit", specifier = ">=3.8.0" },
-    { name = "pyinstrument", specifier = ">=5.0.0" },
-    { name = "pyright", specifier = ">=1.1.379" },
-    { name = "pytest", specifier = ">=8.0.0" },
-    { name = "pytest-asyncio", specifier = ">=0.23.5" },
-    { name = "pytest-cov", specifier = ">=4.1.0" },
-    { name = "pytest-mock", specifier = ">=3.14.0" },
-    { name = "pytest-xdist", specifier = ">=3.6.1" },
-    { name = "ruff", specifier = ">=0.7.0" },
-    { name = "twine", specifier = ">=5.1.1" },
-    { name = "types-orjson", specifier = ">=3.6.2" },
+sdist = { url = "https://files.pythonhosted.org/packages/ba/1f/382655b3c8b68332885c01bcd81456a8da78838fbf45dcb1f8f5f9146620/par_ai_core-0.1.7.tar.gz", hash = "sha256:f22cf902fef7f1340a65a2add8ad66dd28fef9a7a8b5ea7581488bd7f7b9860a", size = 102914 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7c/61/0b4294a1c68070d0cce561a40ee784335792588cdb8e61ebfc403dd120da/par_ai_core-0.1.7-py3-none-any.whl", hash = "sha256:3158c8abbbee044199953d5b0aa2d2bfd5a09524f49b7eacbe2371d7ef6072b0", size = 141152 },
 ]
 
 [[package]]
@@ -2468,10 +2408,8 @@ dependencies = [
     { name = "clipman" },
     { name = "cryptography" },
     { name = "docker" },
-    { name = "html2text" },
     { name = "httpx" },
     { name = "humanize" },
-    { name = "isodate2" },
     { name = "langchain" },
     { name = "ollama" },
     { name = "orjson" },
@@ -2486,10 +2424,7 @@ dependencies = [
     { name = "semver" },
     { name = "textual", extra = ["syntax"] },
     { name = "textual-fspicker" },
-    { name = "tiktoken" },
-    { name = "tokenizers" },
     { name = "urllib3" },
-    { name = "watchdog" },
 ]
 
 [package.dev-dependencies]
@@ -2520,14 +2455,12 @@ requires-dist = [
     { name = "clipman", specifier = ">=3.3.1" },
     { name = "cryptography", specifier = ">=44.0.0" },
     { name = "docker", specifier = ">=7.1.0" },
-    { name = "html2text", specifier = ">=2024.2.26" },
     { name = "httpx", specifier = ">=0.27.2" },
     { name = "humanize", specifier = ">=4.11.0" },
-    { name = "isodate2", specifier = ">=0.9.0" },
     { name = "langchain", specifier = ">=0.3.13" },
     { name = "ollama", specifier = ">=0.4.4" },
     { name = "orjson", specifier = ">=3.10.7" },
-    { name = "par-ai-core", directory = "../par_ai_core" },
+    { name = "par-ai-core" },
     { name = "pydantic", specifier = ">=2.10.4" },
     { name = "pydantic-core", specifier = ">=2.27.2" },
     { name = "python-dotenv", specifier = ">=1.0.1" },
@@ -2538,10 +2471,7 @@ requires-dist = [
     { name = "semver", specifier = ">=3.0.2" },
     { name = "textual", extras = ["syntax"], specifier = ">=1.0.0" },
     { name = "textual-fspicker", specifier = ">=0.0.11" },
-    { name = "tiktoken", specifier = ">=0.8.0" },
-    { name = "tokenizers", specifier = ">=0.21.0" },
     { name = "urllib3", specifier = ">=2.3.0" },
-    { name = "watchdog", specifier = ">=4.0.2" },
 ]
 
 [package.metadata.requires-dev]
@@ -4176,33 +4106,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/bf/75/53316a5a8050069228a2f6d11f32046cfa94fbb6cc3f08703f59b873de2e/virtualenv-20.28.0.tar.gz", hash = "sha256:2c9c3262bb8e7b87ea801d715fae4495e6032450c71d2309be9550e7364049aa", size = 7650368 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/10/f9/0919cf6f1432a8c4baa62511f8f8da8225432d22e83e3476f5be1a1edc6e/virtualenv-20.28.0-py3-none-any.whl", hash = "sha256:23eae1b4516ecd610481eda647f3a7c09aea295055337331bb4e6892ecce47b0", size = 4276702 },
-]
-
-[[package]]
-name = "watchdog"
-version = "6.0.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/db/7d/7f3d619e951c88ed75c6037b246ddcf2d322812ee8ea189be89511721d54/watchdog-6.0.0.tar.gz", hash = "sha256:9ddf7c82fda3ae8e24decda1338ede66e1c99883db93711d8fb941eaa2d8c282", size = 131220 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/e0/24/d9be5cd6642a6aa68352ded4b4b10fb0d7889cb7f45814fb92cecd35f101/watchdog-6.0.0-cp311-cp311-macosx_10_9_universal2.whl", hash = "sha256:6eb11feb5a0d452ee41f824e271ca311a09e250441c262ca2fd7ebcf2461a06c", size = 96393 },
-    { url = "https://files.pythonhosted.org/packages/63/7a/6013b0d8dbc56adca7fdd4f0beed381c59f6752341b12fa0886fa7afc78b/watchdog-6.0.0-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:ef810fbf7b781a5a593894e4f439773830bdecb885e6880d957d5b9382a960d2", size = 88392 },
-    { url = "https://files.pythonhosted.org/packages/d1/40/b75381494851556de56281e053700e46bff5b37bf4c7267e858640af5a7f/watchdog-6.0.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:afd0fe1b2270917c5e23c2a65ce50c2a4abb63daafb0d419fde368e272a76b7c", size = 89019 },
-    { url = "https://files.pythonhosted.org/packages/39/ea/3930d07dafc9e286ed356a679aa02d777c06e9bfd1164fa7c19c288a5483/watchdog-6.0.0-cp312-cp312-macosx_10_13_universal2.whl", hash = "sha256:bdd4e6f14b8b18c334febb9c4425a878a2ac20efd1e0b231978e7b150f92a948", size = 96471 },
-    { url = "https://files.pythonhosted.org/packages/12/87/48361531f70b1f87928b045df868a9fd4e253d9ae087fa4cf3f7113be363/watchdog-6.0.0-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:c7c15dda13c4eb00d6fb6fc508b3c0ed88b9d5d374056b239c4ad1611125c860", size = 88449 },
-    { url = "https://files.pythonhosted.org/packages/5b/7e/8f322f5e600812e6f9a31b75d242631068ca8f4ef0582dd3ae6e72daecc8/watchdog-6.0.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:6f10cb2d5902447c7d0da897e2c6768bca89174d0c6e1e30abec5421af97a5b0", size = 89054 },
-    { url = "https://files.pythonhosted.org/packages/68/98/b0345cabdce2041a01293ba483333582891a3bd5769b08eceb0d406056ef/watchdog-6.0.0-cp313-cp313-macosx_10_13_universal2.whl", hash = "sha256:490ab2ef84f11129844c23fb14ecf30ef3d8a6abafd3754a6f75ca1e6654136c", size = 96480 },
-    { url = "https://files.pythonhosted.org/packages/85/83/cdf13902c626b28eedef7ec4f10745c52aad8a8fe7eb04ed7b1f111ca20e/watchdog-6.0.0-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:76aae96b00ae814b181bb25b1b98076d5fc84e8a53cd8885a318b42b6d3a5134", size = 88451 },
-    { url = "https://files.pythonhosted.org/packages/fe/c4/225c87bae08c8b9ec99030cd48ae9c4eca050a59bf5c2255853e18c87b50/watchdog-6.0.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:a175f755fc2279e0b7312c0035d52e27211a5bc39719dd529625b1930917345b", size = 89057 },
-    { url = "https://files.pythonhosted.org/packages/a9/c7/ca4bf3e518cb57a686b2feb4f55a1892fd9a3dd13f470fca14e00f80ea36/watchdog-6.0.0-py3-none-manylinux2014_aarch64.whl", hash = "sha256:7607498efa04a3542ae3e05e64da8202e58159aa1fa4acddf7678d34a35d4f13", size = 79079 },
-    { url = "https://files.pythonhosted.org/packages/5c/51/d46dc9332f9a647593c947b4b88e2381c8dfc0942d15b8edc0310fa4abb1/watchdog-6.0.0-py3-none-manylinux2014_armv7l.whl", hash = "sha256:9041567ee8953024c83343288ccc458fd0a2d811d6a0fd68c4c22609e3490379", size = 79078 },
-    { url = "https://files.pythonhosted.org/packages/d4/57/04edbf5e169cd318d5f07b4766fee38e825d64b6913ca157ca32d1a42267/watchdog-6.0.0-py3-none-manylinux2014_i686.whl", hash = "sha256:82dc3e3143c7e38ec49d61af98d6558288c415eac98486a5c581726e0737c00e", size = 79076 },
-    { url = "https://files.pythonhosted.org/packages/ab/cc/da8422b300e13cb187d2203f20b9253e91058aaf7db65b74142013478e66/watchdog-6.0.0-py3-none-manylinux2014_ppc64.whl", hash = "sha256:212ac9b8bf1161dc91bd09c048048a95ca3a4c4f5e5d4a7d1b1a7d5752a7f96f", size = 79077 },
-    { url = "https://files.pythonhosted.org/packages/2c/3b/b8964e04ae1a025c44ba8e4291f86e97fac443bca31de8bd98d3263d2fcf/watchdog-6.0.0-py3-none-manylinux2014_ppc64le.whl", hash = "sha256:e3df4cbb9a450c6d49318f6d14f4bbc80d763fa587ba46ec86f99f9e6876bb26", size = 79078 },
-    { url = "https://files.pythonhosted.org/packages/62/ae/a696eb424bedff7407801c257d4b1afda455fe40821a2be430e173660e81/watchdog-6.0.0-py3-none-manylinux2014_s390x.whl", hash = "sha256:2cce7cfc2008eb51feb6aab51251fd79b85d9894e98ba847408f662b3395ca3c", size = 79077 },
-    { url = "https://files.pythonhosted.org/packages/b5/e8/dbf020b4d98251a9860752a094d09a65e1b436ad181faf929983f697048f/watchdog-6.0.0-py3-none-manylinux2014_x86_64.whl", hash = "sha256:20ffe5b202af80ab4266dcd3e91aae72bf2da48c0d33bdb15c66658e685e94e2", size = 79078 },
-    { url = "https://files.pythonhosted.org/packages/07/f6/d0e5b343768e8bcb4cda79f0f2f55051bf26177ecd5651f84c07567461cf/watchdog-6.0.0-py3-none-win32.whl", hash = "sha256:07df1fdd701c5d4c8e55ef6cf55b8f0120fe1aef7ef39a1c6fc6bc2e606d517a", size = 79065 },
-    { url = "https://files.pythonhosted.org/packages/db/d9/c495884c6e548fce18a8f40568ff120bc3a4b7b99813081c8ac0c936fa64/watchdog-6.0.0-py3-none-win_amd64.whl", hash = "sha256:cbafb470cf848d93b5d013e2ecb245d4aa1c8fd0504e863ccefa32445359d680", size = 79070 },
-    { url = "https://files.pythonhosted.org/packages/33/e8/e40370e6d74ddba47f002a32919d91310d6074130fe4e17dabcafc15cbf1/watchdog-6.0.0-py3-none-win_ia64.whl", hash = "sha256:a1914259fa9e1454315171103c6a30961236f508b9b623eae470268bbcc6a22f", size = 79067 },
 ]
 
 [[package]]

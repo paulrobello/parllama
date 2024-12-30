@@ -164,7 +164,7 @@ class PromptView(Container):
         except ValueError:
             event.temperature = None
         if self.provider_model_select.is_valid():
-            event.llm_provider = self.provider_model_select.provider_select.value
+            event.llm_provider = self.provider_model_select.provider_select.value  # type: ignore
             event.model_name = self.provider_model_select.model_select.value  # type: ignore
         else:
             event.model_name = None

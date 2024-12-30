@@ -291,12 +291,12 @@ class Settings(BaseModel):
                     "streaming": True,
                 },
             )
-            if isinstance(self.auto_name_session_llm_config["provider"], str):
+            if self.auto_name_session_llm_config and isinstance(self.auto_name_session_llm_config["provider"], str):
                 self.auto_name_session_llm_config["provider"] = LlmProvider(
                     self.auto_name_session_llm_config["provider"]
                 )
 
-            if isinstance(self.auto_name_session_llm_config["mode"], str):
+            if self.auto_name_session_llm_config and isinstance(self.auto_name_session_llm_config["mode"], str):
                 self.auto_name_session_llm_config["mode"] = LlmMode(self.auto_name_session_llm_config["mode"])
 
             if self.auto_name_session_llm_config:

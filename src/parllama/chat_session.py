@@ -229,7 +229,8 @@ class ChatSession(ChatMessageContainer):
             # self.log_it(chat_history)
             chat_model = self._llm_config.build_chat_model()
             stream: Iterator[BaseMessageChunk] = chat_model.stream(
-                chat_history, config=llm_run_manager.get_runnable_config(chat_model.name or "")
+                chat_history,  # type: ignore
+                config=llm_run_manager.get_runnable_config(chat_model.name or ""),
             )
             # self.log_it("CM adding assistant message")
             msg = ParllamaChatMessage(role="assistant")

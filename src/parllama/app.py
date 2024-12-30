@@ -346,12 +346,12 @@ If you would like to auto check for updates, you can enable it in the Startup se
                     Text.assemble(
                         job.modelName,
                         " ",
-                        msg.status,
+                        msg.status or "",
                         " ",
                         percent,
                         " ",
                     )
-                ]
+                ]  # type: ignore
                 if pb:
                     parts.append(pb)
 
