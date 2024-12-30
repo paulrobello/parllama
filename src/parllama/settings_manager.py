@@ -292,7 +292,9 @@ class Settings(BaseModel):
                 },
             )
             if isinstance(self.auto_name_session_llm_config["provider"], str):
-                self.auto_name_session_llm_config["provider"] = LlmProvider(self.auto_name_session_llm_config["provider"])
+                self.auto_name_session_llm_config["provider"] = LlmProvider(
+                    self.auto_name_session_llm_config["provider"]
+                )
 
             if isinstance(self.auto_name_session_llm_config["mode"], str):
                 self.auto_name_session_llm_config["mode"] = LlmMode(self.auto_name_session_llm_config["mode"])
