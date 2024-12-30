@@ -113,7 +113,6 @@ lint:                           # Run ruff lint over the library
 lint-unsafe:                           # Run ruff lint over the library
 	$(ruff) check src/$(lib) --fix --unsafe-fixes
 
-
 .PHONY: typecheck
 typecheck:			# Perform static type checks with pyright
 	$(pyright)
