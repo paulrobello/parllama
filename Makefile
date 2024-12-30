@@ -8,7 +8,7 @@ pyright := $(run) pyright
 twine  := $(run) twine
 build  := $(python) -m build
 
-export UV_LINK_MODE=copy
+#export UV_LINK_MODE=copy
 export PIPENV_VERBOSITY=-1
 ##############################################################################
 # Run the app.
