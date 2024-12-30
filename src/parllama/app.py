@@ -6,9 +6,9 @@ import asyncio
 from collections.abc import Iterator
 from queue import Empty, Queue
 
+import clipman as clipboard
 import humanize
 import ollama
-import pyperclip  # type: ignore
 from httpx import ConnectError
 from ollama import ProgressResponse
 from par_ai_core.llm_providers import LlmProvider
@@ -74,7 +74,6 @@ from parllama.models.jobs import CopyModelJob, CreateModelJob, PullModelJob, Pus
 from parllama.ollama_data_manager import ollama_dm
 from parllama.prompt_utils.import_fabric import import_fabric_manager
 from parllama.provider_manager import provider_manager
-from parllama.rag_manager import rag_manager
 from parllama.screens.main_screen import MainScreen
 from parllama.secrets_manager import secrets_manager
 from parllama.settings_manager import settings
@@ -130,7 +129,6 @@ class ParLlamaApp(App[None]):
         chat_manager.set_app(self)
         update_manager.set_app(self)
         import_fabric_manager.set_app(self)
-        rag_manager.set_app(self)
 
         self.job_timer = None
         self.ps_timer = None
@@ -146,7 +144,6 @@ class ParLlamaApp(App[None]):
                 settings.theme_name = "par_dark"
 
         theme_manager.change_theme(settings.theme_name)
-
 
     async def on_mount(self) -> None:
         """Display the screen."""
@@ -232,12 +229,12 @@ If you would like to auto check for updates, you can enable it in the Startup se
         if not f:
             return
         if isinstance(f, Input):
-            pyperclip.copy(f.value)
+            clipboard.copy(f.value)
             f.value = ""
         if isinstance(f, Select):
             self.app.post_message(SendToClipboard(str(f.value) if f.value and f.value != Select.BLANK else ""))
         if isinstance(f, TextArea):
-            pyperclip.copy(f.selected_text or f.text)
+            clipboard.copy(f.selected_text or f.text)
             f.text = ""
 
     @on(SendToClipboard)
@@ -246,7 +243,7 @@ If you would like to auto check for updates, you can enable it in the Startup se
         # works for remote ssh sessions
         self.copy_to_clipboard(event.message)
         # works for local sessions
-        pyperclip.copy(event.message)
+        clipboard.copy(event.message)
         if event.notify:
             self.notify("Copied to clipboard")
 
