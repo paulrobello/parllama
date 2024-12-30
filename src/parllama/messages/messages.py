@@ -269,8 +269,8 @@ class PromptSelected(PromptMessage):
     """Notify that a prompt has been selected."""
 
     temperature: float | None = None
-    llm_provider_name: LlmProvider | None = None
-    llm_model_name: str | None = None
+    llm_provider: LlmProvider | None = None
+    model_name: str | None = None
 
 
 @dataclass

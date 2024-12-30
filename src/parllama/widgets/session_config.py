@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from par_ai_core.llm_config import LlmConfig
+from par_ai_core.llm_providers import LlmProvider
 from textual import on
 from textual.app import ComposeResult
 from textual.containers import Horizontal, VerticalScroll
@@ -92,7 +93,7 @@ SessionConfig {
             session_id=None,
             session_name=session_name,
             llm_config=LlmConfig(
-                provider=self.provider_model_select.provider_name,
+                provider=LlmProvider(self.provider_model_select.provider_name),
                 model_name=self.provider_model_select.model_name,
                 temperature=self.get_temperature(),
             ),
@@ -144,7 +145,7 @@ SessionConfig {
             self.session = chat_manager.new_session(
                 session_name=session_name,
                 llm_config=LlmConfig(
-                    provider=self.provider_model_select.provider_name,
+                    provider=LlmProvider(self.provider_model_select.provider_name),
                     model_name=self.provider_model_select.model_name,
                     temperature=self.get_temperature(),
                 ),
@@ -279,10 +280,10 @@ SessionConfig {
         llm_config: LlmConfig = old_session.llm_config.clone()
         if event.temperature is not None:
             llm_config.temperature = event.temperature
-        if event.llm_provider_name:
-            llm_config.provider = event.llm_provider_name
-        if event.llm_model_name:
-            llm_config.model_name = event.llm_model_name
+        if event.llm_provider:
+            llm_config.provider = event.llm_provider
+        if event.model_name:
+            llm_config.model_name = event.model_name
         self.session = chat_manager.new_session(
             session_name=prompt.name or old_session.name,
             llm_config=llm_config,

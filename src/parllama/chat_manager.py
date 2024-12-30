@@ -93,7 +93,7 @@ class ChatManager(ParEventSystemBase):
         """Generate a unique LLM session name"""
         if not settings.auto_name_session_llm_config:
             return None
-        base_name = llm_session_name(text, LlmConfig(**settings.auto_name_session_llm_config))
+        base_name = llm_session_name(text, LlmConfig.from_json(settings.auto_name_session_llm_config))
         if not base_name:
             return None
         return self.mk_session_name(base_name)
@@ -193,12 +193,13 @@ class ChatManager(ParEventSystemBase):
                 continue
             try:
                 with open(os.path.join(settings.chat_dir, f), encoding="utf-8") as fh:
-                    # data: dict = json.load(fh)
-                    session = ChatSession.from_json(fh.read(), load_messages=False)
+                    data = fh.read()
+                    # self.log_it(data)
+                    session = ChatSession.from_json(data, load_messages=False)
                     session.name_generated = True
                     self._id_to_session[session.id] = session
                     self.mount(session)
-            except Exception as e:  # pylint: disable=broad-exception-caught
+            except Exception as e:
                 self.log_it(f"Error loading session {e}", notify=True, severity="error")
 
     def on_par_session_updated(self, event: ParSessionUpdated) -> None:

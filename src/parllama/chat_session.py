@@ -238,7 +238,7 @@ class ChatSession(ChatMessageContainer):
             self.post_message(ParChatUpdated(parent_id=self.id, message_id=msg.id))
             try:
                 for chunk in stream:
-                    self.log_it(chunk)
+                    # self.log_it(chunk)
                     elapsed_time = datetime.now(UTC) - start_time
                     if chunk.content:
                         if num_tokens == 0:
@@ -334,7 +334,7 @@ class ChatSession(ChatMessageContainer):
                     self.post_message(
                         ParSessionAutoName(
                             session_id=self.id,
-                            llm_config=LlmConfig(**settings.auto_name_session_llm_config),
+                            llm_config=LlmConfig.from_json(settings.auto_name_session_llm_config),
                             context=user_msg.content,
                         )
                     )

@@ -164,10 +164,10 @@ class PromptView(Container):
         except ValueError:
             event.temperature = None
         if self.provider_model_select.is_valid():
-            event.llm_provider_name = self.provider_model_select.provider_select.value.value  # type: ignore
-            event.llm_model_name = self.provider_model_select.model_select.value  # type: ignore
+            event.llm_provider = self.provider_model_select.provider_select.value
+            event.model_name = self.provider_model_select.model_select.value  # type: ignore
         else:
-            event.llm_model_name = None
+            event.model_name = None
 
     @on(Button.Pressed, "#import")
     def import_prompts(self, event: Message) -> None:

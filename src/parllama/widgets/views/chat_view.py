@@ -457,7 +457,7 @@ Chat Commands:
             await self.active_tab.load_prompt(
                 PromptSelected(
                     prompt_id=prompt.id,
-                    llm_model_name=None,
+                    model_name=None,
                     temperature=None,
                 )
             )
