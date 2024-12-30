@@ -5,9 +5,12 @@ from __future__ import annotations
 import os
 import warnings
 
+import clipman
 from langchain._api import LangChainDeprecationWarning
 
 warnings.simplefilter("ignore", category=LangChainDeprecationWarning)
+
+clipman.init()
 
 __author__ = "Paul Robello"
 __copyright__ = "Copyright 2024, Paul Robello"
