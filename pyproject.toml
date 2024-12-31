@@ -93,14 +93,14 @@ path = "src/parllama/__init__.py"
 [tool.hatch.build.targets.wheel]
 packages = ["src/parllama"]
 include = [
-    "*.py",
     "py.typed",
-    "*/*.gif",
-    "*/*.png",
-    "*/*.jpg",
-    "*/*.html",
-    "*/*.md",
-    "*/*.tcss",
+    "**/*.py",
+    "**/*.html",
+    "**/*.gif",
+    "**/*.jpg",
+    "**/*.png",
+    "**/*.md",
+    "**/*.tcss",
 ]
 
 [tool.hatch.build.targets.sdist]
