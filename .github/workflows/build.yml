@@ -39,7 +39,6 @@ jobs:
           path: dist/
 
   tag-version:
-    name: Tag Version
     runs-on: ubuntu-latest
     permissions:
       contents: write  # Grant write access to the repository
