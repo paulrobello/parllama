@@ -423,7 +423,7 @@ if anything remains to be fixed before the commit is allowed.
 
 ## What's new
 
-### v0.3.12
+### v0.3.13
 
 * Handle clipboard errors
 
