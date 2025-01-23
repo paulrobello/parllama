@@ -219,10 +219,11 @@ class Settings(BaseModel):
             data = json.loads(settings_file.read_bytes())
             url = data.get("ollama_host", self.ollama_host)
 
-            if url.startswith("http://") or url.startswith("https://"):
-                self.ollama_host = url
-            else:
-                print("ollama_host must start with http:// or https://")
+            if url:
+                if url.startswith("http://") or url.startswith("https://"):
+                    self.ollama_host = url
+                else:
+                    print("ollama_host must start with http:// or https://")
 
             saved_provider_api_keys = data.get("provider_api_keys") or {}
             provider_api_keys: dict[LlmProvider, str | None] = {}
