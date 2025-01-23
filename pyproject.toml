@@ -46,7 +46,7 @@ dependencies = [
     "urllib3>=2.3.0",
     "rich-pixels>=3.0.1",
     "orjson>=3.10.7",
-    "par-ai-core",
+    "par-ai-core>=0.1.11",
     "clipman>=3.3.1",
 ]
 
