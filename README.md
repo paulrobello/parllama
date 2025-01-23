@@ -423,6 +423,10 @@ if anything remains to be fixed before the commit is allowed.
 
 ## What's new
 
+### v0.3.12
+* Fixed bug where changing providers that have custom urls would break other providers
+* Fixed bug where changing Ollama base url would cause connection timed out
+
 ### v0.3.11
 
 * Added ability to set max context size for Ollama and other providers that support it
