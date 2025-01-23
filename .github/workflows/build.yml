@@ -61,8 +61,7 @@ jobs:
       - name: Get version from __init__.py
         id: get_version
         run: |
-          echo "VERSION=$(uv run python -c "from src.parllama import __version__; print(__version__)")"
-          echo "VERSION=$(uv run python -c "from src.parllama.__init__.py import __version__; print(__version__)")" >> $GITHUB_ENV
+          echo "VERSION=$(uv run python -c "from src.parllama import __version__; print(__version__)")" >> $GITHUB_ENV
           echo "Version extracted: ${{ env.VERSION }}"
       - name: App VERSION
         run: echo "VERSION is ${{ env.VERSION }}"

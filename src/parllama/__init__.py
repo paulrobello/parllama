@@ -12,8 +12,8 @@ warnings.simplefilter("ignore", category=LangChainDeprecationWarning)
 
 try:
     clipman.init()
-except Exception as e:
-    print(f"Error initializing clipboard: {e}")
+except Exception as _:
+    pass
 
 __author__ = "Paul Robello"
 __copyright__ = "Copyright 2024, Paul Robello"
