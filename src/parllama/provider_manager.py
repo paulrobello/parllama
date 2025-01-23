@@ -94,8 +94,8 @@ class ProviderManager(ParEventSystemBase):
                 elif p == LlmProvider.ANTHROPIC:
                     new_list = [m for m in pricing_lookup.keys() if m.startswith("claude-3-5-")]
                 elif p == LlmProvider.GOOGLE:
-                    genai.configure(api_key=os.environ.get("GOOGLE_API_KEY"))
-                    data = sorted(list(genai.list_models()), key=lambda m: m.name)
+                    genai.configure(api_key=os.environ.get("GOOGLE_API_KEY"))  # type: ignore
+                    data = sorted(list(genai.list_models()), key=lambda m: m.name)  # type: ignore
                     for m in data:
                         new_list.append(m.name.split("/")[1])
                 else:
