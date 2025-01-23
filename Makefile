@@ -8,7 +8,7 @@ pyright := $(run) pyright
 twine  := $(run) twine
 build  := $(python) -m build
 
-export UV_LINK_MODE=copy
+#export UV_LINK_MODE=copy
 export PIPENV_VERBOSITY=-1
 ##############################################################################
 # Run the app.
@@ -113,7 +113,6 @@ lint:                           # Run ruff lint over the library
 lint-unsafe:                           # Run ruff lint over the library
 	$(ruff) check src/$(lib) --fix --unsafe-fixes
 
-
 .PHONY: typecheck
 typecheck:			# Perform static type checks with pyright
 	$(pyright)
@@ -123,7 +122,7 @@ typecheck-stats:			# Perform static type checks with pyright and print stats
 	$(pyright) --stats
 
 .PHONY: checkall
-checkall: typecheck lint 	        # Check all the things
+checkall: format lint typecheck 	        # Check all the things
 
 .PHONY: pre-commit	        # run pre-commit checks on all files
 pre-commit:

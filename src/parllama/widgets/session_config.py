@@ -93,8 +93,9 @@ SessionConfig {
             session_id=None,
             session_name=session_name,
             llm_config=LlmConfig(
-                provider=LlmProvider(self.provider_model_select.provider_name),
+                provider=self.provider_model_select.provider_name,
                 model_name=self.provider_model_select.model_name,
+                base_url=settings.provider_base_urls[self.provider_model_select.provider_name],
                 temperature=self.get_temperature(),
             ),
             widget=self,
@@ -220,6 +221,7 @@ SessionConfig {
     def on_provider_model_selected(self, event: ProviderModelSelected) -> None:
         """Handle provider model selected event."""
         event.stop()
+        self.session.llm_config.base_url = settings.provider_base_urls[event.provider]
         self.session.llm_provider_name = event.provider
         self.session.llm_model_name = event.model_name
         self.post_message(UpdateChatStatus())

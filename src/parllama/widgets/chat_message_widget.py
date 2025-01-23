@@ -222,7 +222,7 @@ class ChatMessageWidget(Vertical, can_focus=True):
         if self.fence_num >= len(fences):
             self.fence_num = 0
         fence: MarkdownFence = fences[self.fence_num]
-        self.notify(f"Fence {self.fence_num+1} of {len(fences)} type: {fence.lexer}")
+        self.notify(f"Fence {self.fence_num + 1} of {len(fences)} type: {fence.lexer}")
         self.app.post_message(SendToClipboard(fence.code))
 
     @on(Mount)

@@ -236,7 +236,7 @@ class OllamaDataManager(ParEventSystemBase):
                     "name": card.find("h2").text.strip(),
                     "description": card.find("p").text.strip(),
                     "model_url": card.find("a")["href"],
-                    "url": f'{url}{card.find("a")["href"]}',
+                    "url": f"{url}{card.find('a')['href']}",
                     "num_pulls": "",
                     "num_tags": "",
                     "updated": "",

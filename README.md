@@ -50,9 +50,9 @@
 ![PyPI - License](https://img.shields.io/pypi/l/parllama)
 
 ## About
-PAR LLAMA is a TUI (Text UI) application designed for easy management and use of Ollama based LLMs.
-The application was built with [Textual](https://textual.textualize.io/) and [Rich](https://github.com/Textualize/rich?tab=readme-ov-file)
-and runs on all major OS's including but not limited to Windows, Windows WSL, Mac, and Linux.
+PAR LLAMA is a TUI (Text UI) application designed for easy management and use of Ollama based LLMs.  (It also works with most major cloud provided LLMs)
+The application was built with [Textual](https://textual.textualize.io/) and [Rich](https://github.com/Textualize/rich?tab=readme-ov-file) and my [PAR AI Core](https://github.com/paulrobello/par_ai_core). 
+It runs on all major OS's including but not limited to Windows, Windows WSL, Mac, and Linux.
 
 [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://buymeacoffee.com/probello3)
 
@@ -422,6 +422,10 @@ if anything remains to be fixed before the commit is allowed.
 
 
 ## What's new
+
+### v0.3.12
+* Fixed bug where changing providers that have custom urls would break other providers
+* Fixed bug where changing Ollama base url would cause connection timed out
 
 ### v0.3.11
 
