@@ -225,17 +225,20 @@ If you would like to auto check for updates, you can enable it in the Startup se
 
     def action_cut_to_clipboard(self) -> None:
         """Cut focused widget value to clipboard"""
-        f: Widget | None = self.screen.focused
-        if not f:
-            return
-        if isinstance(f, Input):
-            clipboard.copy(f.value)
-            f.value = ""
-        if isinstance(f, Select):
-            self.app.post_message(SendToClipboard(str(f.value) if f.value and f.value != Select.BLANK else ""))
-        if isinstance(f, TextArea):
-            clipboard.copy(f.selected_text or f.text)
-            f.text = ""
+        try:
+            f: Widget | None = self.screen.focused
+            if not f:
+                return
+            if isinstance(f, Input):
+                clipboard.copy(f.value)
+                f.value = ""
+            if isinstance(f, Select):
+                self.app.post_message(SendToClipboard(str(f.value) if f.value and f.value != Select.BLANK else ""))
+            if isinstance(f, TextArea):
+                clipboard.copy(f.selected_text or f.text)
+                f.text = ""
+        except Exception as _:
+            self.notify("Error with clipboard", severity="error")
 
     @on(SendToClipboard)
     def send_to_clipboard(self, event: SendToClipboard) -> None:
@@ -243,9 +246,12 @@ If you would like to auto check for updates, you can enable it in the Startup se
         # works for remote ssh sessions
         self.copy_to_clipboard(event.message)
         # works for local sessions
-        clipboard.copy(event.message)
-        if event.notify:
-            self.notify("Copied to clipboard")
+        try:
+            clipboard.copy(event.message)
+            if event.notify:
+                self.notify("Copied to clipboard")
+        except Exception as _:
+            self.notify("Error with clipboard", severity="error")
 
     @on(LocalModelPushRequested)
     def on_model_push_requested(self, event: LocalModelPushRequested) -> None:

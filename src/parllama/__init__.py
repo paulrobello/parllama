@@ -10,14 +10,17 @@ from langchain._api import LangChainDeprecationWarning
 
 warnings.simplefilter("ignore", category=LangChainDeprecationWarning)
 
-clipman.init()
+try:
+    clipman.init()
+except Exception as e:
+    print(f"Error initializing clipboard: {e}")
 
 __author__ = "Paul Robello"
 __copyright__ = "Copyright 2024, Paul Robello"
 __credits__ = ["Paul Robello"]
 __maintainer__ = "Paul Robello"
 __email__ = "probello@gmail.com"
-__version__ = "0.3.12"
+__version__ = "0.3.13"
 __licence__ = "MIT"
 __application_title__ = "PAR LLAMA"
 __application_binary__ = "parllama"
