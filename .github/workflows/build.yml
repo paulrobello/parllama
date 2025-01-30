@@ -68,22 +68,25 @@ jobs:
         run: |
           uv sync
 
-      - name: Configure Git
-        run: |
-          git config --global user.name "${{ github.actor }}"
-          git config --global user.email "${{ github.event.pusher.email }}"
-
       - name: Get version from __init__.py
         id: get_version
         run: |
           version=$(uv run python -c "from src.parllama import __version__; print(__version__)")
           echo "Raw version output: $version"
-          echo "VERSION=$version" >> $GITHUB_ENV
+
+      - name: Check version
+        id: check_version
+        run: |
           echo "Version in env: ${{ env.VERSION }}"
           if [ -z "${{ env.VERSION }}" ]; then
             echo "Error: VERSION is empty"
             exit 1
-          fi          
+          fi     
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "${{ github.actor }}"
+          git config --global user.email "${{ github.event.pusher.email }}"
 
       - name: App VERSION
         run: echo "VERSION is ${{ env.VERSION }}"
