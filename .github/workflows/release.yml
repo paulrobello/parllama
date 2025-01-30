@@ -32,6 +32,7 @@ jobs:
         run: |
           version=$(uv run python -c "from src.parllama import __version__; print(__version__)")
           echo "Raw version output: $version"
+          echo "VERSION=$version" >> $GITHUB_ENV
 
       - name: Check version
         id: check_version
