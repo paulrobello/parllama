@@ -74,7 +74,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           gh release upload \
-          '${{ github.ref_name }}' dist/** \
+          'release-v${{ env.VERSION }}' dist/** \
           --repo '${{ github.repository }}'
 
       - name: Discord notification
