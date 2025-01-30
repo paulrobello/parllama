@@ -21,6 +21,7 @@ classifiers = [
     "Operating System :: MacOS",
     "Operating System :: Microsoft :: Windows :: Windows 10",
     "Operating System :: Microsoft :: Windows :: Windows 11",
+    "Operating System :: POSIX :: Linux",
     "Topic :: Terminals",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Typing :: Typed"
