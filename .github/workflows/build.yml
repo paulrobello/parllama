@@ -37,7 +37,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: dist
-          key: ${{ runner.os }}-3.11-${{ runner.architecture }}-${{ hashFiles('**/pyproject.toml') }}-${{ github.sha }}
+          key: ${{ runner.os }}-3.11-x64-${{ hashFiles('**/pyproject.toml') }}-${{ github.sha }}
 
       - name: Store the distribution packages
         uses: actions/upload-artifact@v4
