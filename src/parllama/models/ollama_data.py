@@ -44,7 +44,7 @@ class ModelDetails(BaseModel):
     parent_model: str
     format: str
     family: str
-    families: list[str]
+    families: list[str] | None
     parameter_size: str
     quantization_level: str
 

@@ -11,10 +11,16 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Environment :: Console",
     "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "Intended Audience :: Other Audience",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows :: Windows 10",
+    "Operating System :: Microsoft :: Windows :: Windows 11",
     "Topic :: Terminals",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Typing :: Typed"
@@ -46,7 +52,7 @@ dependencies = [
     "urllib3>=2.3.0",
     "rich-pixels>=3.0.1",
     "orjson>=3.10.7",
-    "par-ai-core>=0.1.11",
+    "par-ai-core>=0.1.12",
     "clipman>=3.3.1",
 ]
 

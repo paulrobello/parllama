@@ -423,6 +423,10 @@ if anything remains to be fixed before the commit is allowed.
 
 ## What's new
 
+### v0.3.14
+
+* Fix crash caused some models having some missing fields in model file
+
 ### v0.3.13
 
 * Handle clipboard errors
