@@ -1,12 +1,17 @@
 [project]
 name = "parllama"
-dynamic = ["version"]
+dynamic = [
+    "version",
+]
 description = "Terminal UI for Ollama and other LLM providers"
 readme = "README.md"
 url = "https://github.com/paulrobello/parllama"
-license = { file = "LICENSE" }
-authors = [{ name = "Paul Robello", email = "probello@gmail.com" }]
-maintainers = [{ name = "Paul Robello", email = "probello@gmail.com" }]
+authors = [
+    { name = "Paul Robello", email = "probello@gmail.com" },
+]
+maintainers = [
+    { name = "Paul Robello", email = "probello@gmail.com" },
+]
 classifiers = [
     "License :: OSI Approved :: MIT License",
     "Environment :: Console",
@@ -24,27 +29,36 @@ classifiers = [
     "Operating System :: POSIX :: Linux",
     "Topic :: Terminals",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
-    "Typing :: Typed"
+    "Typing :: Typed",
 ]
-keywords = ["ollama", "llamacpp", "openai", "anthropic", "groq", "grok", "ai", "terminal", "tui"]
-
+keywords = [
+    "ollama",
+    "llamacpp",
+    "openai",
+    "anthropic",
+    "groq",
+    "grok",
+    "ai",
+    "terminal",
+    "tui",
+]
 requires-python = ">=3.11"
 dependencies = [
     "argparse>=1.4.0",
     "asyncio>=3.4.3",
-    "attrs>=24.3.0",
+    "attrs>=25.1.0",
     "beautifulsoup4>=4.12.3",
     "build>=1.2.2.post1",
     "cryptography>=44.0.0",
     "docker>=7.1.0",
-    "httpx>=0.27.2",
+    "httpx>=0.28.1",
     "humanize>=4.11.0",
-    "langchain>=0.3.13",
-    "ollama>=0.4.4",
-    "pydantic>=2.10.4",
+    "langchain>=0.3.17",
+    "ollama>=0.4.7",
+    "pydantic>=2.10.6",
     "pydantic-core>=2.27.2",
     "python-dotenv>=1.0.1",
-    "pytz>=2024.2",
+    "pytz>=2025.1",
     "requests>=2.32.3",
     "rich>=13.9.4",
     "semver>=3.0.2",
@@ -52,14 +66,16 @@ dependencies = [
     "textual-fspicker>=0.0.11",
     "urllib3>=2.3.0",
     "rich-pixels>=3.0.1",
-    "orjson>=3.10.7",
-    "par-ai-core>=0.1.12",
+    "orjson>=3.10.15",
+    "par-ai-core>=0.1.13",
     "clipman>=3.3.1",
 ]
-
 packages = [
-    "src/parllama"
+    "src/parllama",
 ]
+
+[project.license]
+file = "LICENSE"
 
 [project.urls]
 Homepage = "https://github.com/paulrobello/parllama"
@@ -73,7 +89,10 @@ Wiki = "https://github.com/paulrobello/parllama/wiki"
 parllama = "parllama.__main__:run"
 
 [build-system]
-requires = ["hatchling", "wheel"]
+requires = [
+    "hatchling",
+    "wheel",
+]
 build-backend = "hatchling.build"
 
 [dependency-groups]
@@ -98,7 +117,9 @@ dev = [
 path = "src/parllama/__init__.py"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/parllama"]
+packages = [
+    "src/parllama",
+]
 include = [
     "py.typed",
     "**/*.py",
@@ -115,11 +136,11 @@ include = [
     "src/parllama",
     "LICENSE",
     "README.md",
-    "pyproject.toml"
+    "pyproject.toml",
 ]
 exclude = [
     "*.pyc",
     "__pycache__",
     "*.so",
-    "*.dylib"
+    "*.dylib",
 ]
