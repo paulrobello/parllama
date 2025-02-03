@@ -25,6 +25,7 @@ from parllama.chat_message import (
 from parllama.messages.messages import SendToClipboard
 from parllama.models.ollama_data import MessageRoles
 from parllama.settings_manager import fetch_and_cache_image
+from parllama.widgets.par_markdown import ParMarkdown, ParMarkdownFence
 
 
 class ChatMessageWidget(Vertical, can_focus=True):
@@ -60,11 +61,11 @@ class ChatMessageWidget(Vertical, can_focus=True):
           height: auto;
           min-height: 3;
         }
-        Markdown {
+        ParMarkdown {
             margin: 0;
             padding: 1 1 0 1;
 
-            MarkdownFence {
+            ParMarkdownFence {
                 max-height: initial;
             }
         }
@@ -99,7 +100,7 @@ class ChatMessageWidget(Vertical, can_focus=True):
         super().__init__(id=f"cm_{msg.id}", **kwargs)
         self.session = session
         self.msg = msg
-        self.markdown = Markdown(self.markdown_raw if is_final else "")
+        self.markdown = ParMarkdown(self.markdown_raw if is_final else "")
         self.placeholder = Static(self.markdown_raw if not is_final else "")
 
         self.markdown.display = is_final
@@ -213,7 +214,7 @@ class ChatMessageWidget(Vertical, can_focus=True):
 
     def action_copy_fence_clipboard(self) -> None:
         """Copy focused widget value to clipboard"""
-        fences = self.markdown.query(MarkdownFence)
+        fences = self.markdown.query(ParMarkdownFence)
         if not fences:
             self.fence_num = -1
             self.notify("No markdown fences found", severity="warning")
@@ -221,7 +222,7 @@ class ChatMessageWidget(Vertical, can_focus=True):
         self.fence_num += 1
         if self.fence_num >= len(fences):
             self.fence_num = 0
-        fence: MarkdownFence = fences[self.fence_num]
+        fence: ParMarkdownFence = fences[self.fence_num]
         self.notify(f"Fence {self.fence_num + 1} of {len(fences)} type: {fence.lexer}")
         self.app.post_message(SendToClipboard(fence.code))
 
