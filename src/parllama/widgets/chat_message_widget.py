@@ -14,7 +14,6 @@ from textual.containers import Vertical
 from textual.events import Hide, Mount, Show, Unmount
 from textual.message import Message
 from textual.widgets import Markdown, Static, TextArea
-from textual.widgets._markdown import MarkdownFence
 
 from parllama.chat_manager import ChatSession
 from parllama.chat_message import (

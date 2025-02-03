@@ -43,7 +43,7 @@ class FenceCopyButton(Static):
     }
     """
 
-    def __init__(        self, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__("📋", *args, **kwargs)
         self.tooltip = "Copy code block"
 
@@ -109,11 +109,7 @@ class ParMarkdownFence(MarkdownBlock):
         super().__init__(markdown)
         self.code = code
         self.lexer = lexer
-        self.theme = (
-            self._markdown.code_dark_theme
-            if self.app.current_theme.dark
-            else self._markdown.code_light_theme
-        )
+        self.theme = self._markdown.code_dark_theme if self.app.current_theme.dark else self._markdown.code_light_theme
         self.btn = FenceCopyButton(id="copy")
 
     def _block(self) -> Syntax:
@@ -132,11 +128,7 @@ class ParMarkdownFence(MarkdownBlock):
 
     def _retheme(self) -> None:
         """Rerender when the theme changes."""
-        self.theme = (
-            self._markdown.code_dark_theme
-            if self.app.current_theme.dark
-            else self._markdown.code_light_theme
-        )
+        self.theme = self._markdown.code_dark_theme if self.app.current_theme.dark else self._markdown.code_light_theme
         self.get_child_by_type(Static).update(self._block())
 
     def compose(self) -> ComposeResult:
@@ -156,6 +148,7 @@ class ParMarkdownFence(MarkdownBlock):
             self.notify("Copied to clipboard")
         except Exception as _:
             self.notify("Clipboard failed!", severity="error")
+
 
 class ParMarkdown(Markdown):
     DEFAULT_CSS = """
@@ -185,6 +178,7 @@ class ParMarkdown(Markdown):
         text-style: bold dim;
     }
     """
+
     def update(self, markdown: str) -> AwaitComplete:
         """Update the document with new Markdown.
 
@@ -194,11 +188,7 @@ class ParMarkdown(Markdown):
         Returns:
             An optionally awaitable object. Await this to ensure that all children have been mounted.
         """
-        parser = (
-            MarkdownIt("gfm-like")
-            if self._parser_factory is None
-            else self._parser_factory()
-        )
+        parser = MarkdownIt("gfm-like") if self._parser_factory is None else self._parser_factory()
 
         table_of_contents = []
 
@@ -235,11 +225,7 @@ class ParMarkdown(Markdown):
                     if token.info:
                         stack_append(MarkdownOrderedListItem(self, token.info))
                     else:
-                        item_count = sum(
-                            1
-                            for block in stack
-                            if isinstance(block, MarkdownUnorderedListItem)
-                        )
+                        item_count = sum(1 for block in stack if isinstance(block, MarkdownUnorderedListItem))
                         stack_append(
                             MarkdownUnorderedListItem(
                                 self,
@@ -290,9 +276,7 @@ class ParMarkdown(Markdown):
             """Update in batches."""
             BATCH_SIZE = 200
             batch: list[MarkdownBlock] = []
-            tokens = await asyncio.get_running_loop().run_in_executor(
-                None, parser.parse, markdown
-            )
+            tokens = await asyncio.get_running_loop().run_in_executor(None, parser.parse, markdown)
 
             # Lock so that you can't update with more than one document simultaneously
             async with self.lock:
@@ -326,10 +310,6 @@ class ParMarkdown(Markdown):
 
             self._table_of_contents = table_of_contents
 
-            self.post_message(
-                Markdown.TableOfContentsUpdated(
-                    self, self._table_of_contents
-                ).set_sender(self)
-            )
+            self.post_message(Markdown.TableOfContentsUpdated(self, self._table_of_contents).set_sender(self))
 
         return AwaitComplete(await_update())
