@@ -28,7 +28,11 @@
     * [Where we are](#where-we-are)Ï
     * [Where we're going](#where-were-going)
 * [What's new](#whats-new)
-    * [v0.3.11](#v0311)* 
+    * [v0.3.15](#v0315)
+    * [v0.3.14](#v0314) 
+    * [v0.3.13](#v0313)
+    * [v0.3.12](#v0312) 
+    * [v0.3.11](#v0311) 
     * [v0.3.10](#v0310)
     * [v0.3.9](#v039)
     * [v0.3.8](#v038)
