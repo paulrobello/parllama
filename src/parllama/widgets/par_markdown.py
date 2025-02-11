@@ -93,20 +93,24 @@ class ParMarkdownFence(MarkdownBlock):
     ParMarkdownFence {
         margin: 1 0;
         overflow: auto;
-        width: 100%;
+        width: 1fr;
         height: auto;
-        max-height: 20;
         color: rgb(210,210,210);
         layer: below;
     }
-
     ParMarkdownFence > * {
-        width: auto;
+        layer: below;
+    }
+
+    ParMarkdownFence.thinking {
+        border: solid green;
+        max-height: 20;
     }
     """
 
     def __init__(self, markdown: Markdown, code: str, lexer: str) -> None:
-        super().__init__(markdown)
+        super().__init__(markdown, classes="thinking" if lexer == "thinking" else "")
+        self.border_title = lexer.capitalize()
         self.code = code
         self.lexer = lexer
         self.theme = self._markdown.code_dark_theme if self.app.current_theme.dark else self._markdown.code_light_theme
@@ -115,8 +119,8 @@ class ParMarkdownFence(MarkdownBlock):
     def _block(self) -> Syntax:
         return Syntax(
             self.code,
-            lexer=self.lexer,
-            word_wrap=False,
+            lexer=self.lexer if self.lexer != "thinking" else "text",
+            word_wrap=self.lexer == "thinking",
             indent_guides=True,
             padding=(1, 2),
             theme=self.theme,
@@ -132,11 +136,7 @@ class ParMarkdownFence(MarkdownBlock):
         self.get_child_by_type(Static).update(self._block())
 
     def compose(self) -> ComposeResult:
-        yield Static(
-            self._block(),
-            expand=True,
-            shrink=False,
-        )
+        yield Static(self._block(), expand=True, shrink=False, classes=self.lexer)
         yield self.btn
 
     @on(FenceCopyButton.Pressed, "#copy")
@@ -152,14 +152,17 @@ class ParMarkdownFence(MarkdownBlock):
 
 class ParMarkdown(Markdown):
     DEFAULT_CSS = """
-    Markdown {
+    ParMarkdown {
         height: auto;
         padding: 0 2 1 2;
         layout: vertical;
         color: $foreground;
         background: $surface;
         overflow-y: auto;
-        layers: below  above;
+        layers: below above;
+        & > * {
+            layer: below;
+        }
 
         &:focus {
             background-tint: $foreground 5%;

@@ -10,6 +10,7 @@ from par_ai_core.llm_providers import (
     LlmProvider,
     get_provider_name_fuzzy,
     llm_provider_names,
+    provider_name_to_enum,
 )
 from textual import on
 from textual.app import ComposeResult
@@ -378,7 +379,7 @@ Chat Commands:
                     severity="error",
                 )
                 return
-            self.active_tab.session_config.provider_model_select.provider_select.value = LlmProvider(v)
+            self.active_tab.session_config.provider_model_select.provider_select.value = provider_name_to_enum(v)
             self.set_timer(0.1, self.user_input.focus)
         elif cmd == "session.model":
             self.active_tab.session_config.display = True

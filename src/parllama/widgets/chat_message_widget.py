@@ -63,10 +63,6 @@ class ChatMessageWidget(Vertical, can_focus=True):
         ParMarkdown {
             margin: 0;
             padding: 1 1 0 1;
-
-            ParMarkdownFence {
-                max-height: initial;
-            }
         }
         #image{
             width: 19;
@@ -156,7 +152,7 @@ class ChatMessageWidget(Vertical, can_focus=True):
     @property
     def markdown_raw(self) -> str:
         """The raw markdown."""
-        return self.raw_text
+        return self.raw_text.replace("<think>", "```thinking").replace("</think>", "```")
 
     async def update(self) -> None:
         """Update the document with new Markdown."""

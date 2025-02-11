@@ -7,8 +7,8 @@
 * [Prerequisites for running](#prerequisites-for-running)
 * [Prerequisites for dev](#prerequisites-for-dev)
 * [Prerequisites for huggingface model quantization](#prerequisites-for-huggingface-model-quantization)
-* [Installing using pipx](#installing-from-mypi-using-pipx)
-* [Installing from mypi using pip](#installing-from-mypi-using-pip)
+* [Installing using pipx](#pipx)
+* [Installing using uv](#using-uv)
 * [Installing for dev mode](#installing-for-dev-mode)
 * [Command line arguments](#command-line-arguments)
 * [Environment Variables](#environment-variables)
@@ -30,6 +30,7 @@
     * [Where we are](#where-we-are)Ï
     * [Where we're going](#where-were-going)
 * [What's new](#whats-new)
+    * [v0.3.17](#v0317) 
     * [v0.3.16](#v0316)
     * [v0.3.15](#v0315)
     * [v0.3.14](#v0314) 
@@ -117,7 +118,7 @@ If you don't have uv installed you can run the following:
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-### MyPi install
+### PyPi install
 ```shell
 uv tool install parllama
 ```
@@ -383,7 +384,7 @@ Theme can be changed via command line with the ```--theme-name``` option.
 ## Contributing
 Start by following the instructions in the section **Installing for dev mode**.  
 
-Please ensure that all pull requests are formatted with black, pass mypy and pylint with 10/10 checks.  
+Please ensure that all pull requests are formatted with ruff, pass ruff lint and pyright.  
 You can run the make target **pre-commit** to ensure the pipeline will pass with your changes.  
 There is also a pre-commit config to that will assist with formatting and checks.  
 The easiest way to setup your environment to ensure smooth pull requests is:  
@@ -445,13 +446,20 @@ if anything remains to be fixed before the commit is allowed.
 
 ## What's new
 
+### v0.3.17
+
+* Fixed crash on startup if Ollama is not available
+* Fixed markdown display issues around fences
+* Added "thinking" fence for deepseek thought output
+* Much better support for displaying max input context size
+
 ### v0.3.16
 
 * Added providers xAI, OpenRouter, Deepseek and LiteLLM
 
 ### v0.3.15
 
-* Added copy button to the fence blocks in chat markdown for easy code copy.
+* Added copy button to the fence blocks in chat markdown for easy code copy
 
 ### v0.3.14
 

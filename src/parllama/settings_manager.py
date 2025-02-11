@@ -88,7 +88,7 @@ class Settings(BaseModel):
         LlmProvider.OPENROUTER: None,
         LlmProvider.GROQ: None,
         LlmProvider.ANTHROPIC: None,
-        LlmProvider.GOOGLE: None,
+        LlmProvider.GEMINI: None,
         LlmProvider.BEDROCK: None,
         LlmProvider.GITHUB: None,
         LlmProvider.DEEPSEEK: None,
@@ -266,7 +266,7 @@ class Settings(BaseModel):
 
             self.use_last_tab_on_startup = data.get("use_last_tab_on_startup", self.use_last_tab_on_startup)
             last_llm_config = data.get("last_llm_config", {})
-            self.last_llm_config.provider = LlmProvider(
+            self.last_llm_config.provider = provider_name_to_enum(
                 data.get(
                     "last_chat_provider",
                     last_llm_config.get("provider", self.last_llm_config.provider.value),
@@ -296,7 +296,7 @@ class Settings(BaseModel):
                 },
             )
             if self.auto_name_session_llm_config and isinstance(self.auto_name_session_llm_config["provider"], str):
-                self.auto_name_session_llm_config["provider"] = LlmProvider(
+                self.auto_name_session_llm_config["provider"] = provider_name_to_enum(
                     self.auto_name_session_llm_config["provider"]
                 )
 

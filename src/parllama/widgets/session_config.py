@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from par_ai_core.llm_config import LlmConfig
-from par_ai_core.llm_providers import LlmProvider
+from par_ai_core.llm_providers import provider_name_to_enum
 from textual import on
 from textual.app import ComposeResult
 from textual.containers import Horizontal, VerticalScroll
@@ -146,7 +146,7 @@ SessionConfig {
             self.session = chat_manager.new_session(
                 session_name=session_name,
                 llm_config=LlmConfig(
-                    provider=LlmProvider(self.provider_model_select.provider_name),
+                    provider=provider_name_to_enum(self.provider_model_select.provider_name),
                     model_name=self.provider_model_select.model_name,
                     temperature=self.get_temperature(),
                 ),

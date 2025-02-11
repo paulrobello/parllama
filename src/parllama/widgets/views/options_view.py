@@ -300,10 +300,10 @@ class OptionsView(Horizontal):
                             id="anthropic_api_key",
                         )
                     with Vertical(classes="section") as aips5:
-                        aips5.border_title = "Google"
+                        aips5.border_title = "Gemini"
                         yield Label("API Key")
                         yield InputBlurSubmit(
-                            value=settings.provider_api_keys[LlmProvider.GOOGLE] or "",
+                            value=settings.provider_api_keys[LlmProvider.GEMINI] or "",
                             valid_empty=True,
                             password=True,
                             id="google_api_key",
@@ -356,7 +356,6 @@ class OptionsView(Horizontal):
                             password=True,
                             id="deepseek_api_key",
                         )
-
                     with Vertical(classes="section") as aips9:
                         aips9.border_title = "LiteLLM"
                         yield Label("Base URL")
@@ -544,7 +543,7 @@ class OptionsView(Horizontal):
             settings.provider_api_keys[LlmProvider.LITELLM] = ctrl.value or None
             self._provider_changed = True
         elif ctrl.id == "google_api_key":
-            settings.provider_api_keys[LlmProvider.GOOGLE] = ctrl.value or None
+            settings.provider_api_keys[LlmProvider.GEMINI] = ctrl.value or None
             self._provider_changed = True
         elif ctrl.id == "llamacpp_base_url":
             settings.provider_base_urls[LlmProvider.LLAMACPP] = ctrl.value or None

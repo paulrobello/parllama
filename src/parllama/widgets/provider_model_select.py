@@ -7,6 +7,7 @@ from par_ai_core.llm_providers import (
     get_provider_select_options,
     is_provider_api_key_set,
     provider_config,
+    provider_name_to_enum,
 )
 from textual import on
 from textual.app import ComposeResult
@@ -63,7 +64,7 @@ class ProviderModelSelect(Container):
 
         self.update_settings = update_settings
         if isinstance(provider, str):
-            provider = LlmProvider(provider)
+            provider = provider_name_to_enum(provider)
         opts = get_provider_select_options()
         if provider not in opts:
             provider = None

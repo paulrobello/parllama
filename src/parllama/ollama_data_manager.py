@@ -128,11 +128,14 @@ class OllamaDataManager(ParEventSystemBase):
         model.modelinfo = msp.modelinfo
         model.license = msp.license
 
-    @staticmethod
-    def _get_all_model_data() -> list[LocalModelListItem]:
+    def _get_all_model_data(self) -> list[LocalModelListItem]:
         """Get all model data."""
         all_models: list[LocalModelListItem] = []
-        res = ollama.Client(host=settings.ollama_host).list()
+        try:
+            res = ollama.Client(host=settings.ollama_host).list()
+        except Exception as e:
+            self.log_it(f"Error loading Ollama Models: {e}")
+            return []
 
         for model in res.models:
             if not model.model:

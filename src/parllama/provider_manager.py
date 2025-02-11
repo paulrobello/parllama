@@ -13,9 +13,15 @@ import requests
 from dotenv import load_dotenv
 from groq import Groq
 from openai import OpenAI
-from par_ai_core.llm_providers import LlmProvider, is_provider_api_key_set, llm_provider_types, provider_base_urls, \
-    provider_env_key_names
-from par_ai_core.pricing_lookup import pricing_lookup
+from par_ai_core.llm_providers import (
+    LlmProvider,
+    is_provider_api_key_set,
+    llm_provider_types,
+    provider_base_urls,
+    provider_env_key_names,
+    provider_name_to_enum,
+)
+from par_ai_core.pricing_lookup import get_api_cost_model_name, get_model_metadata, get_model_mode
 from textual.app import App
 
 from parllama.messages.messages import ProviderModelsChanged, RefreshProviderModelsRequested
@@ -68,7 +74,7 @@ class ProviderManager(ParEventSystemBase):
 
     # pylint: disable=too-many-branches
     def refresh_models(self):
-        """Refresh the models."""
+        """Refresh model lists from all available configured providers."""
         self.log_it("Refreshing provider models")
         for p in llm_provider_types:
             try:
@@ -84,8 +90,16 @@ class ProviderManager(ParEventSystemBase):
                     for m in data:
                         new_list.append(m.id or "default")
                 elif p in [LlmProvider.OPENAI, LlmProvider.OPENROUTER, LlmProvider.XAI, LlmProvider.DEEPSEEK]:
-                    models = list(OpenAI(base_url=settings.provider_base_urls[p] or provider_base_urls[p], api_key=settings.provider_api_keys[p] or os.environ.get(provider_env_key_names[p])).models.list().data)
+                    models = list(
+                        OpenAI(
+                            base_url=settings.provider_base_urls[p] or provider_base_urls[p],
+                            api_key=settings.provider_api_keys[p] or os.environ.get(provider_env_key_names[p]),
+                        )
+                        .models.list()
+                        .data
+                    )
                     if models:
+                        models = [m for m in models if get_model_mode(p, m.id) in ["chat", "unknown"]]
                         if models[0].created is not None:
                             data = sorted(models, key=lambda m: m.created, reverse=True)
                         else:
@@ -93,26 +107,38 @@ class ProviderManager(ParEventSystemBase):
                         for m in data:
                             new_list.append(m.id)
                 elif p == LlmProvider.GROQ:
-                    models = Groq(base_url=settings.provider_base_urls[p] or provider_base_urls[p]).models.list()
-                    data = sorted(models.data, key=lambda m: m.created, reverse=True)
-                    for m in data:
-                        new_list.append(m.id)
+                    models = Groq(base_url=settings.provider_base_urls[p] or provider_base_urls[p]).models.list().data
+                    if models:
+                        models = [m for m in models if get_model_mode(p, m.id) in ["chat", "unknown"]]
+                        data = sorted(models, key=lambda m: m.created, reverse=True)
+                        for m in data:
+                            new_list.append(m.id)
                 elif p == LlmProvider.ANTHROPIC:
                     import anthropic
+
                     models = list(anthropic.Anthropic().models.list(limit=50))
-                    data = sorted(models, key=lambda m: m.created_at, reverse=True)
-                    for m in data:
-                        new_list.append(m.id)
+                    if models:
+                        models = [m for m in models if get_model_mode(p, m.id) in ["chat", "unknown"]]
+                        data = sorted(models, key=lambda m: m.created_at, reverse=True)
+                        for m in data:
+                            new_list.append(m.id)
                 elif p == LlmProvider.LITELLM:
-                    models = requests.get(f"{settings.provider_base_urls[p] or provider_base_urls[p]}/models", timeout=5).json()["data"]
-                    data = sorted(models, key=lambda m: m["created"], reverse=True)
-                    for m in data:
-                        new_list.append(m["id"])
-                elif p == LlmProvider.GOOGLE:
+                    models = requests.get(
+                        f"{settings.provider_base_urls[p] or provider_base_urls[p]}/models", timeout=5
+                    ).json()["data"]
+                    if models:
+                        models = [m for m in models if get_model_mode(p, m["id"]) in ["chat", "unknown"]]
+                        data = sorted(models, key=lambda m: m["created"], reverse=True)
+                        for m in data:
+                            new_list.append(m["id"])
+                elif p == LlmProvider.GEMINI:
                     genai.configure(api_key=settings.provider_api_keys[p] or os.environ.get(provider_env_key_names[p]))  # type: ignore
-                    data = sorted(list(genai.list_models()), key=lambda m: m.name)  # type: ignore
-                    for m in data:
-                        new_list.append(m.name.split("/")[1])
+                    models = list(genai.list_models())  # type: ignore
+                    if models:
+                        models = [m for m in models if get_model_mode(p, m.name) in ["chat", "unknown"]]
+                        data = sorted(models, key=lambda m: m.name)  # type: ignore
+                        for m in data:
+                            new_list.append(m.name.split("/")[1])
                 else:
                     raise ValueError(f"Unknown provider: {p}")
                 # print(new_list)
@@ -127,26 +153,22 @@ class ProviderManager(ParEventSystemBase):
         self.save_models()
 
     # pylint: disable=too-many-return-statements, too-many-branches
-    @staticmethod
-    def get_model_context_length(provider: LlmProvider, model_name: str) -> int:
+    def get_model_context_length(self, provider: LlmProvider, model_name: str) -> int:
         """Get model cntext length. Return 0 if unknown."""
-        if provider == LlmProvider.OPENAI:
-            if model_name in openai_model_context_windows:
-                return openai_model_context_windows[model_name]
-        elif provider == LlmProvider.GROQ:
-            if model_name in openai_model_context_windows:
-                return openai_model_context_windows[model_name]
-            return 128_000  # this is just a guess
-        elif provider == LlmProvider.ANTHROPIC:
-            return 200_000  # this can vary depending on provider load
-        elif provider == LlmProvider.GOOGLE:
-            return 128_000
-        elif provider == LlmProvider.OLLAMA:
-            return ollama_dm.get_model_context_length(model_name)
-        return 0
+        try:
+            if provider == LlmProvider.OLLAMA:
+                return ollama_dm.get_model_context_length(model_name)
+            metadata = get_model_metadata(provider.value.lower(), model_name)
+            return metadata.get("max_input_tokens") or metadata.get("max_tokens") or 0
+        except Exception as e:
+            self.log_it(
+                f"Error getting model metadata {get_api_cost_model_name(provider_name=provider.value.lower(), model_name=model_name)}: {e}",
+                severity="error",
+            )
+            return 0
 
     def save_models(self):
-        """Save the models."""
+        """Save the models to json cache file."""
         self.cache_file.write_bytes(
             json.dumps(
                 {k.value: v for k, v in self.provider_models.items()},
@@ -156,7 +178,7 @@ class ProviderManager(ParEventSystemBase):
         )
 
     def load_models(self, refresh: bool = False) -> None:
-        """Load the models."""
+        """Load the models from json cache file if exist and not expired, otherwise fetch new data."""
         if not self.cache_file.exists():
             self.log_it("Models file does not exist, requesting refresh")
             if self.app:
@@ -172,7 +194,7 @@ class ProviderManager(ParEventSystemBase):
             return
 
         provider_models = json.loads(self.cache_file.read_bytes())
-        self.provider_models = {LlmProvider(k): v for k, v in provider_models.items()}
+        self.provider_models = {provider_name_to_enum(k): v for k, v in provider_models.items()}
         self.provider_models[LlmProvider.LLAMACPP] = ["default"]
 
         if self.app:
