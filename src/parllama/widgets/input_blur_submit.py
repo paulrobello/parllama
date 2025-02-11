@@ -27,5 +27,5 @@ class InputBlurSubmit(Input):
 
     async def on_blur(self, _: Blur) -> None:
         """Submit the input when losing focus."""
-        # if self.value != self._last_value:
-        #     await self.action_submit()
+        if self.value != self._last_value:
+            await self.action_submit()
