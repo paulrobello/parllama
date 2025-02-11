@@ -18,7 +18,9 @@
 * [Running against a remote instance](#running-against-a-remote-instance)
 * [Running under Windows WSL](#running-under-windows-wsl)
     * [Dev mode](#dev-mode)
-* [Quick start chat workflow](#quick-start-chat-workflow)
+* [Quick start Ollama chat workflow](#Quick-start-Ollama-chat-workflow)
+* [Quick start image chat workflow](#Quick-start-image-chat-workflow)
+* [Quick start OpenAI provider chat workflow](#Quick-start-OpenAI-provider-chat-workflow)
 * [Custom Prompts](#Custom-Prompts)
 * [Themes](#themes)
 * [Screen Help](https://github.com/paulrobello/parllama/blob/main/src/parllama/help.md)
@@ -28,6 +30,7 @@
     * [Where we are](#where-we-are)Ï
     * [Where we're going](#where-were-going)
 * [What's new](#whats-new)
+    * [v0.3.16](#v0316)
     * [v0.3.15](#v0315)
     * [v0.3.14](#v0314) 
     * [v0.3.13](#v0313)
@@ -146,7 +149,7 @@ pip install pipx
 pipx ensurepath
 ```
 
-### MyPi install
+### PyPi install
 ```shell
 pipx install parllama
 ```
@@ -215,8 +218,8 @@ Unless you specify "--no-save" most flags such as -u, -t, -m, -s are sticky and 
 
 ## Environment Variables
 ### Variables are loaded in the following order, last one to set a var wins
-* PARLLAMA_DATA_DIR/.env
 * HOST Environment
+* PARLLAMA_DATA_DIR/.env
 * ParLlama Options Screen
 
 ### Environment Variables for PAR LLAMA configuration
@@ -274,7 +277,7 @@ From repo root:
 make dev
 ```
 
-## Quick start chat workflow
+## Quick start Ollama chat workflow
 * Start parllama.
 * Click the "Site" tab.
 * Use ^R to fetch the latest models from Ollama.com.
@@ -307,6 +310,20 @@ make dev
 * Use a slash command to add an image and a prompt "/add.image PATH_TO_IMAGE describe whats happening in this image". It will take a few seconds for Ollama to load the model. After which the LLMs answer will stream in.
 * Towards the very top of the app you will see what model is loaded and what percent of it is loaded into the GPU / CPU. If a model cant be loaded 100% on the GPU it will run slower.
 * Type "/help" or "/?" to see what other slash commands are available.
+
+## Quick start OpenAI provider chat workflow
+* Start parllama.
+* Select the "Options" tab.
+* Locate the AI provider you want to use the "Providers" section and enter your API key and base url if needed.
+* You may need to restart parllama for some providers to fully take effect.
+* Select the "Chat" tab
+* If the "Session Config" panel on the right is not visible press `^p`
+* Any providers that have don't need an API key or that do have an API key set should be selectable.
+* Once a provider is selected available models should be loaded and selectable.
+* Adjust any other session settings like Temperature.
+* Click the message entry text box and converse with the LLM.
+* Type "/help" or "/?" to see what slash commands are available.
+
 
 ## LlamaCPP support
 Parllama supports LlamaCPP running OpenAI server mode. Parllama will use the default base_url of http://127.0.0.1:8080. This can be configured on the Options tab.  
@@ -400,7 +417,7 @@ if anything remains to be fixed before the commit is allowed.
   * A: No. ParLlama has options to connect to remote Ollama instances
 * Q: Does ParLlama require Ollama?
   * A: No. ParLlama can be used with most online AI providers
-* Q: Does ParLlama support vision LLMS?
+* Q: Does ParLlama support vision LLMs?
   * A: Yes. If the selected provider / model supports vision you can add images to the chat via /slash commands 
 
 ## Roadmap
@@ -408,24 +425,29 @@ if anything remains to be fixed before the commit is allowed.
 ### Where we are
 * Initial release - Find, maintain and create new models
 * Theme support
-* Connect to remote instances
+* Connect to remote Ollama instances
 * Chat with history / conversation management
 * Chat tabs allow chat with multiple models at same time
 * Custom prompt library with import from Fabric
 * Auto complete of slash commands, input history, multi line edit
-* Ability to use cloud AI providers like OpenAI, Anthropic, Groq, and Google
+* Ability to use cloud AI providers like OpenAI, Anthropic, Groq, Google, xAI, OpenRouter, LiteLLM
 * Use images with vision capable LLMs
+* Ability to copy code and other sub sections from chat
 
 ### Where we're going
 
 * Better image support via file pickers
-* Ability to copy code and other sub sections from chat
+* Better support for reasoning / thinking models
 * RAG for local documents and web pages
 * Expand ability to import custom prompts of other tools
 * LLM tool use
 
 
 ## What's new
+
+### v0.3.16
+
+* Added providers xAI, OpenRouter, Deepseek and LiteLLM
 
 ### v0.3.15
 

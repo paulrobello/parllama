@@ -9,10 +9,12 @@ from typing import Any
 
 import google.generativeai as genai  # type: ignore
 import orjson as json
+import requests
 from dotenv import load_dotenv
 from groq import Groq
 from openai import OpenAI
-from par_ai_core.llm_providers import LlmProvider, is_provider_api_key_set, llm_provider_types, provider_base_urls
+from par_ai_core.llm_providers import LlmProvider, is_provider_api_key_set, llm_provider_types, provider_base_urls, \
+    provider_env_key_names
 from par_ai_core.pricing_lookup import pricing_lookup
 from textual.app import App
 
@@ -81,20 +83,33 @@ class ProviderManager(ParEventSystemBase):
                     data = sorted(models.data, key=lambda m: m.created, reverse=True)
                     for m in data:
                         new_list.append(m.id or "default")
-                elif p == LlmProvider.OPENAI:
-                    models = OpenAI(base_url=settings.provider_base_urls[p] or provider_base_urls[p]).models.list()
-                    data = sorted(models.data, key=lambda m: m.created, reverse=True)
-                    for m in data:
-                        new_list.append(m.id)
+                elif p in [LlmProvider.OPENAI, LlmProvider.OPENROUTER, LlmProvider.XAI, LlmProvider.DEEPSEEK]:
+                    models = list(OpenAI(base_url=settings.provider_base_urls[p] or provider_base_urls[p], api_key=settings.provider_api_keys[p] or os.environ.get(provider_env_key_names[p])).models.list().data)
+                    if models:
+                        if models[0].created is not None:
+                            data = sorted(models, key=lambda m: m.created, reverse=True)
+                        else:
+                            data = sorted(models, key=lambda m: m.id)
+                        for m in data:
+                            new_list.append(m.id)
                 elif p == LlmProvider.GROQ:
                     models = Groq(base_url=settings.provider_base_urls[p] or provider_base_urls[p]).models.list()
                     data = sorted(models.data, key=lambda m: m.created, reverse=True)
                     for m in data:
                         new_list.append(m.id)
                 elif p == LlmProvider.ANTHROPIC:
-                    new_list = [m for m in pricing_lookup.keys() if m.startswith("claude-3-5-")]
+                    import anthropic
+                    models = list(anthropic.Anthropic().models.list(limit=50))
+                    data = sorted(models, key=lambda m: m.created_at, reverse=True)
+                    for m in data:
+                        new_list.append(m.id)
+                elif p == LlmProvider.LITELLM:
+                    models = requests.get(f"{settings.provider_base_urls[p] or provider_base_urls[p]}/models", timeout=5).json()["data"]
+                    data = sorted(models, key=lambda m: m["created"], reverse=True)
+                    for m in data:
+                        new_list.append(m["id"])
                 elif p == LlmProvider.GOOGLE:
-                    genai.configure(api_key=os.environ.get("GOOGLE_API_KEY"))  # type: ignore
+                    genai.configure(api_key=settings.provider_api_keys[p] or os.environ.get(provider_env_key_names[p]))  # type: ignore
                     data = sorted(list(genai.list_models()), key=lambda m: m.name)  # type: ignore
                     for m in data:
                         new_list.append(m.name.split("/")[1])
@@ -106,8 +121,8 @@ class ProviderManager(ParEventSystemBase):
                 if self.app:
                     self.app.post_message(ProviderModelsChanged(provider=p))
 
-            except Exception as e:  # pylint: disable=broad-exception-caught
-                print(f"Error: {e}")
+            except Exception as e:
+                self.log_it(f"Error model refresh {p}: {e}", severity="error")
                 continue
         self.save_models()
 

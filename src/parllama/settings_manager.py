@@ -85,11 +85,14 @@ class Settings(BaseModel):
         LlmProvider.LLAMACPP: None,
         LlmProvider.XAI: None,
         LlmProvider.OPENAI: None,
+        LlmProvider.OPENROUTER: None,
         LlmProvider.GROQ: None,
         LlmProvider.ANTHROPIC: None,
         LlmProvider.GOOGLE: None,
         LlmProvider.BEDROCK: None,
         LlmProvider.GITHUB: None,
+        LlmProvider.DEEPSEEK: None,
+        LlmProvider.LITELLM: None,
     }
 
     langchain_config: LangChainConfig = LangChainConfig()

@@ -308,6 +308,71 @@ class OptionsView(Horizontal):
                             password=True,
                             id="google_api_key",
                         )
+                    with Vertical(classes="section") as aips6:
+                        aips6.border_title = "xAI"
+                        yield Label("Base URL")
+                        yield InputBlurSubmit(
+                            value=settings.provider_base_urls[LlmProvider.XAI] or "",
+                            valid_empty=True,
+                            validators=HttpValidator(),
+                            id="xai_base_url",
+                        )
+                        yield Label("API Key")
+                        yield InputBlurSubmit(
+                            value=settings.provider_api_keys[LlmProvider.XAI] or "",
+                            valid_empty=True,
+                            password=True,
+                            id="xai_api_key",
+                        )
+                    with Vertical(classes="section") as aips7:
+                        aips7.border_title = "OpenRouter"
+                        yield Label("Base URL")
+                        yield InputBlurSubmit(
+                            value=settings.provider_base_urls[LlmProvider.OPENROUTER] or "",
+                            valid_empty=True,
+                            validators=HttpValidator(),
+                            id="openrouter_base_url",
+                        )
+                        yield Label("API Key")
+                        yield InputBlurSubmit(
+                            value=settings.provider_api_keys[LlmProvider.OPENROUTER] or "",
+                            valid_empty=True,
+                            password=True,
+                            id="openrouter_api_key",
+                        )
+                    with Vertical(classes="section") as aips8:
+                        aips8.border_title = "Deepseek"
+                        yield Label("Base URL")
+                        yield InputBlurSubmit(
+                            value=settings.provider_base_urls[LlmProvider.DEEPSEEK] or "",
+                            valid_empty=True,
+                            validators=HttpValidator(),
+                            id="deepseek_base_url",
+                        )
+                        yield Label("API Key")
+                        yield InputBlurSubmit(
+                            value=settings.provider_api_keys[LlmProvider.DEEPSEEK] or "",
+                            valid_empty=True,
+                            password=True,
+                            id="deepseek_api_key",
+                        )
+
+                    with Vertical(classes="section") as aips9:
+                        aips9.border_title = "LiteLLM"
+                        yield Label("Base URL")
+                        yield InputBlurSubmit(
+                            value=settings.provider_base_urls[LlmProvider.LITELLM] or "",
+                            valid_empty=True,
+                            validators=HttpValidator(),
+                            id="litellm_base_url",
+                        )
+                        yield Label("API Key")
+                        yield InputBlurSubmit(
+                            value=settings.provider_api_keys[LlmProvider.LITELLM] or "",
+                            valid_empty=True,
+                            password=True,
+                            id="litellm_api_key",
+                        )
                     with Vertical(classes="section") as aips2:
                         aips2.border_title = "LlamaCPP"
                         yield Label("Base URL")
@@ -453,6 +518,30 @@ class OptionsView(Horizontal):
             self._provider_changed = True
         elif ctrl.id == "anthropic_api_key":
             settings.provider_api_keys[LlmProvider.ANTHROPIC] = ctrl.value or None
+            self._provider_changed = True
+        elif ctrl.id == "xai_base_url":
+            settings.provider_base_urls[LlmProvider.XAI] = ctrl.value or None
+            self._provider_changed = True
+        elif ctrl.id == "xai_api_key":
+            settings.provider_api_keys[LlmProvider.XAI] = ctrl.value or None
+            self._provider_changed = True
+        elif ctrl.id == "openrouter_base_url":
+            settings.provider_base_urls[LlmProvider.OPENROUTER] = ctrl.value or None
+            self._provider_changed = True
+        elif ctrl.id == "openrouter_api_key":
+            settings.provider_api_keys[LlmProvider.OPENROUTER] = ctrl.value or None
+            self._provider_changed = True
+        elif ctrl.id == "deepseek_base_url":
+            settings.provider_base_urls[LlmProvider.DEEPSEEK] = ctrl.value or None
+            self._provider_changed = True
+        elif ctrl.id == "deepseek_api_key":
+            settings.provider_api_keys[LlmProvider.DEEPSEEK] = ctrl.value or None
+            self._provider_changed = True
+        elif ctrl.id == "litellm_base_url":
+            settings.provider_base_urls[LlmProvider.LITELLM] = ctrl.value or None
+            self._provider_changed = True
+        elif ctrl.id == "litellm_api_key":
+            settings.provider_api_keys[LlmProvider.LITELLM] = ctrl.value or None
             self._provider_changed = True
         elif ctrl.id == "google_api_key":
             settings.provider_api_keys[LlmProvider.GOOGLE] = ctrl.value or None
