@@ -30,6 +30,7 @@
     * [Where we are](#where-we-are)Ï
     * [Where we're going](#where-were-going)
 * [What's new](#whats-new)
+    * [v0.3.18](#v0318)
     * [v0.3.17](#v0317) 
     * [v0.3.16](#v0316)
     * [v0.3.15](#v0315)
@@ -445,6 +446,10 @@ if anything remains to be fixed before the commit is allowed.
 
 
 ## What's new
+
+### v0.3.18
+
+* Updated dependencies for some major performance improvements
 
 ### v0.3.17
 
