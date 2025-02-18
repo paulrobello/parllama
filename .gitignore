@@ -31,3 +31,5 @@
 /chat.md
 /fabric_samples/
 /rag_docs/
+/.vscode/
+/.ruff_cache/
