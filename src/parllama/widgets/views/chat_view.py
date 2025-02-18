@@ -593,7 +593,7 @@ Chat Commands:
         tab_num = self.chat_tabs.get_child_by_type(ContentSwitcher).children.index(
             self.chat_tabs.get_pane(event.tab_id)
         )
-        tab.label = f"[{tab_num + 1}] " + event.tab_label  # type: ignore
+        tab.label = f"\\[{tab_num + 1}] " + event.tab_label  # type: ignore
 
     def re_index_labels(self) -> None:
         """Re-index tab labels"""
