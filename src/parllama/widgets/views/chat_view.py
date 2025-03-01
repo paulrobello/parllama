@@ -16,6 +16,7 @@ from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
+from textual.content import Content
 from textual.events import Show
 from textual.suggester import SuggestFromList
 from textual.widgets import Button, ContentSwitcher, Select, TabbedContent
@@ -593,7 +594,7 @@ Chat Commands:
         tab_num = self.chat_tabs.get_child_by_type(ContentSwitcher).children.index(
             self.chat_tabs.get_pane(event.tab_id)
         )
-        tab.label = f"\\[{tab_num + 1}] " + event.tab_label  # type: ignore
+        tab.label = Content(f"[{tab_num + 1}] " + event.tab_label)  # type: ignore
 
     def re_index_labels(self) -> None:
         """Re-index tab labels"""
@@ -602,7 +603,7 @@ Chat Commands:
             tab_num = self.chat_tabs.get_child_by_type(ContentSwitcher).children.index(
                 self.chat_tabs.get_pane(str(ctab.id))
             )
-            tab.label = f"[{tab_num + 1}] " + tab.label.plain.split(" ", 1)[1]  # type: ignore
+            tab.label = Content(f"[{tab_num + 1}] " + tab.label.plain.split(" ", 1)[1])  # type: ignore
 
     @on(DeleteSession)
     async def on_delete_session(self, event: DeleteSession) -> None:
