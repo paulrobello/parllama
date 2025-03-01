@@ -72,6 +72,7 @@ dependencies = [
     "orjson>=3.10.15",
     "par-ai-core>=0.1.20",
     "clipman>=3.3.1",
+    "google-generativeai>=0.8.4",
 ]
 packages = [
     "src/parllama",
