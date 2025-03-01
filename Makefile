@@ -30,7 +30,7 @@ clear_cache:	        # Clear application cache
 
 .PHONY: dev
 dev:	        # Run in dev mode
-	$(run) textual run --dev $(lib).app:ParLlamaApp
+	$(run) textual run --dev -c $(lib)
 
 .PHONY: keys
 keys:	        # Run in keyboard input tester
