@@ -330,13 +330,14 @@ class ChatSession(ChatMessageContainer):
             ):
                 self.name_generated = True
                 user_msg = self.get_first_user_message()
-                if user_msg and user_msg.content:
+                ai_msg = self.get_first_ai_message()
+                if user_msg and ai_msg and user_msg.content and ai_msg.content:
                     self.log_it("Auto naming session", notify=True)
                     self.post_message(
                         ParSessionAutoName(
                             session_id=self.id,
                             llm_config=LlmConfig.from_json(settings.auto_name_session_llm_config),
-                            context=user_msg.content,
+                            context=f"#USER\n{user_msg.content}\n\n#ASSISTANT\n{ai_msg.content}",
                         )
                     )
         except Exception as e:  # pylint: disable=broad-except
