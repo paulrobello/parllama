@@ -150,6 +150,22 @@ class ChatMessageContainer(ParEventSystemBase):
         else:
             self.add_message(value, True)
 
+    def get_first_ai_message(self) -> ParllamaChatMessage | None:
+        """Get the first assistant message"""
+        for msg in self.messages:
+            if msg.role == "assistant":
+                return msg
+        return None
+
+    def get_last_ai_message(self) -> ParllamaChatMessage | None:
+        """Get the last assistant message"""
+        if len(self.messages) == 0:
+            return None
+        msg = self.messages[-1]
+        if msg.role == "assistant":
+            return msg
+        return None
+
     def get_first_user_message(self) -> ParllamaChatMessage | None:
         """Get the first user message"""
         for msg in self.messages:
