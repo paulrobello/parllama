@@ -451,6 +451,10 @@ if anything remains to be fixed before the commit is allowed.
 
 ## What's new
 
+### v0.3.20
+
+* Fix unsupported format string error caused by missing temperature setting
+
 ### v0.3.19
 
 * Fix missing package error caused by previous update

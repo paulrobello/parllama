@@ -60,7 +60,7 @@ class PromptView(Container):
         )
         self.temperature_input: InputBlurSubmit = InputBlurSubmit(
             id="temperature_input",
-            value=f"{settings.last_llm_config.temperature:.2f}",
+            value=f"{(settings.last_llm_config.temperature or '0.5'):.2f}",
             max_length=4,
             restrict=r"^\d?\.?\d?\d?$",
             valid_empty=False,

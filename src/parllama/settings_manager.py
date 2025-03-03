@@ -280,6 +280,8 @@ class Settings(BaseModel):
                 "last_chat_temperature",
                 last_llm_config.get("temperature", self.last_llm_config.temperature),
             )
+            if self.last_llm_config.temperature is None:
+                self.last_llm_config.temperature = 0.5
             self.last_chat_session_id = data.get("last_chat_session_id", self.last_chat_session_id)
             self.max_log_lines = max(0, data.get("max_log_lines", 1000))
             self.ollama_ps_poll_interval = data.get("ollama_ps_poll_interval", self.ollama_ps_poll_interval)

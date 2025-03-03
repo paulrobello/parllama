@@ -69,7 +69,7 @@ SessionConfig {
         self.provider_model_select = ProviderModelSelect(update_settings=True)
         self.temperature_input: InputBlurSubmit = InputBlurSubmit(
             id="temperature_input",
-            value=(f"{settings.last_llm_config.temperature:.2f}"),
+            value=f"{(settings.last_llm_config.temperature or '0.5'):.2f}",
             max_length=4,
             restrict=r"^\d?\.?\d?\d?$",
             valid_empty=False,
@@ -170,7 +170,7 @@ SessionConfig {
         try:
             return float(self.temperature_input.value)
         except ValueError:
-            return settings.last_llm_config.temperature
+            return settings.last_llm_config.temperature if settings.last_llm_config.temperature is not None else 0.5
 
     @on(SessionSelected)
     def on_session_selected(self, event: SessionSelected) -> None:
@@ -184,10 +184,13 @@ SessionConfig {
         if not self.temperature_input.value:
             return
         try:
-            settings.last_llm_config.temperature = float(self.temperature_input.value)
+            v = float(self.temperature_input.value)
+            settings.last_llm_config.temperature = v
         except ValueError:
             return
-        self.session.temperature = settings.last_llm_config.temperature
+        self.session.temperature = (
+            settings.last_llm_config.temperature if settings.last_llm_config.temperature is not None else 0.5
+        )
         settings.save()
 
     @on(Input.Submitted, "#num_ctx_input")
