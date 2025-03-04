@@ -10,12 +10,13 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 import orjson as json
 import pytz
 import rich.repr
 from langchain_core.messages import BaseMessageChunk
-from par_ai_core.llm_config import LlmConfig, llm_run_manager
+from par_ai_core.llm_config import LlmConfig, ReasoningEffort, llm_run_manager
 from par_ai_core.llm_providers import LlmProvider
 from textual.message_pump import MessagePump
 
@@ -186,6 +187,26 @@ class ChatSession(ChatMessageContainer):
         """Get the temperature"""
         return self._llm_config.temperature
 
+    @property
+    def reasoning_effort(self) -> ReasoningEffort | None:
+        return self._llm_config.reasoning_effort
+
+    @reasoning_effort.setter
+    def reasoning_effort(self, value: ReasoningEffort | None) -> None:
+        self._llm_config.reasoning_effort = value
+        self._changes.add("reasoning_effort")
+        self.save()
+
+    @property
+    def reasoning_budget(self) -> int | None:
+        return self._llm_config.reasoning_budget
+
+    @reasoning_budget.setter
+    def reasoning_budget(self, value: int | None) -> None:
+        self._llm_config.reasoning_budget = value
+        self._changes.add("reasoning_budget")
+        self.save()
+
     @temperature.setter
     def temperature(self, value: float) -> None:
         """Set the temperature"""
@@ -228,6 +249,9 @@ class ChatSession(ChatMessageContainer):
             chat_history = [m.to_langchain_native() for m in self.messages]
             # self.log_it(chat_history)
             chat_model = self._llm_config.build_chat_model()
+
+            # self.log_it(self._llm_config)
+
             stream: Iterator[BaseMessageChunk] = chat_model.stream(
                 chat_history,  # type: ignore
                 config=llm_run_manager.get_runnable_config(chat_model.name or ""),
@@ -247,6 +271,19 @@ class ChatSession(ChatMessageContainer):
                         num_tokens += 1
                         if isinstance(chunk.content, str):
                             msg.content += chunk.content
+                        elif isinstance(chunk.content, list):
+                            if len(chunk.content) > 0:
+                                part: str | dict[str, Any] = chunk.content[0]
+                                if isinstance(part, str):
+                                    msg.content += part
+                                else:
+                                    part_type: str = "?"
+                                    if "type" in part:
+                                        part_type = part["type"]
+                                    if part_type == "text" and part_type in part:
+                                        msg.content += part[part_type]
+                                    if part_type.startswith("think") and part_type in part:
+                                        msg.thinking += part[part_type]
 
                     if self._abort:
                         is_aborted = True
@@ -300,7 +337,7 @@ class ChatSession(ChatMessageContainer):
                             )
                     self._notify_subs(ChatMessage(parent_id=self.id, message_id=msg.id, is_final=not chunk.content))
                     self.post_message(ParChatUpdated(parent_id=self.id, message_id=msg.id, is_final=not chunk.content))
-            except Exception as e:  # pylint: disable=broad-except
+            except Exception as e:
                 err_msg = str(e)
                 if self._llm_config.provider == LlmProvider.LLAMACPP and err_msg.startswith(
                     "object of type 'NoneType' has no len()"

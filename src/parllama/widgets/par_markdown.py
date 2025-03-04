@@ -109,9 +109,11 @@ class ParMarkdownFence(MarkdownBlock):
     """
 
     def __init__(self, markdown: Markdown, code: str, lexer: str) -> None:
-        super().__init__(markdown, classes="thinking" if lexer == "thinking" else "")
+        super().__init__(markdown, classes="thinking" if lexer in ["thinking", "think"] else "")
         self.border_title = lexer.capitalize()
         self.code = code
+        # self.app.log_it(f"=={lexer}==")
+        # self.lexer = lexer if lexer in ["thinking", "text"] else "text"
         self.lexer = lexer
         self.theme = self._markdown.code_dark_theme if self.app.current_theme.dark else self._markdown.code_light_theme
         self.btn = FenceCopyButton(id="copy")

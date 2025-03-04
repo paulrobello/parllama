@@ -54,6 +54,9 @@ class ParllamaChatMessage(ParEventSystemBase):
     content: str = ""
     "Content of the message. Response messages contains message fragments when streaming."
 
+    thinking: str = ""
+    "Content of the thinking portion of the message. Response messages contains thinking fragments when streaming."
+
     images: list[str] | None = None
     """
       Optional list of image data for multimodal models.
@@ -77,6 +80,7 @@ class ParllamaChatMessage(ParEventSystemBase):
         id: str | None = None,  # pylint: disable=redefined-builtin
         role: MessageRoles,
         content: str = "",
+        thinking: str = "",
         images: list[str] | None = None,
         tool_calls: Sequence[ToolCall] | None = None,
     ) -> None:
@@ -84,6 +88,7 @@ class ParllamaChatMessage(ParEventSystemBase):
         super().__init__(id=id)
         self.role = role
         self.content = content
+        self.thinking = thinking
         self.images = images
         self.tool_calls = tool_calls
 
@@ -96,6 +101,8 @@ class ParllamaChatMessage(ParEventSystemBase):
 
     def __str__(self) -> str:
         """Ollama message representation"""
+        if self.thinking:
+            return f"## {self.role}\n\n### Thinking:\n\n{self.thinking}\n\n### Response:\n\n{self.content}\n\n"
         return f"## {self.role}\n\n{self.content}\n\n"
 
     def to_dict(
@@ -106,6 +113,7 @@ class ParllamaChatMessage(ParEventSystemBase):
             "id": self.id,
             "role": self.role,
             "content": self.content,
+            "thinking": self.thinking,
             "images": self.images,
             "tool_calls": self.tool_calls,
         }
@@ -130,6 +138,7 @@ class ParllamaChatMessage(ParEventSystemBase):
         return (
             self.role,
             content,
+            # TODO: Thinking tokens?
         )
 
     def notify_changes(self) -> None:
@@ -145,6 +154,7 @@ class ParllamaChatMessage(ParEventSystemBase):
             id=uuid.uuid4().hex if new_id else self.id,
             role=self.role,
             content=self.content,
+            thinking=self.thinking,
             images=[*self.images] if self.images else None,
             tool_calls=self.tool_calls,
         )

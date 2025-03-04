@@ -30,28 +30,12 @@
     * [Where we are](#where-we-are)Ï
     * [Where we're going](#where-were-going)
 * [What's new](#whats-new)
+    * [v0.3.20](#v0320) 
     * [v0.3.19](#v0319)
     * [v0.3.18](#v0318)
     * [v0.3.17](#v0317) 
     * [v0.3.16](#v0316)
-    * [v0.3.15](#v0315)
-    * [v0.3.14](#v0314) 
-    * [v0.3.13](#v0313)
-    * [v0.3.12](#v0312) 
-    * [v0.3.11](#v0311) 
-    * [v0.3.10](#v0310)
-    * [v0.3.9](#v039)
-    * [v0.3.8](#v038)
-    * [v0.3.7](#v037)
-    * [v0.3.6](#v036)
-    * [v0.3.5](#v035)
-    * [v0.3.4](#v034)
-    * [v0.3.3](#v033)
-    * [v0.3.2](#v032)
-    * [v0.3.1](#v031)
-    * [v0.3.0](#v030)
-    * [v0.2.51](#v0251)
-    * [v0.2.5](#v025)
+    * [older...](#v0315)
 
 [![PyPI](https://img.shields.io/pypi/v/parllama)](https://pypi.org/project/parllama/)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/parllama.svg)](https://pypi.org/project/parllama/)  
@@ -450,6 +434,11 @@ if anything remains to be fixed before the commit is allowed.
 
 
 ## What's new
+
+### v0.3.21
+
+* Fix error caused by LLM response containing certain markup
+* Added llm config options for OpenAI Reasoning Effort, and Anthropics Reasoning Token Budget
 
 ### v0.3.20
 

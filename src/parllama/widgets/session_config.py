@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from par_ai_core.llm_config import LlmConfig
-from par_ai_core.llm_providers import provider_name_to_enum
+from par_ai_core.llm_config import LlmConfig, ReasoningEffort
 from textual import on
 from textual.app import ComposeResult
 from textual.containers import Horizontal, VerticalScroll
 from textual.message import Message
 from textual.widgets import Button, Input, Label, Rule, Select, Static
+from textual.widgets._select import NoSelection
 
 from parllama.chat_manager import chat_manager
 from parllama.chat_session import ChatSession
@@ -89,6 +89,22 @@ SessionConfig {
             valid_empty=False,
         )
 
+        self.reasoning_effort_select = Select[ReasoningEffort](
+            [("low", ReasoningEffort.LOW), ("medium", ReasoningEffort.MEDIUM), ("high", ReasoningEffort.HIGH)],
+            prompt="Reasoning Level",
+            allow_blank=True,
+            value=ReasoningEffort.MEDIUM,
+            id="reasoning_effort",
+        )
+
+        self.reasoning_budget_input: InputBlurSubmit = InputBlurSubmit(
+            id="reasoning_budget_input",
+            value=str(settings.last_llm_config.reasoning_budget or 0),
+            max_length=6,
+            type="integer",
+            valid_empty=False,
+        )
+
         self.session = chat_manager.get_or_create_session(
             session_id=None,
             session_name=session_name,
@@ -97,6 +113,8 @@ SessionConfig {
                 model_name=self.provider_model_select.model_name,
                 base_url=settings.provider_base_urls[self.provider_model_select.provider_name],
                 temperature=self.get_temperature(),
+                reasoning_effort=self.get_reasoning_effort(),
+                reasoning_budget=self.get_reasoning_budget(),
             ),
             widget=self,
         )
@@ -136,6 +154,14 @@ SessionConfig {
             with Label("Max Context Size") as lbl:
                 lbl.tooltip = "0 = default. Ollama default is 2048"
             yield self.num_ctx_input
+        with Horizontal(classes="height-3"):
+            with Label("Reasoning Effort") as lbl:
+                lbl.tooltip = "Only applies to OpenAI reasoning models"
+            yield self.reasoning_effort_select
+        with Horizontal(classes="height-3"):
+            with Label("Reasoning Budget") as lbl:
+                lbl.tooltip = "Only applies to Anthropic reasoning models"
+            yield self.reasoning_budget_input
 
     async def action_new_session(self, session_name: str = "New Chat") -> None:
         """Start new session"""
@@ -146,9 +172,12 @@ SessionConfig {
             self.session = chat_manager.new_session(
                 session_name=session_name,
                 llm_config=LlmConfig(
-                    provider=provider_name_to_enum(self.provider_model_select.provider_name),
+                    # provider=provider_name_to_enum(self.provider_model_select.provider_name),
+                    provider=self.provider_model_select.provider_name,
                     model_name=self.provider_model_select.model_name,
                     temperature=self.get_temperature(),
+                    reasoning_effort=self.get_reasoning_effort(),
+                    reasoning_budget=self.get_reasoning_budget(),
                 ),
                 widget=self,
             )
@@ -171,6 +200,20 @@ SessionConfig {
             return float(self.temperature_input.value)
         except ValueError:
             return settings.last_llm_config.temperature if settings.last_llm_config.temperature is not None else 0.5
+
+    def get_reasoning_effort(self) -> ReasoningEffort | None:
+        return (
+            self.reasoning_effort_select.value
+            if not isinstance(self.reasoning_effort_select.value, NoSelection)
+            else None
+        )
+
+    def get_reasoning_budget(self) -> int | None:
+        """Get reasoning token budget"""
+        try:
+            return int(self.reasoning_budget_input.value)
+        except ValueError:
+            return settings.last_llm_config.reasoning_budget
 
     @on(SessionSelected)
     def on_session_selected(self, event: SessionSelected) -> None:
@@ -229,6 +272,27 @@ SessionConfig {
         self.session.llm_model_name = event.model_name
         self.post_message(UpdateChatStatus())
 
+    @on(Select.Changed, "#reasoning_effort")
+    def reasoning_effort_changed(self, event: Select.Changed) -> None:
+        event.stop()
+        event.prevent_default()
+        settings.last_llm_config.reasoning_effort = event.value if not isinstance(event.value, NoSelection) else None  # type: ignore
+        self.session.reasoning_effort = settings.last_llm_config.reasoning_effort
+        settings.save()
+
+    @on(Input.Submitted, "#reasoning_budget_input")
+    def reasoning_budget_input_changed(self, event: Message) -> None:
+        """Handle reasoning_budget_input change"""
+        event.stop()
+        if not self.reasoning_budget_input.value:
+            return
+        try:
+            settings.last_llm_config.reasoning_budget = int(self.reasoning_budget_input.value)
+        except ValueError:
+            return
+        self.session.reasoning_budget = settings.last_llm_config.reasoning_budget
+        settings.save()
+
     @on(SessionUpdated)
     def session_updated(self, event: SessionUpdated) -> None:
         """Handle a session updated event"""
@@ -242,6 +306,14 @@ SessionConfig {
         if "temperature" in event.changed:
             with self.prevent(Input.Changed, Input.Submitted):
                 self.temperature_input.value = str(self.session.temperature)
+
+        if "reasoning_effort" in event.changed:
+            with self.prevent(Select.Changed):
+                self.reasoning_effort_select.value = self.session.reasoning_effort or Select.BLANK
+
+        if "reasoning_budget" in event.changed:
+            with self.prevent(Input.Changed, Input.Submitted):
+                self.reasoning_budget_input.value = str(self.session.reasoning_budget or 0)
 
     async def load_session(self, session_id: str) -> bool:
         """Load a session"""

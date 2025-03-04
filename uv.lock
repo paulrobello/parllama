@@ -270,30 +270,30 @@ wheels = [
 
 [[package]]
 name = "boto3"
-version = "1.37.4"
+version = "1.37.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "botocore" },
     { name = "jmespath" },
     { name = "s3transfer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/6e/c5/3c55e916745e5f43de2ea8b5c71d97ec7828b0fd9d03bc2c56aede328fd8/boto3-1.37.4.tar.gz", hash = "sha256:024c37c2f85f4b907f5fc817d0db6fda7fd6ab3c6148ee4ed35fe7cecdf7db0c", size = 111249 }
+sdist = { url = "https://files.pythonhosted.org/packages/2d/ac/6360666bd82d382e57666f89b5d203696b6cdee2389434f8fef0e4ad40d0/boto3-1.37.5.tar.gz", hash = "sha256:ae6e7048beeaa4478368e554a4b290e3928beb0ae8d8767d108d72381a81af30", size = 111181 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8d/70/63d462a48c805918448e77fd5c7944cd48d12f12b861a7cacb7c361eb73e/boto3-1.37.4-py3-none-any.whl", hash = "sha256:1bbf8bbacb3932956b7020d9a2c49d72c64e21bae9397ba6d3aadffab5e192eb", size = 139345 },
+    { url = "https://files.pythonhosted.org/packages/6f/58/caac47ea5da830f2ac94120ab54279ec40f2106e2f7d2fd9aa9e52c9c975/boto3-1.37.5-py3-none-any.whl", hash = "sha256:12166353519aca0cc8d9dcfbbb0d38f8915955a5912b8cb241b2b2314f0dbc14", size = 139344 },
 ]
 
 [[package]]
 name = "botocore"
-version = "1.37.4"
+version = "1.37.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jmespath" },
     { name = "python-dateutil" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e1/4b/ddf3bdfdae59a6de8936be04e6d79235612ca546e2517c4449fa6e969ef3/botocore-1.37.4.tar.gz", hash = "sha256:7e15cd487617440e9eac3144044b6a2bd833d7f3e2bed6a2865693cc11489cc3", size = 13583591 }
+sdist = { url = "https://files.pythonhosted.org/packages/55/76/3ffeac83c28658d5543d57bbe3ba2df9e10ee7fe4c96a114acc1a8c7863e/botocore-1.37.5.tar.gz", hash = "sha256:f8f526d33ae74d242c577e0440b57b9ec7d53edd41db211155ec8087fe7a5a21", size = 13584838 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/51/73/9af08666970d40e64ffbff2721179b2f3d9557bed1cd4235f079a128fb0a/botocore-1.37.4-py3-none-any.whl", hash = "sha256:89130998c82d53f875a42646b692da507c9871b580fd1aea0f861bf9da36e41a", size = 13349107 },
+    { url = "https://files.pythonhosted.org/packages/05/df/7ff9077d4cb644e59092815284891fc7f072f6a9822dc276bbf76424278c/botocore-1.37.5-py3-none-any.whl", hash = "sha256:e5cfbb8026d5b4fadd9b3a18b61d238a41a8b8f620ab75873dc1467d456150d6", size = 13353963 },
 ]
 
 [[package]]
@@ -897,14 +897,14 @@ wheels = [
 
 [[package]]
 name = "googleapis-common-protos"
-version = "1.68.0"
+version = "1.69.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "protobuf" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/54/d2/c08f0d9f94b45faca68e355771329cba2411c777c8713924dd1baee0e09c/googleapis_common_protos-1.68.0.tar.gz", hash = "sha256:95d38161f4f9af0d9423eed8fb7b64ffd2568c3464eb542ff02c5bfa1953ab3c", size = 57367 }
+sdist = { url = "https://files.pythonhosted.org/packages/c2/92/6bb11dad062ad7cc40665d0a8986193d54f1a0032b510e84e7182df9e661/googleapis_common_protos-1.69.0.tar.gz", hash = "sha256:5a46d58af72846f59009b9c4710425b9af2139555c71837081706b213b298187", size = 61264 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3f/85/c99a157ee99d67cc6c9ad123abb8b1bfb476fab32d2f3511c59314548e4f/googleapis_common_protos-1.68.0-py2.py3-none-any.whl", hash = "sha256:aaf179b2f81df26dfadac95def3b16a95064c76a5f45f07e4c68a21bb371c4ac", size = 164985 },
+    { url = "https://files.pythonhosted.org/packages/1d/66/0025e2b7a2ae353acea03cf9d4a96ae32ef02c116944e2eb11f559cf4b7b/googleapis_common_protos-1.69.0-py2.py3-none-any.whl", hash = "sha256:17835fdc4fa8da1d61cfe2d4d5d57becf7c61d4112f8d81c67eaa9d7ce43042d", size = 169749 },
 ]
 
 [[package]]
@@ -1821,7 +1821,7 @@ wheels = [
 
 [[package]]
 name = "litellm"
-version = "1.61.20"
+version = "1.62.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -1836,9 +1836,9 @@ dependencies = [
     { name = "tiktoken" },
     { name = "tokenizers" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/00/39/ac5e350e4af3ef59d6852d074bc6e79ffbac4c4e816dd76c180267ab18ad/litellm-1.61.20.tar.gz", hash = "sha256:0b0204f56e08c92efd2f9e4bfb850c25eaa95fb03a56aaa21e5e29b2391c9067", size = 6577019 }
+sdist = { url = "https://files.pythonhosted.org/packages/cd/05/a671625824733f3b0718f9a72ad16bd3074f76f988378b99c03165543593/litellm-1.62.1.tar.gz", hash = "sha256:eee9cc40dc9c1da7e411af2f4ef145a67bb61702ae4e1218c1bc15b9e6404daa", size = 6586623 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/96/4e/310924cdf3114084ca63820268c87047c757b60b0eca86b039b8acc67084/litellm-1.61.20-py3-none-any.whl", hash = "sha256:8158f96ceda0d76bb59a59d868686e888e32d66b2380e149c6a7a0746f7a5bc9", size = 6887617 },
+    { url = "https://files.pythonhosted.org/packages/a5/eb/090b227c8b81735226f311db732e7ad034720e787966511b298fdb892e13/litellm-1.62.1-py3-none-any.whl", hash = "sha256:f576358c72b477207d1f45ce5ac895ede7bd84377f6420a6b522909c829a79dc", size = 6895313 },
 ]
 
 [[package]]
@@ -2495,12 +2495,13 @@ wheels = [
 
 [[package]]
 name = "par-ai-core"
-version = "0.1.20"
-source = { registry = "https://pypi.org/simple" }
+version = "0.1.21"
+source = { editable = "../par_ai_core" }
 dependencies = [
     { name = "beautifulsoup4" },
     { name = "boto3" },
     { name = "botocore" },
+    { name = "google-generativeai" },
     { name = "html2text" },
     { name = "langchain" },
     { name = "langchain-anthropic" },
@@ -2536,14 +2537,69 @@ dependencies = [
     { name = "webdriver-manager" },
     { name = "youtube-transcript-api" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d1/10/fc87376522c99eb6728bff3395fa25c81d131c9bb38c7fc67f0dd32b0c85/par_ai_core-0.1.20.tar.gz", hash = "sha256:72ceebedbdf6e8ce3fb629d4c3ef8d9cabf6c54c7e12ad37b5e261a44c952884", size = 121127 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/ab/83/ad7054de30284580035e48e60ae9162aba93e5ee33b73a7c97a8fa655d9e/par_ai_core-0.1.20-py3-none-any.whl", hash = "sha256:2df568709f4926ba3f6222b98facb7c771e07ac475e3e51602db6476b2b021e2", size = 160259 },
+
+[package.metadata]
+requires-dist = [
+    { name = "beautifulsoup4", specifier = ">=4.13.3" },
+    { name = "boto3", specifier = ">=1.36.21" },
+    { name = "botocore", specifier = ">=1.36.21" },
+    { name = "google-generativeai", specifier = ">=0.8.4" },
+    { name = "html2text", specifier = ">=2024.2.26" },
+    { name = "langchain", specifier = ">=0.3.18" },
+    { name = "langchain-anthropic", specifier = ">=0.3.7" },
+    { name = "langchain-aws", specifier = ">=0.2.12" },
+    { name = "langchain-chroma", specifier = ">=0.2.2" },
+    { name = "langchain-community", specifier = ">=0.3.17" },
+    { name = "langchain-core", specifier = ">=0.3.35" },
+    { name = "langchain-deepseek", specifier = ">=0.1.2" },
+    { name = "langchain-experimental", specifier = ">=0.3.4" },
+    { name = "langchain-google-community", specifier = ">=2.0.4" },
+    { name = "langchain-google-genai", specifier = ">=2.0.9" },
+    { name = "langchain-groq", specifier = ">=0.2.4" },
+    { name = "langchain-mistralai", specifier = ">=0.2.6" },
+    { name = "langchain-ollama", specifier = ">=0.2.3" },
+    { name = "langchain-openai", specifier = ">=0.3.5" },
+    { name = "langchain-qdrant", specifier = ">=0.2.0" },
+    { name = "langchain-text-splitters", specifier = ">=0.3.6" },
+    { name = "langchain-xai", specifier = ">=0.2.0" },
+    { name = "langgraph", specifier = ">=0.2.72" },
+    { name = "litellm", specifier = ">=1.61.3" },
+    { name = "markdownify", specifier = ">=0.14.1" },
+    { name = "orjson", specifier = ">=3.10.15" },
+    { name = "playwright", specifier = ">=1.50.0" },
+    { name = "praw", specifier = ">=7.8.1" },
+    { name = "pydantic", specifier = ">=2.10.6" },
+    { name = "pydantic-core", specifier = ">=2.27.2" },
+    { name = "python-dotenv", specifier = ">=1.0.1" },
+    { name = "requests", specifier = ">=2.32.3" },
+    { name = "rich", specifier = ">=13.9.4" },
+    { name = "selenium", specifier = ">=4.28.1" },
+    { name = "strenum", specifier = ">=0.4.15" },
+    { name = "tavily-python", specifier = ">=0.5.1" },
+    { name = "webdriver-manager", specifier = ">=4.0.2" },
+    { name = "youtube-transcript-api", specifier = ">=0.6.3" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "build", specifier = ">=1.2.1" },
+    { name = "pdoc3", specifier = ">=0.11.5" },
+    { name = "pre-commit", specifier = ">=3.8.0" },
+    { name = "pyinstrument", specifier = ">=5.0.0" },
+    { name = "pyright", specifier = ">=1.1.379" },
+    { name = "pytest", specifier = ">=8.0.0" },
+    { name = "pytest-asyncio", specifier = ">=0.23.5" },
+    { name = "pytest-cov", specifier = ">=4.1.0" },
+    { name = "pytest-mock", specifier = ">=3.14.0" },
+    { name = "pytest-xdist", specifier = ">=3.6.1" },
+    { name = "ruff", specifier = ">=0.7.0" },
+    { name = "twine", specifier = ">=5.1.1" },
+    { name = "types-orjson", specifier = ">=3.6.2" },
 ]
 
 [[package]]
 name = "parllama"
-version = "0.3.19"
+version = "0.3.21"
 source = { editable = "." }
 dependencies = [
     { name = "argparse" },
@@ -2608,7 +2664,7 @@ requires-dist = [
     { name = "langchain", specifier = ">=0.3.19" },
     { name = "ollama", specifier = ">=0.4.7" },
     { name = "orjson", specifier = ">=3.10.15" },
-    { name = "par-ai-core", specifier = ">=0.1.20" },
+    { name = "par-ai-core", editable = "../par_ai_core" },
     { name = "pydantic", specifier = ">=2.10.6" },
     { name = "pydantic-core", specifier = ">=2.27.2" },
     { name = "python-dotenv", specifier = ">=1.0.1" },
@@ -2730,7 +2786,7 @@ wheels = [
 
 [[package]]
 name = "posthog"
-version = "3.18.0"
+version = "3.18.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "backoff" },
@@ -2740,9 +2796,9 @@ dependencies = [
     { name = "requests" },
     { name = "six" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/02/ca/63096072dc13701a1c8172ec1f7f5f9c7394972df5292262223955fc8c44/posthog-3.18.0.tar.gz", hash = "sha256:8882fe1ee6763bafab0d82a506f52d752a8031c90eea17b4db4331fb33cf1092", size = 65466 }
+sdist = { url = "https://files.pythonhosted.org/packages/a5/1c/aa6bb26491108e9e350cd7af4d4b0a54d48c755cc76b2c2d90ef2916b8b3/posthog-3.18.1.tar.gz", hash = "sha256:ce115b8422f26c57cd4143499115b741f5683c93d0b5b87bab391579aaef084b", size = 65573 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fa/ed/3ab148bfbad390777bdf7a724ba9d072a035ef6a2c643d73c671e9f7cdb9/posthog-3.18.0-py2.py3-none-any.whl", hash = "sha256:88f93cc670158ea7a569629d4def77c3b714489a52b0a818b8dd6103669c652d", size = 76648 },
+    { url = "https://files.pythonhosted.org/packages/04/c2/407c8cf3edf4fe33b82de3fee11178d083ee0b6e3eb28ff8072caaa85907/posthog-3.18.1-py2.py3-none-any.whl", hash = "sha256:6865104b7cf3a5b13949e2bc2aab9b37b5fbf5f9e045fa55b9eabe21b3850200", size = 76762 },
 ]
 
 [[package]]

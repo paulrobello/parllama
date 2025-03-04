@@ -201,7 +201,7 @@ class ChatTab(TabPane):
                 await self.vs.mount(msg_widget, before=0)
             else:
                 await self.vs.mount(msg_widget)
-        msg_widget.loading = len(msg_widget.msg.content) == 0
+        msg_widget.loading = (len(msg_widget.msg.thinking or "") + len(msg_widget.msg.content or "")) == 0
 
         if self.user_input.child_has_focus:
             self.set_timer(0.1, self.scroll_to_bottom)

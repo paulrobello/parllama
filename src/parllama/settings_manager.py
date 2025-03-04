@@ -12,7 +12,7 @@ from pathlib import Path
 import orjson as json
 import par_ai_core.llm_providers
 import requests
-from par_ai_core.llm_config import LlmMode
+from par_ai_core.llm_config import LlmMode, ReasoningEffort
 from par_ai_core.llm_providers import (
     LangChainConfig,
     LlmProvider,
@@ -34,6 +34,8 @@ class LastLlmConfig:
     model_name: str = ""
     temperature: float = 0.5
     num_ctx: int = 2048
+    reasoning_effort: ReasoningEffort | None = None
+    reasoning_budget: int | None = None
 
 
 class Settings(BaseModel):

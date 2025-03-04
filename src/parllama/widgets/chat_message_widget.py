@@ -11,6 +11,7 @@ from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Vertical
+from textual.content import Content
 from textual.events import Hide, Mount, Show, Unmount
 from textual.message import Message
 from textual.widgets import Markdown, Static, TextArea
@@ -142,6 +143,10 @@ class ChatMessageWidget(Vertical, can_focus=True):
     @property
     def raw_text(self) -> str:
         """The raw text."""
+        if self.msg.thinking:
+            if self.is_final:
+                return f"<think>{self.msg.thinking}</think>\n\n{self.msg.content}"
+            return f"Thinking: {self.msg.thinking}\n\n{self.msg.content}"
         return self.msg.content
 
     @property
@@ -152,7 +157,7 @@ class ChatMessageWidget(Vertical, can_focus=True):
     @property
     def markdown_raw(self) -> str:
         """The raw markdown."""
-        return self.raw_text.replace("<think>", "```thinking").replace("</think>", "```")
+        return self.raw_text.replace("<think>", "\n```thinking\n").replace("</think>", "\n```\n")
 
     async def update(self) -> None:
         """Update the document with new Markdown."""
@@ -163,7 +168,7 @@ class ChatMessageWidget(Vertical, can_focus=True):
             self.placeholder.display = False
             self.markdown.display = True
         else:
-            self.placeholder.update(self.markdown_raw)
+            self.placeholder.update(Content(self.markdown_raw))
             self.markdown.display = False
             self.placeholder.display = True
 
@@ -189,6 +194,9 @@ class ChatMessageWidget(Vertical, can_focus=True):
         if not self.editor:
             return
         self.msg.content = self.editor.text
+        if "</think>" in self.msg.content:
+            self.msg.thinking = self.msg.content.split("</think>")[0].replace("<think>", "").strip()
+            self.msg.content = self.msg.content.split("</think>")[1]
         await self.editor.remove()
         self.editor = None
         await self.update()
