@@ -59,20 +59,18 @@ class ParllamaChatMessage(ParEventSystemBase):
 
     images: list[str] | None = None
     """
-      Optional list of image data for multimodal models.
+    Optional list of image data for multimodal models.
 
-      Valid input types are:
+    Valid input types are:
 
-      - `str` or path-like object: path to image file
-      - `bytes` or bytes-like object: raw image data
+    - `str` or path-like object: path to image file
+    - `bytes` or bytes-like object: raw image data
 
-      Valid image formats depend on the model. See the model card for more information.
-      """
+    Valid image formats depend on the model. See the model card for more information.
+    """
 
     tool_calls: Sequence[ToolCall] | None = None
-    """
-    Tools calls to be made by the model.
-    """
+    """Tools calls to be made by the model."""
 
     def __init__(  # pylint: disable=too-many-arguments
         self,
