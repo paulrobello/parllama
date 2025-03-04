@@ -234,3 +234,8 @@ def get_args() -> Namespace:
 
     # Finally, parse the command line.
     return parser.parse_args()
+
+
+def escape_brackets(v: str) -> str:
+    """Escape square brackets in a string"""
+    return v.replace("[", "\\[").replace("]", "\\]")
