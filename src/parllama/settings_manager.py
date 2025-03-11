@@ -22,8 +22,12 @@ from par_ai_core.llm_providers import (
 )
 from par_ai_core.utils import md5_hash
 from pydantic import BaseModel
+from xdg_base_dirs import xdg_cache_home, xdg_data_home
 
+from parllama import __application_binary__
 from parllama.utils import TabType, get_args, valid_tabs
+
+old_data_dir = Path("~/.parllama").expanduser()
 
 
 @dataclass
@@ -49,17 +53,17 @@ class Settings(BaseModel):
 
     no_save: bool = False
     no_save_chat: bool = False
-    data_dir: str = os.path.expanduser("~/.parllama")
-    settings_file: str = "settings.json"
-    cache_dir: str = ""
-    ollama_cache_dir: str = ""
-    image_cache_dir: str = ""
-    chat_dir: str = ""
-    prompt_dir: str = ""
-    export_md_dir: str = ""
-    secrets_file: str = ""
-    provider_models_file: str = ""
-    chat_history_file: str = ""
+    data_dir: Path = xdg_data_home() / __application_binary__
+    settings_file: Path = Path("settings.json")
+    cache_dir: Path = Path()
+    ollama_cache_dir: Path = Path()
+    image_cache_dir: Path = Path()
+    chat_dir: Path = Path()
+    prompt_dir: Path = Path()
+    export_md_dir: Path = Path()
+    secrets_file: Path = Path()
+    provider_models_file: Path = Path()
+    chat_history_file: Path = Path()
     save_chat_input_history: bool = False
     chat_input_history_length: int = 100
 
@@ -117,34 +121,44 @@ class Settings(BaseModel):
         if args.no_chat_save:
             self.no_chat_save = True
 
-        self.data_dir = args.data_dir or os.environ.get("PARLLAMA_DATA_DIR") or os.path.expanduser("~/.parllama")
-        self.cache_dir = os.path.join(self.data_dir, "cache")
-        self.image_cache_dir = os.path.join(self.cache_dir, "image")
-        self.ollama_cache_dir = os.path.join(self.cache_dir, "ollama")
-        self.chat_dir = os.path.join(self.data_dir, "chats")
-        self.prompt_dir = os.path.join(self.data_dir, "prompts")
-        self.export_md_dir = os.path.join(self.data_dir, "md_exports")
-        self.chat_history_file = os.path.join(self.data_dir, "chat_history.json")
-        self.secrets_file = os.path.join(self.data_dir, "secrets.json")
-        self.provider_models_file = os.path.join(self.cache_dir, "provider_models.json")
+        self.data_dir = Path(
+            args.data_dir or os.environ.get("PARLLAMA_DATA_DIR") or str(xdg_data_home() / __application_binary__)
+        )
+        if old_data_dir.exists():
+            shutil.move(old_data_dir, self.data_dir)
 
-        os.makedirs(self.cache_dir, exist_ok=True)
-        os.makedirs(self.image_cache_dir, exist_ok=True)
-        os.makedirs(self.ollama_cache_dir, exist_ok=True)
-        os.makedirs(self.chat_dir, exist_ok=True)
-        os.makedirs(self.prompt_dir, exist_ok=True)
-        os.makedirs(self.export_md_dir, exist_ok=True)
+        old_cache_dir = self.data_dir / "cache"
 
-        if not os.path.exists(self.data_dir):
+        self.cache_dir = xdg_cache_home() / __application_binary__
+
+        if old_cache_dir.exists():
+            shutil.move(old_cache_dir, self.cache_dir)
+
+        self.image_cache_dir = self.cache_dir / "image"
+        self.ollama_cache_dir = self.cache_dir / "ollama"
+        self.provider_models_file = self.cache_dir / "provider_models.json"
+
+        self.chat_dir = self.data_dir / "chats"
+        self.prompt_dir = self.data_dir / "prompts"
+        self.export_md_dir = self.data_dir / "md_exports"
+        self.chat_history_file = self.data_dir / "chat_history.json"
+        self.secrets_file = self.data_dir / "secrets.json"
+
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
+        self.image_cache_dir.mkdir(parents=True, exist_ok=True)
+        self.ollama_cache_dir.mkdir(parents=True, exist_ok=True)
+        self.chat_dir.mkdir(parents=True, exist_ok=True)
+        self.prompt_dir.mkdir(parents=True, exist_ok=True)
+        self.export_md_dir.mkdir(parents=True, exist_ok=True)
+
+        if not self.data_dir.exists():
             raise FileNotFoundError(f"Par Llama data directory does not exist: {self.data_dir}")
 
-        self.settings_file = os.path.join(self.data_dir, "settings.json")
+        self.settings_file = self.data_dir / "settings.json"
         if args.restore_defaults:
-            if os.path.exists(self.settings_file):
-                os.unlink(self.settings_file)
-            theme_file = os.path.join(self.data_dir, "themes", "par.json")
-            if os.path.exists(theme_file):
-                os.unlink(theme_file)
+            self.settings_file.unlink(missing_ok=True)
+            theme_file = self.data_dir / "themes" / "par.json"
+            theme_file.unlink(missing_ok=True)
 
         if args.purge_cache:
             self.purge_cache_folder()
@@ -200,28 +214,26 @@ class Settings(BaseModel):
 
     def purge_cache_folder(self) -> None:
         """Purge cache folder."""
-        if os.path.exists(self.cache_dir):
+        if self.cache_dir.exists():
             shutil.rmtree(self.cache_dir, ignore_errors=True)
-            os.makedirs(self.cache_dir, exist_ok=True)
+            self.cache_dir.mkdir(parents=True, exist_ok=True)
 
     def purge_chats_folder(self) -> None:
         """Purge chats folder."""
-        if os.path.exists(self.chat_dir):
+        if self.chat_dir.exists():
             shutil.rmtree(self.chat_dir, ignore_errors=True)
-            os.makedirs(self.chat_dir, exist_ok=True)
+            self.chat_dir.mkdir(parents=True, exist_ok=True)
 
     def purge_prompts_folder(self) -> None:
         """Purge prompts folder."""
-        if os.path.exists(self.prompt_dir):
+        if self.prompt_dir.exists():
             shutil.rmtree(self.prompt_dir, ignore_errors=True)
-            os.makedirs(self.prompt_dir, exist_ok=True)
+            self.prompt_dir.mkdir(parents=True, exist_ok=True)
 
     def load_from_file(self) -> None:
         """Load settings from file."""
         try:
-            settings_file = Path(self.settings_file)
-
-            data = json.loads(settings_file.read_bytes())
+            data = json.loads(self.settings_file.read_bytes())
             url = data.get("ollama_host", self.ollama_host)
 
             if url:
@@ -286,7 +298,7 @@ class Settings(BaseModel):
                 self.last_llm_config.temperature = 0.5
             self.last_chat_session_id = data.get("last_chat_session_id", self.last_chat_session_id)
             self.max_log_lines = max(0, data.get("max_log_lines", 1000))
-            self.ollama_ps_poll_interval = data.get("ollama_ps_poll_interval", self.ollama_ps_poll_interval)
+            self.ollama_ps_poll_interval = max(0, data.get("ollama_ps_poll_interval", self.ollama_ps_poll_interval))
             self.auto_name_session = data.get("auto_name_session", self.auto_name_session)
             self.auto_name_session_llm_config = data.get(
                 "auto_name_session_llm_config",

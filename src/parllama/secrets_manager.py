@@ -39,14 +39,14 @@ class SecretsManager(ParEventSystemBase):
     _secrets_file: Path
     """JSON file containing encrypted secrets."""
 
-    def __init__(self, secrets_file: str, **kwargs) -> None:
+    def __init__(self, secrets_file: Path, **kwargs) -> None:
         """Initialize Manager and load vault."""
         super().__init__(**kwargs)
         self._secrets = {}
         self._salt = gen_salt()
         self._key_secure = None
         self._key = None
-        self._secrets_file = Path(secrets_file)
+        self._secrets_file = secrets_file
 
     def set_app(self, app: App[Any] | None) -> None:
         """Set the app and load existing sessions and prompts from storage"""

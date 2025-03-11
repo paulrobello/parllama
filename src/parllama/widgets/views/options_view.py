@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from par_ai_core.llm_config import LlmConfig
 from par_ai_core.llm_providers import LlmProvider, provider_base_urls
 from textual import on
@@ -87,31 +89,32 @@ class OptionsView(Horizontal):
                     vsf.border_title = "Folders"
                     with Horizontal(classes="folder-item"):
                         yield Label("Data Dir")
-                        yield Static(settings.data_dir)
-                    with Horizontal(classes="folder-item"):
-                        yield Label("Cache Dir")
-                        yield Static(settings.cache_dir)
-                    with Horizontal(classes="folder-item"):
-                        yield Label("Ollama Cache Dir")
-                        yield Static(settings.ollama_cache_dir)
+                        yield Static(str(settings.data_dir).replace(Path.home().as_posix(), "~"))
                     with Horizontal(classes="folder-item"):
                         yield Label("Chat Session Dir")
-                        yield Static(settings.chat_dir)
+                        yield Static(str(settings.chat_dir).replace(Path.home().as_posix(), "~"))
                     with Horizontal(classes="folder-item"):
                         yield Label("Custom Prompt Dir")
-                        yield Static(settings.prompt_dir)
+                        yield Static(str(settings.prompt_dir).replace(Path.home().as_posix(), "~"))
                     with Horizontal(classes="folder-item"):
                         yield Label("Export MD Dir")
-                        yield Static(settings.export_md_dir)
-                    with Horizontal(classes="folder-item"):
-                        yield Label("Provider Models File")
-                        yield Static(settings.provider_models_file)
+                        yield Static(str(settings.export_md_dir).replace(Path.home().as_posix(), "~"))
                     with Horizontal(classes="folder-item"):
                         yield Label("Chat history File")
-                        yield Static(settings.chat_history_file)
+                        yield Static(str(settings.chat_history_file).replace(Path.home().as_posix(), "~"))
+                    # with Horizontal(classes="folder-item"):
+                    #     yield Label("Secrets File")
+                    #     yield Static(str(settings.secrets_file).replace(Path.home().as_posix(), "~"))
                     with Horizontal(classes="folder-item"):
-                        yield Label("Secrets File")
-                        yield Static(settings.secrets_file)
+                        yield Label("Cache Dir")
+                        yield Static(str(settings.cache_dir).replace(Path.home().as_posix(), "~"))
+                    with Horizontal(classes="folder-item"):
+                        yield Label("Provider Models File")
+                        yield Static(str(settings.provider_models_file).replace(Path.home().as_posix(), "~"))
+                    with Horizontal(classes="folder-item"):
+                        yield Label("Ollama Cache Dir")
+                        yield Static(str(settings.ollama_cache_dir).replace(Path.home().as_posix(), "~"))
+
                 with Vertical(classes="section") as vs:
                     vs.border_title = "Startup"
                     yield Checkbox(
