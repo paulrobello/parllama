@@ -49,14 +49,13 @@ requires-python = ">=3.11"
 dependencies = [
     "argparse>=1.4.0",
     "asyncio>=3.4.3",
-    "attrs>=25.1.0",
     "beautifulsoup4>=4.13.3",
     "build>=1.2.2.post1",
-    "cryptography>=44.0.1",
+    "cryptography>=44.0.2",
     "docker>=7.1.0",
     "httpx>=0.28.1",
     "humanize>=4.11.0",
-    "langchain>=0.3.19",
+    "langchain>=0.3.20",
     "ollama>=0.4.7",
     "pydantic>=2.10.6",
     "pydantic-core>=2.27.2",
@@ -65,14 +64,15 @@ dependencies = [
     "requests>=2.32.3",
     "rich>=13.9.4",
     "semver>=3.0.4",
-    "textual[syntax]>=2.1.0",
-    "textual-fspicker>=0.2.0",
+    "textual[syntax]>=2.1.2",
+    "textual-fspicker>=0.4.1",
     "urllib3>=2.3.0",
     "rich-pixels>=3.0.1",
     "orjson>=3.10.15",
-    "par-ai-core>=0.1.20",
+    "par-ai-core>=0.1.22",
     "clipman>=3.3.1",
     "google-generativeai>=0.8.4",
+    "xdg-base-dirs>=6.0.2",
 ]
 packages = [
     "src/parllama",
@@ -92,47 +92,40 @@ Wiki = "https://github.com/paulrobello/parllama/wiki"
 [project.scripts]
 parllama = "parllama.__main__:run"
 
+[project.optional-dependencies]
+web = [
+    "textual-serve>=1.1.1",
+]
+
 [build-system]
 requires = [
     "hatchling",
-    "wheel",
 ]
 build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
     "pyright>=1.1.391",
-    "build>=1.2.2.post1",
-    "twine>=6.0.1",
     "types-pytz>=2024.2.0.20241221",
-    "textual-dev>=1.7.0",
     "types-requests>=2.32.0.20241016",
     "types-beautifulsoup4>=4.12.0.20241020",
     "pre-commit>=4.0.1",
     "google-api-python-client-stubs>=1.28.0",
-    "typing-extensions>=4.12.2",
-    "types-simplejson>=3.19.0.20241221",
     "pyinstrument>=4.7.3",
     "types-orjson>=3.6.2",
     "ruff>=0.7.4",
+    "textual-dev>=1.7.0",
 ]
 
 [tool.hatch.version]
 path = "src/parllama/__init__.py"
 
+[tool.hatch.metadata]
+allow-direct-references = true
+
 [tool.hatch.build.targets.wheel]
 packages = [
     "src/parllama",
-]
-include = [
-    "py.typed",
-    "**/*.py",
-    "**/*.html",
-    "**/*.gif",
-    "**/*.jpg",
-    "**/*.png",
-    "**/*.md",
-    "**/*.tcss",
 ]
 
 [tool.hatch.build.targets.sdist]
@@ -148,6 +141,3 @@ exclude = [
     "*.so",
     "*.dylib",
 ]
-
-[tool.uv.sources]
-par-ai-core = { path = "../par_ai_core", editable = true }
