@@ -32,7 +32,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          run: uv sync --all-extras --dev
+          uv sync --all-extras --dev
 
       - name: Get version from __init__.py
         id: get_version
