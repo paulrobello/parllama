@@ -174,6 +174,9 @@ class ChatMessageWidget(Vertical, can_focus=True):
 
     async def action_delete_msg(self) -> None:
         """Handle the delete message action."""
+        if not self.is_final:
+            self.notify("Stop the LLM before deleting message", severity="error")
+            return
         del self.session[self.msg.id]
 
     async def action_edit_item(self) -> None:
