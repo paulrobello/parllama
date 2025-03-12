@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from argparse import ArgumentParser, Namespace
+from pathlib import Path
 from typing import Literal, TypeAlias
 
 from textual.widgets import Button, Input
@@ -239,3 +240,16 @@ def get_args() -> Namespace:
 def escape_brackets(v: str) -> str:
     """Escape square brackets in a string"""
     return v.replace("[", "\\[").replace("]", "\\]")
+
+
+def shorten_path(p: Path | str) -> str:
+    """
+    Replace the home portion of a path with '~'.
+
+    Args:
+        p (Path | str): The file path to be shortened.
+
+    Returns:
+        str: The shortened path with the home directory replaced by '~'.
+    """
+    return str(p).replace(Path.home().as_posix(), "~")
