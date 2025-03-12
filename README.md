@@ -183,7 +183,7 @@ options:
   -h, --help            show this help message and exit
   -v, --version         Show version information.
   -d DATA_DIR, --data-dir DATA_DIR
-                        Data Directory. Defaults to ~/.parllama
+                        Data Directory. Defaults to ~/.local/share/parllama
   -u OLLAMA_URL, --ollama-url OLLAMA_URL
                         URL of your Ollama instance. Defaults to http://localhost:11434
   -t THEME_NAME, --theme-name THEME_NAME

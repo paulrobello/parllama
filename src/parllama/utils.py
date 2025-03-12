@@ -142,7 +142,7 @@ def get_args() -> Namespace:
     parser.add_argument(
         "-d",
         "--data-dir",
-        help="Data Directory. Defaults to ~/.parllama",
+        help="Data Directory. Defaults to ~/.local/share/parllama",
     )
 
     parser.add_argument(
