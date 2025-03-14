@@ -239,6 +239,33 @@ class ChatTab(TabPane):
         if (target := await ImportSession.get_filename(self.app)) is None:
             return
         file_data = target.read_text(encoding="utf-8")
+        # Parse the markdown content into conversation messages.
+        messages = []
+        current_role: str | None = None
+        current_lines: list[str] = []
+        for line in file_data.splitlines():
+            if line.startswith("#USER"):
+                if current_role is not None and current_lines:
+                    content = "\n".join(current_lines).strip()
+                    messages.append(ParllamaChatMessage(role=current_role, content=content))
+                current_role = "user"
+                current_lines = []
+            elif line.startswith("#ASSISTANT"):
+                if current_role is not None and current_lines:
+                    content = "\n".join(current_lines).strip()
+                    messages.append(ParllamaChatMessage(role=current_role, content=content))
+                current_role = "assistant"
+                current_lines = []
+            else:
+                current_lines.append(line)
+        if current_role is not None and current_lines:
+            content = "\n".join(current_lines).strip()
+            messages.append(ParllamaChatMessage(role=current_role, content=content))
+        # Clear existing session messages and load new ones.
+        with self.session.batch_changes():
+            self.session.messages.clear()
+            for msg in messages:
+                self.session.add_message(msg)
 
 
     async def load_session(self, session_id: str) -> None:
