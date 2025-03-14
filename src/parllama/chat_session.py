@@ -33,6 +33,7 @@ from parllama.messages.messages import (
 from parllama.messages.par_chat_messages import ParChatMessageDeleted, ParChatUpdated
 from parllama.messages.par_session_messages import ParSessionAutoName, ParSessionDelete, ParSessionUpdated
 from parllama.messages.shared import session_change_list
+from parllama.models.ollama_data import MessageRoles
 from parllama.models.token_stats import TokenStats
 from parllama.settings_manager import settings
 
@@ -557,6 +558,45 @@ class ChatSession(ChatMessageContainer):
         """Return the number of subscribers"""
         return len(self._subs)
 
-    def on_par_chat_message_deleted(self, event: ParChatMessageDeleted):
+    def on_par_chat_message_deleted(self, event:  ParChatMessageDeleted):
         """Handle ParChatMessageDeleted event"""
         self._notify_subs(ChatMessageDeleted(parent_id=event.parent_id, message_id=event.message_id))
+
+    def check_consecutive_messages(self) -> None:
+        """Checks for consecutive user or assistant messages in a session and merges them."""
+
+        if len(self.messages) <= 1:
+            return
+
+        new_messages: list[ParllamaChatMessage] = []
+        previous_role: MessageRoles | None = None
+        current_message: ParllamaChatMessage | None = None
+
+        for message in self.messages:
+            if message.role == previous_role:
+                if current_message:
+                    current_message.content += "\n" + message.content
+                    if message.images:
+                        if not current_message.images:
+                            current_message.images =[]
+                        current_message.images.extend(message.images)
+                    if message.tool_calls:
+                        if not current_message.tool_calls:
+                            current_message.tool_calls = []
+                        current_message.tool_calls.extend(message.tool_calls)  # type: ignore
+            else:
+                if current_message:
+                    new_messages.append(current_message)
+                current_message = ParllamaChatMessage(
+                    role=message.role, content=message.content, images=message.images, tool_calls=message.tool_calls
+                )
+                previous_role = message.role
+
+        if current_message:
+            new_messages.append(current_message)
+
+        if len(new_messages) != len(self.messages):
+            self.messages.clear()
+            self._id_to_msg.clear()
+            for message in new_messages:
+                self.add_message(message)

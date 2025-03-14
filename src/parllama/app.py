@@ -189,6 +189,7 @@ New options are being added all the time! Check out Whats New on the repo.
 By default ParLlama makes not attempt to connect to the internet.
 If you would like to auto check for updates, you can enable it in the Startup section of Options.
 If you want to use other providers, you can set them up in the Providers section of the Options tab.
+Some functions are only available via slash / commands on that chat tab. You can use /help to see what commands are available.
                 """,
             )
         )

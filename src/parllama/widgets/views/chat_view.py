@@ -64,6 +64,7 @@ valid_commands: list[str] = [
     "/session.name",
     "/session.delete",
     "/session.export",
+    "/session.import",
     "/session.system_prompt",
     "/session.clear_system_prompt",
     "/session.to_prompt",
@@ -138,6 +139,13 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
             key="ctrl+e",
             action="export",
             description="Export",
+            show=True,
+            priority=True,
+        ),
+        Binding(
+            key="ctrl+i",
+            action="import",
+            description="Import",
             show=True,
             priority=True,
         ),
@@ -329,6 +337,7 @@ Chat Commands:
 /session.temp [temperature] - Select temperature input or set temperature in current tab
 /session.delete - Delete the chat session for current tab
 /session.export - Export the conversation in current tab to a Markdown file
+/session.import - Import a Markdown file into the current session
 /session.system_prompt [system_prompt] - Set system prompt in current tab
 /session.clear_system_prompt - Remove system prompt in current tab
 /session.to_prompt submit_on_load [prompt_name] - Copy current session to new custom prompt. submit_on_load = {0|1}
@@ -433,6 +442,8 @@ Chat Commands:
             )
         elif cmd.startswith("session.export"):
             self.active_tab.save_conversation_text()
+        elif cmd.startswith("session.import"):
+            self.active_tab.import_conversation_text()
         elif cmd.startswith("session.clear_system_prompt"):
             self.session.system_prompt = None
         elif cmd.startswith("session.system_prompt "):
@@ -648,6 +659,11 @@ Chat Commands:
     def action_export(self) -> None:
         """Export chat to Markdown file"""
         self.active_tab.save_conversation_text()
+
+    def action_import(self) -> None:
+        """Import markdown file into session"""
+        self.active_tab.import_conversation_text()
+        self.user_input.focus()
 
     async def action_new_session(self) -> None:
         """Start a new chat session"""

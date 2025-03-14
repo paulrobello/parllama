@@ -30,12 +30,12 @@
     * [Where we are](#where-we-are)Ï
     * [Where we're going](#where-were-going)
 * [What's new](#whats-new)
+    * [v0.3.22](#v0322)
     * [v0.3.21](#v0321)
     * [v0.3.20](#v0320) 
     * [v0.3.19](#v0319)
     * [v0.3.18](#v0318)
-    * [v0.3.17](#v0317) 
-    * [older...](#v0316)
+    * [older...](#v0317) 
 
 [![PyPI](https://img.shields.io/pypi/v/parllama)](https://pypi.org/project/parllama/)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/parllama.svg)](https://pypi.org/project/parllama/)  
@@ -436,6 +436,10 @@ if anything remains to be fixed before the commit is allowed.
 
 
 ## What's new
+
+### v0.3.22
+
+* Add option to import markdown files into session
 
 ### v0.3.21
 

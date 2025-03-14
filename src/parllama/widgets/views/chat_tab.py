@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import uuid
 from functools import partial
 from typing import cast
@@ -32,7 +33,7 @@ from parllama.messages.messages import (
     UpdateChatStatus,
     UpdateTabLabel,
 )
-from parllama.models.ollama_data import FullModel
+from parllama.models.ollama_data import FullModel, MessageRoles
 from parllama.ollama_data_manager import ollama_dm
 from parllama.provider_manager import provider_manager
 from parllama.screens.import_session import ImportSession
@@ -65,6 +66,7 @@ class ChatTab(TabPane):
     def __init__(self, user_input: UserInput, session_list: SessionList, **kwargs) -> None:
         """Initialise the view."""
         self.session_config = SessionConfig(id="session_config")
+        self.session_config.session.add_sub(self)
 
         session_name = self.session_config.session.name
         super().__init__(
@@ -240,33 +242,36 @@ class ChatTab(TabPane):
             return
         file_data = target.read_text(encoding="utf-8")
         # Parse the markdown content into conversation messages.
+        session_name: str | None = None
         messages = []
-        current_role: str | None = None
+        current_role: MessageRoles | None = None
         current_lines: list[str] = []
+        role_pattern = re.compile(r"^## (system|user|assistant)")
+
         for line in file_data.splitlines():
-            if line.startswith("#USER"):
+            if line.startswith("# "):
+                session_name = line[2:]
+                continue
+            if match := role_pattern.match(line):
                 if current_role is not None and current_lines:
                     content = "\n".join(current_lines).strip()
                     messages.append(ParllamaChatMessage(role=current_role, content=content))
-                current_role = "user"
-                current_lines = []
-            elif line.startswith("#ASSISTANT"):
-                if current_role is not None and current_lines:
-                    content = "\n".join(current_lines).strip()
-                    messages.append(ParllamaChatMessage(role=current_role, content=content))
-                current_role = "assistant"
+                current_role = match.group(1)
                 current_lines = []
             else:
                 current_lines.append(line)
         if current_role is not None and current_lines:
             content = "\n".join(current_lines).strip()
             messages.append(ParllamaChatMessage(role=current_role, content=content))
-        # Clear existing session messages and load new ones.
+        # Append messages and set title.
         with self.session.batch_changes():
-            self.session.messages.clear()
+            if session_name:
+                self.session.name = session_name
             for msg in messages:
                 self.session.add_message(msg)
-
+            # check for consecutive user or assistant messages and merge them
+            self.session.check_consecutive_messages()
+        self.post_message(SessionSelected(session_id=self.session.id, new_tab=False))
 
     async def load_session(self, session_id: str) -> None:
         """Load a session"""
