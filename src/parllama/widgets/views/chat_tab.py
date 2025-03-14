@@ -35,6 +35,7 @@ from parllama.messages.messages import (
 from parllama.models.ollama_data import FullModel
 from parllama.ollama_data_manager import ollama_dm
 from parllama.provider_manager import provider_manager
+from parllama.screens.import_session import ImportSession
 from parllama.screens.save_session import SaveSession
 from parllama.settings_manager import settings
 from parllama.widgets.chat_message_list import ChatMessageList
@@ -231,6 +232,14 @@ class ChatTab(TabPane):
 
         # Let the user know the save happened.
         self.notify(str(target), title="Saved")
+
+    @work
+    async def import_conversation_text(self) -> None:
+        """Import the conversation from a Markdown document."""
+        if (target := await ImportSession.get_filename(self.app)) is None:
+            return
+        file_data = target.read_text(encoding="utf-8")
+
 
     async def load_session(self, session_id: str) -> None:
         """Load a session"""
