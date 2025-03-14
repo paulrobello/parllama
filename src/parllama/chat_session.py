@@ -558,7 +558,7 @@ class ChatSession(ChatMessageContainer):
         """Return the number of subscribers"""
         return len(self._subs)
 
-    def on_par_chat_message_deleted(self, event:  ParChatMessageDeleted):
+    def on_par_chat_message_deleted(self, event: ParChatMessageDeleted):
         """Handle ParChatMessageDeleted event"""
         self._notify_subs(ChatMessageDeleted(parent_id=event.parent_id, message_id=event.message_id))
 
@@ -578,7 +578,7 @@ class ChatSession(ChatMessageContainer):
                     current_message.content += "\n" + message.content
                     if message.images:
                         if not current_message.images:
-                            current_message.images =[]
+                            current_message.images = []
                         current_message.images.extend(message.images)
                     if message.tool_calls:
                         if not current_message.tool_calls:

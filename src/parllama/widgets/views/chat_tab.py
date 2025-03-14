@@ -256,7 +256,7 @@ class ChatTab(TabPane):
                 if current_role is not None and current_lines:
                     content = "\n".join(current_lines).strip()
                     messages.append(ParllamaChatMessage(role=current_role, content=content))
-                current_role = match.group(1)
+                current_role = cast(MessageRoles, match.group(1))
                 current_lines = []
             else:
                 current_lines.append(line)
