@@ -65,6 +65,7 @@ valid_commands: list[str] = [
     "/session.delete",
     "/session.export",
     "/session.import",
+    "/session.summarize",
     "/session.system_prompt",
     "/session.clear_system_prompt",
     "/session.to_prompt",
@@ -338,6 +339,7 @@ Chat Commands:
 /session.delete - Delete the chat session for current tab
 /session.export - Export the conversation in current tab to a Markdown file
 /session.import - Import a Markdown file into the current session
+/session.summarize - Summarize conversation and replace it with a single message
 /session.system_prompt [system_prompt] - Set system prompt in current tab
 /session.clear_system_prompt - Remove system prompt in current tab
 /session.to_prompt submit_on_load [prompt_name] - Copy current session to new custom prompt. submit_on_load = {0|1}
@@ -442,6 +444,8 @@ Chat Commands:
             )
         elif cmd.startswith("session.export"):
             self.active_tab.save_conversation_text()
+        elif cmd.startswith("session.summarize"):
+            self.active_tab.summarize_conversation_text()
         elif cmd.startswith("session.import"):
             self.active_tab.import_conversation_text()
         elif cmd.startswith("session.clear_system_prompt"):

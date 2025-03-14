@@ -20,6 +20,7 @@ from textual.widgets import Static, TabbedContent, TabPane
 
 from parllama.chat_manager import ChatSession, chat_manager
 from parllama.chat_message import ParllamaChatMessage
+from parllama.llm_session_helpers import llm_summarize_session
 from parllama.messages.messages import (
     ChatMessage,
     ChatMessageDeleted,
@@ -216,6 +217,20 @@ class ChatTab(TabPane):
         """Scroll to the bottom of the chat window."""
         self.vs.scroll_to(y=self.vs.max_scroll_y, animate=animate)
         # self.vs.scroll_end(force=True)
+
+    @work
+    async def summarize_conversation_text(self) -> None:
+        """Summarize the conversation text and replace it with a single message."""
+        summary = llm_summarize_session(str(self.session), self.session.llm_config)
+        with self.session.batch_changes():
+            system_prompt = self.session.system_prompt
+            self.session.clear_messages()
+            if system_prompt:
+                self.session.add_message(system_prompt)
+            self.session.add_message(ParllamaChatMessage(role="user", content="Summarize the previous conversation"))
+            self.session.add_message(ParllamaChatMessage(role="assistant", content=summary))
+        self.post_message(SessionSelected(session_id=self.session.id, new_tab=False))
+        # self.post_message(LogIt(summary))
 
     @work
     async def save_conversation_text(self) -> None:

@@ -42,3 +42,37 @@ Minimize the thinking time as much as possible and focus on the given context.
         config=llm_run_manager.get_runnable_config(chat_model.name or ""),
     )
     return str(ret.content).strip()
+
+
+def llm_summarize_session(text: str, llm_config: LlmConfig) -> str:
+    """Generate a session name from the given text using llm"""
+    chat_model = llm_config.build_chat_model()
+    ret = chat_model.invoke(
+        [
+            (
+                "system",
+                """
+# IDENTITY and PURPOSE
+
+You are an expert content summarizer.
+You take a conversation and generate a summary of that conversation.
+
+# STEPS
+
+- Combine all of your understanding of the conversation into a single paragraph.
+- All content will be enclosed in a CONTENT tag
+
+# OUTPUT INSTRUCTIONS
+
+- DO NOT answer or reply to the content, only summarize it.
+- DO NOT reply with more than 1 paragraph.
+- DO NOT output anything other than the summary no other text.
+- DO NOT add a preamble such as "here is a summary of the conversation".
+- DO NOT include the CONTENT tag, only the summary.
+    """,
+            ),
+            ("user", f"<CONTENT>{text}</CONTENT>"),
+        ],
+        config=llm_run_manager.get_runnable_config(chat_model.name or ""),
+    )
+    return str(ret.content).strip()
