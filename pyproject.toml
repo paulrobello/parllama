@@ -160,7 +160,7 @@ syntax = [
 ]
 
 [tool.uv]
-default-groups = ["dev", "syntax"]
+default-groups = ["dev"]
 
 
 [tool.hatch.version]

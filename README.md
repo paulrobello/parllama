@@ -439,7 +439,9 @@ if anything remains to be fixed before the commit is allowed.
 
 ### v0.3.22
 
-* Add option to import markdown files into session
+* Add option to import markdown files into session via slash command /session.import and hot key ctrl+i
+* Added slash command /session.summarize to summarize and replace entire conversation into a single 1 paragraph message
+* Tree-sitter package no longer installed by default
 
 ### v0.3.21
 
