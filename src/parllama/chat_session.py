@@ -466,7 +466,7 @@ class ChatSession(ChatMessageContainer):
             ).to_json()
         session = ChatSession(
             id=data.get("id", data.get("id", data.get("session_id"))),
-            name=data.get("name", data.get("name", data.get("session_name"))),
+            name=data.get("name", data.get("name", data.get("session_name"))) or "Session",
             last_updated=datetime.fromisoformat(data["last_updated"]).replace(tzinfo=utc),
             messages=([ParllamaChatMessage(**m) for m in messages] if load_messages else None),
             llm_config=LlmConfig.from_json(lc),

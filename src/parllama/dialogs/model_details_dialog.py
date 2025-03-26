@@ -8,6 +8,7 @@ from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import VerticalScroll
+from textual.content import Content
 from textual.events import Focus
 from textual.screen import ModalScreen
 from textual.widgets import Button, MarkdownViewer, Pretty, Static, TextArea
@@ -71,7 +72,7 @@ class ModelDetailsDialog(ModalScreen[None]):
     def compose(self) -> ComposeResult:
         """Compose the content of the dialog."""
         with VerticalScroll() as vs:
-            vs.border_title = f"[ {self.model.name} ]"
+            vs.border_title = Content(f"[ {self.model.name} ]")
             yield Button("Copy to create", id="copy_to_create")
             # yield FieldSet("Name", Static(self.model.name, message_id="name"))
             yield FieldSet("Modified", Static(str(self.model.modified_at), id="modified_at"))

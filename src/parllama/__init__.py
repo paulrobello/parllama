@@ -6,7 +6,7 @@ import os
 import warnings
 
 import clipman
-from langchain_core._api import LangChainBetaWarning
+from langchain_core._api import LangChainBetaWarning  # type: ignore
 
 warnings.simplefilter("ignore", category=LangChainBetaWarning)
 warnings.simplefilter("ignore", category=DeprecationWarning)
@@ -21,7 +21,7 @@ __copyright__ = "Copyright 2024, Paul Robello"
 __credits__ = ["Paul Robello"]
 __maintainer__ = "Paul Robello"
 __email__ = "probello@gmail.com"
-__version__ = "0.3.22"
+__version__ = "0.3.23"
 __licence__ = "MIT"
 __application_title__ = "PAR LLAMA"
 __application_binary__ = "parllama"
