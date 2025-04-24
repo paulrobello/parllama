@@ -364,8 +364,8 @@ class OllamaDataManager(ParEventSystemBase):
             else:
                 new_netloc = f":{parsed_url.port}"
         components = (parsed_url.scheme, new_netloc or "", parsed_url.path, parsed_url.query, parsed_url.fragment)
-        clean_host_url = urlunsplit(components)
-        if username or password:
+        clean_host_url = str(urlunsplit(components))
+        if username and password:
             auth = (username, password)
         else:
             auth = None
