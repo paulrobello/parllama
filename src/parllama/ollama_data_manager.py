@@ -10,6 +10,7 @@ from collections.abc import Iterator, Mapping
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
+from urllib.parse import urlsplit, urlunsplit
 
 import docker.errors  # type: ignore
 import docker.types  # type: ignore
@@ -132,7 +133,7 @@ class OllamaDataManager(ParEventSystemBase):
         """Get all model data."""
         all_models: list[LocalModelListItem] = []
         try:
-            res = ollama.Client(host=settings.ollama_host).list()
+            res = self.ollama_client.list()
         except Exception as e:
             self.log_it(f"Error loading Ollama Models: {e}")
             return []
@@ -143,6 +144,7 @@ class OllamaDataManager(ParEventSystemBase):
             res3 = FullModel(**model.model_dump(), name=model.model)
             all_models.append(LocalModelListItem(res3))
             # break
+        all_models.sort(key=lambda item: (-(item.model.size or 0), item.model.name.casefold()))
         return all_models
 
     def refresh_models(self) -> list[LocalModelListItem]:
@@ -350,15 +352,36 @@ class OllamaDataManager(ParEventSystemBase):
 
         return ret.logs(stream=True)
 
+    def ollama_url_auth(self) -> tuple[str, tuple[str, str] | None]:
+        original_host = settings.ollama_host
+        parsed_url = urlsplit(original_host)
+        username = parsed_url.username
+        password = parsed_url.password
+        new_netloc = parsed_url.hostname
+        if parsed_url.port is not None:
+            if new_netloc:
+                new_netloc = f"{new_netloc}:{parsed_url.port}"
+            else:
+                new_netloc = f":{parsed_url.port}"
+        components = (parsed_url.scheme, new_netloc or "", parsed_url.path, parsed_url.query, parsed_url.fragment)
+        clean_host_url = urlunsplit(components)
+        if username or password:
+            auth = (username, password)
+        else:
+            auth = None
+        return clean_host_url, auth
+
     @functools.cached_property
     def ollama_client(self) -> ollama.Client:
         """Get the ollama client."""
-        return ollama.Client(host=settings.ollama_host)
+        clean_host_url, auth = self.ollama_url_auth()
+        return ollama.Client(host=clean_host_url, auth=auth)
 
     @functools.cached_property
     def ollama_aclient(self) -> ollama.AsyncClient:
         """Get the async ollama client."""
-        return ollama.AsyncClient(host=settings.ollama_host)
+        clean_host_url, auth = self.ollama_url_auth()
+        return ollama.AsyncClient(host=clean_host_url, auth=auth)
 
     def get_model_context_length(self, model_name: str) -> int:
         """Get the context length of a model."""
