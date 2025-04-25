@@ -10,7 +10,6 @@ from collections.abc import Iterator, Mapping
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
-from urllib.parse import urlsplit, urlunsplit
 
 import docker.errors  # type: ignore
 import docker.types  # type: ignore
@@ -23,7 +22,7 @@ from docker.models.containers import Container  # type: ignore
 from docker.types import CancellableStream
 from httpx import Response
 from ollama import ProgressResponse, StatusResponse
-from par_ai_core.utils import run_cmd
+from par_ai_core.utils import extract_url_auth, run_cmd
 
 from parllama.docker_utils import start_docker_container
 from parllama.models.ollama_data import FullModel, ModelInfo, ModelShowPayload, SiteModel, SiteModelData
@@ -352,35 +351,16 @@ class OllamaDataManager(ParEventSystemBase):
 
         return ret.logs(stream=True)
 
-    def ollama_url_auth(self) -> tuple[str, tuple[str, str] | None]:
-        original_host = settings.ollama_host
-        parsed_url = urlsplit(original_host)
-        username = parsed_url.username
-        password = parsed_url.password
-        new_netloc = parsed_url.hostname
-        if parsed_url.port is not None:
-            if new_netloc:
-                new_netloc = f"{new_netloc}:{parsed_url.port}"
-            else:
-                new_netloc = f":{parsed_url.port}"
-        components = (parsed_url.scheme, new_netloc or "", parsed_url.path, parsed_url.query, parsed_url.fragment)
-        clean_host_url = str(urlunsplit(components))
-        if username and password:
-            auth = (username, password)
-        else:
-            auth = None
-        return clean_host_url, auth
-
     @functools.cached_property
     def ollama_client(self) -> ollama.Client:
         """Get the ollama client."""
-        clean_host_url, auth = self.ollama_url_auth()
+        clean_host_url, auth = extract_url_auth(settings.ollama_host)
         return ollama.Client(host=clean_host_url, auth=auth)
 
     @functools.cached_property
     def ollama_aclient(self) -> ollama.AsyncClient:
         """Get the async ollama client."""
-        clean_host_url, auth = self.ollama_url_auth()
+        clean_host_url, auth = extract_url_auth(settings.ollama_host)
         return ollama.AsyncClient(host=clean_host_url, auth=auth)
 
     def get_model_context_length(self, model_name: str) -> int:
