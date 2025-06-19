@@ -173,7 +173,7 @@ class ChatTab(TabPane):
         event.stop()
 
         if self.session.id != event.parent_id:
-            self.notify("Chat session id missmatch", severity="error")
+            self.notify("Chat session id mismatch", severity="error")
             return
 
         for w in cast(list[ChatMessageWidget], self.query(f"#cm_{event.message_id}")):
@@ -186,7 +186,7 @@ class ChatTab(TabPane):
         """Handle a chat message"""
 
         if self.session.id != event.parent_id:
-            self.notify("Chat session id missmatch", severity="error")
+            self.notify("Chat session id mismatch", severity="error")
             return
         msg: ParllamaChatMessage | None = self.session[event.message_id]
         if not msg:
