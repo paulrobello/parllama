@@ -290,13 +290,19 @@ class OllamaDataManager(ParEventSystemBase):
     @staticmethod
     def create_model(
         model_name: str,
-        model_code: str,
+        model_from: str,
+        system_prompt: str,
+        model_template: str,
+        model_license: str | None = None,
         quantize_level: str | None = None,
     ) -> Iterator[ProgressResponse]:
         """Create a new model."""
         return ollama.Client(host=settings.ollama_host).create(
             model=model_name,
-            modelfile=model_code,
+            from_=model_from,
+            system=system_prompt,
+            template=model_template,
+            license=model_license,
             quantize=quantize_level,
             stream=True,
         )  # type: ignore

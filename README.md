@@ -30,12 +30,12 @@
     * [Where we are](#where-we-are)Ï
     * [Where we're going](#where-were-going)
 * [What's new](#whats-new) 
+    * [v0.3.25](#v0325)
     * [v0.3.24](#v0324)
     * [v0.3.23](#v0323)
     * [v0.3.22](#v0322)
     * [v0.3.21](#v0321)
-    * [v0.3.20](#v0320) 
-    * [older...](#v0319)
+    * [older...](#v0320) 
 
 [![PyPI](https://img.shields.io/pypi/v/parllama)](https://pypi.org/project/parllama/)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/parllama.svg)](https://pypi.org/project/parllama/)  
@@ -436,6 +436,12 @@ if anything remains to be fixed before the commit is allowed.
 
 
 ## What's new
+
+### v0.3.25
+
+* Fixed tab in input history causing a crash.
+* Fixed create new model causing crash.
+
 
 ### v0.3.24
 

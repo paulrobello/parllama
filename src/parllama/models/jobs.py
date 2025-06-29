@@ -35,5 +35,8 @@ class CopyModelJob(QueueJob):
 class CreateModelJob(QueueJob):
     """Create model job"""
 
-    modelCode: str
+    modelFrom: str
+    systemPrompt: str
+    modelTemplate: str
+    model_license: str
     quantizationLevel: str | None

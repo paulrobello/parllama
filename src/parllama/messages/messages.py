@@ -111,7 +111,10 @@ class LocalModelCreateRequested(AppRequest):
     """Message to notify that a model create has been requested."""
 
     model_name: str
-    model_code: str
+    model_from: str
+    system_prompt: str
+    model_template: str
+    mode_license: str
     quantization_level: str | None
 
 
@@ -120,7 +123,10 @@ class LocalCreateModelFromExistingRequested(AppRequest):
     """Message to open create model screen with current model file as starting point."""
 
     model_name: str
-    model_code: str
+    model_from: str
+    system_prompt: str
+    model_template: str
+    model_license: str
     quantization_level: str | None
 
 
@@ -129,8 +135,11 @@ class LocalModelCreated(Message):
     """Message to notify that a model has been created."""
 
     model_name: str
+    model_from: str
+    system_prompt: str
+    model_template: str
+    model_license: str
     quantization_level: str | None
-    model_code: str
     success: bool
 
 

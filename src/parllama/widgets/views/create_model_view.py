@@ -38,11 +38,11 @@ class ModelCreateView(Container):
           }
         }
       }
-      #editor {
+      .editor {
         border: double $background;
         border-title-color: $accent;
       }
-      #editor:focus {
+      .editor:focus {
         border: double $accent;
       }
     }
@@ -52,7 +52,10 @@ class ModelCreateView(Container):
         Binding("ctrl+c", "app.copy_to_clipboard", "", show=True),
     ]
 
-    text_area: TextArea
+    input_from: Input
+    ta_system_prompt: TextArea
+    ta_template: TextArea
+    ta_license: TextArea
 
     def __init__(self, **kwargs) -> None:
         """
@@ -64,9 +67,19 @@ class ModelCreateView(Container):
             id="quantize_level",
             placeholder="e.g. q4_0 or blank for none",
         )
-        self.text_area = TextArea.code_editor("", id="editor", theme="css")
-        self.text_area.indent_type = "tabs"
-        self.text_area.border_title = "Model Code"
+        self.input_from = Input()
+        self.ta_system_prompt = TextArea.code_editor("", classes="editor", theme="css")
+        self.ta_system_prompt.indent_type = "tabs"
+        self.ta_system_prompt.border_title = "System Prompt"
+
+        self.ta_template = TextArea.code_editor("", classes="editor", theme="css")
+        self.ta_template.indent_type = "tabs"
+        self.ta_template.border_title = "Template"
+
+        self.ta_license = TextArea.code_editor("", classes="editor", theme="css")
+        self.ta_license.indent_type = "tabs"
+        self.ta_license.border_title = "License"
+
         self.create_button = Button("Create", id="create_button")
 
     def compose(self) -> ComposeResult:
@@ -77,7 +90,11 @@ class ModelCreateView(Container):
                 with Horizontal(id="ql"):
                     yield Label("Quantize Level")
                     yield self.quantize_input
-            yield self.text_area
+            yield Label("Model From")
+            yield self.input_from
+            yield self.ta_system_prompt
+            yield self.ta_template
+            yield self.ta_license
             yield self.create_button
 
     def _on_show(self, event: Show) -> None:
@@ -91,19 +108,28 @@ class ModelCreateView(Container):
     def action_create_model(self) -> None:
         """Create the model."""
         name = (self.name_input.value or "").strip()
-        code = (self.text_area.text or "").strip()
+        model_from = (self.input_from.value or "").strip()
+        system_prompt = (self.ta_system_prompt.text or "").strip()
+        model_template = (self.ta_template.text or "").strip()
+        license = (self.ta_license.text or "").strip()
         quantization_level = (self.quantize_input.value or "").strip()
         if not name:
             self.app.push_screen(ErrorDialog(title="Input Error", message="Please enter a model name"))
             return
-        if not code:
-            self.app.push_screen(ErrorDialog(title="Input Error", message="Please enter a model code"))
+        if not model_from:
+            self.app.push_screen(ErrorDialog(title="Input Error", message="Please enter a model to create from"))
             return
+        # if not model_template:
+        #     self.app.push_screen(ErrorDialog(title="Input Error", message="Please enter a model template"))
+        #     return
         self.app.post_message(
             LocalModelCreateRequested(
                 widget=self,
                 model_name=name,
-                model_code=code,
+                model_from=model_from,
+                system_prompt=system_prompt,
+                model_template=model_template,
+                mode_license=license,
                 quantization_level=quantization_level,
             )
         )

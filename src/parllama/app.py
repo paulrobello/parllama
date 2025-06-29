@@ -268,7 +268,10 @@ Some functions are only available via slash / commands on that chat tab. You can
         self.job_queue.put(
             CreateModelJob(
                 modelName=event.model_name,
-                modelCode=event.model_code,
+                modelFrom=event.model_from,
+                systemPrompt=event.system_prompt,
+                modelTemplate=event.model_template,
+                model_license=event.mode_license,
                 quantizationLevel=event.quantization_level,
             )
         )
@@ -393,14 +396,23 @@ Some functions are only available via slash / commands on that chat tab. You can
     async def do_create_model(self, job: CreateModelJob) -> None:
         """Create a new local model"""
         try:
-            self.main_screen.log_view.richlog.write(job.modelCode)
-            res = ollama_dm.create_model(job.modelName, job.modelCode, job.quantizationLevel)
+            self.main_screen.log_view.richlog.write(f"Creating model {job.modelName} from {job.modelFrom}...")
+            res = ollama_dm.create_model(
+                model_name=job.modelName,
+                model_from=job.modelFrom,
+                system_prompt=job.systemPrompt,
+                model_template=job.modelTemplate,
+                model_license=job.model_license,
+            )
             last_status = await self.do_progress(job, res)
 
             self.main_screen.local_view.post_message(
                 LocalModelCreated(
                     model_name=job.modelName,
-                    model_code=job.modelCode,
+                    model_from=job.modelFrom,
+                    system_prompt=job.systemPrompt,
+                    model_template=job.modelTemplate,
+                    model_license=job.model_license,
                     quantization_level=job.quantizationLevel,
                     success=last_status == "success",
                 )
@@ -409,7 +421,10 @@ Some functions are only available via slash / commands on that chat tab. You can
             self.main_screen.local_view.post_message(
                 LocalModelCreated(
                     model_name=job.modelName,
-                    model_code=job.modelCode,
+                    model_from=job.modelFrom,
+                    system_prompt=job.systemPrompt,
+                    model_template=job.modelTemplate,
+                    model_license=job.model_license,
                     quantization_level=job.quantizationLevel,
                     success=False,
                 )
@@ -625,7 +640,10 @@ Some functions are only available via slash / commands on that chat tab. You can
         self.main_screen.create_view.name_input.value = f"my-{msg.model_name}"
         if not self.main_screen.create_view.name_input.value.endswith(":latest"):
             self.main_screen.create_view.name_input.value += ":latest"
-        self.main_screen.create_view.text_area.text = msg.model_code
+        self.main_screen.create_view.input_from.value = msg.model_name
+        self.main_screen.create_view.ta_system_prompt.text = msg.system_prompt or ""
+        self.main_screen.create_view.ta_template.text = msg.model_template
+        self.main_screen.create_view.ta_license.text = msg.model_license or ""
         self.main_screen.create_view.quantize_input.value = msg.quantization_level or ""
         self.main_screen.change_tab("Create")
         self.main_screen.create_view.name_input.focus()

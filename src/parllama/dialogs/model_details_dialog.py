@@ -140,11 +140,15 @@ class ModelDetailsDialog(ModalScreen[None]):
         event.stop()
         with self.prevent(Focus):
             self.app.pop_screen()
+        system_msg = self.model.get_system_messages()
         self.app.post_message(
             LocalCreateModelFromExistingRequested(
                 widget=None,
                 model_name=self.model.name,
-                model_code=self.model.modelfile,
+                model_from=self.model.name,
+                system_prompt=system_msg[0] if system_msg else "",
+                model_template=self.model.template or "",
+                model_license=self.model.license or "",
                 quantization_level=None,
             )
         )
