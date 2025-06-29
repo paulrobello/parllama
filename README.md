@@ -441,6 +441,7 @@ if anything remains to be fixed before the commit is allowed.
 
 * Fixed tab in input history causing a crash.
 * Fixed create new model causing crash.
+* Fix hard coded config loading.
 
 
 ### v0.3.24

@@ -29,7 +29,7 @@ from parllama.ollama_data_manager import ollama_dm
 from parllama.par_event_system import ParEventSystemBase
 from parllama.settings_manager import settings
 
-load_dotenv(os.path.expanduser("~/.parllama/.env"))
+load_dotenv(Path(settings.data_dir) / ".env")
 
 openai_model_context_windows = {
     "chatgpt-4o-latest": 128_000,
