@@ -184,7 +184,7 @@ class ParLlamaApp(App[None]):
                 message="""
 Thank your for trying ParLlama!
 Please take a moment to familiarize yourself with the the various options.
-New options are being added all the time! Check out Whats New on the repo.
+New options are being added all the time! Check out What's New on the repo.
 [link]https://github.com/paulrobello/parllama?tab=readme-ov-file#whats-new[/link]
 By default ParLlama makes no attempt to connect to the internet and collects no data from you.
 If you would like to auto check for updates, you can enable it in the Startup section of Options.

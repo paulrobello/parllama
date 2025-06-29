@@ -280,7 +280,7 @@ make dev
 * Click the "Local" tab to see models that have been locally downloaded.
 * Select the "llama3:8b" entry and press ^C to jump to the "Chat" tab and auto select the model.
 * Type a message to the model such as "Why is the sky blue?". It will take a few seconds for Ollama to load the model. After which the LLMs answer will stream in.
-* Towards the very top of the app you will see what model is loaded and what percent of it is loaded into the GPU / CPU. If a model cant be loaded 100% on the GPU it will run slower.
+* Towards the very top of the app you will see what model is loaded and what percent of it is loaded into the GPU / CPU. If a model can't be loaded 100% on the GPU it will run slower.
 * To export your conversation as a Markdown file type "/session.export" in the message input box. This will open a export dialog.
 * Press ^N to add a new chat tab.
 * Select a different model or change the temperature and ask the same questions.
@@ -299,8 +299,8 @@ make dev
 * Press ^P to pull the model from Ollama to your local machine. Depending on the size of the model and your internet connection this can take a few min.
 * Click the "Local" tab to see models that have been locally downloaded. If the download is complete and it isn't showing up here you may need to refresh the list with ^R.
 * Select the "llava-llama3" entry and press ^C to jump to the "Chat" tab and auto select the model.
-* Use a slash command to add an image and a prompt "/add.image PATH_TO_IMAGE describe whats happening in this image". It will take a few seconds for Ollama to load the model. After which the LLMs answer will stream in.
-* Towards the very top of the app you will see what model is loaded and what percent of it is loaded into the GPU / CPU. If a model cant be loaded 100% on the GPU it will run slower.
+* Use a slash command to add an image and a prompt "/add.image PATH_TO_IMAGE describe what's happening in this image". It will take a few seconds for Ollama to load the model. After which the LLMs answer will stream in.
+* Towards the very top of the app you will see what model is loaded and what percent of it is loaded into the GPU / CPU. If a model can't be loaded 100% on the GPU it will run slower.
 * Type "/help" or "/?" to see what other slash commands are available.
 
 ## Quick start OpenAI provider chat workflow
@@ -513,7 +513,7 @@ if anything remains to be fixed before the commit is allowed.
 * Limited support for LLamaCpp running in OpenAI Mode.
 * Added ability to cycle through fences in selected chat message and copy to clipboard with `ctrl+shift+c`
 * Added theme selector
-* Varius bug fixes and performance improvements
+* Various bug fixes and performance improvements
 * Updated core AI library and dependencies
 * Fixed crash due to upstream library update
 
@@ -553,7 +553,7 @@ if anything remains to be fixed before the commit is allowed.
 * Added custom prompt library support  (Work in progress)
 * Added cli option and environment var to enable auto naming of sessions using LLM (Work in progress)
 * Added tokens per second stats to session info line on chat tab
-* Fixed app crash when it cant contact ollama server for PS info
+* Fixed app crash when it can't contact ollama server for PS info
 * Fixed slow startup when you have a lot of models available locally
 * Fixed slow startup and reduced memory utilization when you have many / large chats
 * Fixed session unique naming bug where it would always add a "1" to the session name

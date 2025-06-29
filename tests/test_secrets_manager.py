@@ -87,7 +87,7 @@ class TestSecretsManager(unittest.TestCase):
         self.assertEqual(self.secrets_manager.get_secret("test_key"), "test_value")
 
     def test_password_change_with_bad_old_password(self):
-        """Test that password cant be changed an incorrect old password"""
+        """Test that password can't be changed an incorrect old password"""
         with patch("builtins.open", mock_open()) as m:
             self.secrets_manager.add_secret("test_key", "test_value")
             m.assert_called_once_with(self.secrets_file, "w", encoding="utf-8")
