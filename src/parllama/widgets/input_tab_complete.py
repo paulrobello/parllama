@@ -30,7 +30,7 @@ class InputTabComplete(Input):
             self._cursor_visible = True
             if self.cursor_blink and self._blink_timer:
                 self._blink_timer.reset()
-            if self._cursor_at_end and self._suggestion and self.value != self._suggestion:
+            if self.cursor_at_end and self._suggestion and self.value != self._suggestion:
                 self.value = self._suggestion
                 self.cursor_position = len(self.value)
                 if self.submit_on_complete:
