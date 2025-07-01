@@ -37,7 +37,7 @@ class ChatMessageWidget(Vertical, can_focus=True):
         Binding(key="e", action="edit_item", description="Edit", show=True),
         Binding(key="escape", action="exit_edit", show=False, priority=True),
         Binding(
-            key="delete",
+            key="delete, backspace",
             action="delete_msg",
             description="Delete",
             show=True,

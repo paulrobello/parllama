@@ -48,10 +48,10 @@ class LocalModelGridList(Grid, can_focus=False):
             show=False,
         ),
         Binding(
-            key="delete",
+            key="delete, backspace",
             action="delete_item",
             description="Delete",
-            show=False,
+            show=True,
         ),
     ]
     DEFAULT_CSS = """

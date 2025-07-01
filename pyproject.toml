@@ -94,7 +94,7 @@ parllama = "parllama.__main__:run"
 
 [project.optional-dependencies]
 web = [
-    "textual-serve>=1.1.1",
+    "textual-serve>=1.1.2",
 ]
 
 [build-system]
@@ -105,16 +105,19 @@ build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
-    "pyright>=1.1.391",
+    "pyright>=1.1.402",
     "types-pytz>=2024.2.0.20241221",
     "types-requests>=2.32.0.20241016",
     "types-beautifulsoup4>=4.12.0.20241020",
-    "pre-commit>=4.0.1",
-    "google-api-python-client-stubs>=1.28.0",
-    "pyinstrument>=4.7.3",
+    "pre-commit>=4.2.0",
+    "google-api-python-client-stubs>=1.29.0",
+    "pyinstrument>=5.0.2",
     "types-orjson>=3.6.2",
-    "ruff>=0.7.4",
+    "ruff>=0.12.1",
     "textual-dev>=1.7.0",
+    "pytest>=8.4.1",
+    "pytest-cov>=6.2.1",
+    "hatchling>=1.27.0",
 ]
 
 [tool.hatch.version]

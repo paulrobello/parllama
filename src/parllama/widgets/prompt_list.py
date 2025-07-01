@@ -38,7 +38,7 @@ class PromptList(Vertical, can_focus=False, can_focus_children=True):
             priority=True,
         ),
         Binding(
-            key="delete",
+            key="delete, backspace",
             action="delete_item",
             description="Delete",
             show=True,
