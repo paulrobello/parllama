@@ -75,7 +75,7 @@ class ChatSession(ChatMessageContainer):
     ):
         """Initialize the chat session"""
         super().__init__(id=id, name=name, messages=messages, last_updated=last_updated)
-        self._batching = True
+        self._batching = False
         self._salt = None
         self._key = None
         self._key_secure = None
@@ -84,7 +84,6 @@ class ChatSession(ChatMessageContainer):
         self._generating = False
         self._subs = set()
         self._stream_stats = None
-        self._batching = False
         self._llm_config = llm_config
 
     @property
@@ -557,6 +556,10 @@ class ChatSession(ChatMessageContainer):
     def num_subs(self):
         """Return the number of subscribers"""
         return len(self._subs)
+
+    def cleanup(self) -> None:
+        """Clean up all subscriptions."""
+        self._subs.clear()
 
     def on_par_chat_message_deleted(self, event: ParChatMessageDeleted):
         """Handle ParChatMessageDeleted event"""

@@ -126,6 +126,9 @@ class ChatTab(TabPane):
     async def on_unmount(self) -> None:
         """Remove dialog from updates when unmounted."""
         self.app.post_message(UnRegisterForUpdates(widget=self))
+        # Remove from session subscriptions
+        if self.session:
+            self.session.remove_sub(self)
 
     def _on_show(self, event: Show) -> None:
         """Handle show event"""

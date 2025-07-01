@@ -12,7 +12,13 @@ from textual.containers import Vertical
 from textual.widgets import ListView, Rule, Static
 
 from parllama.chat_manager import chat_manager
-from parllama.messages.messages import DeleteSession, RegisterForUpdates, SessionListChanged, SessionSelected
+from parllama.messages.messages import (
+    DeleteSession,
+    RegisterForUpdates,
+    SessionListChanged,
+    SessionSelected,
+    UnRegisterForUpdates,
+)
 from parllama.widgets.dbl_click_list_item import DblClickListItem
 from parllama.widgets.session_list_item import SessionListItem
 
@@ -54,6 +60,10 @@ class SessionList(Vertical, can_focus=False, can_focus_children=True):
     async def on_mount(self) -> None:
         """Set up the dialog once the DOM is ready."""
         self.app.post_message(RegisterForUpdates(widget=self, event_names=["SessionListChanged", "SessionSelected"]))
+
+    def on_unmount(self) -> None:
+        """Clean up when unmounting."""
+        self.app.post_message(UnRegisterForUpdates(widget=self))
 
     def compose(self) -> ComposeResult:
         """Compose the content of the view."""

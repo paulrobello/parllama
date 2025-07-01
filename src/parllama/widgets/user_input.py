@@ -21,6 +21,7 @@ from parllama.messages.messages import (
     HistoryPrev,
     RegisterForUpdates,
     ToggleInputMode,
+    UnRegisterForUpdates,
 )
 from parllama.settings_manager import settings
 from parllama.widgets.input_with_history import InputWithHistory
@@ -146,6 +147,10 @@ class UserInput(Widget, can_focus=False, can_focus_children=True):
                 ],
             )
         )
+
+    def on_unmount(self) -> None:
+        """Clean up when unmounting."""
+        self.app.post_message(UnRegisterForUpdates(widget=self))
 
     def _watch__input_mode(self, value: UserInputMode) -> None:
         """Handle the input mode change."""

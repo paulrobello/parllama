@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Iterator
-from queue import Empty, Queue
+from queue import Empty, Full, Queue
+from weakref import WeakSet
 
 import clipman as clipboard
 import humanize
@@ -109,7 +110,7 @@ class ParLlamaApp(App[None]):
     ]
     CSS_PATH = "app.tcss"
 
-    notify_subs: dict[str, set[MessagePump]]
+    notify_subs: dict[str, WeakSet[MessagePump]]
     main_screen: MainScreen
     job_queue: Queue[QueueJob]
     is_busy: bool = False
@@ -121,7 +122,7 @@ class ParLlamaApp(App[None]):
     def __init__(self) -> None:
         """Initialize the application."""
         super().__init__()
-        self.notify_subs = {"*": set[MessagePump]()}
+        self.notify_subs = {"*": WeakSet[MessagePump]()}
         theme_manager.set_app(self)
         provider_manager.set_app(self)
         secrets_manager.set_app(self)
@@ -134,7 +135,8 @@ class ParLlamaApp(App[None]):
         self.ps_timer = None
         self.title = __application_title__
 
-        self.job_queue = Queue[QueueJob]()
+        # Limit job queue to prevent unbounded growth
+        self.job_queue = Queue[QueueJob](maxsize=150)
         self.is_busy = False
         self.is_refreshing = False
         self.last_status = ""
@@ -144,6 +146,19 @@ class ParLlamaApp(App[None]):
                 settings.theme_name = "par_dark"
 
         theme_manager.change_theme(settings.theme_name)
+
+    def add_job_to_queue(self, job: QueueJob) -> bool:
+        """Add a job to the queue with error handling.
+
+        Returns:
+            bool: True if job was added successfully, False if queue is full
+        """
+        try:
+            self.job_queue.put(job, timeout=0.1)
+            return True
+        except Full:
+            self.status_notify("Job queue is full. Please wait for current operations to complete.", severity="warning")
+            return False
 
     async def on_mount(self) -> None:
         """Display the screen."""
@@ -258,14 +273,14 @@ Some functions are only available via slash / commands on that chat tab. You can
     @on(LocalModelPushRequested)
     def on_model_push_requested(self, event: LocalModelPushRequested) -> None:
         """Push requested model event"""
-        self.job_queue.put(PushModelJob(modelName=event.model_name))
-        self.main_screen.local_view.post_message(SetModelNameLoading(event.model_name, True))
+        if self.add_job_to_queue(PushModelJob(modelName=event.model_name)):
+            self.main_screen.local_view.post_message(SetModelNameLoading(event.model_name, True))
         # self.notify(f"Model push {msg.model_name} requested")
 
     @on(LocalModelCreateRequested)
     def on_model_create_requested(self, event: LocalModelCreateRequested) -> None:
         """Create model requested event"""
-        self.job_queue.put(
+        self.add_job_to_queue(
             CreateModelJob(
                 modelName=event.model_name,
                 modelFrom=event.model_from,
@@ -294,15 +309,15 @@ Some functions are only available via slash / commands on that chat tab. You can
     @on(LocalModelPullRequested)
     def on_model_pull_requested(self, event: LocalModelPullRequested) -> None:
         """Pull requested model event"""
-        if event.notify:
-            self.notify(f"Model pull {event.model_name} queued")
-        self.job_queue.put(PullModelJob(modelName=event.model_name))
-        self.post_message_all(SetModelNameLoading(event.model_name, True))
+        if self.add_job_to_queue(PullModelJob(modelName=event.model_name)):
+            if event.notify:
+                self.notify(f"Model pull {event.model_name} queued")
+            self.post_message_all(SetModelNameLoading(event.model_name, True))
 
     @on(LocalModelCopyRequested)
     def on_local_model_copy_requested(self, event: LocalModelCopyRequested) -> None:
         """Local model copy request event"""
-        self.job_queue.put(CopyModelJob(modelName=event.src_model_name, dstModelName=event.dst_model_name))
+        self.add_job_to_queue(CopyModelJob(modelName=event.src_model_name, dstModelName=event.dst_model_name))
 
     async def do_copy_local_model(self, event: CopyModelJob) -> None:
         """Copy local model"""
@@ -507,7 +522,7 @@ Some functions are only available via slash / commands on that chat tab. You can
         """Register for updates event"""
         for event_name in event.event_names:
             if event_name not in self.notify_subs:
-                self.notify_subs[event_name] = set()
+                self.notify_subs[event_name] = WeakSet()
             self.notify_subs[event_name].add(event.widget)
 
     @on(LocalModelListRefreshRequested)
@@ -625,6 +640,8 @@ Some functions are only available via slash / commands on that chat tab. You can
             return
         sub_name = event.__class__.__name__
         if sub_name in self.notify_subs:
+            # Convert to list to avoid RuntimeError if set changes during iteration
+            # WeakSet automatically removes dead references
             for w in list(self.notify_subs[sub_name]):
                 w.post_message(event)
 
