@@ -418,6 +418,7 @@ Some functions are only available via slash / commands on that chat tab. You can
                 system_prompt=job.systemPrompt,
                 model_template=job.modelTemplate,
                 model_license=job.model_license,
+                quantize_level=job.quantizationLevel,
             )
             last_status = await self.do_progress(job, res)
 
@@ -432,7 +433,53 @@ Some functions are only available via slash / commands on that chat tab. You can
                     success=last_status == "success",
                 )
             )
-        except ollama.ResponseError:
+        except ollama.ResponseError as e:
+            error_msg = str(e)
+            self.log_it(f"Model creation failed (ResponseError): {error_msg}")
+
+            # Check for specific quantization errors
+            if "quantization is only supported for F16 and F32 models" in error_msg:
+                self.status_notify(
+                    "Quantization requires F16 or F32 base models. The selected model is already quantized.",
+                    severity="error",
+                )
+            elif "unsupported quantization type" in error_msg:
+                self.status_notify(
+                    "Invalid quantization level. Please use a supported type like q4_K_M, q5_K_M, etc.",
+                    severity="error",
+                )
+            else:
+                self.status_notify(f"Model creation failed: {error_msg}", severity="error")
+
+            self.main_screen.local_view.post_message(
+                LocalModelCreated(
+                    model_name=job.modelName,
+                    model_from=job.modelFrom,
+                    system_prompt=job.systemPrompt,
+                    model_template=job.modelTemplate,
+                    model_license=job.model_license,
+                    quantization_level=job.quantizationLevel,
+                    success=False,
+                )
+            )
+        except ConnectError:
+            self.log_it("Model creation failed: Cannot connect to Ollama server")
+            self.status_notify("Cannot connect to Ollama server. Is it running?", severity="error")
+            self.main_screen.local_view.post_message(
+                LocalModelCreated(
+                    model_name=job.modelName,
+                    model_from=job.modelFrom,
+                    system_prompt=job.systemPrompt,
+                    model_template=job.modelTemplate,
+                    model_license=job.model_license,
+                    quantization_level=job.quantizationLevel,
+                    success=False,
+                )
+            )
+        except Exception as e:
+            error_msg = str(e)
+            self.log_it(f"Model creation failed (unexpected error): {type(e).__name__}: {error_msg}")
+            self.status_notify(f"Model creation failed: {error_msg}", severity="error")
             self.main_screen.local_view.post_message(
                 LocalModelCreated(
                     model_name=job.modelName,

@@ -65,7 +65,7 @@ class ModelCreateView(Container):
         self.name_input = Input(id="model_name", placeholder="Model Name")
         self.quantize_input = Input(
             id="quantize_level",
-            placeholder="e.g. q4_0 or blank for none",
+            placeholder="e.g. q4_K_M, q5_K_M (requires F16/F32 base)",
         )
         self.input_from = Input()
         self.ta_system_prompt = TextArea.code_editor("", classes="editor", theme="css")
@@ -90,7 +90,7 @@ class ModelCreateView(Container):
                 with Horizontal(id="ql"):
                     yield Label("Quantize Level")
                     yield self.quantize_input
-            yield Label("Model From")
+            yield Label("Model From (use F16/F32 models for quantization)")
             yield self.input_from
             yield self.ta_system_prompt
             yield self.ta_template
@@ -119,6 +119,34 @@ class ModelCreateView(Container):
         if not model_from:
             self.app.push_screen(ErrorDialog(title="Input Error", message="Please enter a model to create from"))
             return
+
+        # Validate quantization level if provided
+        if quantization_level:
+            valid_quantization_levels = [
+                "q4_0",
+                "q4_1",
+                "q4_K",
+                "q4_K_S",
+                "q4_K_M",
+                "q5_0",
+                "q5_1",
+                "q5_K",
+                "q5_K_S",
+                "q5_K_M",
+                "q6_K",
+                "q8_0",
+                "f16",
+                "f32",
+            ]
+            if quantization_level not in valid_quantization_levels:
+                self.app.push_screen(
+                    ErrorDialog(
+                        title="Invalid Quantization Level",
+                        message=f"'{quantization_level}' is not a valid quantization level.\n\n"
+                        f"Valid options are: {', '.join(valid_quantization_levels)}",
+                    )
+                )
+                return
         # if not model_template:
         #     self.app.push_screen(ErrorDialog(title="Input Error", message="Please enter a model template"))
         #     return

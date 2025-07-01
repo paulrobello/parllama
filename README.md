@@ -29,13 +29,13 @@
 * [Roadmap](#roadmap)
     * [Where we are](#where-we-are)Ï
     * [Where we're going](#where-were-going)
-* [What's new](#whats-new) 
-    * [v0.3.25](#v0325)
-    * [v0.3.24](#v0324)
-    * [v0.3.23](#v0323)
-    * [v0.3.22](#v0322)
-    * [v0.3.21](#v0321)
-    * [older...](#v0320) 
+* [What's new](#whats-new)
+  * [v0.3.26](#v0325)
+  * [v0.3.25](#v0325)
+  * [v0.3.24](#v0324)
+  * [v0.3.23](#v0323)
+  * [v0.3.22](#v0322)
+  * [older...](#v0321) 
 
 [![PyPI](https://img.shields.io/pypi/v/parllama)](https://pypi.org/project/parllama/)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/parllama.svg)](https://pypi.org/project/parllama/)  
@@ -90,13 +90,19 @@ Supports Dark and Light mode as well as custom themes.
 * Install GNU Compatible Make command
   * On windows if you have scoop installed you can install make with `scoop install make`
 
-## Prerequisites for huggingface model quantization
-If you want to be able to quantize custom models from huggingface, download the following tool from the releases area:
-[HuggingFaceModelDownloader](https://github.com/bodaay/HuggingFaceModelDownloader)
+## Model Quantization
 
-Install [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+### Native Ollama Quantization
+Ollama now supports native model quantization through the create model interface. When creating a new model, you can specify a quantization level (e.g., q4_K_M, q5_K_M) to reduce model size and memory requirements.
 
-Pull the docker image ollama/quantize
+**Important**: Native quantization only works with F16 or F32 base models. If you try to quantize an already-quantized model (like llama3.2:1b which is already Q4_0), you'll receive an error.
+
+### Prerequisites for HuggingFace model quantization
+For quantizing custom models from HuggingFace that aren't available through Ollama:
+
+1. Download [HuggingFaceModelDownloader](https://github.com/bodaay/HuggingFaceModelDownloader) from the releases area
+2. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+3. Pull the docker image:
 ```bash
 docker pull ollama/quantize
 ```
@@ -436,6 +442,16 @@ if anything remains to be fixed before the commit is allowed.
 
 
 ## What's new
+
+### v0.3.26
+
+* Improved error handling for model creation with better error messages
+* Added validation for quantization levels with list of valid options
+* Added specific error messages for quantization requirements (F16/F32 base models)
+* Updated UI to clarify quantization requirements in model creation
+* Fixed memory leaks using WeakSet for subscriptions and bounded job queue
+* Updated quantization documentation to clarify native Ollama support vs Docker requirements
+
 
 ### v0.3.25
 
