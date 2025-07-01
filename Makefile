@@ -65,9 +65,12 @@ console:	        # Run textual dev console
 	$(run) textual console
 
 .PHONY: test
-test:	        # Run textual dev console
-	$(python) -m unittest discover -s tests
+test:	        # Run tests
+	$(run) pytest
 
+.PHONY: coverage
+coverage:	        # Run coverage tests
+	$(run) pytest --cov=parllama.secrets_manager --cov-report=term-missing
 
 ##############################################################################
 .PHONY: uv-lock

@@ -120,7 +120,31 @@ class Settings(BaseModel):
     def __init__(self) -> None:
         """Initialize Manager."""
         super().__init__()
-        args: Namespace = get_args()
+        
+        # Check if we're running under pytest
+        import sys
+        if "pytest" in sys.modules:
+            # Create a minimal namespace with defaults when running tests
+            from argparse import Namespace
+            args = Namespace(
+                no_save=False,
+                no_chat_save=False,
+                data_dir=None,
+                ollama_url=None,
+                starting_tab=None,
+                theme_name=None,
+                theme_mode=None,
+                use_last_tab_on_startup=None,
+                load_local_models_on_startup=None,
+                restore_defaults=False,
+                purge_cache=False,
+                purge_chats=False,
+                purge_prompts=False,
+                auto_name_session=None,
+                ps_poll=None,
+            )
+        else:
+            args: Namespace = get_args()
 
         if args.no_save:
             self.no_save = True
