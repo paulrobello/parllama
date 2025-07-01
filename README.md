@@ -34,8 +34,7 @@
   * [v0.3.25](#v0325)
   * [v0.3.24](#v0324)
   * [v0.3.23](#v0323)
-  * [v0.3.22](#v0322)
-  * [older...](#v0321) 
+  * [older...](#v0322) 
 
 [![PyPI](https://img.shields.io/pypi/v/parllama)](https://pypi.org/project/parllama/)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/parllama.svg)](https://pypi.org/project/parllama/)  
@@ -445,13 +444,32 @@ if anything remains to be fixed before the commit is allowed.
 
 ### v0.3.26
 
+* Fixed critical security vulnerabilities identified in security audit
+* Enhanced URL validation to preserve case sensitivity for case-sensitive endpoints
+* Added comprehensive validation for PARLLAMA_VAULT_KEY environment variable
+  - Validates minimum password length (8 characters)
+  - Prevents empty or whitespace-only passwords
+  - Provides clear warnings for invalid vault keys
+* Implemented secure file permissions (600) for secrets.json on Unix-like systems
+  - Automatic permission setting when saving secrets
+  - Permission checking with warnings for insecure existing files
+  - Cross-platform compatibility (Windows uses NTFS default permissions)
+* Improved security logging and error handling throughout secrets management
+* All fixes maintain backward compatibility and follow existing code patterns
 * Improved error handling for model creation with better error messages
 * Added validation for quantization levels with list of valid options
 * Added specific error messages for quantization requirements (F16/F32 base models)
 * Updated UI to clarify quantization requirements in model creation
 * Fixed memory leaks using WeakSet for subscriptions and bounded job queue
 * Updated quantization documentation to clarify native Ollama support vs Docker requirements
-
+* Fixed critical threading race conditions in job processing system
+* Added thread-safe synchronization for `is_busy` flag using threading.Lock
+* Enhanced exception handling across all job methods (pull, push, copy, create)
+* Added comprehensive error handling to `do_copy_local_model` (previously had none)
+* Improved error logging and user notifications for all job operations
+* Added state transition logging for debugging threading issues
+* Ensured proper cleanup of busy state with try/finally blocks
+* Fixed delete key on mac sometimes not working
 
 ### v0.3.25
 

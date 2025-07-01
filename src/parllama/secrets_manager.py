@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import os
+import stat
 from pathlib import Path
 from typing import Any
 
@@ -53,12 +54,59 @@ class SecretsManager(ParEventSystemBase):
         super().set_app(app)
         self._load_secrets()
         env_key = os.environ.get("PARLLAMA_VAULT_KEY")
-        if env_key:
+        if env_key and self._validate_vault_key(env_key):
             self.unlock(env_key, True)
+
+    def _validate_vault_key(self, key: str) -> bool:
+        """Validate the vault key from environment variable."""
+        if not key or not key.strip():
+            self.log_it("PARLLAMA_VAULT_KEY environment variable is empty", notify=True, severity="warning")
+            return False
+
+        if len(key) < 8:
+            self.log_it(
+                "PARLLAMA_VAULT_KEY environment variable should be at least 8 characters long",
+                notify=True,
+                severity="warning",
+            )
+            return False
+
+        return True
+
+    def _set_secure_file_permissions(self, file_path: Path) -> None:
+        """Set secure file permissions (0o600) for secrets file."""
+        try:
+            # Only set permissions on Unix-like systems
+            if os.name != "nt":  # Not Windows
+                file_path.chmod(0o600)  # Owner read/write only
+                self.log_it(f"Set secure permissions (600) for {file_path.name}")
+            else:
+                # On Windows, we rely on the default NTFS permissions
+                self.log_it(f"Relying on default NTFS permissions for {file_path.name}")
+        except (OSError, PermissionError) as e:
+            self.log_it(
+                f"Warning: Could not set secure permissions for {file_path.name}: {e}", notify=True, severity="warning"
+            )
+
+    def _check_file_permissions(self, file_path: Path) -> None:
+        """Check if file has secure permissions and warn if not."""
+        try:
+            if os.name != "nt" and file_path.exists():  # Not Windows
+                file_stat = file_path.stat()
+                # Check if file is readable by group or others
+                if file_stat.st_mode & (stat.S_IRGRP | stat.S_IROTH):
+                    self.log_it(
+                        f"Warning: {file_path.name} may be readable by other users", notify=True, severity="warning"
+                    )
+        except (OSError, AttributeError) as e:
+            self.log_it(f"Could not check permissions for {file_path.name}: {e}")
 
     def _load_secrets(self) -> None:
         """Load secrets from the secrets file."""
         try:
+            # Check file permissions when loading
+            self._check_file_permissions(self._secrets_file)
+
             data = json.loads(self._secrets_file.read_bytes())
             self._salt = base64.b64decode(data.get("__salt__"))
             self._key_secure = data.get("__key__")
@@ -80,6 +128,10 @@ class SecretsManager(ParEventSystemBase):
             "secrets": self._secrets,
         }
         self._secrets_file.write_bytes(json.dumps(data, str, json.OPT_INDENT_2))
+
+        # Set secure file permissions after creating/updating the file
+        self._set_secure_file_permissions(self._secrets_file)
+
         self.import_to_env(True)
 
     def _derive_key(self, password: str, alt_salt: bytes | None = None) -> bytes:

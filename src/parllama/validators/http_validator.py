@@ -13,8 +13,7 @@ class HttpValidator(Validator):
     def validate(self, value: str) -> ValidationResult:
         """Validate if the input is a valid URL."""
         try:
-            value = value.lower()
-            if not (value.startswith("http://") or value.startswith("https://")):
+            if not (value.lower().startswith("http://") or value.lower().startswith("https://")):
                 raise ValueError("Must start with http:// or https://")
 
             result = urllib.parse.urlparse(value)
