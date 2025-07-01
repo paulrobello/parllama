@@ -9,7 +9,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-import orjson as json
 import par_ai_core.llm_providers
 import requests
 from par_ai_core.llm_config import LlmMode, ReasoningEffort
@@ -25,6 +24,7 @@ from pydantic import BaseModel
 from xdg_base_dirs import xdg_cache_home, xdg_data_home
 
 from parllama import __application_binary__
+from parllama.secure_file_ops import SecureFileOperations, SecureFileOpsError
 from parllama.utils import TabType, get_args, valid_tabs
 
 old_data_dir = Path("~/.parllama").expanduser()
@@ -145,10 +145,34 @@ class Settings(BaseModel):
     image_fetch_max_attempts: int = 2
     image_fetch_base_delay: float = 1.0
 
+    # File validation settings
+    file_validation_enabled: bool = True
+    max_file_size_mb: float = 10.0
+    max_image_size_mb: float = 5.0
+    max_json_size_mb: float = 20.0
+    max_zip_size_mb: float = 50.0
+    max_total_attachment_size_mb: float = 100.0
+    allowed_image_extensions: list[str] = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"]
+    allowed_json_extensions: list[str] = [".json"]
+    allowed_markdown_extensions: list[str] = [".md", ".markdown", ".txt"]
+    allowed_zip_extensions: list[str] = [".zip"]
+    validate_file_content: bool = True
+    allow_zip_extraction: bool = True
+    max_zip_compression_ratio: float = 100.0
+    sanitize_filenames: bool = True
+
     # pylint: disable=too-many-branches, too-many-statements
     def __init__(self) -> None:
         """Initialize Manager."""
         super().__init__()
+
+        # Initialize secure file operations for settings
+        self._secure_ops = SecureFileOperations(
+            max_file_size_mb=self.max_json_size_mb,
+            allowed_extensions=self.allowed_json_extensions,
+            validate_content=self.validate_file_content,
+            sanitize_filenames=self.sanitize_filenames,
+        )
 
         # Check if we're running under pytest
         import sys
@@ -295,7 +319,8 @@ class Settings(BaseModel):
     def load_from_file(self) -> None:
         """Load settings from file."""
         try:
-            data = json.loads(self.settings_file.read_bytes())
+            # Use secure file operations to load settings JSON
+            data = self._secure_ops.read_json_file(self.settings_file)
             url = data.get("ollama_host", self.ollama_host)
 
             if url:
@@ -462,8 +487,8 @@ class Settings(BaseModel):
             self.image_fetch_base_delay = max(0.1, data.get("image_fetch_base_delay", self.image_fetch_base_delay))
 
             self.update_env()
-        except FileNotFoundError:
-            pass  # If file does not exist, continue with default settings
+        except (FileNotFoundError, SecureFileOpsError):
+            pass  # If file does not exist or validation fails, continue with default settings
 
     def update_env(self) -> None:
         """Update environment variables."""
@@ -485,12 +510,29 @@ class Settings(BaseModel):
         self.update_env()
         if self.no_save or self._shutting_down:
             return
-        os.makedirs(self.data_dir, exist_ok=True)
-        if not os.path.exists(self.data_dir):
-            raise FileNotFoundError(f"Par Llama data directory does not exist: {self.data_dir}")
 
-        with open(self.settings_file, "w", encoding="utf-8") as f:
-            f.write(self.model_dump_json(indent=4))
+        # Create data directory securely
+        self._secure_ops.create_directory(self.data_dir, parents=True, exist_ok=True)
+
+        try:
+            # Use secure atomic write for settings
+            settings_data = self.model_dump()
+            self._secure_ops.write_json_file(
+                self.settings_file,
+                settings_data,
+                atomic=True,
+                create_dirs=False,  # Already created above
+                indent=4,
+            )
+        except SecureFileOpsError as e:
+            # Log the error but don't crash the application
+            print(f"Warning: Failed to save settings securely: {e}")
+            # Fallback to basic save without validation for critical settings
+            try:
+                with open(self.settings_file, "w", encoding="utf-8") as f:
+                    f.write(self.model_dump_json(indent=4))
+            except OSError as fallback_error:
+                print(f"Error: Failed to save settings: {fallback_error}")
 
     def ensure_cache_folder(self) -> None:
         """Ensure the cache folder exists."""
@@ -560,25 +602,77 @@ def _fetch_image_with_retry(url: str, headers: dict) -> requests.Response:
 
 def fetch_and_cache_image(image_path: str | Path) -> tuple[Path, bytes]:
     """Fetch and cache an image."""
+    # Create secure file operations for images
+    image_secure_ops = SecureFileOperations(
+        max_file_size_mb=settings.max_image_size_mb,
+        allowed_extensions=settings.allowed_image_extensions,
+        validate_content=settings.validate_file_content,
+        sanitize_filenames=settings.sanitize_filenames,
+    )
+
     if isinstance(image_path, str):
         image_path = image_path.strip()
         if image_path.startswith("http://") or image_path.startswith("https://"):
             ext = image_path.split(".")[-1].lower()
             cache_file = Path(settings.image_cache_dir) / f"{md5_hash(image_path)}.{ext}"
+
             if not cache_file.exists():
                 headers = {
                     "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"  # pylint: disable=line-too-long
                 }
-                data = _fetch_image_with_retry(image_path, headers).content
-                if not isinstance(data, bytes):
-                    raise FileNotFoundError("Failed to download image from URL")
-                cache_file.write_bytes(data)
+                try:
+                    response = _fetch_image_with_retry(image_path, headers)
+                    data = response.content
+                    if not isinstance(data, bytes):
+                        raise FileNotFoundError("Failed to download image from URL")
+
+                    # Validate image size before caching
+                    if len(data) > settings.max_image_size_mb * 1024 * 1024:
+                        raise FileNotFoundError(f"Image too large: {len(data) / (1024 * 1024):.2f}MB exceeds limit")
+
+                    # Write using secure operations
+                    cache_file.parent.mkdir(parents=True, exist_ok=True)
+                    cache_file.write_bytes(data)
+
+                    # Validate the cached image
+                    if settings.validate_file_content:
+                        try:
+                            image_secure_ops.validator.validate_file_path(cache_file)
+                        except Exception as e:
+                            # If validation fails, remove the cached file
+                            if cache_file.exists():
+                                cache_file.unlink()
+                            raise FileNotFoundError(f"Downloaded image failed validation: {e}") from e
+
+                except Exception as e:
+                    raise FileNotFoundError(f"Failed to fetch image: {e}") from e
             else:
+                # Validate cached image if validation is enabled
+                if settings.validate_file_content:
+                    try:
+                        image_secure_ops.validator.validate_file_path(cache_file)
+                    except Exception as e:
+                        # If cached image is invalid, remove it and re-raise
+                        if cache_file.exists():
+                            cache_file.unlink()
+                        raise FileNotFoundError(f"Cached image failed validation: {e}") from e
+
                 data = cache_file.read_bytes()
             return cache_file, data
+
         image_path = Path(image_path)
+
+    # For local files, validate before reading
     if not image_path.exists():
         raise FileNotFoundError(f"Image file not found: {image_path}")
+
+    # Validate local image file
+    if settings.validate_file_content:
+        try:
+            image_secure_ops.validator.validate_file_path(image_path)
+        except Exception as e:
+            raise FileNotFoundError(f"Local image failed validation: {e}") from e
+
     return image_path, image_path.read_bytes()
 
 

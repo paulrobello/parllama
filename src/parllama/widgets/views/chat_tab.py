@@ -39,6 +39,7 @@ from parllama.ollama_data_manager import ollama_dm
 from parllama.provider_manager import provider_manager
 from parllama.screens.import_session import ImportSession
 from parllama.screens.save_session import SaveSession
+from parllama.secure_file_ops import SecureFileOperations, SecureFileOpsError
 from parllama.settings_manager import settings
 from parllama.widgets.chat_message_list import ChatMessageList
 from parllama.widgets.chat_message_widget import ChatMessageWidget
@@ -80,6 +81,14 @@ class ChatTab(TabPane):
 
         self.vs: ChatMessageList = ChatMessageList(id="messages")
         self.busy = False
+
+        # Initialize secure file operations for import/export
+        self._secure_ops = SecureFileOperations(
+            max_file_size_mb=settings.max_file_size_mb,
+            allowed_extensions=settings.allowed_markdown_extensions,
+            validate_content=settings.validate_file_content,
+            sanitize_filenames=settings.sanitize_filenames,
+        )
 
         self.session_status_bar = Static("", id="SessionStatusBar")
 
@@ -247,49 +256,74 @@ class ChatTab(TabPane):
         if not target.suffix:
             target = target.with_suffix(".md")
 
-        # Save the Markdown to the target file.
-        target.write_text(str(self.session), encoding="utf-8")
+        try:
+            # Use secure file operations to save conversation
+            conversation_markdown = str(self.session)
+            self._secure_ops.write_text_file(
+                target,
+                conversation_markdown,
+                atomic=True,
+                create_dirs=True,
+            )
 
-        # Let the user know the save happened.
-        self.notify(str(target), title="Saved")
+            # Let the user know the save happened.
+            self.notify(str(target), title="Saved")
+
+        except SecureFileOpsError as e:
+            self.notify(f"Failed to save conversation: {e}", title="Save Error", severity="error")
 
     @work
     async def import_conversation_text(self) -> None:
         """Import the conversation from a Markdown document."""
         if (target := await ImportSession.get_filename(self.app)) is None:
             return
-        file_data = target.read_text(encoding="utf-8")
-        # Parse the markdown content into conversation messages.
-        session_name: str | None = None
-        messages = []
-        current_role: MessageRoles | None = None
-        current_lines: list[str] = []
-        role_pattern = re.compile(r"^## (system|user|assistant)")
 
-        for line in file_data.splitlines():
-            if line.startswith("# "):
-                session_name = line[2:]
-                continue
-            if match := role_pattern.match(line):
-                if current_role is not None and current_lines:
-                    content = "\n".join(current_lines).strip()
-                    messages.append(ParllamaChatMessage(role=current_role, content=content))
-                current_role = cast(MessageRoles, match.group(1))
-                current_lines = []
-            else:
-                current_lines.append(line)
-        if current_role is not None and current_lines:
-            content = "\n".join(current_lines).strip()
-            messages.append(ParllamaChatMessage(role=current_role, content=content))
-        # Append messages and set title.
-        with self.session.batch_changes():
-            if session_name:
-                self.session.name = session_name
-            for msg in messages:
-                self.session.add_message(msg)
-            # check for consecutive user or assistant messages and merge them
-            self.session.check_consecutive_messages()
-        self.post_message(SessionSelected(session_id=self.session.id, new_tab=False))
+        try:
+            # Use secure file operations to read conversation file
+            file_data = self._secure_ops.read_text_file(target)
+
+            # Parse the markdown content into conversation messages.
+            session_name: str | None = None
+            messages = []
+            current_role: MessageRoles | None = None
+            current_lines: list[str] = []
+            role_pattern = re.compile(r"^## (system|user|assistant)")
+
+            for line in file_data.splitlines():
+                if line.startswith("# "):
+                    session_name = line[2:]
+                    continue
+                if match := role_pattern.match(line):
+                    if current_role is not None and current_lines:
+                        content = "\n".join(current_lines).strip()
+                        messages.append(ParllamaChatMessage(role=current_role, content=content))
+                    current_role = cast(MessageRoles, match.group(1))
+                    current_lines = []
+                else:
+                    current_lines.append(line)
+            if current_role is not None and current_lines:
+                content = "\n".join(current_lines).strip()
+                messages.append(ParllamaChatMessage(role=current_role, content=content))
+
+            # Validate imported content
+            if not messages:
+                self.notify("No valid conversation messages found in file", title="Import Warning", severity="warning")
+                return
+
+            # Append messages and set title.
+            with self.session.batch_changes():
+                if session_name:
+                    self.session.name = session_name
+                for msg in messages:
+                    self.session.add_message(msg)
+                # check for consecutive user or assistant messages and merge them
+                self.session.check_consecutive_messages()
+            self.post_message(SessionSelected(session_id=self.session.id, new_tab=False))
+
+            self.notify(f"Imported {len(messages)} messages from {target.name}", title="Import Successful")
+
+        except SecureFileOpsError as e:
+            self.notify(f"Failed to import conversation: {e}", title="Import Error", severity="error")
 
     async def load_session(self, session_id: str) -> None:
         """Load a session"""

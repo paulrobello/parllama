@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import ast
 import base64
-import os
 import uuid
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -35,6 +34,7 @@ from parllama.messages.par_session_messages import ParSessionAutoName, ParSessio
 from parllama.messages.shared import session_change_list
 from parllama.models.ollama_data import MessageRoles
 from parllama.models.token_stats import TokenStats
+from parllama.secure_file_ops import SecureFileOperations, SecureFileOpsError
 from parllama.settings_manager import settings
 
 
@@ -86,6 +86,16 @@ class ChatSession(ChatMessageContainer):
         self._stream_stats = None
         self._llm_config = llm_config
 
+        # Initialize secure file operations for chat sessions
+        from parllama.settings_manager import settings
+
+        self._secure_ops = SecureFileOperations(
+            max_file_size_mb=settings.max_json_size_mb,
+            allowed_extensions=settings.allowed_json_extensions,
+            validate_content=settings.validate_file_content,
+            sanitize_filenames=settings.sanitize_filenames,
+        )
+
     @property
     def llm_config(self) -> LlmConfig:
         """Return the LLM configuration"""
@@ -104,8 +114,29 @@ class ChatSession(ChatMessageContainer):
             if not file_path.exists():
                 return
 
-            data: dict = json.loads(file_path.read_bytes())
+            # Use secure file operations to load session JSON
+            data: dict = self._secure_ops.read_json_file(file_path)
 
+            # Update session properties from loaded data
+            if "name" in data:
+                self.name = data["name"]
+            if "name_generated" in data:
+                self.name_generated = data["name_generated"]
+            if "_salt" in data and data["_salt"]:
+                self._salt = base64.b64decode(data["_salt"])
+            if "__key__" in data:
+                self._key_secure = data["__key__"]
+
+            # Update llm_config from loaded data
+            if "llm_config" in data:
+                lc = data["llm_config"]
+                if isinstance(lc, str):
+                    lc_dict = json.loads(lc)
+                    self._llm_config = LlmConfig.from_json(lc_dict)
+                elif isinstance(lc, dict):
+                    self._llm_config = LlmConfig.from_json(lc)
+
+            # Load messages
             msgs = data["messages"] or []
             for m in msgs:
                 if "message_id" in m:
@@ -114,7 +145,7 @@ class ChatSession(ChatMessageContainer):
             for m in msgs:
                 self.add_message(ParllamaChatMessage(**m))
             self._loaded = True
-        except Exception as e:  # pylint: disable=broad-exception-caught
+        except (Exception, SecureFileOpsError) as e:  # pylint: disable=broad-exception-caught
             self.log_it(f"Error loading session {e}", notify=True, severity="error")
         finally:
             self._batching = False
@@ -485,9 +516,20 @@ class ChatSession(ChatMessageContainer):
     def load_from_file(filename: str) -> ChatSession | None:
         """Load a chat session from a file"""
         try:
-            with open(os.path.join(settings.chat_dir, filename), encoding="utf-8") as f:
-                return ChatSession.from_json(f.read())
-        except OSError:
+            from parllama.settings_manager import settings
+
+            # Create secure file operations for loading
+            secure_ops = SecureFileOperations(
+                max_file_size_mb=settings.max_json_size_mb,
+                allowed_extensions=settings.allowed_json_extensions,
+                validate_content=settings.validate_file_content,
+                sanitize_filenames=settings.sanitize_filenames,
+            )
+
+            file_path = Path(settings.chat_dir) / filename
+            json_data = secure_ops.read_text_file(file_path)
+            return ChatSession.from_json(json_data)
+        except (OSError, SecureFileOpsError):
             return None
 
     @property
@@ -531,11 +573,33 @@ class ChatSession(ChatMessageContainer):
         # self.log_it(f"CS saving: {self.name}")
 
         file_name = f"{self.id}.json"  # Use session ID as filename to avoid over
+        file_path = Path(settings.chat_dir) / file_name
+
         try:
-            with open(os.path.join(settings.chat_dir, file_name), "w", encoding="utf-8") as f:
-                f.write(self.to_json())
+            # Convert session to dictionary for secure JSON writing
+            session_data = {
+                "id": self.id,
+                "_salt": (base64.b64encode(self._salt).decode("utf-8") if self._salt else None),
+                "__key__": self._key_secure,
+                "name": self.name,
+                "name_generated": self.name_generated,
+                "last_updated": self.last_updated.isoformat(),
+                "llm_config": self._llm_config.to_json(),
+                "messages": [m.to_dict() for m in self.messages],
+            }
+
+            # Use secure file operations with atomic write and backup
+            with self._secure_ops.backup_file(file_path):
+                self._secure_ops.write_json_file(
+                    file_path,
+                    session_data,
+                    atomic=True,
+                    create_dirs=True,
+                    indent=2,
+                )
             return True
-        except OSError:
+        except (OSError, SecureFileOpsError) as e:
+            self.log_it(f"Error saving session: {e}", notify=True, severity="error")
             return False
 
     def stop_generation(self) -> None:

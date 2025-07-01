@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, Self, cast
 
-import orjson as json
 from textual import on
 from textual.app import ComposeResult
 from textual.message import Message
@@ -23,6 +22,7 @@ from parllama.messages.messages import (
     ToggleInputMode,
     UnRegisterForUpdates,
 )
+from parllama.secure_file_ops import SecureFileOperations, SecureFileOpsError
 from parllama.settings_manager import settings
 from parllama.widgets.input_with_history import InputWithHistory
 from parllama.widgets.user_text_area import UserTextArea
@@ -119,6 +119,14 @@ class UserInput(Widget, can_focus=False, can_focus_children=True):
         self._history_file = history_file
         self._last_input = ""
 
+        # Initialize secure file operations for history file
+        self._secure_ops = SecureFileOperations(
+            max_file_size_mb=settings.max_json_size_mb,
+            allowed_extensions=settings.allowed_json_extensions,
+            validate_content=settings.validate_file_content,
+            sanitize_filenames=settings.sanitize_filenames,
+        )
+
         self._input = InputWithHistory(
             id="user_input_input",
             placeholder="Type a message...",
@@ -194,7 +202,15 @@ class UserInput(Widget, can_focus=False, can_focus_children=True):
         """Save the input history if enabled."""
         if not settings.save_chat_input_history or not self._history_file:
             return
-        self._history_file.write_bytes(json.dumps(self.input_history, str, json.OPT_INDENT_2))
+
+        try:
+            # Use secure file operations to save history with atomic write
+            self._secure_ops.write_json_file(
+                self._history_file, self.input_history, atomic=True, create_dirs=True, indent=2
+            )
+        except SecureFileOpsError:
+            # Silently fail to avoid disrupting user input flow
+            pass
 
     def load(self) -> None:
         """Load the input history if enabled."""
@@ -203,17 +219,19 @@ class UserInput(Widget, can_focus=False, can_focus_children=True):
             return
 
         try:
-            history_data = json.loads(self._history_file.read_bytes())
+            # Use secure file operations to read history file
+            history_data = self._secure_ops.read_json_file(self._history_file)
             history: list[dict[UserInputMode, str]] = []
-            for item in history_data:
-                if isinstance(item, str):
-                    history.append({"single_line": item})
-                elif isinstance(item, dict) and ("single_line" in item or "multi_line" in item):
-                    history.append(item)
-                else:
-                    continue
+
+            if isinstance(history_data, list):
+                for item in history_data:
+                    if isinstance(item, str):
+                        history.append({"single_line": item})
+                    elif isinstance(item, dict) and ("single_line" in item or "multi_line" in item):
+                        history.append(item)
+
             self.input_history = history
-        except (FileNotFoundError, json.JSONDecodeError):
+        except (SecureFileOpsError, FileNotFoundError):
             self.input_history = []
 
     @on(HistoryPrev)

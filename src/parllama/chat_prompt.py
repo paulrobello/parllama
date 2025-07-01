@@ -16,6 +16,7 @@ from parllama.chat_message import ParllamaChatMessage
 from parllama.chat_message_container import ChatMessageContainer
 from parllama.messages.par_prompt_messages import ParPromptDelete, ParPromptUpdated
 from parllama.messages.shared import PromptChanges, prompt_change_list
+from parllama.secure_file_ops import SecureFileOperations, SecureFileOpsError
 from parllama.settings_manager import settings
 
 
@@ -50,6 +51,14 @@ class ChatPrompt(ChatMessageContainer):
         self._submit_on_load = submit_on_load
         self.source = source
 
+        # Initialize secure file operations for chat prompts
+        self._secure_ops = SecureFileOperations(
+            max_file_size_mb=settings.max_json_size_mb,
+            allowed_extensions=settings.allowed_json_extensions,
+            validate_content=settings.validate_file_content,
+            sanitize_filenames=settings.sanitize_filenames,
+        )
+
     def load(self) -> None:
         """Load chat prompts from files"""
         if self._loaded:
@@ -61,13 +70,14 @@ class ChatPrompt(ChatMessageContainer):
             return
 
         try:
-            data: dict = json.loads(file_path.read_bytes())
+            # Use secure file operations to load prompt JSON
+            data: dict = self._secure_ops.read_json_file(file_path)
             self.clear_messages()
             msgs = data["messages"] or []
             for m in msgs:
                 self.add_message(ParllamaChatMessage(**m))
             self._loaded = True
-        except Exception as e:  # pylint: disable=broad-exception-caught
+        except (Exception, SecureFileOpsError) as e:  # pylint: disable=broad-exception-caught
             self.log_it(f"Error loading prompt {e}", notify=True, severity="error")
         finally:
             self._batching = False
@@ -203,11 +213,32 @@ class ChatPrompt(ChatMessageContainer):
             return False  # Cannot save without name
 
         file_name = f"{self.id}.json"  # Use prompt ID as filename
+        file_path = Path(settings.prompt_dir) / file_name
+
         try:
-            with open(os.path.join(settings.prompt_dir, file_name), "w", encoding="utf-8") as f:
-                f.write(self.to_json())
+            # Convert prompt to dictionary for secure JSON writing
+            prompt_data = {
+                "id": self.id,
+                "name": self.name,
+                "last_updated": self.last_updated.isoformat(),
+                "description": self._description,
+                "submit_on_load": self._submit_on_load,
+                "messages": [m.to_dict() for m in self.messages],
+                "source": self.source,
+            }
+
+            # Use secure file operations with atomic write and backup
+            with self._secure_ops.backup_file(file_path):
+                self._secure_ops.write_json_file(
+                    file_path,
+                    prompt_data,
+                    atomic=True,
+                    create_dirs=True,
+                    indent=2,
+                )
             return True
-        except OSError:
+        except (OSError, SecureFileOpsError) as e:
+            self.log_it(f"Error saving prompt: {e}", notify=True, severity="error")
             return False
 
     def replace_messages(self, new_messages: list[ParllamaChatMessage]) -> None:
