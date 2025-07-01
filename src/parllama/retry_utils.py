@@ -6,10 +6,10 @@ import asyncio
 import logging
 import random
 import time
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from functools import wraps
-from typing import Any, TypeVar
+from typing import TypeVar
 
 import httpx
 import ollama
@@ -116,7 +116,7 @@ def retry_with_backoff(
 
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
         @wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> T:
+        def wrapper(*args, **kwargs) -> T:
             if not config.enabled:
                 return func(*args, **kwargs)
 
@@ -160,7 +160,7 @@ def retry_with_backoff(
 def async_retry_with_backoff(
     config: RetryConfig | None = None,
     exceptions: tuple[type[Exception], ...] | None = None,
-) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+) -> Callable[[Callable[..., Awaitable[T]]], Callable[..., Awaitable[T]]]:
     """Decorator to add retry logic with exponential backoff for async functions.
 
     Args:
@@ -177,9 +177,9 @@ def async_retry_with_backoff(
     if exceptions:
         retry_exceptions = retry_exceptions + exceptions
 
-    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+    def decorator(func: Callable[..., Awaitable[T]]) -> Callable[..., Awaitable[T]]:
         @wraps(func)
-        async def wrapper(*args: Any, **kwargs: Any) -> Any:
+        async def wrapper(*args, **kwargs) -> T:
             if not config.enabled:
                 return await func(*args, **kwargs)
 

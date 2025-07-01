@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import os
 
-import docker.errors  # type: ignore
-import docker.types  # type: ignore
+import docker.errors
+import docker.types
 from docker import DockerClient
-from docker.models.containers import Container  # type: ignore
+from docker.models.containers import Container
 from par_ai_core.utils import read_env_file
 
 

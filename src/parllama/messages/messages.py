@@ -373,7 +373,7 @@ class LogIt(Message):
     msg: ConsoleRenderable | RichCast | str | object
     notify: bool = False
     severity: SeverityLevel = "information"
-    timeout: int = 5
+    timeout: int = 0
 
 
 @dataclass

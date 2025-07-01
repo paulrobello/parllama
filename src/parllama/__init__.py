@@ -6,7 +6,7 @@ import os
 import warnings
 
 import clipman
-from langchain_core._api import LangChainBetaWarning  # type: ignore
+from langchain_core._api import LangChainBetaWarning
 
 warnings.simplefilter("ignore", category=LangChainBetaWarning)
 warnings.simplefilter("ignore", category=DeprecationWarning)

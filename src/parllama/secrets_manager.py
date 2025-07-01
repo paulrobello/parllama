@@ -376,7 +376,9 @@ class SecretsManager(ParEventSystemBase):
                 return True
 
             # Decrypt the stored password and compare
-            decrypted_password = self._decrypt(self._key_secure, self._derive_key(password))  # type: ignore
+            if self._key_secure is None:
+                return False
+            decrypted_password = self._decrypt(self._key_secure, self._derive_key(password))
             is_valid = decrypted_password == password
 
             # Securely clear the decrypted password from memory
@@ -431,7 +433,10 @@ class SecretsManager(ParEventSystemBase):
         """decrypt ciphertext with the provided key"""
         if self._key is None and alt_key is None:
             raise ValueError("Vault locked. Use unlock() before decrypting.")
-        return decrypt(ciphertext, alt_key or self._key)  # type: ignore
+        key = alt_key or self._key
+        if key is None:
+            raise ValueError("No key available for decryption.")
+        return decrypt(ciphertext, key)
 
     def add_secret(self, key: str, value: str, no_raise: bool = False) -> None:
         """Adds a new secret, encrypts it, and saves it to the file."""

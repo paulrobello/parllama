@@ -11,14 +11,14 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
-import docker.errors  # type: ignore
-import docker.types  # type: ignore
+import docker.errors
+import docker.types
 import httpx
 import ollama
 import orjson as json
 import requests
 from bs4 import BeautifulSoup
-from docker.models.containers import Container  # type: ignore
+from docker.models.containers import Container
 from docker.types import CancellableStream
 from httpx import Response
 from ollama import ProgressResponse, StatusResponse

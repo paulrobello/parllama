@@ -334,8 +334,7 @@ Some functions are only available via slash / commands on that chat tab. You can
                 )
             )
         except ollama.ResponseError as e:
-            self.log_it(f"Model copy failed (ResponseError): {e}")
-            self.status_notify(f"Model copy failed: {str(e)}", severity="error")
+            self.handle_ollama_error("Model copy", event.modelName, e)
             self.main_screen.local_view.post_message(
                 LocalModelCopied(
                     src_model_name=event.modelName,
@@ -344,9 +343,7 @@ Some functions are only available via slash / commands on that chat tab. You can
                 )
             )
         except Exception as e:
-            error_msg = str(e)
-            self.log_it(f"Model copy failed (unexpected error): {type(e).__name__}: {error_msg}")
-            self.status_notify(f"Model copy failed: {error_msg}", severity="error")
+            self.handle_ollama_error("Model copy", event.modelName, e)
             self.main_screen.local_view.post_message(
                 LocalModelCopied(
                     src_model_name=event.modelName,
@@ -402,7 +399,7 @@ Some functions are only available via slash / commands on that chat tab. You can
                         percent,
                         " ",
                     )
-                ]  # type: ignore
+                ]
                 if pb:
                     parts.append(pb)
 
@@ -419,19 +416,8 @@ Some functions are only available via slash / commands on that chat tab. You can
             last_status = await self.do_progress(job, res)
 
             self.post_message_all(LocalModelPulled(model_name=job.modelName, success=last_status == "success"))
-        except ollama.ResponseError as e:
-            error_msg = str(e)
-            self.log_it(f"Model pull failed (ResponseError): {error_msg}")
-            self.status_notify(f"Model pull failed: {error_msg}", severity="error")
-            self.post_message_all(LocalModelPulled(model_name=job.modelName, success=False))
-        except ConnectError:
-            self.log_it("Model pull failed: Cannot connect to Ollama server")
-            self.status_notify("Cannot connect to Ollama server. Is it running?", severity="error")
-            self.post_message_all(LocalModelPulled(model_name=job.modelName, success=False))
         except Exception as e:
-            error_msg = str(e)
-            self.log_it(f"Model pull failed (unexpected error): {type(e).__name__}: {error_msg}")
-            self.status_notify(f"Model pull failed: {error_msg}", severity="error")
+            self.handle_ollama_error("Model pull", job.modelName, e)
             self.post_message_all(LocalModelPulled(model_name=job.modelName, success=False))
 
     async def do_push(self, job: PushModelJob) -> None:
@@ -441,19 +427,8 @@ Some functions are only available via slash / commands on that chat tab. You can
             last_status = await self.do_progress(job, res)
 
             self.post_message_all(LocalModelPushed(model_name=job.modelName, success=last_status == "success"))
-        except ollama.ResponseError as e:
-            error_msg = str(e)
-            self.log_it(f"Model push failed (ResponseError): {error_msg}")
-            self.status_notify(f"Model push failed: {error_msg}", severity="error")
-            self.post_message_all(LocalModelPushed(model_name=job.modelName, success=False))
-        except ConnectError:
-            self.log_it("Model push failed: Cannot connect to Ollama server")
-            self.status_notify("Cannot connect to Ollama server. Is it running?", severity="error")
-            self.post_message_all(LocalModelPushed(model_name=job.modelName, success=False))
         except Exception as e:
-            error_msg = str(e)
-            self.log_it(f"Model push failed (unexpected error): {type(e).__name__}: {error_msg}")
-            self.status_notify(f"Model push failed: {error_msg}", severity="error")
+            self.handle_ollama_error("Model push", job.modelName, e)
             self.post_message_all(LocalModelPushed(model_name=job.modelName, success=False))
 
     async def do_create_model(self, job: CreateModelJob) -> None:
@@ -482,8 +457,7 @@ Some functions are only available via slash / commands on that chat tab. You can
                 )
             )
         except ollama.ResponseError as e:
-            error_msg = str(e)
-            self.log_it(f"Model creation failed (ResponseError): {error_msg}")
+            error_msg = self.handle_ollama_error("Model creation", job.modelName, e, custom_handling=True)
 
             # Check for specific quantization errors
             if "quantization is only supported for F16 and F32 models" in error_msg:
@@ -510,9 +484,8 @@ Some functions are only available via slash / commands on that chat tab. You can
                     success=False,
                 )
             )
-        except ConnectError:
-            self.log_it("Model creation failed: Cannot connect to Ollama server")
-            self.status_notify("Cannot connect to Ollama server. Is it running?", severity="error")
+        except ConnectError as e:
+            self.handle_ollama_error("Model creation", job.modelName, e)
             self.main_screen.local_view.post_message(
                 LocalModelCreated(
                     model_name=job.modelName,
@@ -525,9 +498,7 @@ Some functions are only available via slash / commands on that chat tab. You can
                 )
             )
         except Exception as e:
-            error_msg = str(e)
-            self.log_it(f"Model creation failed (unexpected error): {type(e).__name__}: {error_msg}")
-            self.status_notify(f"Model creation failed: {error_msg}", severity="error")
+            self.handle_ollama_error("Model creation", job.modelName, e)
             self.main_screen.local_view.post_message(
                 LocalModelCreated(
                     model_name=job.modelName,
@@ -845,12 +816,45 @@ Some functions are only available via slash / commands on that chat tab. You can
             self.notify(
                 event.msg,
                 severity=event.severity,
-                timeout=event.timeout or 5,
+                timeout=event.timeout or int(settings.notification_timeout_info),
             )
 
     def log_it(self, msg: ConsoleRenderable | RichCast | str | object) -> None:
         """Log a message to the log view"""
         self.main_screen.log_view.richlog.write(msg)
+
+    def handle_ollama_error(
+        self, operation: str, model_name: str, error: Exception, custom_handling: bool = False
+    ) -> str:
+        """Handle common Ollama error patterns.
+
+        Args:
+            operation: The operation being performed (e.g., "Model copy", "Model pull")
+            model_name: The name of the model involved
+            error: The exception that occurred
+            custom_handling: If True, only logs but doesn't send notifications (for custom error handling)
+
+        Returns:
+            The error message string for custom handling
+        """
+        if isinstance(error, ollama.ResponseError):
+            error_msg = str(error)
+            self.log_it(f"{operation} failed (ResponseError): {error_msg}")
+            if not custom_handling:
+                self.status_notify(f"{operation} failed: {error_msg}", severity="error")
+            return error_msg
+        elif isinstance(error, ConnectError):
+            error_msg = "Cannot connect to Ollama server"
+            self.log_it(f"{operation} failed: {error_msg}")
+            if not custom_handling:
+                self.status_notify("Cannot connect to Ollama server. Is it running?", severity="error")
+            return error_msg
+        else:
+            error_msg = str(error)
+            self.log_it(f"{operation} failed (unexpected error): {type(error).__name__}: {error_msg}")
+            if not custom_handling:
+                self.status_notify(f"{operation} failed: {error_msg}", severity="error")
+            return error_msg
 
     async def action_shutdown(self) -> None:
         """Quit the application"""

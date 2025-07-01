@@ -14,6 +14,7 @@ from textual.app import App
 from textual.notifications import SeverityLevel
 
 from parllama.messages.messages import LogIt
+from parllama.settings_manager import settings
 
 
 @rich.repr.auto
@@ -120,10 +121,19 @@ class ParEventSystemBase:
         msg: ConsoleRenderable | RichCast | str | object,
         notify: bool = False,
         severity: SeverityLevel = "information",
-        timeout: int = 5,
+        timeout: int | None = None,
     ) -> None:
         """Log a message to the log view and optionally notify"""
-        self.post_message(ParLogIt(msg=msg, notify=notify, severity=severity, timeout=timeout))
+        if timeout is None:
+            if severity == "error":
+                calc_timeout = int(settings.notification_timeout_error)
+            elif severity == "warning":
+                calc_timeout = int(settings.notification_timeout_warning)
+            else:
+                calc_timeout = int(settings.notification_timeout_info)
+        else:
+            calc_timeout = timeout
+        self.post_message(ParLogIt(msg=msg, notify=notify, severity=severity, timeout=calc_timeout))
 
     def on_par_log_it(self, event: ParLogIt) -> None:
         """Handle a ParLogIt event"""
@@ -148,4 +158,4 @@ class ParLogIt(ParEventBase):
     msg: ConsoleRenderable | RichCast | str | object
     notify: bool = False
     severity: SeverityLevel = "information"
-    timeout: int = 5
+    timeout: int = 0
