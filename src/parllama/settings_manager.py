@@ -516,7 +516,9 @@ class Settings(BaseModel):
 
         try:
             # Use secure atomic write for settings
+            # Get the raw model data and convert Path objects to strings
             settings_data = self.model_dump()
+            self._convert_paths_to_strings(settings_data)
             self._secure_ops.write_json_file(
                 self.settings_file,
                 settings_data,
@@ -529,10 +531,28 @@ class Settings(BaseModel):
             print(f"Warning: Failed to save settings securely: {e}")
             # Fallback to basic save without validation for critical settings
             try:
+                import json
+
+                settings_data = self.model_dump()
+                self._convert_paths_to_strings(settings_data)
                 with open(self.settings_file, "w", encoding="utf-8") as f:
-                    f.write(self.model_dump_json(indent=4))
+                    json.dump(settings_data, f, indent=4)
             except OSError as fallback_error:
                 print(f"Error: Failed to save settings: {fallback_error}")
+
+    def _convert_paths_to_strings(self, data: dict) -> None:
+        """Recursively convert Path objects to strings in the settings data."""
+        for key, value in data.items():
+            if isinstance(value, Path):
+                data[key] = str(value)
+            elif isinstance(value, dict):
+                self._convert_paths_to_strings(value)
+            elif isinstance(value, list):
+                for i, item in enumerate(value):
+                    if isinstance(item, Path):
+                        value[i] = str(item)
+                    elif isinstance(item, dict):
+                        self._convert_paths_to_strings(item)
 
     def ensure_cache_folder(self) -> None:
         """Ensure the cache folder exists."""

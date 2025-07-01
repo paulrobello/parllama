@@ -456,6 +456,28 @@ if anything remains to be fixed before the commit is allowed.
   - Cross-platform compatibility (Windows uses NTFS default permissions)
 * Improved security logging and error handling throughout secrets management
 * All fixes maintain backward compatibility and follow existing code patterns
+* Implemented comprehensive file validation and security system
+* Added FileValidator class with security checks for:
+  - File size limits (configurable per file type: images, JSON, ZIP)
+  - Extension validation against allowed lists
+  - Path security to prevent directory traversal attacks
+  - Content validation for JSON, images, and ZIP files
+  - ZIP bomb protection with compression ratio checks
+* Created SecureFileOperations utility providing:
+  - Atomic write operations for critical files (settings, sessions, prompts)
+  - Automatic backup/restore on operation failures
+  - Safe file reading with configurable size limits
+  - Directory operations with permission validation
+* Added 14 new file validation configuration settings:
+  - `file_validation_enabled`, `max_file_size_mb`, `max_image_size_mb`
+  - `max_json_size_mb`, `max_zip_size_mb`, `validate_file_content`
+  - Separate limits for different file types and content validation toggles
+* Enhanced security for all JSON operations in:
+  - Settings manager: Configuration now uses atomic writes with validation
+  - Chat sessions: Session saves are atomic with content validation
+  - Chat prompts: Prompt storage uses secure operations with backup
+  - Image caching: Downloaded images validated before caching
+* All file operations now include comprehensive error handling and fallback mechanisms
 * Improved error handling for model creation with better error messages
 * Added validation for quantization levels with list of valid options
 * Added specific error messages for quantization requirements (F16/F32 base models)
@@ -482,6 +504,14 @@ if anything remains to be fixed before the commit is allowed.
   - Consolidated duplicate error handling patterns, reducing ~60 lines of repetitive code
   - Created centralized `handle_ollama_error()` method for consistent error management
   - All improvements maintain full backward compatibility and pass type checking
+* Implemented centralized state management system
+  - Created AppStateManager class with formal state machine (IDLE, REFRESHING, PROCESSING_JOBS, SHUTDOWN)
+  - Fixed state management inconsistencies between `is_busy` and `is_refreshing` flags
+  - Added thread-safe synchronization for all state operations with proper locking
+  - Implemented state transition validation and comprehensive logging
+  - Added operation conflict detection to prevent overlapping operations
+  - Enhanced debugging capability with detailed state transition tracking
+  - Centralized state logic eliminates scattered flag management throughout codebase
 
 ### v0.3.25
 

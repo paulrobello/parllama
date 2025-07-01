@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import threading
 from collections.abc import Iterator
 from queue import Empty, Full, Queue
 from weakref import WeakSet
@@ -79,6 +78,7 @@ from parllama.provider_manager import provider_manager
 from parllama.screens.main_screen import MainScreen
 from parllama.secrets_manager import secrets_manager
 from parllama.settings_manager import settings
+from parllama.state_manager import initialize_state_manager
 from parllama.theme_manager import theme_manager
 from parllama.update_manager import update_manager
 
@@ -114,8 +114,6 @@ class ParLlamaApp(App[None]):
     notify_subs: dict[str, WeakSet[MessagePump]]
     main_screen: MainScreen
     job_queue: Queue[QueueJob]
-    is_busy: bool = False
-    is_busy_lock: threading.Lock
     last_status: RenderableType = ""
     chat_manager: ChatManager
     job_timer: Timer | None
@@ -125,6 +123,10 @@ class ParLlamaApp(App[None]):
         """Initialize the application."""
         super().__init__()
         self.notify_subs = {"*": WeakSet[MessagePump]()}
+
+        # Initialize state manager with logging capability
+        self.state_manager = initialize_state_manager(self.log_it)
+
         theme_manager.set_app(self)
         provider_manager.set_app(self)
         secrets_manager.set_app(self)
@@ -139,9 +141,6 @@ class ParLlamaApp(App[None]):
 
         # Limit job queue to prevent unbounded growth
         self.job_queue = Queue[QueueJob](maxsize=settings.job_queue_max_size)
-        self.is_busy = False
-        self.is_busy_lock = threading.Lock()
-        self.is_refreshing = False
         self.last_status = ""
         if settings.theme_name not in theme_manager.list_themes():
             settings.theme_name = f"{settings.theme_name}_{settings.theme_mode}"
@@ -521,10 +520,8 @@ Some functions are only available via slash / commands on that chat tab. You can
                     return
                 if not job:
                     continue
-                with self.is_busy_lock:
-                    self.is_busy = True
-                    job_type = type(job).__name__
-                    self.log_it(f"Job processor busy state changed: False -> True (processing {job_type})")
+                job_type = type(job).__name__
+                self.state_manager.set_busy(True, f"processing {job_type}")
                 try:
                     if isinstance(job, PullModelJob):
                         await self.do_pull(job)
@@ -540,9 +537,7 @@ Some functions are only available via slash / commands on that chat tab. You can
                             severity="error",
                         )
                 finally:
-                    with self.is_busy_lock:
-                        self.is_busy = False
-                        self.log_it(f"Job processor busy state changed: True -> False (completed {job_type})")
+                    self.state_manager.set_busy(False, f"completed {job_type}")
             except Empty:
                 if self._exit:
                     return
@@ -598,15 +593,16 @@ Some functions are only available via slash / commands on that chat tab. You can
     @on(LocalModelListRefreshRequested)
     def on_model_list_refresh_requested(self) -> None:
         """Model refresh request event"""
-        if self.is_refreshing:
-            self.status_notify("A model refresh is already in progress. Please wait.")
+        can_start, error_msg = self.state_manager.can_start_operation("model refresh")
+        if not can_start:
+            self.status_notify(error_msg)
             return
         self.refresh_models()
 
     @work(group="refresh_models", thread=True)
     async def refresh_models(self):
         """Refresh the models."""
-        self.is_refreshing = True
+        self.state_manager.set_refreshing(True, "local models")
         try:
             self.post_message_all(StatusMessage("Local model list refreshing..."))
             ollama_dm.refresh_models()
@@ -622,7 +618,7 @@ Some functions are only available via slash / commands on that chat tab. You can
                 )
             )
         finally:
-            self.is_refreshing = False
+            self.state_manager.set_refreshing(False, "local models")
 
     # @on(LocalModelListLoaded)
     # def on_model_data_loaded(self) -> None:
@@ -633,8 +629,9 @@ Some functions are only available via slash / commands on that chat tab. You can
     @on(SiteModelsRefreshRequested)
     def on_site_models_refresh_requested(self, msg: SiteModelsRefreshRequested) -> None:
         """Site model refresh request event"""
-        if self.is_refreshing:
-            self.status_notify("A model refresh is already in progress. Please wait.")
+        can_start, error_msg = self.state_manager.can_start_operation("site model refresh")
+        if not can_start:
+            self.status_notify(error_msg)
             return
         self.refresh_site_models(msg)
 
@@ -646,7 +643,8 @@ Some functions are only available via slash / commands on that chat tab. You can
     @work(group="refresh_site_model", thread=True)
     async def refresh_site_models(self, msg: SiteModelsRefreshRequested):
         """Refresh the site model."""
-        self.is_refreshing = True
+        operation = f"site models: {msg.ollama_namespace or 'models'}"
+        self.state_manager.set_refreshing(True, operation)
         try:
             self.post_message_all(
                 StatusMessage(f"Site models for {msg.ollama_namespace or 'models'} refreshing... force={msg.force}")
@@ -658,7 +656,7 @@ Some functions are only available via slash / commands on that chat tab. You can
             )
 
         finally:
-            self.is_refreshing = False
+            self.state_manager.set_refreshing(False, operation)
 
     @work(group="update_ps", thread=True)
     async def update_ps(self) -> None:
@@ -859,6 +857,7 @@ Some functions are only available via slash / commands on that chat tab. You can
     async def action_shutdown(self) -> None:
         """Quit the application"""
         settings.shutting_down = True
+        self.state_manager.shutdown()
         await self.action_quit()
 
     @work(exclusive=True)

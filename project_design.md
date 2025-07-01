@@ -13,9 +13,10 @@ PAR LLAMA is a sophisticated Terminal User Interface (TUI) application for manag
 5. [Data Models and Persistence](#data-models-and-persistence)
 6. [Provider Integration System](#provider-integration-system)
 7. [Configuration Management System](#configuration-management-system)
-8. [Widget Hierarchy](#widget-hierarchy)
-9. [Key Design Patterns](#key-design-patterns)
-10. [Architecture Diagrams](#architecture-diagrams)
+8. [State Management Architecture](#state-management-architecture)
+9. [Widget Hierarchy](#widget-hierarchy)
+10. [Key Design Patterns](#key-design-patterns)
+11. [Architecture Diagrams](#architecture-diagrams)
 
 ## Architecture Overview
 
@@ -34,6 +35,9 @@ PAR LLAMA follows a layered architecture with clear separation of concerns:
 ├─────────────────────────────────────────────────────────┤
 │                Configuration Management Layer            │
 │   Settings Manager, Environment Variables, Validation   │
+├─────────────────────────────────────────────────────────┤
+│              File Validation and Security Layer          │
+│  FileValidator, SecureFileOperations, Content Checking  │
 ├─────────────────────────────────────────────────────────┤
 │                 Data Persistence Layer                   │
 │   JSON Files, Settings, Themes, Sessions, Prompts       │
@@ -207,6 +211,71 @@ graph TD
 - **ChatPrompt**: Reusable prompt templates
 - **LlmConfig**: Provider-specific model configuration
 
+### File Validation and Security System
+
+PAR LLAMA implements a comprehensive file validation system to protect against malicious files and ensure data integrity:
+
+#### File Validator (`src/parllama/validators/file_validator.py`)
+
+```python
+class FileValidator:
+    """Comprehensive file validator with security checks"""
+    - File size validation (configurable limits per type)
+    - Extension validation against allowed lists
+    - Path security (directory traversal prevention)
+    - Content validation for JSON, images, ZIP files
+    - ZIP bomb detection with compression ratio checks
+    - Image header validation for common formats
+```
+
+#### Secure File Operations (`src/parllama/secure_file_ops.py`)
+
+```python
+class SecureFileOperations:
+    """Secure file operations with validation and safety"""
+    - Atomic write operations (temp file + rename)
+    - Automatic backup/restore on failures
+    - Safe file reading with size limits
+    - Directory operations with permission checks
+    - Context manager for backup operations
+```
+
+#### Configuration Settings
+
+14 new file validation settings added to `Settings` class:
+
+```python
+# File validation settings
+file_validation_enabled: bool = True
+max_file_size_mb: float = 10.0
+max_image_size_mb: float = 5.0
+max_json_size_mb: float = 20.0
+max_zip_size_mb: float = 50.0
+max_total_attachment_size_mb: float = 100.0
+allowed_image_extensions: list[str] = [".jpg", ".jpeg", ".png", ...]
+validate_file_content: bool = True
+sanitize_filenames: bool = True
+```
+
+#### Security Features
+
+- **Path Traversal Protection**: Validates file paths to prevent `../` attacks
+- **File Size Limits**: Configurable limits prevent memory exhaustion
+- **Content Validation**: Verifies file headers match extensions
+- **ZIP Bomb Protection**: Detects suspicious compression ratios
+- **Atomic Operations**: Prevents partial writes/corruption
+- **Backup Recovery**: Automatic restore on operation failures
+
+#### Integration Points
+
+File validation is integrated into:
+- **Settings Manager**: JSON configuration files
+- **Chat Sessions**: Conversation persistence
+- **Chat Prompts**: Template storage
+- **Image Caching**: Downloaded image validation
+- **Theme Manager**: Theme file validation
+- **Fabric Import**: ZIP file validation
+
 ### Persistence Features
 
 - **Lazy Loading**: Sessions/prompts loaded on-demand
@@ -379,6 +448,211 @@ queue.put(job, timeout=settings.job_queue_put_timeout)
 4. **Consistency**: Centralized configuration management across the application
 5. **Maintainability**: Easier to update configuration values globally
 6. **User Control**: UI-configurable settings reduce need for code changes
+
+## State Management Architecture
+
+PAR LLAMA implements a centralized state management system that addresses previous inconsistencies in state flag handling and provides a formal state machine for complex operations.
+
+### State Management Overview
+
+```mermaid
+graph TD
+    subgraph "State Manager Layer"
+        A[AppStateManager]
+        A --> B[Thread-Safe Flags]
+        A --> C[State Machine]
+        A --> D[Validation Logic]
+        A --> E[Transition Logging]
+    end
+    
+    subgraph "Application States"
+        F[IDLE]
+        G[REFRESHING]
+        H[PROCESSING_JOBS]
+        I[SHUTDOWN]
+    end
+    
+    subgraph "Operation Flags"
+        J[is_busy]
+        K[is_refreshing]
+        L[state locks]
+    end
+    
+    A --> F
+    A --> G
+    A --> H
+    A --> I
+    B --> J
+    B --> K
+    B --> L
+```
+
+### Core Components
+
+#### AppStateManager (`src/parllama/state_manager.py`)
+
+```python
+class AppStateManager:
+    """Centralized manager for application state"""
+    - Thread-safe state flag management
+    - Formal state machine with validation
+    - State transition logging
+    - Operation conflict detection
+    - Graceful shutdown handling
+```
+
+#### Application States
+
+- **IDLE**: Application ready for new operations
+- **REFRESHING**: Model lists being refreshed from external sources  
+- **PROCESSING_JOBS**: Background jobs (pull, push, create, copy) in progress
+- **SHUTDOWN**: Application shutting down, no new operations allowed
+
+#### State Transition Validation
+
+```python
+_valid_transitions = {
+    AppState.IDLE: {AppState.REFRESHING, AppState.PROCESSING_JOBS, AppState.SHUTDOWN},
+    AppState.REFRESHING: {AppState.IDLE, AppState.SHUTDOWN},
+    AppState.PROCESSING_JOBS: {AppState.IDLE, AppState.SHUTDOWN},
+    AppState.SHUTDOWN: set(),  # No transitions allowed from shutdown
+}
+```
+
+### Thread Safety Implementation
+
+#### Before: Inconsistent Synchronization
+```python
+# is_busy had proper locking
+with self.is_busy_lock:
+    self.is_busy = True
+
+# is_refreshing had no synchronization (race condition risk)
+self.is_refreshing = True
+```
+
+#### After: Consistent Thread Safety
+```python
+# Both flags managed through state manager with proper locking
+self.state_manager.set_busy(True, "processing PullModelJob")
+self.state_manager.set_refreshing(True, "local models")
+```
+
+### State Manager Features
+
+#### 1. Operation Conflict Detection
+```python
+def can_start_operation(self, operation_type: str = "operation") -> tuple[bool, str]:
+    """Check if a new operation can be started"""
+    if self.current_state == AppState.SHUTDOWN:
+        return False, "Application is shutting down"
+    
+    if self.is_refreshing:
+        return False, "A model refresh is already in progress. Please wait."
+    
+    if self.is_busy:
+        return False, "A job is already in progress. Please wait."
+    
+    return True, ""
+```
+
+#### 2. Automatic State Transitions
+```python
+def set_busy(self, busy: bool, operation: str = "") -> bool:
+    """Set busy state and auto-transition main state"""
+    # Update busy flag
+    self._is_busy = busy
+    
+    # Auto-transition main application state
+    if busy and self.current_state == AppState.IDLE:
+        self._transition_to(AppState.PROCESSING_JOBS, f"job processing ({operation})")
+    elif not busy and self.current_state == AppState.PROCESSING_JOBS:
+        self._transition_to(AppState.IDLE, f"job completed ({operation})")
+```
+
+#### 3. Comprehensive State Logging
+```python
+# Detailed logging for all state changes
+self._log(f"Job processor state changed: {not busy} -> {busy} ({operation})")
+self._log(f"State transition: {old_state.value} -> {new_state.value} ({operation})")
+```
+
+### Integration with Application Components
+
+#### Model Operations
+```python
+# Before: Manual flag management scattered across methods
+with self.is_busy_lock:
+    self.is_busy = True
+    self.log_it(f"Job processor busy state changed: False -> True")
+
+# After: Centralized state management
+job_type = type(job).__name__
+self.state_manager.set_busy(True, f"processing {job_type}")
+```
+
+#### Refresh Operations
+```python
+# Before: No synchronization for refresh operations
+def on_model_list_refresh_requested(self) -> None:
+    if self.is_refreshing:  # Race condition risk
+        self.status_notify("A model refresh is already in progress. Please wait.")
+        return
+
+# After: Thread-safe operation conflict detection
+def on_model_list_refresh_requested(self) -> None:
+    can_start, error_msg = self.state_manager.can_start_operation("model refresh")
+    if not can_start:
+        self.status_notify(error_msg)
+        return
+```
+
+### State Management Benefits
+
+1. **Thread Safety**: Eliminates race conditions in state flag management
+2. **Consistency**: Standardized state management patterns across the application
+3. **Observability**: Comprehensive logging of all state transitions
+4. **Conflict Prevention**: Prevents overlapping operations that could cause issues
+5. **Debugging**: Clear state information available for troubleshooting
+6. **Extensibility**: Easy to add new states and operations
+7. **Maintainability**: Centralized state logic reduces code duplication
+
+### Usage Examples
+
+```python
+# Initialize state manager with logging
+self.state_manager = initialize_state_manager(self.log_it)
+
+# Check if operation can start
+can_start, error_msg = self.state_manager.can_start_operation("site model refresh")
+if not can_start:
+    self.status_notify(error_msg)
+    return
+
+# Set operation states with descriptive messages
+self.state_manager.set_refreshing(True, "site models: library")
+try:
+    # Perform operation
+    perform_refresh()
+finally:
+    self.state_manager.set_refreshing(False, "site models: library")
+
+# Get comprehensive state information for debugging
+state_info = self.state_manager.get_state_info()
+# Returns: {"current_state": "idle", "is_busy": false, "is_refreshing": false, "is_idle": true}
+```
+
+### Migration from Previous Implementation
+
+The state management system was designed to be backward compatible while fixing the identified inconsistencies:
+
+1. **Removed Direct Flag Access**: Eliminated direct manipulation of `is_busy` and `is_refreshing` flags
+2. **Added Thread Safety**: All state changes now use proper locking mechanisms  
+3. **Centralized Logic**: Moved scattered state management code to a single, well-tested class
+4. **Enhanced Logging**: Added comprehensive state transition logging for debugging
+5. **Formal State Machine**: Implemented proper state validation and transition rules
+
+This architecture resolves todo item #8 (State Management Inconsistencies) by providing a robust, thread-safe, and maintainable state management system.
 
 ## Widget Hierarchy
 
