@@ -493,7 +493,7 @@ class OptionsView(Horizontal):
         elif ctrl.id == "model_name":
             pass
         else:
-            self.notify(f"Unhandled input: {ctrl.id}", severity="error", timeout=8)
+            self.notify(f"Unhandled input: {ctrl.id}", severity="error", timeout=settings.notification_timeout_extended)
             return
         settings.save()
 
@@ -525,7 +525,7 @@ class OptionsView(Horizontal):
         elif ctrl.id == "enable_network_retries":
             settings.enable_network_retries = ctrl.value
         else:
-            self.notify(f"Unhandled input: {ctrl.id}", severity="error", timeout=8)
+            self.notify(f"Unhandled input: {ctrl.id}", severity="error", timeout=settings.notification_timeout_extended)
             return
         settings.save()
 
@@ -537,7 +537,7 @@ class OptionsView(Horizontal):
         ctrl: Input = event.control
         if event.validation_result is not None and not event.validation_result.is_valid:
             errors = ",".join([f.description or "Bad Value" for f in event.validation_result.failures])
-            self.notify(f"{ctrl.id} [{errors}]", severity="error", timeout=8)
+            self.notify(f"{ctrl.id} [{errors}]", severity="error", timeout=settings.notification_timeout_extended)
             return
 
         if ctrl.id == "ollama_base_url":
@@ -612,7 +612,7 @@ class OptionsView(Horizontal):
         elif ctrl.id == "retry_max_delay":
             settings.retry_max_delay = float(ctrl.value)
         else:
-            self.notify(f"Unhandled input: {ctrl.id}", severity="error", timeout=8)
+            self.notify(f"Unhandled input: {ctrl.id}", severity="error", timeout=settings.notification_timeout_extended)
             return
         settings.save()
         if self._provider_changed:

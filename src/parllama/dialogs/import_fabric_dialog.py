@@ -16,6 +16,7 @@ from textual.widgets import Button, Checkbox, Label
 from parllama.messages.messages import ImportReady
 from parllama.models.ollama_data import FullModel
 from parllama.prompt_utils.import_fabric import import_fabric_manager
+from parllama.settings_manager import settings
 
 
 class ImportFabricDialog(ModalScreen[None]):
@@ -132,7 +133,7 @@ class ImportFabricDialog(ModalScreen[None]):
         """Copy model to create screen."""
         event.stop()
         if len(import_fabric_manager.import_ids) == 0:
-            self.notify("No prompts selected", severity="error", timeout=5)
+            self.notify("No prompts selected", severity="error", timeout=settings.notification_timeout_error)
             return
         import_fabric_manager.import_patterns()
         # self.app.post_message(LogIt(import_fabric_manager.import_ids))

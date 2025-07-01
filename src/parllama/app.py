@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import threading
 from collections.abc import Iterator
 from queue import Empty, Full, Queue
 from weakref import WeakSet
@@ -114,6 +115,7 @@ class ParLlamaApp(App[None]):
     main_screen: MainScreen
     job_queue: Queue[QueueJob]
     is_busy: bool = False
+    is_busy_lock: threading.Lock
     last_status: RenderableType = ""
     chat_manager: ChatManager
     job_timer: Timer | None
@@ -136,14 +138,15 @@ class ParLlamaApp(App[None]):
         self.title = __application_title__
 
         # Limit job queue to prevent unbounded growth
-        self.job_queue = Queue[QueueJob](maxsize=150)
+        self.job_queue = Queue[QueueJob](maxsize=settings.job_queue_max_size)
         self.is_busy = False
+        self.is_busy_lock = threading.Lock()
         self.is_refreshing = False
         self.last_status = ""
         if settings.theme_name not in theme_manager.list_themes():
             settings.theme_name = f"{settings.theme_name}_{settings.theme_mode}"
             if settings.theme_name not in theme_manager.list_themes():
-                settings.theme_name = "par_dark"
+                settings.theme_name = settings.theme_fallback_name
 
         theme_manager.change_theme(settings.theme_name)
 
@@ -154,7 +157,7 @@ class ParLlamaApp(App[None]):
             bool: True if job was added successfully, False if queue is full
         """
         try:
-            self.job_queue.put(job, timeout=0.1)
+            self.job_queue.put(job, timeout=settings.job_queue_put_timeout)
             return True
         except Full:
             self.status_notify("Job queue is full. Please wait for current operations to complete.", severity="warning")
@@ -180,14 +183,14 @@ class ParLlamaApp(App[None]):
                 ],
             )
         )
-        self.job_timer = self.set_timer(1, self.do_jobs)
+        self.job_timer = self.set_timer(settings.job_timer_interval, self.do_jobs)
         if settings.ollama_ps_poll_interval > 0:
-            self.ps_timer = self.set_timer(1, self.update_ps)
+            self.ps_timer = self.set_timer(settings.ps_timer_interval, self.update_ps)
 
         if settings.show_first_run:
             settings.show_first_run = False
             settings.save()
-            self.set_timer(1, self.show_first_run)
+            self.set_timer(settings.notification_timeout_info, self.show_first_run)
 
         self.post_message(RefreshProviderModelsRequested(None))
 
@@ -321,14 +324,36 @@ Some functions are only available via slash / commands on that chat tab. You can
 
     async def do_copy_local_model(self, event: CopyModelJob) -> None:
         """Copy local model"""
-        ret = ollama_dm.copy_model(event.modelName, event.dstModelName)
-        self.main_screen.local_view.post_message(
-            LocalModelCopied(
-                src_model_name=event.modelName,
-                dst_model_name=event.dstModelName,
-                success=ret["status"] == "success",
+        try:
+            ret = ollama_dm.copy_model(event.modelName, event.dstModelName)
+            self.main_screen.local_view.post_message(
+                LocalModelCopied(
+                    src_model_name=event.modelName,
+                    dst_model_name=event.dstModelName,
+                    success=ret["status"] == "success",
+                )
             )
-        )
+        except ollama.ResponseError as e:
+            self.log_it(f"Model copy failed (ResponseError): {e}")
+            self.status_notify(f"Model copy failed: {str(e)}", severity="error")
+            self.main_screen.local_view.post_message(
+                LocalModelCopied(
+                    src_model_name=event.modelName,
+                    dst_model_name=event.dstModelName,
+                    success=False,
+                )
+            )
+        except Exception as e:
+            error_msg = str(e)
+            self.log_it(f"Model copy failed (unexpected error): {type(e).__name__}: {error_msg}")
+            self.status_notify(f"Model copy failed: {error_msg}", severity="error")
+            self.main_screen.local_view.post_message(
+                LocalModelCopied(
+                    src_model_name=event.modelName,
+                    dst_model_name=event.dstModelName,
+                    success=False,
+                )
+            )
 
     @on(LocalModelCopied)
     def on_local_model_copied(self, event: LocalModelCopied) -> None:
@@ -395,7 +420,18 @@ Some functions are only available via slash / commands on that chat tab. You can
 
             self.post_message_all(LocalModelPulled(model_name=job.modelName, success=last_status == "success"))
         except ollama.ResponseError as e:
-            self.log_it(e)
+            error_msg = str(e)
+            self.log_it(f"Model pull failed (ResponseError): {error_msg}")
+            self.status_notify(f"Model pull failed: {error_msg}", severity="error")
+            self.post_message_all(LocalModelPulled(model_name=job.modelName, success=False))
+        except ConnectError:
+            self.log_it("Model pull failed: Cannot connect to Ollama server")
+            self.status_notify("Cannot connect to Ollama server. Is it running?", severity="error")
+            self.post_message_all(LocalModelPulled(model_name=job.modelName, success=False))
+        except Exception as e:
+            error_msg = str(e)
+            self.log_it(f"Model pull failed (unexpected error): {type(e).__name__}: {error_msg}")
+            self.status_notify(f"Model pull failed: {error_msg}", severity="error")
             self.post_message_all(LocalModelPulled(model_name=job.modelName, success=False))
 
     async def do_push(self, job: PushModelJob) -> None:
@@ -405,7 +441,19 @@ Some functions are only available via slash / commands on that chat tab. You can
             last_status = await self.do_progress(job, res)
 
             self.post_message_all(LocalModelPushed(model_name=job.modelName, success=last_status == "success"))
-        except ollama.ResponseError:
+        except ollama.ResponseError as e:
+            error_msg = str(e)
+            self.log_it(f"Model push failed (ResponseError): {error_msg}")
+            self.status_notify(f"Model push failed: {error_msg}", severity="error")
+            self.post_message_all(LocalModelPushed(model_name=job.modelName, success=False))
+        except ConnectError:
+            self.log_it("Model push failed: Cannot connect to Ollama server")
+            self.status_notify("Cannot connect to Ollama server. Is it running?", severity="error")
+            self.post_message_all(LocalModelPushed(model_name=job.modelName, success=False))
+        except Exception as e:
+            error_msg = str(e)
+            self.log_it(f"Model push failed (unexpected error): {type(e).__name__}: {error_msg}")
+            self.status_notify(f"Model push failed: {error_msg}", severity="error")
             self.post_message_all(LocalModelPushed(model_name=job.modelName, success=False))
 
     async def do_create_model(self, job: CreateModelJob) -> None:
@@ -497,32 +545,36 @@ Some functions are only available via slash / commands on that chat tab. You can
         """poll for queued jobs"""
         while True:
             try:
-                job: QueueJob = self.job_queue.get(block=True, timeout=1)
+                job: QueueJob = self.job_queue.get(block=True, timeout=settings.job_queue_get_timeout)
                 if settings.shutting_down:
                     return
                 if not job:
                     continue
-                self.is_busy = True
-                if isinstance(job, PullModelJob):
-                    await self.do_pull(job)
-                elif isinstance(job, PushModelJob):
-                    await self.do_push(job)
-                elif isinstance(job, CopyModelJob):
-                    await self.do_copy_local_model(job)
-                elif isinstance(job, CreateModelJob):
-                    await self.do_create_model(job)
-                else:
-                    self.status_notify(
-                        f"Unknown job type {type(job)}",
-                        severity="error",
-                    )
+                with self.is_busy_lock:
+                    self.is_busy = True
+                    job_type = type(job).__name__
+                    self.log_it(f"Job processor busy state changed: False -> True (processing {job_type})")
+                try:
+                    if isinstance(job, PullModelJob):
+                        await self.do_pull(job)
+                    elif isinstance(job, PushModelJob):
+                        await self.do_push(job)
+                    elif isinstance(job, CopyModelJob):
+                        await self.do_copy_local_model(job)
+                    elif isinstance(job, CreateModelJob):
+                        await self.do_create_model(job)
+                    else:
+                        self.status_notify(
+                            f"Unknown job type {type(job)}",
+                            severity="error",
+                        )
+                finally:
+                    with self.is_busy_lock:
+                        self.is_busy = False
+                        self.log_it(f"Job processor busy state changed: True -> False (completed {job_type})")
             except Empty:
                 if self._exit:
                     return
-                # TODO figure this out
-                # if self.is_busy:
-                #     self.post_message(LocalModelListRefreshRequested(widget=None))
-                #     self.is_busy = False
                 continue
 
     @on(LocalModelPulled)
@@ -545,7 +597,7 @@ Some functions are only available via slash / commands on that chat tab. You can
             self.status_notify(
                 f"Model {event.model_name} created.",
             )
-            self.set_timer(1, self.action_refresh_models)
+            self.set_timer(settings.model_refresh_timer_interval, self.action_refresh_models)
         else:
             self.status_notify(
                 f"Model {event.model_name} failed to create.",
@@ -671,7 +723,12 @@ Some functions are only available via slash / commands on that chat tab. You can
 
     def status_notify(self, msg: str, severity: SeverityLevel = "information") -> None:
         """Show notification and update status bar"""
-        self.notify(msg, severity=severity, timeout=5 if severity != "information" else 3)
+        timeout = (
+            settings.notification_timeout_error if severity != "information" else settings.notification_timeout_info
+        )
+        if severity == "warning":
+            timeout = settings.notification_timeout_warning
+        self.notify(msg, severity=severity, timeout=timeout)
         self.main_screen.post_message(StatusMessage(msg))
 
     def post_message_all(self, event: Message) -> None:

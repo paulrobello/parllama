@@ -116,16 +116,47 @@ class Settings(BaseModel):
     retry_max_delay: float = 60.0
     enable_network_retries: bool = True
 
+    # Timer and job processing settings
+    job_timer_interval: float = 1.0
+    ps_timer_interval: float = 1.0  # Note: ollama_ps_poll_interval already exists for user config
+    model_refresh_timer_interval: float = 1.0
+    job_queue_put_timeout: float = 0.1
+    job_queue_get_timeout: float = 1.0
+
+    # Queue settings
+    job_queue_max_size: int = 150
+
+    # HTTP timeout settings
+    http_request_timeout: float = 10.0
+    provider_model_request_timeout: float = 5.0
+    update_check_timeout: float = 5.0
+    image_fetch_timeout: float = 10.0
+
+    # Notification timeout settings
+    notification_timeout_error: float = 5.0
+    notification_timeout_info: float = 3.0
+    notification_timeout_warning: float = 5.0
+    notification_timeout_extended: float = 8.0
+
+    # Theme settings
+    theme_fallback_name: str = "par_dark"
+
+    # Image fetch retry settings
+    image_fetch_max_attempts: int = 2
+    image_fetch_base_delay: float = 1.0
+
     # pylint: disable=too-many-branches, too-many-statements
     def __init__(self) -> None:
         """Initialize Manager."""
         super().__init__()
-        
+
         # Check if we're running under pytest
         import sys
+
         if "pytest" in sys.modules:
             # Create a minimal namespace with defaults when running tests
             from argparse import Namespace
+
             args = Namespace(
                 no_save=False,
                 no_chat_save=False,
@@ -389,6 +420,47 @@ class Settings(BaseModel):
             self.retry_max_delay = max(1.0, data.get("retry_max_delay", self.retry_max_delay))
             self.enable_network_retries = data.get("enable_network_retries", self.enable_network_retries)
 
+            # Timer and job processing settings (backwards compatible)
+            self.job_timer_interval = max(0.1, data.get("job_timer_interval", self.job_timer_interval))
+            self.ps_timer_interval = max(0.1, data.get("ps_timer_interval", self.ps_timer_interval))
+            self.model_refresh_timer_interval = max(
+                0.1, data.get("model_refresh_timer_interval", self.model_refresh_timer_interval)
+            )
+            self.job_queue_put_timeout = max(0.01, data.get("job_queue_put_timeout", self.job_queue_put_timeout))
+            self.job_queue_get_timeout = max(0.01, data.get("job_queue_get_timeout", self.job_queue_get_timeout))
+
+            # Queue settings (backwards compatible)
+            self.job_queue_max_size = max(10, data.get("job_queue_max_size", self.job_queue_max_size))
+
+            # HTTP timeout settings (backwards compatible)
+            self.http_request_timeout = max(1.0, data.get("http_request_timeout", self.http_request_timeout))
+            self.provider_model_request_timeout = max(
+                1.0, data.get("provider_model_request_timeout", self.provider_model_request_timeout)
+            )
+            self.update_check_timeout = max(1.0, data.get("update_check_timeout", self.update_check_timeout))
+            self.image_fetch_timeout = max(1.0, data.get("image_fetch_timeout", self.image_fetch_timeout))
+
+            # Notification timeout settings (backwards compatible)
+            self.notification_timeout_error = max(
+                0.1, data.get("notification_timeout_error", self.notification_timeout_error)
+            )
+            self.notification_timeout_info = max(
+                0.1, data.get("notification_timeout_info", self.notification_timeout_info)
+            )
+            self.notification_timeout_warning = max(
+                0.1, data.get("notification_timeout_warning", self.notification_timeout_warning)
+            )
+            self.notification_timeout_extended = max(
+                0.1, data.get("notification_timeout_extended", self.notification_timeout_extended)
+            )
+
+            # Theme settings (backwards compatible)
+            self.theme_fallback_name = data.get("theme_fallback_name", self.theme_fallback_name)
+
+            # Image fetch retry settings (backwards compatible)
+            self.image_fetch_max_attempts = max(1, data.get("image_fetch_max_attempts", self.image_fetch_max_attempts))
+            self.image_fetch_base_delay = max(0.1, data.get("image_fetch_base_delay", self.image_fetch_base_delay))
+
             self.update_env()
         except FileNotFoundError:
             pass  # If file does not exist, continue with default settings
@@ -475,9 +547,13 @@ def _fetch_image_with_retry(url: str, headers: dict) -> requests.Response:
     """Fetch image with retry logic."""
     from parllama.retry_utils import create_retry_config, retry_with_backoff
 
-    @retry_with_backoff(config=create_retry_config(max_attempts=2, base_delay=1.0))
+    @retry_with_backoff(
+        config=create_retry_config(
+            max_attempts=settings.image_fetch_max_attempts, base_delay=settings.image_fetch_base_delay
+        )
+    )
     def _fetch():
-        return requests.get(url, headers=headers, timeout=10)
+        return requests.get(url, headers=headers, timeout=settings.image_fetch_timeout)
 
     return _fetch()
 

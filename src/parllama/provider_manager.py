@@ -124,7 +124,8 @@ class ProviderManager(ParEventSystemBase):
                             new_list.append(m.id)
                 elif p == LlmProvider.LITELLM:
                     models = requests.get(
-                        f"{settings.provider_base_urls[p] or provider_base_urls[p]}/models", timeout=5
+                        f"{settings.provider_base_urls[p] or provider_base_urls[p]}/models",
+                        timeout=settings.provider_model_request_timeout,
                     ).json()["data"]
                     if models:
                         models = [m for m in models if get_model_mode(p, m["id"]) in ["chat", "unknown"]]

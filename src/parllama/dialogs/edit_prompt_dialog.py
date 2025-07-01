@@ -15,6 +15,7 @@ from textual.widgets import Button, Checkbox, Input, Label, Select, Static, Text
 from parllama.chat_message import ParllamaChatMessage
 from parllama.chat_prompt import ChatPrompt
 from parllama.messages.messages import DeletePromptMessage
+from parllama.settings_manager import settings
 from parllama.widgets.custom_prompt_message_edit import CustomPromptMessageEdit
 from parllama.widgets.field_set import FieldSet
 
@@ -133,7 +134,9 @@ class EditPromptDialog(ModalScreen[bool]):
         """Copy model to create screen."""
         event.stop()
         if len(self.edit_prompt.messages) == 0:
-            self.notify("Prompt must have at least one message", severity="error", timeout=5)
+            self.notify(
+                "Prompt must have at least one message", severity="error", timeout=settings.notification_timeout_error
+            )
             return
         num_system_prompts = 0
         last_system_prompt_index = -1
@@ -147,13 +150,13 @@ class EditPromptDialog(ModalScreen[bool]):
             self.notify(
                 "You may only have 1 system role in your prompt",
                 severity="error",
-                timeout=5,
+                timeout=settings.notification_timeout_error,
             )
             return
         if num_system_prompts == 1 and last_system_prompt_index > 0:
             sp = self.edit_prompt.messages.pop(last_system_prompt_index)
             self.edit_prompt.messages.insert(0, sp)
-            self.notify("System prompt moved to the top", timeout=5)
+            self.notify("System prompt moved to the top", timeout=settings.notification_timeout_error)
 
         with self.prompt.batch_changes():
             self.prompt.name = self.query_one("#name", Input).value.strip()

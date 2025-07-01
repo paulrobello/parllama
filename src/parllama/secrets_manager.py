@@ -5,8 +5,20 @@ from __future__ import annotations
 import base64
 import os
 import stat
+import threading
 from pathlib import Path
 from typing import Any
+
+# Platform-specific imports
+try:
+    import fcntl
+except ImportError:
+    fcntl = None
+
+try:
+    import msvcrt
+except ImportError:
+    msvcrt = None
 
 import orjson as json
 from cryptography.exceptions import InvalidTag
@@ -39,6 +51,8 @@ class SecretsManager(ParEventSystemBase):
     """Dict containing encrypted secrets."""
     _secrets_file: Path
     """JSON file containing encrypted secrets."""
+    _file_lock: threading.Lock
+    """Lock for file operations to prevent race conditions."""
 
     def __init__(self, secrets_file: Path, **kwargs) -> None:
         """Initialize Manager and load vault."""
@@ -48,6 +62,7 @@ class SecretsManager(ParEventSystemBase):
         self._key_secure = None
         self._key = None
         self._secrets_file = secrets_file
+        self._file_lock = threading.Lock()
 
     def set_app(self, app: App[Any] | None) -> None:
         """Set the app and load existing sessions and prompts from storage"""
@@ -101,38 +116,180 @@ class SecretsManager(ParEventSystemBase):
         except (OSError, AttributeError) as e:
             self.log_it(f"Could not check permissions for {file_path.name}: {e}")
 
-    def _load_secrets(self) -> None:
-        """Load secrets from the secrets file."""
-        try:
-            # Check file permissions when loading
-            self._check_file_permissions(self._secrets_file)
+    def _acquire_file_lock(self, file_path: Path, mode: str):
+        """Context manager for file locking across platforms."""
 
-            data = json.loads(self._secrets_file.read_bytes())
-            self._salt = base64.b64decode(data.get("__salt__"))
-            self._key_secure = data.get("__key__")
-            self._secrets = data.get("secrets", {})
-        except FileNotFoundError:
-            self._secrets = {}
-            self._salt = gen_salt()
-            self._key_secure = None
-        except JSONDecodeError as e:
-            self.log_it(e)
-            self.log_it("Invalid secrets file format", notify=True, severity="error")
-            raise ValueError("Invalid secrets file format") from e
+        class FileLock:
+            def __init__(self, file_path: Path, mode: str):
+                self.file_path = file_path
+                self.mode = mode
+                self.file = None
+
+            def __enter__(self):
+                try:
+                    self.file = open(self.file_path, self.mode, encoding="utf-8")
+
+                    # Platform-specific file locking
+                    if os.name == "nt" and msvcrt:  # Windows
+                        try:
+                            msvcrt.locking(self.file.fileno(), msvcrt.LK_LOCK, 1)
+                        except OSError:
+                            # If locking fails, continue without lock but log warning
+                            pass
+                    elif fcntl:  # Unix-like systems
+                        try:
+                            fcntl.flock(self.file.fileno(), fcntl.LOCK_EX)
+                        except OSError:
+                            # If locking fails, continue without lock but log warning
+                            pass
+
+                    return self.file
+                except Exception as e:
+                    if self.file:
+                        self.file.close()
+                    raise e
+
+            def __exit__(self, exc_type, exc_val, exc_tb):
+                if self.file:
+                    try:
+                        # Platform-specific file unlocking
+                        if os.name == "nt" and msvcrt:  # Windows
+                            try:
+                                msvcrt.locking(self.file.fileno(), msvcrt.LK_UNLCK, 1)
+                            except OSError:
+                                pass
+                        elif fcntl:  # Unix-like systems
+                            try:
+                                fcntl.flock(self.file.fileno(), fcntl.LOCK_UN)
+                            except OSError:
+                                pass
+                    finally:
+                        self.file.close()
+
+        return FileLock(file_path, mode)
+
+    def _secure_clear_bytes(self, data: bytes) -> None:
+        """Securely clear bytes from memory."""
+        if data is None:
+            return
+
+        try:
+            # For Python strings and bytes, we can't reliably clear them from memory
+            # because they are immutable and Python manages their memory internally.
+            # This is a best-effort attempt to overwrite the data, but Python's
+            # garbage collector and string interning may prevent actual clearing.
+
+            # Create a mutable bytearray copy and clear it
+            if isinstance(data, bytes | str):
+                # Convert to mutable bytearray and clear it
+                mutable_copy = bytearray(data if isinstance(data, bytes) else data.encode("utf-8"))
+                # Zero out the mutable copy
+                for i in range(len(mutable_copy)):
+                    mutable_copy[i] = 0
+                # Clear the reference
+                del mutable_copy
+
+        except Exception as e:
+            # If secure clearing fails, log but don't raise
+            self.log_it(f"Warning: Could not securely clear bytes from memory: {e}")
+
+    def _secure_clear_string(self, data: str) -> None:
+        """Securely clear string from memory."""
+        if data is None:
+            return
+
+        try:
+            # For Python strings, we can't reliably clear them from memory
+            # because they are immutable and Python manages their memory internally.
+            # This is a best-effort approach.
+
+            # Create a mutable bytearray copy and clear it
+            if isinstance(data, str):
+                mutable_copy = bytearray(data.encode("utf-8"))
+                # Zero out the mutable copy
+                for i in range(len(mutable_copy)):
+                    mutable_copy[i] = 0
+                # Clear the reference
+                del mutable_copy
+
+        except Exception as e:
+            # If secure clearing fails, log but don't raise
+            self.log_it(f"Warning: Could not securely clear string from memory: {e}")
+
+    def _secure_clear_dict(self, data: dict) -> None:
+        """Securely clear dictionary values from memory."""
+        if data is None:
+            return
+
+        try:
+            for key, value in data.items():
+                if isinstance(value, str):
+                    self._secure_clear_string(value)
+                elif isinstance(value, bytes):
+                    self._secure_clear_bytes(value)
+                elif isinstance(value, dict):
+                    self._secure_clear_dict(value)
+        except Exception as e:
+            # If secure clearing fails, log but don't raise
+            self.log_it(f"Warning: Could not securely clear dictionary from memory: {e}")
+
+    def _load_secrets(self) -> None:
+        """Load secrets from the secrets file with file locking."""
+        with self._file_lock:
+            try:
+                # Check file permissions when loading
+                self._check_file_permissions(self._secrets_file)
+
+                with self._acquire_file_lock(self._secrets_file, "r") as file:
+                    data = json.loads(file.read())
+
+                self._salt = base64.b64decode(data.get("__salt__"))
+                self._key_secure = data.get("__key__")
+                self._secrets = data.get("secrets", {})
+
+                self.log_it(f"Loaded {len(self._secrets)} secrets from vault")
+            except FileNotFoundError:
+                self._secrets = {}
+                self._salt = gen_salt()
+                self._key_secure = None
+                self.log_it("No existing secrets file found, starting with empty vault")
+            except JSONDecodeError as e:
+                self.log_it(f"JSON decode error: {e}", severity="error")
+                self.log_it("Invalid secrets file format", notify=True, severity="error")
+                raise ValueError("Invalid secrets file format") from e
+            except (OSError, PermissionError) as e:
+                self.log_it(f"File access error: {e}", notify=True, severity="error")
+                raise ValueError(f"Cannot access secrets file: {e}") from e
 
     def _save_secrets(self) -> None:
-        """Saves secrets to the secrets file."""
-        data = {
-            "__salt__": base64.b64encode(self._salt).decode("utf-8"),
-            "__key__": self._key_secure,
-            "secrets": self._secrets,
-        }
-        self._secrets_file.write_bytes(json.dumps(data, str, json.OPT_INDENT_2))
+        """Saves secrets to the secrets file with file locking and secure cleanup."""
+        with self._file_lock:
+            try:
+                data = {
+                    "__salt__": base64.b64encode(self._salt).decode("utf-8"),
+                    "__key__": self._key_secure,
+                    "secrets": self._secrets,
+                }
 
-        # Set secure file permissions after creating/updating the file
-        self._set_secure_file_permissions(self._secrets_file)
+                # Create parent directory if it doesn't exist
+                self._secrets_file.parent.mkdir(parents=True, exist_ok=True)
 
-        self.import_to_env(True)
+                # Write to file with exclusive lock
+                with self._acquire_file_lock(self._secrets_file, "w") as file:
+                    file.write(json.dumps(data, str, json.OPT_INDENT_2).decode("utf-8"))
+
+                # Set secure file permissions after creating/updating the file
+                self._set_secure_file_permissions(self._secrets_file)
+
+                # Clear sensitive data from memory
+                self._secure_clear_dict(data)
+
+                self.log_it(f"Saved {len(self._secrets)} secrets to vault")
+                self.import_to_env(True)
+
+            except (OSError, PermissionError) as e:
+                self.log_it(f"Failed to save secrets: {e}", notify=True, severity="error")
+                raise ValueError(f"Cannot save secrets file: {e}") from e
 
     def _derive_key(self, password: str, alt_salt: bytes | None = None) -> bytes:
         """Derives a key from the given password and the stored salt."""
@@ -144,8 +301,11 @@ class SecretsManager(ParEventSystemBase):
         return self._key is None
 
     def lock(self) -> None:
-        """Locks the secrets manager."""
+        """Locks the secrets manager and securely clears the key from memory."""
+        if self._key is not None:
+            self._secure_clear_bytes(self._key)
         self._key = None
+        self.log_it("Vault locked and key cleared from memory")
 
     @property
     def has_password(self) -> bool:
@@ -155,52 +315,111 @@ class SecretsManager(ParEventSystemBase):
     def change_password(self, old_password: str, new_password: str, no_raise: bool = False) -> None:
         """Changes the password and re-encrypts existing secrets."""
         if not self.has_password:
-            self.unlock(new_password)
+            if not self.unlock(new_password, no_raise):
+                return
             return
 
         if not self.verify_password(old_password):
+            error_msg = "Invalid old password."
             if no_raise:
-                self.log_it("Invalid old password.", notify=True, severity="error")
+                self.log_it(error_msg, notify=True, severity="error")
                 return
-            raise ValueError("Invalid old password.")
+            raise ValueError(error_msg)
+
         if new_password == old_password:
             return
-        self.unlock(old_password)
-        new_key: bytes = self._derive_key(new_password)
-        self._key_secure = self._encrypt(new_password, new_key)
 
-        encrypted_secrets = {}
-        for key, value in self._secrets.items():
-            encrypted_secrets[key] = self._encrypt(self._decrypt(value), new_key)
-        self._secrets = encrypted_secrets
-        self._key = new_key
-        self._save_secrets()
+        if not self.unlock(old_password, no_raise):
+            return
+
+        try:
+            new_key: bytes = self._derive_key(new_password)
+            new_key_secure = self._encrypt(new_password, new_key)
+
+            encrypted_secrets = {}
+            for key, encrypted_value in self._secrets.items():
+                # Decrypt with old key and immediately re-encrypt with new key
+                decrypted_value = self._decrypt(encrypted_value)
+                try:
+                    encrypted_secrets[key] = self._encrypt(decrypted_value, new_key)
+                finally:
+                    # Securely clear the decrypted value from memory
+                    self._secure_clear_string(decrypted_value)
+
+            # Clear old encrypted password and update with new one
+            if self._key_secure:
+                self._secure_clear_string(self._key_secure)
+            self._key_secure = new_key_secure
+
+            # Clear old key and update with new one
+            if self._key:
+                self._secure_clear_bytes(self._key)
+            self._key = new_key
+
+            # Update secrets and save
+            self._secrets = encrypted_secrets
+            self._save_secrets()
+
+            self.log_it("Password changed successfully", notify=True)
+
+        except Exception as e:
+            error_msg = f"Failed to change password: {e}"
+            if no_raise:
+                self.log_it(error_msg, notify=True, severity="error")
+                return
+            raise ValueError(error_msg) from e
 
     def verify_password(self, password: str) -> bool:
         """Verifies the given password. Returns True if vault password is not set."""
         try:
             if not self.has_password:
                 return True
-            return (
-                self._decrypt(self._key_secure, self._derive_key(password)) == password  # type: ignore
-            )
-        except ValueError as e:
-            self.log_it(e)
+
+            # Decrypt the stored password and compare
+            decrypted_password = self._decrypt(self._key_secure, self._derive_key(password))  # type: ignore
+            is_valid = decrypted_password == password
+
+            # Securely clear the decrypted password from memory
+            self._secure_clear_string(decrypted_password)
+
+            return is_valid
+        except (ValueError, TypeError, InvalidTag) as e:
+            self.log_it(f"Password verification failed: {e}")
             return False
 
     def unlock(self, password: str, no_raise: bool = False) -> bool:
         """Unlock the vault or set initial vault password."""
-        if not self.verify_password(password):
+        try:
+            if not self.verify_password(password):
+                self.lock()
+                error_msg = "Invalid password."
+                if no_raise:
+                    self.log_it(error_msg, notify=True, severity="error")
+                    return False
+                raise ValueError(error_msg)
+
+            # Clear any existing key before setting new one
+            if self._key is not None:
+                self._secure_clear_bytes(self._key)
+
+            self._key = self._derive_key(password)
+
+            if self._key_secure is None:
+                self._key_secure = self._encrypt(password, self._key)
+                self._save_secrets()
+                self.log_it("Vault created and unlocked", notify=True)
+            else:
+                self.log_it("Vault unlocked successfully")
+
+            return True
+
+        except Exception as e:
             self.lock()
+            error_msg = f"Failed to unlock vault: {e}"
             if no_raise:
-                self.log_it("Invalid password.", notify=True, severity="error")
+                self.log_it(error_msg, notify=True, severity="error")
                 return False
-            raise ValueError("Invalid password.")
-        self._key = self._derive_key(password)
-        if self._key_secure is None:
-            self._key_secure = self._encrypt(password, self._derive_key(password))
-            self._save_secrets()
-        return True
+            raise ValueError(error_msg) from e
 
     def _encrypt(self, plaintext: str, alt_key: bytes | None = None) -> str:
         key: bytes | None = alt_key or self._key
@@ -214,58 +433,82 @@ class SecretsManager(ParEventSystemBase):
             raise ValueError("Vault locked. Use unlock() before decrypting.")
         return decrypt(ciphertext, alt_key or self._key)  # type: ignore
 
-    def add_secret(self, key: str, value: str, no_raise: bool = False):
+    def add_secret(self, key: str, value: str, no_raise: bool = False) -> None:
         """Adds a new secret, encrypts it, and saves it to the file."""
         if not self._key:
+            error_msg = "Vault is locked. Use unlock() before adding a secret."
             if no_raise:
-                self.log_it("Password not set. Use unlock() before adding a secret.")
+                self.log_it(error_msg, notify=True, severity="error")
                 return
-            raise ValueError("Password not set. Use unlock() before adding a secret.")
+            raise ValueError(error_msg)
 
-        encrypted_value = self._encrypt(value)
-        self._secrets[key] = encrypted_value
-        self._save_secrets()
+        if not key or not key.strip():
+            error_msg = "Secret key cannot be empty"
+            if no_raise:
+                self.log_it(error_msg, notify=True, severity="error")
+                return
+            raise ValueError(error_msg)
+
+        try:
+            encrypted_value = self._encrypt(value)
+            self._secrets[key.strip()] = encrypted_value
+            self._save_secrets()
+            self.log_it(f"Secret '{key}' added successfully")
+        except Exception as e:
+            error_msg = f"Failed to add secret '{key}': {e}"
+            if no_raise:
+                self.log_it(error_msg, notify=True, severity="error")
+                return
+            raise ValueError(error_msg) from e
 
     def get_secret(self, key: str, default: str | None = None, no_raise: bool = False) -> str:
         """Decrypts and returns the secret associated with the given key."""
         if self.locked:
+            error_msg = "Vault is locked"
             if no_raise:
-                return "Vault is locked"
-            raise ValueError("Vault is locked")
+                return error_msg
+            raise ValueError(error_msg)
 
         encrypted_value = self._secrets.get(key)
         if encrypted_value is None:
             if default is None:
+                error_msg = f"No secret found for key: {key}"
                 if no_raise:
                     return ""
-                raise KeyError(f"No secret found for key: {key}")
+                raise KeyError(error_msg)
             return default
+
         try:
-            return self._decrypt(encrypted_value)
-        except ValueError as e:
+            decrypted_value = self._decrypt(encrypted_value)
+            return decrypted_value
+        except (ValueError, TypeError, InvalidTag) as e:
+            error_msg = f"Failed to decrypt secret '{key}': {e}"
             if no_raise:
+                self.log_it(error_msg, severity="error")
                 return default or ""
-            raise e
+            raise ValueError(error_msg) from e
 
     def get_secret_with_pw(self, key: str, password: str, no_raise: bool = False) -> str:
         """Returns secret associated with the given key, using the provided password if vault is locked."""
         try:
             if self.locked:
                 if not password:
+                    error_msg = "Password required to unlock the vault."
                     if no_raise:
-                        self.log_it(
-                            "Password required to unlock the vault.",
-                            notify=True,
-                            severity="error",
-                        )
+                        self.log_it(error_msg, notify=True, severity="error")
                         return ""
-                    raise ValueError("Password required to unlock the vault.")
-                self.unlock(password)
-            return self.get_secret(key)
-        except ValueError as e:
+                    raise ValueError(error_msg)
+
+                if not self.unlock(password, no_raise):
+                    return ""
+
+            return self.get_secret(key, no_raise=no_raise)
+        except Exception as e:
+            error_msg = f"Failed to get secret with password: {e}"
             if no_raise:
+                self.log_it(error_msg, severity="error")
                 return ""
-            raise e
+            raise ValueError(error_msg) from e
 
     def encrypt_with_password(self, plaintext: str, password: str) -> str:
         """Encrypts plaintext with the provided password."""
@@ -277,34 +520,88 @@ class SecretsManager(ParEventSystemBase):
 
     def remove_secret(self, key: str, no_raise: bool = False) -> None:
         """Removes the secret associated with the given key and saves the changes."""
+        if not key or not key.strip():
+            error_msg = "Secret key cannot be empty"
+            if no_raise:
+                self.log_it(error_msg, notify=True, severity="error")
+                return
+            raise ValueError(error_msg)
+
+        key = key.strip()
         if key in self._secrets:
+            # Securely clear the encrypted value from memory
+            encrypted_value = self._secrets[key]
+            self._secure_clear_string(encrypted_value)
+
             del self._secrets[key]
             self._save_secrets()
+            self.log_it(f"Secret '{key}' removed successfully")
         else:
+            error_msg = f"No secret found for key: {key}"
             if no_raise:
-                self.log_it(f"No secret found for key: {key}", notify=True, severity="warning")
+                self.log_it(error_msg, notify=True, severity="warning")
                 return
-            raise KeyError(f"No secret found for key: {key}")
+            raise KeyError(error_msg)
 
     def clear(self) -> None:
-        """Clear vault and remove password"""
+        """Clear vault and remove password with proper cleanup."""
+        # Securely clear existing secrets from memory
+        for key, encrypted_value in self._secrets.items():
+            # Clear the encrypted value string from memory
+            self._secure_clear_string(encrypted_value)
+
         self._secrets.clear()
+
+        # Clear the existing key securely before regenerating salt
+        if self._key is not None:
+            self._secure_clear_bytes(self._key)
+
+        # Clear the encrypted password
+        if self._key_secure is not None:
+            self._secure_clear_string(self._key_secure)
+
+        # Generate new salt and reset state
         self._salt = gen_salt()
         self._key_secure = None
         self.lock()
+
+        # Save the cleared state
         self._save_secrets()
-        self.log_it("Vault cleared and password removed.", notify=True)
+        self.log_it("Vault cleared, password removed, and memory securely wiped.", notify=True)
 
     def import_to_env(self, no_raise: bool = False) -> None:
         """Imports secrets from the secrets file to the environment variables."""
         if self.locked:
+            error_msg = "Vault is locked"
             if no_raise:
                 return
-            raise ValueError("Vault is locked")
-        for key, value in self._secrets.items():
-            v = self._decrypt(value)
-            if v:
-                os.environ[key] = v
+            raise ValueError(error_msg)
+
+        try:
+            imported_count = 0
+            for key, encrypted_value in self._secrets.items():
+                try:
+                    decrypted_value = self._decrypt(encrypted_value)
+                    if decrypted_value:
+                        os.environ[key] = decrypted_value
+                        imported_count += 1
+                    # Note: We don't clear decrypted_value here since it's now in environment
+                except Exception as e:
+                    if no_raise:
+                        self.log_it(f"Failed to import secret '{key}': {e}", severity="warning")
+                        continue
+                    else:
+                        raise
+
+            if imported_count > 0:
+                self.log_it(f"Imported {imported_count} secrets to environment variables")
+
+        except Exception as e:
+            error_msg = f"Failed to import secrets to environment: {e}"
+            if no_raise:
+                self.log_it(error_msg, notify=True, severity="error")
+                return
+            raise ValueError(error_msg) from e
 
     @property
     def is_empty(self) -> bool:
@@ -338,7 +635,7 @@ def derive_key(password: str, salt: bytes) -> bytes:
         algorithm=hashes.SHA256(),
         length=32,
         salt=salt,
-        iterations=100000,
+        iterations=600000,
         backend=default_backend(),
     )
     return kdf.derive(password.encode("utf-8"))

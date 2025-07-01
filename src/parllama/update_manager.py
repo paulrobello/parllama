@@ -29,7 +29,7 @@ class UpdateManager(ParEventSystemBase):
 
         try:
             async with httpx.AsyncClient() as client:
-                response = await client.get(self.url, follow_redirects=True, timeout=5)
+                response = await client.get(self.url, follow_redirects=True, timeout=settings.update_check_timeout)
                 data = response.json()
             return Version.parse(data["info"]["version"])
         except requests.exceptions.RequestException as e:
@@ -52,7 +52,7 @@ class UpdateManager(ParEventSystemBase):
                     self.log_it(
                         f"New version available: {latest_version}",
                         notify=True,
-                        timeout=8,
+                        timeout=int(settings.notification_timeout_extended),
                     )
                 else:
                     print(f"New version available: {latest_version}")

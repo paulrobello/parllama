@@ -14,6 +14,7 @@ from textual.widgets import Button, Checkbox, Input, Label, Select, Static
 
 from parllama.dialogs.yes_no_dialog import YesNoDialog
 from parllama.secrets_manager import secrets_manager
+from parllama.settings_manager import settings
 from parllama.widgets.input_blur_submit import InputBlurSubmit
 
 
@@ -248,10 +249,10 @@ class SecretsView(Vertical):
         p1: str = self.password_input.value.strip()
         p2: str = self.new_password_input.value.strip()
         if not p1 or not p2:
-            self.notify("Passwords cannot be blank", severity="error", timeout=8)
+            self.notify("Passwords cannot be blank", severity="error", timeout=settings.notification_timeout_extended)
             return
         if p1 != p2:
-            self.notify("Passwords do not match", severity="error", timeout=8)
+            self.notify("Passwords do not match", severity="error", timeout=settings.notification_timeout_extended)
             return
         secrets_manager.unlock(p1)
         self.notify("Password set")
@@ -271,7 +272,7 @@ class SecretsView(Vertical):
         ctrl: Input = event.control
         if event.validation_result is not None and not event.validation_result.is_valid:
             errors = ",".join([f.description or "Bad Value" for f in event.validation_result.failures])
-            self.notify(f"{ctrl.id} [{errors}]", severity="error", timeout=8)
+            self.notify(f"{ctrl.id} [{errors}]", severity="error", timeout=settings.notification_timeout_extended)
             return
         if ctrl.id == "password":
             try:
@@ -285,7 +286,7 @@ class SecretsView(Vertical):
                 else:
                     self.notify("Vault unlocked")
             except ValueError as e:
-                self.notify(str(e), severity="error", timeout=8)
+                self.notify(str(e), severity="error", timeout=settings.notification_timeout_extended)
             finally:
                 with self.prevent(Input.Changed):
                     self.password_input.value = ""
@@ -295,13 +296,15 @@ class SecretsView(Vertical):
             if not self.password_input.value or not self.new_password_input.value:
                 return
             if self.password_input.value == self.new_password_input.value:
-                self.notify("New password same as old", severity="error", timeout=8)
+                self.notify(
+                    "New password same as old", severity="error", timeout=settings.notification_timeout_extended
+                )
                 return
             try:
                 secrets_manager.change_password(self.password_input.value, self.new_password_input.value)
                 self.notify("Password Changed")
             except ValueError as e:
-                self.notify(str(e), severity="error", timeout=8)
+                self.notify(str(e), severity="error", timeout=settings.notification_timeout_extended)
             finally:
                 with self.prevent(Input.Changed):
                     self.password_input.value = ""

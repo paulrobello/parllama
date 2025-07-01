@@ -127,7 +127,7 @@ class ImportFabricManager(ParEventSystemBase):
     @staticmethod
     def download_zip(url: str, save_path: str) -> None:
         """Download the zip file from the specified URL."""
-        response = requests.get(url, timeout=10)
+        response = requests.get(url, timeout=settings.http_request_timeout)
         response.raise_for_status()  # Check if the download was successful
         with open(save_path, "wb") as f:
             f.write(response.content)

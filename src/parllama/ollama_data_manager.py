@@ -44,7 +44,7 @@ def api_model_ps() -> OllamaPsResponse:
     # fetch data from self.ollama_host as json
 
     try:
-        res: Response = httpx.get(f"{settings.ollama_host}/api/ps", timeout=10)
+        res: Response = httpx.get(f"{settings.ollama_host}/api/ps", timeout=settings.http_request_timeout)
         if res.status_code != 200:
             return OllamaPsResponse()
 
@@ -143,7 +143,7 @@ class OllamaDataManager(ParEventSystemBase):
     @retry_with_backoff(config=create_retry_config(max_attempts=2, base_delay=1.0))
     def _fetch_site_models_page(self, url: str):
         """Fetch site models page with retry logic."""
-        return requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+        return requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=settings.http_request_timeout)
 
     def _get_all_model_data(self) -> list[LocalModelListItem]:
         """Get all model data."""
