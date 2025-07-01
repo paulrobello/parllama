@@ -28,6 +28,7 @@ from parllama.docker_utils import start_docker_container
 from parllama.models.ollama_data import FullModel, ModelInfo, ModelShowPayload, SiteModel, SiteModelData
 from parllama.models.ollama_ps import OllamaPsResponse
 from parllama.par_event_system import ParEventSystemBase
+from parllama.retry_utils import create_retry_config, retry_with_backoff
 from parllama.settings_manager import settings
 from parllama.widgets.local_model_list_item import LocalModelListItem
 from parllama.widgets.site_model_list_item import SiteModelListItem
@@ -37,12 +38,13 @@ ps_pattern = re.compile(
 )
 
 
+@retry_with_backoff(config=create_retry_config(max_attempts=2, base_delay=0.5))
 def api_model_ps() -> OllamaPsResponse:
     """Get model ps."""
     # fetch data from self.ollama_host as json
 
     try:
-        res: Response = httpx.get(f"{settings.ollama_host}/api/ps", timeout=5)
+        res: Response = httpx.get(f"{settings.ollama_host}/api/ps", timeout=10)
         if res.status_code != 200:
             return OllamaPsResponse()
 
@@ -116,7 +118,7 @@ class OllamaDataManager(ParEventSystemBase):
                 cache_file.unlink()
                 model_data = None
         if not model_data:
-            model_data = ollama.Client(host=settings.ollama_host).show(model.name).model_dump()
+            model_data = self._ollama_show_model(model.name).model_dump()
             cache_file.write_bytes(json.dumps(model_data, str, json.OPT_INDENT_2))
         if "modelinfo" in model_data:
             model_data["modelinfo"] = ModelInfo(**model_data["modelinfo"])
@@ -128,11 +130,26 @@ class OllamaDataManager(ParEventSystemBase):
         model.modelinfo = msp.modelinfo
         model.license = msp.license
 
+    @retry_with_backoff()
+    def _ollama_list_models(self):
+        """List models with retry logic."""
+        return self.ollama_client.list()
+
+    @retry_with_backoff()
+    def _ollama_show_model(self, model_name: str):
+        """Show model details with retry logic."""
+        return self.ollama_client.show(model_name)
+
+    @retry_with_backoff(config=create_retry_config(max_attempts=2, base_delay=1.0))
+    def _fetch_site_models_page(self, url: str):
+        """Fetch site models page with retry logic."""
+        return requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+
     def _get_all_model_data(self) -> list[LocalModelListItem]:
         """Get all model data."""
         all_models: list[LocalModelListItem] = []
         try:
-            res = self.ollama_client.list()
+            res = self._ollama_list_models()
         except Exception as e:
             self.log_it(f"Error loading Ollama Models: {e}")
             return []
@@ -169,10 +186,19 @@ class OllamaDataManager(ParEventSystemBase):
         """Push a model."""
         return ollama.Client(host=settings.ollama_host).push(model_name, stream=True)  # type: ignore
 
+    @retry_with_backoff()
+    def _ollama_delete_model(self, model_name: str):
+        """Delete model with retry logic."""
+        return self.ollama_client.delete(model_name)
+
     def delete_model(self, model_name: str) -> bool:
         """Delete a model."""
-        ret = ollama.Client(host=settings.ollama_host).delete(model_name).status or False
-        # ret = True
+        try:
+            ret = self._ollama_delete_model(model_name).status or False
+        except Exception as e:
+            self.log_it(f"Error deleting model {model_name}: {e}")
+            return False
+
         if not ret:
             return False
 
@@ -233,7 +259,7 @@ class OllamaDataManager(ParEventSystemBase):
             url = url_base
             if namespace == "models":
                 url += f"?sort={cat}"
-            response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+            response = self._fetch_site_models_page(url)
             soup = BeautifulSoup(response.content.decode("utf-8"), "html.parser")
             for card in soup.find_all("li", class_="items-baseline"):
                 meta_data = {
@@ -288,6 +314,7 @@ class OllamaDataManager(ParEventSystemBase):
         return self.site_models
 
     @staticmethod
+    @retry_with_backoff()
     def create_model(
         model_name: str,
         model_from: str,
@@ -308,6 +335,7 @@ class OllamaDataManager(ParEventSystemBase):
         )  # type: ignore
 
     @staticmethod
+    @retry_with_backoff()
     def copy_model(src_name: str, dst_name: str) -> StatusResponse:
         """Copy local model to new name"""
         return ollama.Client(host=settings.ollama_host).copy(source=src_name, destination=dst_name)

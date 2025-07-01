@@ -8,7 +8,7 @@ from textual import on
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.events import Show
-from textual.validation import Integer
+from textual.validation import Integer, Number
 from textual.widgets import Button, Checkbox, Input, Label, Select, Static
 
 import parllama
@@ -159,6 +159,46 @@ class OptionsView(Horizontal):
                         options=theme_manager.theme_select_options(),
                         allow_blank=False,
                         id="theme_name",
+                    )
+
+                with Vertical(classes="section") as vsn:
+                    vsn.border_title = "Network"
+                    yield Checkbox(
+                        label="Enable network retries",
+                        value=settings.enable_network_retries,
+                        id="enable_network_retries",
+                    )
+                    yield Label("Max retry attempts")
+                    yield InputBlurSubmit(
+                        value=str(settings.max_retry_attempts),
+                        max_length=2,
+                        type="integer",
+                        validators=[Integer(minimum=1, maximum=10)],
+                        id="max_retry_attempts",
+                    )
+                    yield Label("Base delay (seconds)")
+                    yield InputBlurSubmit(
+                        value=str(settings.retry_base_delay),
+                        max_length=5,
+                        type="number",
+                        validators=[Number(minimum=0.1, maximum=30.0)],
+                        id="retry_base_delay",
+                    )
+                    yield Label("Backoff factor")
+                    yield InputBlurSubmit(
+                        value=str(settings.retry_backoff_factor),
+                        max_length=5,
+                        type="number",
+                        validators=[Number(minimum=1.0, maximum=5.0)],
+                        id="retry_backoff_factor",
+                    )
+                    yield Label("Max delay (seconds)")
+                    yield InputBlurSubmit(
+                        value=str(settings.retry_max_delay),
+                        max_length=5,
+                        type="number",
+                        validators=[Number(minimum=1.0, maximum=300.0)],
+                        id="retry_max_delay",
                     )
 
                 with Vertical(classes="section") as vsc:
@@ -482,6 +522,8 @@ class OptionsView(Horizontal):
             settings.load_local_models_on_startup = ctrl.value
         elif ctrl.id == "langchain_tracing":
             settings.langchain_config.tracing = ctrl.value
+        elif ctrl.id == "enable_network_retries":
+            settings.enable_network_retries = ctrl.value
         else:
             self.notify(f"Unhandled input: {ctrl.id}", severity="error", timeout=8)
             return
@@ -561,6 +603,14 @@ class OptionsView(Horizontal):
             settings.langchain_config.api_key = ctrl.value
         elif ctrl.id == "langchain_project":
             settings.langchain_config.project = ctrl.value or "parllama"
+        elif ctrl.id == "max_retry_attempts":
+            settings.max_retry_attempts = int(ctrl.value)
+        elif ctrl.id == "retry_base_delay":
+            settings.retry_base_delay = float(ctrl.value)
+        elif ctrl.id == "retry_backoff_factor":
+            settings.retry_backoff_factor = float(ctrl.value)
+        elif ctrl.id == "retry_max_delay":
+            settings.retry_max_delay = float(ctrl.value)
         else:
             self.notify(f"Unhandled input: {ctrl.id}", severity="error", timeout=8)
             return

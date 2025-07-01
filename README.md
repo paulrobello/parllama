@@ -30,7 +30,7 @@
     * [Where we are](#where-we-are)Ï
     * [Where we're going](#where-were-going)
 * [What's new](#whats-new)
-  * [v0.3.26](#v0325)
+  * [v0.3.26](#v0326)
   * [v0.3.25](#v0325)
   * [v0.3.24](#v0324)
   * [v0.3.23](#v0323)

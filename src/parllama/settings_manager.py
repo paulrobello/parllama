@@ -109,6 +109,13 @@ class Settings(BaseModel):
     always_show_session_config: bool = False
     close_session_config_on_submit: bool = True
 
+    # Network retry settings
+    max_retry_attempts: int = 3
+    retry_backoff_factor: float = 2.0
+    retry_base_delay: float = 1.0
+    retry_max_delay: float = 60.0
+    enable_network_retries: bool = True
+
     # pylint: disable=too-many-branches, too-many-statements
     def __init__(self) -> None:
         """Initialize Manager."""
@@ -350,6 +357,14 @@ class Settings(BaseModel):
             self.load_local_models_on_startup = data.get(
                 "load_local_models_on_startup", self.load_local_models_on_startup
             )
+
+            # Network retry settings (backwards compatible)
+            self.max_retry_attempts = max(1, data.get("max_retry_attempts", self.max_retry_attempts))
+            self.retry_backoff_factor = max(1.0, data.get("retry_backoff_factor", self.retry_backoff_factor))
+            self.retry_base_delay = max(0.1, data.get("retry_base_delay", self.retry_base_delay))
+            self.retry_max_delay = max(1.0, data.get("retry_max_delay", self.retry_max_delay))
+            self.enable_network_retries = data.get("enable_network_retries", self.enable_network_retries)
+
             self.update_env()
         except FileNotFoundError:
             pass  # If file does not exist, continue with default settings
@@ -418,6 +433,30 @@ class Settings(BaseModel):
         except FileNotFoundError:
             pass
 
+    @property
+    def retry_config(self):
+        """Get retry configuration as RetryConfig instance."""
+        from parllama.retry_utils import RetryConfig
+
+        return RetryConfig(
+            max_attempts=self.max_retry_attempts,
+            base_delay=self.retry_base_delay,
+            backoff_factor=self.retry_backoff_factor,
+            max_delay=self.retry_max_delay,
+            enabled=self.enable_network_retries,
+        )
+
+
+def _fetch_image_with_retry(url: str, headers: dict) -> requests.Response:
+    """Fetch image with retry logic."""
+    from parllama.retry_utils import create_retry_config, retry_with_backoff
+
+    @retry_with_backoff(config=create_retry_config(max_attempts=2, base_delay=1.0))
+    def _fetch():
+        return requests.get(url, headers=headers, timeout=10)
+
+    return _fetch()
+
 
 def fetch_and_cache_image(image_path: str | Path) -> tuple[Path, bytes]:
     """Fetch and cache an image."""
@@ -430,7 +469,7 @@ def fetch_and_cache_image(image_path: str | Path) -> tuple[Path, bytes]:
                 headers = {
                     "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"  # pylint: disable=line-too-long
                 }
-                data = requests.get(image_path, headers=headers, timeout=10).content
+                data = _fetch_image_with_retry(image_path, headers).content
                 if not isinstance(data, bytes):
                     raise FileNotFoundError("Failed to download image from URL")
                 cache_file.write_bytes(data)
