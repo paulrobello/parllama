@@ -434,7 +434,6 @@ if anything remains to be fixed before the commit is allowed.
 ### Where we're going
 
 * Better image support via file pickers
-* Better support for reasoning / thinking models
 * RAG for local documents and web pages
 * Expand ability to import custom prompts of other tools
 * LLM tool use
@@ -444,18 +443,8 @@ if anything remains to be fixed before the commit is allowed.
 
 ### v0.3.26
 
-* Fixed critical security vulnerabilities identified in security audit
 * Enhanced URL validation to preserve case sensitivity for case-sensitive endpoints
-* Added comprehensive validation for PARLLAMA_VAULT_KEY environment variable
-  - Validates minimum password length (8 characters)
-  - Prevents empty or whitespace-only passwords
-  - Provides clear warnings for invalid vault keys
-* Implemented secure file permissions (600) for secrets.json on Unix-like systems
-  - Automatic permission setting when saving secrets
-  - Permission checking with warnings for insecure existing files
-  - Cross-platform compatibility (Windows uses NTFS default permissions)
 * Improved security logging and error handling throughout secrets management
-* All fixes maintain backward compatibility and follow existing code patterns
 * Implemented comprehensive file validation and security system
 * Added FileValidator class with security checks for:
   - File size limits (configurable per file type: images, JSON, ZIP)
@@ -463,20 +452,9 @@ if anything remains to be fixed before the commit is allowed.
   - Path security to prevent directory traversal attacks
   - Content validation for JSON, images, and ZIP files
   - ZIP bomb protection with compression ratio checks
-* Created SecureFileOperations utility providing:
-  - Atomic write operations for critical files (settings, sessions, prompts)
-  - Automatic backup/restore on operation failures
-  - Safe file reading with configurable size limits
-  - Directory operations with permission validation
-* Added 14 new file validation configuration settings:
-  - `file_validation_enabled`, `max_file_size_mb`, `max_image_size_mb`
-  - `max_json_size_mb`, `max_zip_size_mb`, `validate_file_content`
-  - Separate limits for different file types and content validation toggles
-* Enhanced security for all JSON operations in:
-  - Settings manager: Configuration now uses atomic writes with validation
-  - Chat sessions: Session saves are atomic with content validation
-  - Chat prompts: Prompt storage uses secure operations with backup
-  - Image caching: Downloaded images validated before caching
+* Created SecureFileOperations utility
+* Added new file validation configuration tools
+* Enhanced security for all JSON operations
 * All file operations now include comprehensive error handling and fallback mechanisms
 * Improved error handling for model creation with better error messages
 * Added validation for quantization levels with list of valid options
@@ -485,33 +463,15 @@ if anything remains to be fixed before the commit is allowed.
 * Fixed memory leaks using WeakSet for subscriptions and bounded job queue
 * Updated quantization documentation to clarify native Ollama support vs Docker requirements
 * Fixed critical threading race conditions in job processing system
-* Added thread-safe synchronization for `is_busy` flag using threading.Lock
 * Enhanced exception handling across all job methods (pull, push, copy, create)
-* Added comprehensive error handling to `do_copy_local_model` (previously had none)
 * Improved error logging and user notifications for all job operations
 * Added state transition logging for debugging threading issues
-* Ensured proper cleanup of busy state with try/finally blocks
 * Fixed delete key on mac sometimes not working
 * Implemented comprehensive configuration management system
   - Added 24 configurable settings for timers, timeouts, and UI behavior
-  - Replaced hard-coded values throughout application with configurable options
-  - Full backward compatibility with existing configurations
-  - Enhanced user control over performance tuning and debugging
 * Major code quality and type safety improvements
-  - Enhanced type annotations replacing generic `Any` types with specific types
-  - Resolved unnecessary `# type: ignore` comments while preserving legitimate ones
-  - Made notification timeouts configurable based on severity levels
-  - Consolidated duplicate error handling patterns, reducing ~60 lines of repetitive code
-  - Created centralized `handle_ollama_error()` method for consistent error management
-  - All improvements maintain full backward compatibility and pass type checking
 * Implemented centralized state management system
-  - Created AppStateManager class with formal state machine (IDLE, REFRESHING, PROCESSING_JOBS, SHUTDOWN)
-  - Fixed state management inconsistencies between `is_busy` and `is_refreshing` flags
-  - Added thread-safe synchronization for all state operations with proper locking
-  - Implemented state transition validation and comprehensive logging
-  - Added operation conflict detection to prevent overlapping operations
-  - Enhanced debugging capability with detailed state transition tracking
-  - Centralized state logic eliminates scattered flag management throughout codebase
+* Enhanced provider cache system with configurable per-provider durations
 
 ### v0.3.25
 
