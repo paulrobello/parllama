@@ -323,9 +323,157 @@ graph TD
 
 - **Unified Interface**: All providers accessed through same API
 - **Dynamic Discovery**: Models fetched from provider APIs
-- **Caching**: Model lists cached locally (7-day expiration)
+- **Caching**: Model lists cached locally (configurable per-provider expiration)
 - **Security**: Multi-layer API key protection
 - **Extensibility**: Easy to add new providers
+- **Provider Disable System**: Comprehensive disable functionality to prevent timeouts
+
+### Provider Disable System
+
+PAR LLAMA implements a comprehensive provider disable system that allows users to explicitly disable providers to prevent connection timeouts and improve performance.
+
+#### Architecture
+
+```mermaid
+graph TD
+    subgraph "Settings Layer"
+        A[disabled_providers: dict[LlmProvider, bool]]
+        A --> B[UI Checkboxes]
+        A --> C[Settings Persistence]
+        A --> D[Backward Compatibility]
+    end
+    
+    subgraph "Provider Manager Layer"
+        E[refresh_models()]
+        E --> F[Check disabled_providers]
+        F --> G[Skip Disabled Providers]
+        F --> H[Process Enabled Providers]
+    end
+    
+    subgraph "UI Layer"
+        I[ProviderModelSelect]
+        I --> J[get_filtered_provider_select_options()]
+        J --> K[Filter Disabled Providers]
+        K --> L[UI Dropdowns]
+    end
+    
+    subgraph "Options Screen"
+        M[_create_disable_checkbox()]
+        M --> N[Per-Provider Checkboxes]
+        N --> O[Event Handler]
+        O --> P[Provider Name Mapping]
+    end
+    
+    A --> E
+    A --> I
+    B --> A
+```
+
+#### Core Components
+
+**1. Settings Integration**
+```python
+# Settings storage for all providers
+disabled_providers: dict[LlmProvider, bool] = {
+    LlmProvider.OLLAMA: False,
+    LlmProvider.LLAMACPP: False,
+    LlmProvider.OPENAI: False,
+    # ... all providers default to False (enabled)
+}
+```
+
+**2. Provider Manager Integration**
+```python
+def refresh_models(self):
+    for p in llm_provider_types:
+        # Check if provider is explicitly disabled
+        if settings.disabled_providers.get(p, False):
+            continue  # Skip disabled providers entirely
+        
+        if not is_provider_api_key_set(p):
+            continue  # Skip providers without API keys
+        
+        # Process enabled providers...
+```
+
+**3. UI Filtering**
+```python
+def get_filtered_provider_select_options() -> list[tuple[str, LlmProvider]]:
+    """Get provider select options with disabled providers filtered out."""
+    opts = get_provider_select_options()
+    # Filter out any disabled providers
+    opts = [(name, provider) for name, provider in opts 
+            if not settings.disabled_providers.get(provider, False)]
+    return opts
+```
+
+**4. Options Screen Integration**
+```python
+def _create_disable_checkbox(self, provider: LlmProvider) -> ComposeResult:
+    """Create disable checkbox for a provider."""
+    provider_name = provider.value.lower()
+    yield Checkbox(
+        label=f"Disable {provider.value} Provider",
+        value=settings.disabled_providers.get(provider, False),
+        id=f"disable_{provider_name}_provider",
+    )
+```
+
+#### Features
+
+**1. Universal Coverage**
+- All 12 providers (Ollama, OpenAI, Anthropic, Groq, etc.) have disable functionality
+- Consistent UI pattern across all provider sections
+
+**2. Smart Event Handling**
+- Automatic provider name mapping from checkbox IDs to enum values
+- Handles case conversion issues (e.g., "llamacpp" → "LlamaCpp")
+- Robust error handling for unknown providers
+
+**3. Backward Compatibility**
+- Legacy `disable_litellm_provider` setting automatically migrated
+- Existing configurations continue to work without modification
+- All providers default to enabled state
+
+**4. Performance Benefits**
+- Disabled providers skipped during model refresh operations
+- Prevents timeout issues when providers are not running
+- Reduces unnecessary network requests
+
+**5. UI Integration**
+- Disabled providers excluded from dropdown menus
+- Real-time filtering of available providers
+- Clear visual indication in Options screen
+
+#### Provider Name Mapping
+
+The system handles provider name conversion for robust checkbox event handling:
+
+```python
+provider_name_map = {
+    "ollama": "Ollama",
+    "llamacpp": "LlamaCpp",    # Handles case conversion
+    "openai": "OpenAI",
+    "litellm": "LiteLLM",
+    "xai": "XAI",
+    # ... comprehensive mapping for all providers
+}
+```
+
+#### Use Cases
+
+1. **Connection Timeout Prevention**: Disable LiteLLM when not running to prevent refresh timeouts
+2. **Performance Optimization**: Disable unused cloud providers to speed up model refresh
+3. **Network-Limited Environments**: Disable cloud providers when working offline
+4. **Selective Provider Usage**: Focus on specific providers for particular workflows
+
+#### Implementation Benefits
+
+1. **User Control**: Explicit control over which providers are active
+2. **Timeout Prevention**: Eliminates connection timeouts for unavailable providers  
+3. **Performance**: Faster model refresh by skipping disabled providers
+4. **Flexibility**: Easy to enable/disable providers based on current needs
+5. **Robustness**: Comprehensive error handling and validation
 
 ## Configuration Management System
 

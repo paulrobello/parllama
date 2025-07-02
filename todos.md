@@ -49,28 +49,38 @@
 
 ## Secrets Manager Security Review
 
-### Critical Security Vulnerabilities (HIGH PRIORITY)
+### ~~Critical Security Vulnerabilities~~ ✓ FIXED
 
-#### 1. Password Validation Bypass in UI
-- **File**: `src/parllama/widgets/views/secrets_view.py:256`
+#### 1. ~~Password Validation Bypass in UI~~ ✓ FIXED
+- **File**: `src/parllama/widgets/views/secrets_view.py:259-263`
 - **Issue**: `set_password` method accepts any password without validation
 - **Risk**: Weak passwords can be set, compromising vault security
-- **Fix**: Implement password strength validation in UI matching `_validate_vault_key` logic
-- **Priority**: HIGH
+- **Fix**: ✅ Implemented password strength validation using `secrets_manager.validate_password()`
+  - Password validation now enforced in UI before accepting new passwords
+  - Error messages displayed for invalid passwords
+  - Matches security requirements from `_validate_vault_key` logic
+- **Priority**: COMPLETED
 
-#### 2. Insecure Default Behavior
-- **File**: `src/parllama/widgets/views/secrets_view.py:279-284`
+#### 2. ~~Insecure Default Behavior~~ ✓ FIXED
+- **File**: `src/parllama/widgets/views/secrets_view.py:310-314`
 - **Issue**: Empty password input locks vault instead of rejecting invalid input
 - **Risk**: Accidental lockouts or potential security bypasses
-- **Fix**: Reject empty passwords and require explicit lock action
-- **Priority**: HIGH
+- **Fix**: ✅ Empty passwords now properly rejected with error message
+  - Explicit validation: "Password cannot be empty"
+  - No longer locks vault on empty input
+  - Requires explicit lock action for vault locking
+- **Priority**: COMPLETED
 
-#### 3. Environment Variable Exposure
-- **File**: `src/parllama/secrets_manager.py:304-307`
+#### 3. ~~Environment Variable Exposure~~ ✓ FIXED
+- **File**: `src/parllama/secrets_manager.py:689-691`
 - **Issue**: `import_to_env` automatically exports all secrets to environment variables
 - **Risk**: Secrets leaked to child processes and process listings
-- **Fix**: Implement selective export mechanism with opt-in per secret
-- **Priority**: HIGH
+- **Fix**: ✅ Implemented selective export mechanism with per-secret control
+  - Added `_export_to_env` dictionary for per-secret export flags
+  - `set_export_to_env()` and `get_export_to_env()` methods for configuration
+  - Only exports secrets marked for export (`export_to_env` parameter)
+  - Backward compatibility: defaults to True for existing secrets
+- **Priority**: COMPLETED
 
 ### Bugs and Logic Issues ✓ FIXED
 
@@ -182,3 +192,36 @@ This suggests the need for:
 - More robust input validation
 - Better error boundaries around user operations
 - Comprehensive testing of edge cases
+
+## Recent Completed Features
+
+### Provider Disable Functionality ✅ COMPLETED
+
+#### Overview
+Implemented comprehensive provider disable functionality to prevent connection timeouts and improve performance when providers are not available.
+
+#### Implementation Details
+- **Settings Integration**: Added `disabled_providers: dict[LlmProvider, bool]` to track disabled state for all providers
+- **UI Components**: Added disable checkboxes to all provider sections in Options screen
+- **Provider Manager**: Updated model refresh logic to skip disabled providers before attempting connections
+- **UI Filtering**: Disabled providers excluded from dropdown menus and selection lists
+- **Backward Compatibility**: Legacy `disable_litellm_provider` setting automatically migrated
+
+#### Key Features
+1. **Universal Coverage**: All 12 providers (Ollama, OpenAI, Anthropic, Groq, Gemini, XAI, OpenRouter, DeepSeek, LiteLLM, LlamaCPP, Bedrock, Azure) have disable functionality
+2. **Smart Event Handling**: Automatic provider name mapping with case conversion handling (e.g., "llamacpp" → "LlamaCpp")
+3. **Performance Benefits**: Disabled providers skipped entirely during model refresh operations
+4. **User Control**: Explicit enable/disable control prevents timeout issues when providers are unavailable
+
+#### Files Modified
+- `src/parllama/settings_manager.py`: Added disabled_providers setting with backward compatibility
+- `src/parllama/provider_manager.py`: Updated refresh_models() to respect disable settings
+- `src/parllama/widgets/views/options_view.py`: Added disable checkboxes and event handling
+- `src/parllama/widgets/provider_model_select.py`: Added filtering for disabled providers
+
+#### Benefits
+- ✅ Prevents timeout issues when LiteLLM or other providers are not running
+- ✅ Improves model refresh performance by skipping unavailable providers
+- ✅ Provides explicit user control over which providers are active
+- ✅ Maintains full backward compatibility with existing configurations
+- ✅ Robust error handling and provider name mapping

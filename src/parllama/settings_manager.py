@@ -117,6 +117,22 @@ class Settings(BaseModel):
         LlmProvider.LITELLM: 24,  # 1 day - proxy/aggregator, very dynamic
     }
 
+    # Provider disable settings
+    disabled_providers: dict[LlmProvider, bool] = {
+        LlmProvider.OLLAMA: False,
+        LlmProvider.LLAMACPP: False,
+        LlmProvider.XAI: False,
+        LlmProvider.OPENAI: False,
+        LlmProvider.OPENROUTER: False,
+        LlmProvider.GROQ: False,
+        LlmProvider.ANTHROPIC: False,
+        LlmProvider.GEMINI: False,
+        LlmProvider.BEDROCK: False,
+        LlmProvider.GITHUB: False,
+        LlmProvider.DEEPSEEK: False,
+        LlmProvider.LITELLM: False,
+    }
+
     langchain_config: LangChainConfig = LangChainConfig()
 
     auto_name_session: bool = False
@@ -501,6 +517,23 @@ class Settings(BaseModel):
             # Image fetch retry settings (backwards compatible)
             self.image_fetch_max_attempts = max(1, data.get("image_fetch_max_attempts", self.image_fetch_max_attempts))
             self.image_fetch_base_delay = max(0.1, data.get("image_fetch_base_delay", self.image_fetch_base_delay))
+
+            # Provider disable settings (backwards compatible)
+            saved_disabled_providers = data.get("disabled_providers") or {}
+            disabled_providers: dict[LlmProvider, bool] = {}
+            for p in llm_provider_types:
+                disabled_providers[p] = False
+
+            for k, v in saved_disabled_providers.items():
+                provider = provider_name_to_enum(k)
+                disabled_providers[provider] = bool(v)
+
+            # Handle legacy disable_litellm_provider setting
+            legacy_disable_litellm = data.get("disable_litellm_provider", False)
+            if legacy_disable_litellm:
+                disabled_providers[LlmProvider.LITELLM] = True
+
+            self.disabled_providers = disabled_providers
 
             self.update_env()
         except (FileNotFoundError, SecureFileOpsError):

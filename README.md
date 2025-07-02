@@ -472,6 +472,8 @@ if anything remains to be fixed before the commit is allowed.
 * Major code quality and type safety improvements
 * Implemented centralized state management system
 * Enhanced provider cache system with configurable per-provider durations
+* Added comprehensive provider disable functionality with checkboxes for all AI providers 
+  - Disabled providers are excluded from model refresh operations and UI dropdowns to prevent timeouts
 
 ### v0.3.25
 

@@ -79,6 +79,10 @@ class ProviderManager(ParEventSystemBase):
         for p in llm_provider_types:
             try:
                 new_list = []
+                # Check if provider is explicitly disabled
+                if settings.disabled_providers.get(p, False):
+                    # self.log_it(f"Skipping {p} because it is disabled", notify=True)
+                    continue
                 if not is_provider_api_key_set(p):
                     # self.log_it(f"Skipping {p} because it has no API key", notify=True)
                     continue

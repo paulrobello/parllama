@@ -26,6 +26,14 @@ from parllama.settings_manager import settings
 from parllama.widgets.deferred_select import DeferredSelect
 
 
+def get_filtered_provider_select_options() -> list[tuple[str, LlmProvider]]:
+    """Get provider select options with disabled providers filtered out."""
+    opts = get_provider_select_options()
+    # Filter out any disabled providers
+    opts = [(name, provider) for name, provider in opts if not settings.disabled_providers.get(provider, False)]
+    return opts
+
+
 class ProviderModelSelect(Container):
     """Widget to select provider and model"""
 
@@ -65,12 +73,13 @@ class ProviderModelSelect(Container):
         self.update_settings = update_settings
         if isinstance(provider, str):
             provider = provider_name_to_enum(provider)
-        opts = get_provider_select_options()
-        if provider not in opts:
+        opts = get_filtered_provider_select_options()
+        available_providers = [p for _, p in opts]
+        if provider not in available_providers:
             provider = None
         if not provider:
             provider = settings.last_llm_config.provider
-        if provider not in opts:
+        if provider not in available_providers:
             provider = None
         lp: LlmProvider = provider or LlmProvider.OLLAMA
         self.provider_select = DeferredSelect[LlmProvider](

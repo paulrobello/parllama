@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from par_ai_core.llm_config import LlmConfig
-from par_ai_core.llm_providers import LlmProvider, provider_base_urls
+from par_ai_core.llm_providers import LlmProvider, provider_base_urls, provider_name_to_enum
 from textual import on
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
@@ -82,6 +82,15 @@ class OptionsView(Horizontal):
             status = "Expired" if cache_info["cache_expired"] else "Fresh"
             return f"{status} | Age: {cache_info['cache_age_hours']}h | Models: {cache_info['model_count']} | Last: {last_refresh}"
         return "No cache"
+
+    def _create_disable_checkbox(self, provider: LlmProvider) -> ComposeResult:
+        """Create disable checkbox for a provider."""
+        provider_name = provider.value.lower()
+        yield Checkbox(
+            label=f"Disable {provider.value} Provider",
+            value=settings.disabled_providers.get(provider, False),
+            id=f"disable_{provider_name}_provider",
+        )
 
     def _create_cache_controls(self, provider: LlmProvider) -> ComposeResult:
         """Create cache controls for a provider."""
@@ -329,6 +338,7 @@ class OptionsView(Horizontal):
                             validators=[Integer(minimum=0, maximum=300)],
                             id="ollama_ps_poll_interval",
                         )
+                        yield from self._create_disable_checkbox(LlmProvider.OLLAMA)
                         yield from self._create_cache_controls(LlmProvider.OLLAMA)
 
                     with Vertical(classes="section") as aips2:
@@ -347,6 +357,7 @@ class OptionsView(Horizontal):
                             password=True,
                             id="openai_api_key",
                         )
+                        yield from self._create_disable_checkbox(LlmProvider.OPENAI)
                         yield from self._create_cache_controls(LlmProvider.OPENAI)
                     with Vertical(classes="section") as aips3:
                         aips3.border_title = "Groq"
@@ -364,6 +375,7 @@ class OptionsView(Horizontal):
                             password=True,
                             id="groq_api_key",
                         )
+                        yield from self._create_disable_checkbox(LlmProvider.GROQ)
                         yield from self._create_cache_controls(LlmProvider.GROQ)
                     with Vertical(classes="section") as aips4:
                         aips4.border_title = "Anthropic"
@@ -381,6 +393,7 @@ class OptionsView(Horizontal):
                             password=True,
                             id="anthropic_api_key",
                         )
+                        yield from self._create_disable_checkbox(LlmProvider.ANTHROPIC)
                         yield from self._create_cache_controls(LlmProvider.ANTHROPIC)
                     with Vertical(classes="section") as aips5:
                         aips5.border_title = "Gemini"
@@ -391,6 +404,7 @@ class OptionsView(Horizontal):
                             password=True,
                             id="google_api_key",
                         )
+                        yield from self._create_disable_checkbox(LlmProvider.GEMINI)
                         yield from self._create_cache_controls(LlmProvider.GEMINI)
                     with Vertical(classes="section") as aips6:
                         aips6.border_title = "xAI"
@@ -408,6 +422,7 @@ class OptionsView(Horizontal):
                             password=True,
                             id="xai_api_key",
                         )
+                        yield from self._create_disable_checkbox(LlmProvider.XAI)
                         yield from self._create_cache_controls(LlmProvider.XAI)
                     with Vertical(classes="section") as aips7:
                         aips7.border_title = "OpenRouter"
@@ -425,6 +440,7 @@ class OptionsView(Horizontal):
                             password=True,
                             id="openrouter_api_key",
                         )
+                        yield from self._create_disable_checkbox(LlmProvider.OPENROUTER)
                         yield from self._create_cache_controls(LlmProvider.OPENROUTER)
                     with Vertical(classes="section") as aips8:
                         aips8.border_title = "Deepseek"
@@ -442,6 +458,7 @@ class OptionsView(Horizontal):
                             password=True,
                             id="deepseek_api_key",
                         )
+                        yield from self._create_disable_checkbox(LlmProvider.DEEPSEEK)
                         yield from self._create_cache_controls(LlmProvider.DEEPSEEK)
                     with Vertical(classes="section") as aips9:
                         aips9.border_title = "LiteLLM"
@@ -459,6 +476,7 @@ class OptionsView(Horizontal):
                             password=True,
                             id="litellm_api_key",
                         )
+                        yield from self._create_disable_checkbox(LlmProvider.LITELLM)
                         yield from self._create_cache_controls(LlmProvider.LITELLM)
                     with Vertical(classes="section") as aips2:
                         aips2.border_title = "LlamaCPP"
@@ -470,6 +488,7 @@ class OptionsView(Horizontal):
                             validators=HttpValidator(),
                             id="llamacpp_base_url",
                         )
+                        yield from self._create_disable_checkbox(LlmProvider.LLAMACPP)
                         yield from self._create_cache_controls(LlmProvider.LLAMACPP)
 
                     with Vertical(classes="section") as aips5:
@@ -581,6 +600,38 @@ class OptionsView(Horizontal):
             settings.langchain_config.tracing = ctrl.value
         elif ctrl.id == "enable_network_retries":
             settings.enable_network_retries = ctrl.value
+        elif ctrl.id and ctrl.id.startswith("disable_") and ctrl.id.endswith("_provider"):
+            # Extract provider name from checkbox id (e.g., "disable_litellm_provider" -> "litellm")
+            provider_name = ctrl.id.replace("disable_", "").replace("_provider", "")
+
+            # Map lowercase provider names to correct enum values
+            provider_name_map = {
+                "ollama": "Ollama",
+                "llamacpp": "LlamaCpp",
+                "openrouter": "OpenRouter",
+                "openai": "OpenAI",
+                "gemini": "Gemini",
+                "github": "Github",
+                "xai": "XAI",
+                "anthropic": "Anthropic",
+                "groq": "Groq",
+                "mistral": "Mistral",
+                "deepseek": "Deepseek",
+                "litellm": "LiteLLM",
+                "bedrock": "Bedrock",
+                "azure": "Azure",
+            }
+
+            try:
+                mapped_name = provider_name_map.get(provider_name, provider_name)
+                provider = provider_name_to_enum(mapped_name)
+                settings.disabled_providers[provider] = ctrl.value
+            except (ValueError, KeyError):
+                self.notify(
+                    f"Unknown provider: {provider_name}",
+                    severity="error",
+                    timeout=settings.notification_timeout_extended,
+                )
         else:
             self.notify(f"Unhandled input: {ctrl.id}", severity="error", timeout=settings.notification_timeout_extended)
             return
