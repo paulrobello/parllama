@@ -550,6 +550,7 @@ Some functions are only available via slash / commands on that chat tab. You can
             self.status_notify(
                 f"Model {event.model_name} pulled.",
             )
+            self.set_timer(settings.model_refresh_timer_interval, self.action_refresh_models)
         else:
             self.status_notify(
                 f"Model {event.model_name} failed to pull.",

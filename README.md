@@ -474,6 +474,7 @@ if anything remains to be fixed before the commit is allowed.
 * Enhanced provider cache system with configurable per-provider durations
 * Added comprehensive provider disable functionality with checkboxes for all AI providers 
   - Disabled providers are excluded from model refresh operations and UI dropdowns to prevent timeouts
+* Added automatic local model list refresh after successful model downloads
 
 ### v0.3.25
 

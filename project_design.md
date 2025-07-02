@@ -174,6 +174,9 @@ sequenceDiagram
     JobQueue-->>UI: StatusMessage
     JobQueue->>App: LocalModelPulled
     App->>UI: SetModelNameLoading(false)
+    Note over App,UI: Auto-refresh local model list
+    App->>App: Set timer for model refresh
+    App->>UI: Refresh local models
 ```
 
 ## Data Models and Persistence
@@ -1186,6 +1189,69 @@ except Exception as e:
 - Enhanced user configurability with dynamic timeout settings
 - Maintained full functionality while improving code quality
 - Established patterns for future development and contributions
+
+## Auto-Refresh Model List Feature
+
+### Overview
+Implemented automatic local model list refresh functionality to provide immediate feedback when model operations complete successfully.
+
+### Architecture Pattern
+The auto-refresh feature follows the existing timer-based refresh pattern already established for model creation operations:
+
+```python
+# Pattern used consistently across model operations
+if event.success:
+    self.status_notify(f"Model {event.model_name} pulled.")
+    self.set_timer(settings.model_refresh_timer_interval, self.action_refresh_models)
+```
+
+### Implementation Details
+
+#### Core Components
+- **Event Handler**: `on_model_pulled()` method in `app.py`
+- **Timer System**: Uses existing `model_refresh_timer_interval` setting (1.0 seconds default)
+- **Refresh Method**: Leverages existing `action_refresh_models()` functionality
+
+#### Workflow
+1. Model pull operation completes successfully
+2. `LocalModelPulled` event is fired with `success=True`
+3. Success notification is displayed to user
+4. Timer is set for automatic refresh after configured interval
+5. Local model list updates to show newly downloaded model
+
+#### Configuration
+- Uses existing `settings.model_refresh_timer_interval` configuration
+- Default: 1.0 second delay before refresh
+- Configurable through settings system
+- Consistent with model creation auto-refresh behavior
+
+### Benefits
+- **Immediate Feedback**: Users see downloaded models immediately without manual refresh
+- **Consistent UX**: Follows same pattern as model creation operations
+- **Configurable**: Refresh timing can be adjusted via settings
+- **Non-Breaking**: Uses existing infrastructure and patterns
+- **Reliable**: Leverages proven timer and refresh mechanisms
+
+### Technical Implementation
+```python
+@on(LocalModelPulled)
+def on_model_pulled(self, event: LocalModelPulled) -> None:
+    """Model pulled event"""
+    if event.success:
+        self.status_notify(f"Model {event.model_name} pulled.")
+        # Auto-refresh local model list after successful pull
+        self.set_timer(settings.model_refresh_timer_interval, self.action_refresh_models)
+    else:
+        self.status_notify(f"Model {event.model_name} failed to pull.", severity="error")
+```
+
+### Integration Points
+- **App.py**: Main event handler for model pull events
+- **Settings**: Uses existing configuration management
+- **UI**: No UI changes required - uses existing refresh mechanisms
+- **Timer System**: Leverages existing Textual timer infrastructure
+
+This feature enhances user experience by providing immediate visual feedback when model downloads complete, eliminating the need for manual list refreshes.
 
 ## Future Architecture Considerations
 

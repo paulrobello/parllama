@@ -195,6 +195,36 @@ This suggests the need for:
 
 ## Recent Completed Features
 
+### Auto-Refresh Model List After Downloads ✅ COMPLETED
+
+#### Overview
+Implemented automatic local model list refresh functionality to provide immediate feedback when model downloads complete successfully.
+
+#### Implementation Details
+- **File Modified**: `src/parllama/app.py` - Added auto-refresh timer to `on_model_pulled()` method
+- **Pattern**: Follows existing pattern used for model creation operations
+- **Configuration**: Uses existing `settings.model_refresh_timer_interval` (1.0 seconds default)
+
+#### Technical Implementation
+```python
+@on(LocalModelPulled)
+def on_model_pulled(self, event: LocalModelPulled) -> None:
+    """Model pulled event"""
+    if event.success:
+        self.status_notify(f"Model {event.model_name} pulled.")
+        # Auto-refresh local model list after successful pull
+        self.set_timer(settings.model_refresh_timer_interval, self.action_refresh_models)
+    else:
+        self.status_notify(f"Model {event.model_name} failed to pull.", severity="error")
+```
+
+#### Benefits
+- ✅ Users see downloaded models immediately without manual refresh
+- ✅ Consistent UX with model creation operations
+- ✅ Uses existing infrastructure and configuration
+- ✅ No breaking changes to existing functionality
+- ✅ Configurable timing through settings system
+
 ### Provider Disable Functionality ✅ COMPLETED
 
 #### Overview
