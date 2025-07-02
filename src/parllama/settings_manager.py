@@ -101,6 +101,22 @@ class Settings(BaseModel):
         LlmProvider.LITELLM: None,
     }
 
+    # Provider cache settings (hours)
+    provider_cache_hours: dict[LlmProvider, int] = {
+        LlmProvider.OLLAMA: 168,  # 7 days - local server, models change less frequently
+        LlmProvider.LLAMACPP: 24,  # 1 day - local server, potentially dynamic
+        LlmProvider.XAI: 48,  # 2 days - cloud provider, frequent updates
+        LlmProvider.OPENAI: 48,  # 2 days - cloud provider, frequent updates
+        LlmProvider.OPENROUTER: 24,  # 1 day - aggregator, very dynamic model list
+        LlmProvider.GROQ: 24,  # 1 day - cloud provider, very dynamic
+        LlmProvider.ANTHROPIC: 48,  # 2 days - cloud provider, frequent updates
+        LlmProvider.GEMINI: 48,  # 2 days - cloud provider, frequent updates
+        LlmProvider.BEDROCK: 72,  # 3 days - enterprise, slower model updates
+        LlmProvider.GITHUB: 48,  # 2 days - cloud provider, frequent updates
+        LlmProvider.DEEPSEEK: 48,  # 2 days - cloud provider, frequent updates
+        LlmProvider.LITELLM: 24,  # 1 day - proxy/aggregator, very dynamic
+    }
+
     langchain_config: LangChainConfig = LangChainConfig()
 
     auto_name_session: bool = False

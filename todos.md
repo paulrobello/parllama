@@ -72,13 +72,6 @@
 - **Fix**: Implement selective export mechanism with opt-in per secret
 - **Priority**: HIGH
 
-#### 4. Test File Security Issues
-- **File**: `tests/test_secrets_manager.py`
-- **Issue**: Predictable test file names, no permission validation tests
-- **Risk**: Test artifacts could expose sensitive data
-- **Fix**: Use secure temporary files and add permission validation tests
-- **Priority**: HIGH
-
 ### Bugs and Logic Issues ✓ FIXED
 
 #### 5. ~~Race Condition in File Operations~~ ✓ FIXED

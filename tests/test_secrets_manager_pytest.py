@@ -43,8 +43,8 @@ class TestSecretsManagerBasics:
 
     def test_verify_password(self, secrets_manager):
         """Test password verification."""
-        assert secrets_manager.verify_password("test_password")
-        assert not secrets_manager.verify_password("wrong_password")
+        assert secrets_manager.verify_password("TestPass123!")
+        assert not secrets_manager.verify_password("WrongPass456!")
 
 
 class TestSecretsManagerCRUD:
@@ -127,7 +127,7 @@ class TestSecretsManagerEncryption:
     def test_encrypt_decrypt_with_password_methods(self, secrets_manager):
         """Test encrypt_with_password and decrypt_with_password methods."""
         plaintext = "sensitive_data"
-        password = "test_password"
+        password = "TestPass123!"
         
         encrypted = secrets_manager.encrypt_with_password(plaintext, password)
         assert encrypted != plaintext
@@ -136,7 +136,7 @@ class TestSecretsManagerEncryption:
         assert decrypted == plaintext
         
         with pytest.raises(ValueError):
-            secrets_manager.decrypt_with_password(encrypted, "wrong_password")
+            secrets_manager.decrypt_with_password(encrypted, "WrongPass456!")
 
 
 class TestSecretsManagerSecurity:
@@ -153,7 +153,7 @@ class TestSecretsManagerSecurity:
             mock_lock.return_value.__enter__.return_value = mock_file.return_value
             
             secrets_manager.add_secret("test_key", "test_value")
-            secrets_manager.change_password("test_password", "new_password")
+            secrets_manager.change_password("TestPass123!", "NewPass456!")
             
             assert mock_clear_str.called or mock_clear_bytes.called
 
@@ -210,7 +210,7 @@ class TestSecretsManagerPasswordManagement:
             mock_lock.return_value.__enter__.return_value = mock_file.return_value
             
             secrets_manager.add_secret("test_key", "test_value")
-            secrets_manager.change_password("test_password", "new_password")
+            secrets_manager.change_password("TestPass123!", "NewPass456!")
             
         assert secrets_manager.get_secret("test_key") == "test_value"
 
@@ -223,7 +223,7 @@ class TestSecretsManagerPasswordManagement:
             secrets_manager.add_secret("test_key", "test_value")
             
         with pytest.raises(ValueError):
-            secrets_manager.change_password("wrong_password", "new_password")
+            secrets_manager.change_password("WrongPass123!", "NewPass456!")
 
     def test_change_password_same_password(self, secrets_manager):
         """Test changing password to the same password."""
@@ -232,15 +232,17 @@ class TestSecretsManagerPasswordManagement:
             mock_lock.return_value.__enter__.return_value = mock_file.return_value
             
             # Should do nothing when changing to same password
-            secrets_manager.change_password("test_password", "test_password")
-            assert secrets_manager.verify_password("test_password")
+            secrets_manager.change_password("TestPass123!", "TestPass123!")
+            assert secrets_manager.verify_password("TestPass123!")
 
     def test_password_validation_environment_key(self, secrets_manager):
         """Test password validation for environment keys."""
-        assert secrets_manager._validate_vault_key("valid_password")
+        assert secrets_manager._validate_vault_key("ValidPass123!")
         assert not secrets_manager._validate_vault_key("")
         assert not secrets_manager._validate_vault_key("   ")
         assert not secrets_manager._validate_vault_key("short")
+        assert not secrets_manager._validate_vault_key("password123")  # Too common
+        assert not secrets_manager._validate_vault_key("12345678")  # All numeric
 
 
 class TestSecretsManagerErrorHandling:
@@ -271,7 +273,7 @@ class TestSecretsManagerErrorHandling:
         assert result == "Vault is locked"
         
         # Test missing key with no_raise=True
-        secrets_manager.unlock("test_password")
+        secrets_manager.unlock("TestPass123!")
         result = secrets_manager.get_secret("missing_key", no_raise=True)
         assert result == ""
 
@@ -331,7 +333,7 @@ class TestSecretsManagerErrorHandling:
             assert len(secrets_manager) == 1
             
             with pytest.raises(ValueError):
-                secrets_manager.unlock("wrong_password")
+                secrets_manager.unlock("WrongPass123!")
             
             with pytest.raises(ValueError):
                 secrets_manager.get_secret("test_key")
@@ -347,14 +349,14 @@ class TestSecretsManagerErrorHandling:
         secrets_manager.lock()
         
         # Should be able to get secret with correct password
-        result = secrets_manager.get_secret_with_pw("test_key", "test_password")
+        result = secrets_manager.get_secret_with_pw("test_key", "TestPass123!")
         assert result == "test_value"
         
         # Lock again before testing wrong password
         secrets_manager.lock()
         
         # Should fail with wrong password
-        result = secrets_manager.get_secret_with_pw("test_key", "wrong_password", no_raise=True)
+        result = secrets_manager.get_secret_with_pw("test_key", "WrongPass123!", no_raise=True)
         assert result == ""
 
     def test_error_handling_in_save_secrets(self, secrets_manager):
@@ -370,7 +372,7 @@ class TestSecretsManagerErrorHandling:
         with patch.object(secrets_manager, '_decrypt') as mock_decrypt:
             mock_decrypt.side_effect = ValueError("Decryption failed")
             
-            assert not secrets_manager.verify_password("test_password")
+            assert not secrets_manager.verify_password("TestPass123!")
 
     def test_load_secrets_with_corrupted_file(self, temp_dir):
         """Test loading secrets with corrupted JSON file."""
@@ -395,10 +397,10 @@ class TestSecretsManagerFileOperations:
         manager = SecretsManager(secrets_file)
         
         # Test with valid environment key
-        monkeypatch.setenv("PARLLAMA_VAULT_KEY", "valid_password_12345")
+        monkeypatch.setenv("PARLLAMA_VAULT_KEY", "ValidPass123!")
         with patch.object(manager, 'unlock') as mock_unlock:
             manager.set_app(None)
-            mock_unlock.assert_called_once_with("valid_password_12345", True)
+            mock_unlock.assert_called_once_with("ValidPass123!", True)
     
     def test_validate_vault_key_edge_cases(self, secrets_manager):
         """Test _validate_vault_key with various edge cases."""
@@ -412,7 +414,7 @@ class TestSecretsManagerFileOperations:
         assert not secrets_manager._validate_vault_key("short")
         
         # Test valid key
-        assert secrets_manager._validate_vault_key("valid_password_123")
+        assert secrets_manager._validate_vault_key("ValidPass123!")
     
     def test_windows_file_permissions(self, secrets_manager, temp_dir, monkeypatch):
         """Test file permission setting on Windows."""
@@ -581,7 +583,7 @@ class TestSecretsManagerAdvanced:
             mock_file = mock_open()
             mock_lock.return_value.__enter__.return_value = mock_file.return_value
             
-            assert new_manager.unlock("initial_password")
+            assert new_manager.unlock("InitialPass123!")
             assert new_manager.has_password
 
     def test_clear_vault(self, secrets_manager):
@@ -608,7 +610,7 @@ class TestCryptographicFunctions:
     
     def test_derive_key(self):
         """Test key derivation function."""
-        password = "test_password"
+        password = "TestPass123!"
         salt = gen_salt()
         
         key1 = derive_key(password, salt)
@@ -628,7 +630,7 @@ class TestCryptographicFunctions:
     def test_encrypt_decrypt_functions(self):
         """Test standalone encrypt/decrypt functions."""
         plaintext = "sensitive_data"
-        password = "test_password"
+        password = "TestPass123!"
         salt = gen_salt()
         key = derive_key(password, salt)
         
@@ -639,14 +641,14 @@ class TestCryptographicFunctions:
         assert decrypted == plaintext
         
         # Wrong key should fail
-        wrong_key = derive_key("wrong_password", salt)
+        wrong_key = derive_key("WrongPass123!", salt)
         with pytest.raises(ValueError):
             decrypt(ciphertext, wrong_key)
     
     def test_encrypt_with_password_functions(self):
         """Test encrypt_with_password and decrypt_with_password functions."""
         plaintext = "sensitive_data"
-        password = "test_password"
+        password = "TestPass123!"
         salt = gen_salt()
         
         ciphertext = encrypt_with_password(plaintext, password, salt)
@@ -656,7 +658,7 @@ class TestCryptographicFunctions:
         assert decrypted == plaintext
         
         with pytest.raises(ValueError):
-            decrypt_with_password(ciphertext, "wrong_password", salt)
+            decrypt_with_password(ciphertext, "WrongPass123!", salt)
     
     def test_gen_salt(self):
         """Test salt generation."""
@@ -669,7 +671,7 @@ class TestCryptographicFunctions:
     
     def test_encrypt_decrypt_edge_cases(self):
         """Test encryption/decryption with edge cases."""
-        password = "test_password"
+        password = "TestPass123!"
         salt = gen_salt()
         key = derive_key(password, salt)
         
@@ -689,7 +691,7 @@ class TestCryptographicFunctions:
     
     def test_invalid_ciphertext(self):
         """Test decryption with invalid ciphertext."""
-        password = "test_password"
+        password = "TestPass123!"
         salt = gen_salt()
         key = derive_key(password, salt)
         
@@ -711,7 +713,7 @@ class TestCryptographicFunctions:
     def test_encrypt_decrypt_with_string_salt(self):
         """Test encrypt/decrypt with password functions using string salt."""
         plaintext = "test_data"
-        password = "test_password"
+        password = "TestPass123!"
         salt_bytes = gen_salt()
         salt_string = base64.b64encode(salt_bytes).decode()
         
@@ -730,7 +732,7 @@ class TestCryptographicFunctions:
         """Test that PBKDF2 uses the correct number of iterations."""
         import time
         
-        password = "test_password"
+        password = "TestPass123!"
         salt = gen_salt()
         
         start_time = time.time()
@@ -761,7 +763,7 @@ class TestSecretsManagerMoreCoverage:
             mock_file = mock_open()
             mock_lock.return_value.__enter__.return_value = mock_file.return_value
             
-            manager.change_password("", "new_password")
+            manager.change_password("", "NewPass456!")
             assert manager.has_password
     
     def test_change_password_no_raise_invalid_old_password(self, secrets_manager):
@@ -773,7 +775,7 @@ class TestSecretsManagerMoreCoverage:
             secrets_manager.add_secret("test_key", "test_value")
         
         # Should not raise with no_raise=True
-        secrets_manager.change_password("wrong_password", "new_password", no_raise=True)
+        secrets_manager.change_password("WrongPass123!", "NewPass456!", no_raise=True)
     
     def test_change_password_exception_no_raise(self, secrets_manager):
         """Test change_password with exception and no_raise=True."""
@@ -788,7 +790,7 @@ class TestSecretsManagerMoreCoverage:
         """Test unlock with exception and no_raise=True."""
         with patch.object(secrets_manager, 'verify_password', side_effect=RuntimeError("Verification failed")):
             # Should not raise with no_raise=True
-            result = secrets_manager.unlock("password", no_raise=True)
+            result = secrets_manager.unlock("TestPass123!", no_raise=True)
             assert result is False
     
     def test_add_secret_empty_key_no_raise(self, secrets_manager):
@@ -897,7 +899,7 @@ class TestSecretsManagerErrorPaths:
             # Mock decrypt to raise an exception during re-encryption
             with patch.object(secrets_manager, '_decrypt', side_effect=ValueError("Decrypt failed")):
                 with pytest.raises(ValueError, match="Failed to change password"):
-                    secrets_manager.change_password("test_password", "new_password")
+                    secrets_manager.change_password("TestPass123!", "NewPass456!")
     
     def test_encrypt_with_no_key(self, secrets_manager):
         """Test _encrypt when key is not set."""
@@ -913,8 +915,7 @@ class TestSecretsManagerErrorPaths:
     
     def test_add_secret_exception_during_save(self, secrets_manager):
         """Test add_secret with exception during save."""
-        # Unlock the vault first
-        assert secrets_manager.unlock("test_password")
+        # secrets_manager fixture is already unlocked
         
         # Mock _save_secrets to raise an exception
         with patch.object(secrets_manager, '_save_secrets', side_effect=OSError("Save failed")):
@@ -1025,3 +1026,276 @@ class TestSecretsManagerErrorPaths:
             # Should not raise, just log warning
             secrets_manager._secure_clear_string(test_string)
             secrets_manager._secure_clear_bytes(b"test_bytes")
+
+
+class TestPasswordValidation:
+    """Test the new password validation functionality."""
+    
+    def test_validate_password_basic_requirements(self, secrets_manager):
+        """Test basic password validation requirements."""
+        # Valid password
+        is_valid, error = secrets_manager.validate_password("TestPass123!")
+        assert is_valid
+        assert error == ""
+        
+        # Empty password
+        is_valid, error = secrets_manager.validate_password("")
+        assert not is_valid
+        assert "cannot be empty" in error
+        
+        # Too short
+        is_valid, error = secrets_manager.validate_password("Short1!")
+        assert not is_valid
+        assert "at least 8 characters" in error
+        
+        # All numeric
+        is_valid, error = secrets_manager.validate_password("12345678")
+        assert not is_valid
+        assert "cannot be all numbers" in error
+    
+    def test_validate_password_common_passwords(self, secrets_manager):
+        """Test validation against common passwords."""
+        # Test non-numeric common passwords that are at least 8 characters
+        common_passwords = [
+            "password1", 
+            "password123",
+            "qwerty123",
+            "admin123",
+            "letmein123",  # Make sure it's 8+ chars
+            "welcome123",  # Make sure it's 8+ chars
+            "monkey123"
+        ]
+        
+        for pwd in common_passwords:
+            is_valid, error = secrets_manager.validate_password(pwd)
+            assert not is_valid
+            assert "too common" in error.lower()
+        
+        # Test numeric passwords are caught by all-numeric check
+        numeric_passwords = ["12345678", "123456789"]
+        for pwd in numeric_passwords:
+            is_valid, error = secrets_manager.validate_password(pwd)
+            assert not is_valid
+            assert "cannot be all numbers" in error.lower()
+    
+    def test_validate_password_character_types(self, secrets_manager):
+        """Test character type requirements."""
+        # Only lowercase and numbers (2 types)
+        is_valid, error = secrets_manager.validate_password("testpass123")
+        assert not is_valid
+        assert "at least 3 of" in error
+        
+        # Uppercase, lowercase, numbers (3 types) - should pass
+        is_valid, error = secrets_manager.validate_password("TestPass123")
+        assert is_valid
+        assert error == ""
+        
+        # Uppercase, lowercase, special (3 types) - should pass
+        is_valid, error = secrets_manager.validate_password("TestPass!")
+        assert is_valid
+        assert error == ""
+        
+        # All 4 types - should pass
+        is_valid, error = secrets_manager.validate_password("TestPass123!")
+        assert is_valid
+        assert error == ""
+    
+    def test_validate_password_whitespace_handling(self, secrets_manager):
+        """Test password validation with whitespace."""
+        # Leading/trailing whitespace should be stripped
+        is_valid, error = secrets_manager.validate_password("  TestPass123!  ")
+        assert is_valid
+        assert error == ""
+        
+        # Only whitespace
+        is_valid, error = secrets_manager.validate_password("   ")
+        assert not is_valid
+        assert "cannot be empty" in error
+    
+    def test_unlock_validates_new_passwords(self, temp_dir):
+        """Test that unlock validates passwords when setting initial password."""
+        secrets_file = temp_dir / "new-secrets.json"
+        manager = SecretsManager(secrets_file)
+        
+        with patch.object(manager, '_acquire_file_lock') as mock_lock:
+            mock_file = mock_open()
+            mock_lock.return_value.__enter__.return_value = mock_file.return_value
+            
+            # Weak password should fail
+            assert not manager.unlock("password123", no_raise=True)
+            assert not manager.has_password
+            
+            # Strong password should succeed
+            assert manager.unlock("ValidPass123!", no_raise=True)
+            assert manager.has_password
+    
+    def test_change_password_validates_new_password(self, secrets_manager):
+        """Test that change_password validates the new password."""
+        with patch.object(secrets_manager, '_acquire_file_lock') as mock_lock:
+            mock_file = mock_open()
+            mock_lock.return_value.__enter__.return_value = mock_file.return_value
+            
+            # Try to change to weak password - should fail
+            with pytest.raises(ValueError, match="too common"):
+                secrets_manager.change_password("TestPass123!", "password123")
+            
+            # Should succeed with strong password
+            secrets_manager.change_password("TestPass123!", "NewValidPass456!")
+
+
+class TestExportToEnv:
+    """Test the new environment export control functionality."""
+    
+    def test_add_secret_with_export_flag(self, secrets_manager):
+        """Test adding secrets with export control."""
+        with patch.object(secrets_manager, '_acquire_file_lock') as mock_lock:
+            mock_file = mock_open()
+            mock_lock.return_value.__enter__.return_value = mock_file.return_value
+            
+            # Add secret with export=True (default)
+            secrets_manager.add_secret("EXPORT_TRUE", "value1")
+            assert secrets_manager.get_export_to_env("EXPORT_TRUE") is True
+            
+            # Add secret with export=False
+            secrets_manager.add_secret("EXPORT_FALSE", "value2", export_to_env=False)
+            assert secrets_manager.get_export_to_env("EXPORT_FALSE") is False
+    
+    def test_set_and_get_export_to_env(self, secrets_manager):
+        """Test setting and getting export flags for existing secrets."""
+        with patch.object(secrets_manager, '_acquire_file_lock') as mock_lock:
+            mock_file = mock_open()
+            mock_lock.return_value.__enter__.return_value = mock_file.return_value
+            
+            # Add a secret
+            secrets_manager.add_secret("TEST_SECRET", "test_value")
+            
+            # Should default to True
+            assert secrets_manager.get_export_to_env("TEST_SECRET") is True
+            
+            # Change to False
+            secrets_manager.set_export_to_env("TEST_SECRET", False)
+            assert secrets_manager.get_export_to_env("TEST_SECRET") is False
+            
+            # Change back to True
+            secrets_manager.set_export_to_env("TEST_SECRET", True)
+            assert secrets_manager.get_export_to_env("TEST_SECRET") is True
+    
+    def test_set_export_to_env_missing_key(self, secrets_manager):
+        """Test setting export flag for non-existent key."""
+        with pytest.raises(KeyError, match="No secret found"):
+            secrets_manager.set_export_to_env("MISSING_KEY", True)
+        
+        # With no_raise=True
+        secrets_manager.set_export_to_env("MISSING_KEY", True, no_raise=True)
+    
+    def test_set_export_to_env_empty_key(self, secrets_manager):
+        """Test setting export flag with empty key."""
+        with pytest.raises(ValueError, match="cannot be empty"):
+            secrets_manager.set_export_to_env("", True)
+        
+        # With no_raise=True
+        secrets_manager.set_export_to_env("", True, no_raise=True)
+    
+    def test_import_to_env_selective_export(self, secrets_manager):
+        """Test that import_to_env only exports marked secrets."""
+        with patch.object(secrets_manager, '_acquire_file_lock') as mock_lock:
+            mock_file = mock_open()
+            mock_lock.return_value.__enter__.return_value = mock_file.return_value
+            
+            # Add secrets with different export flags
+            secrets_manager.add_secret("EXPORT_ME", "export_value", export_to_env=True)
+            secrets_manager.add_secret("DONT_EXPORT", "private_value", export_to_env=False)
+        
+        # Clear environment first
+        for key in ["EXPORT_ME", "DONT_EXPORT"]:
+            if key in os.environ:
+                del os.environ[key]
+        
+        try:
+            # Import to environment
+            secrets_manager.import_to_env()
+            
+            # Only EXPORT_ME should be in environment
+            assert os.environ.get("EXPORT_ME") == "export_value"
+            assert "DONT_EXPORT" not in os.environ
+            
+        finally:
+            # Clean up environment
+            for key in ["EXPORT_ME", "DONT_EXPORT"]:
+                if key in os.environ:
+                    del os.environ[key]
+    
+    def test_remove_secret_clears_export_flag(self, secrets_manager):
+        """Test that removing a secret also removes its export flag."""
+        with patch.object(secrets_manager, '_acquire_file_lock') as mock_lock:
+            mock_file = mock_open()
+            mock_lock.return_value.__enter__.return_value = mock_file.return_value
+            
+            # Add secret
+            secrets_manager.add_secret("TEMP_SECRET", "temp_value", export_to_env=False)
+            assert secrets_manager.get_export_to_env("TEMP_SECRET") is False
+            
+            # Remove secret
+            secrets_manager.remove_secret("TEMP_SECRET")
+            
+            # Export flag should default to True for non-existent keys
+            assert secrets_manager.get_export_to_env("TEMP_SECRET") is True
+    
+    def test_clear_removes_export_flags(self, secrets_manager):
+        """Test that clearing the vault removes all export flags."""
+        with patch.object(secrets_manager, '_acquire_file_lock') as mock_lock:
+            mock_file = mock_open()
+            mock_lock.return_value.__enter__.return_value = mock_file.return_value
+            
+            # Add secrets with export flags
+            secrets_manager.add_secret("SECRET1", "value1", export_to_env=False)
+            secrets_manager.add_secret("SECRET2", "value2", export_to_env=True)
+            
+            # Mock secure clear methods to prevent potential issues
+            with patch.object(secrets_manager, '_secure_clear_string'), \
+                 patch.object(secrets_manager, '_secure_clear_bytes'):
+                secrets_manager.clear()
+            
+            # All export flags should be cleared
+            assert secrets_manager.get_export_to_env("SECRET1") is True  # Default
+            assert secrets_manager.get_export_to_env("SECRET2") is True  # Default
+    
+    def test_load_secrets_backward_compatibility(self, temp_dir):
+        """Test loading secrets file without export_to_env data."""
+        secrets_file = temp_dir / "legacy-secrets.json"
+        
+        # Create a legacy secrets file without export_to_env
+        legacy_data = {
+            "__salt__": base64.b64encode(b"test_salt_123456").decode(),
+            "__key__": "encrypted_key_data",
+            "secrets": {
+                "LEGACY_SECRET": "encrypted_value"
+            }
+        }
+        
+        with open(secrets_file, 'w') as f:
+            json.dump(legacy_data, f)
+        
+        # Load the manager
+        manager = SecretsManager(secrets_file)
+        manager._load_secrets()
+        
+        # Legacy secrets should default to export=True
+        assert manager.get_export_to_env("LEGACY_SECRET") is True
+    
+    def test_save_secrets_includes_export_flags(self, secrets_manager):
+        """Test that save operation includes export flags."""
+        with patch.object(secrets_manager, '_acquire_file_lock') as mock_lock:
+            mock_file = mock_open()
+            mock_lock.return_value.__enter__.return_value = mock_file.return_value
+            
+            # Add secret with custom export flag
+            secrets_manager.add_secret("TEST_KEY", "test_value", export_to_env=False)
+            
+            # Check that the written data includes export_to_env
+            written_data = mock_file.return_value.write.call_args_list
+            if written_data:
+                content = "".join(call[0][0] for call in written_data)
+                data = json.loads(content)
+                assert "export_to_env" in data
+                assert data["export_to_env"]["TEST_KEY"] is False

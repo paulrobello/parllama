@@ -49,6 +49,8 @@ class SecretsManager(ParEventSystemBase):
     """Used with password to derive the en/decryption key."""
     _secrets: dict[str, str]
     """Dict containing encrypted secrets."""
+    _export_to_env: dict[str, bool]
+    """Dict tracking which secrets should be exported to environment."""
     _secrets_file: Path
     """JSON file containing encrypted secrets."""
     _file_lock: threading.Lock
@@ -58,6 +60,7 @@ class SecretsManager(ParEventSystemBase):
         """Initialize Manager and load vault."""
         super().__init__(**kwargs)
         self._secrets = {}
+        self._export_to_env = {}
         self._salt = gen_salt()
         self._key_secure = None
         self._key = None
@@ -74,13 +77,10 @@ class SecretsManager(ParEventSystemBase):
 
     def _validate_vault_key(self, key: str) -> bool:
         """Validate the vault key from environment variable."""
-        if not key or not key.strip():
-            self.log_it("PARLLAMA_VAULT_KEY environment variable is empty", notify=True, severity="warning")
-            return False
-
-        if len(key) < 8:
+        is_valid, error_msg = self.validate_password(key)
+        if not is_valid:
             self.log_it(
-                "PARLLAMA_VAULT_KEY environment variable should be at least 8 characters long",
+                f"PARLLAMA_VAULT_KEY environment variable: {error_msg}",
                 notify=True,
                 severity="warning",
             )
@@ -246,6 +246,12 @@ class SecretsManager(ParEventSystemBase):
                 self._salt = base64.b64decode(data.get("__salt__"))
                 self._key_secure = data.get("__key__")
                 self._secrets = data.get("secrets", {})
+                self._export_to_env = data.get("export_to_env", {})
+
+                # For backward compatibility, default to True for existing secrets
+                for key in self._secrets:
+                    if key not in self._export_to_env:
+                        self._export_to_env[key] = True
 
                 self.log_it(f"Loaded {len(self._secrets)} secrets from vault")
             except FileNotFoundError:
@@ -269,6 +275,7 @@ class SecretsManager(ParEventSystemBase):
                     "__salt__": base64.b64encode(self._salt).decode("utf-8"),
                     "__key__": self._key_secure,
                     "secrets": self._secrets,
+                    "export_to_env": self._export_to_env,
                 }
 
                 # Create parent directory if it doesn't exist
@@ -312,6 +319,53 @@ class SecretsManager(ParEventSystemBase):
         """Checks if a password is set."""
         return self._key_secure is not None
 
+    def validate_password(self, password: str) -> tuple[bool, str]:
+        """
+        Validate a password against security requirements.
+
+        Returns:
+            tuple[bool, str]: (is_valid, error_message)
+        """
+        if not password or not password.strip():
+            return False, "Password cannot be empty"
+
+        password = password.strip()
+
+        if len(password) < 8:
+            return False, "Password must be at least 8 characters long"
+
+        # Check if password is all numeric
+        if password.isdigit():
+            return False, "Password cannot be all numbers"
+
+        # Check for common weak passwords
+        common_passwords = {
+            "password1",
+            "password123",
+            "12345678",
+            "123456789",
+            "qwerty123",
+            "admin123",
+            "letmein123",
+            "welcome123",
+            "monkey123",
+        }
+        if password.lower() in common_passwords:
+            return False, "Password is too common. Please choose a stronger password"
+
+        # Optional: Check for minimum character types (can be made configurable)
+        has_upper = any(c.isupper() for c in password)
+        has_lower = any(c.islower() for c in password)
+        has_digit = any(c.isdigit() for c in password)
+        has_special = any(not c.isalnum() for c in password)
+
+        # Require at least 3 of 4 character types
+        char_types = sum([has_upper, has_lower, has_digit, has_special])
+        if char_types < 3:
+            return False, "Password must contain at least 3 of: uppercase, lowercase, numbers, special characters"
+
+        return True, ""
+
     def change_password(self, old_password: str, new_password: str, no_raise: bool = False) -> None:
         """Changes the password and re-encrypts existing secrets."""
         if not self.has_password:
@@ -328,6 +382,14 @@ class SecretsManager(ParEventSystemBase):
 
         if new_password == old_password:
             return
+
+        # Validate new password
+        is_valid, error_msg = self.validate_password(new_password)
+        if not is_valid:
+            if no_raise:
+                self.log_it(error_msg, notify=True, severity="error")
+                return
+            raise ValueError(error_msg)
 
         if not self.unlock(old_password, no_raise):
             return
@@ -392,6 +454,15 @@ class SecretsManager(ParEventSystemBase):
     def unlock(self, password: str, no_raise: bool = False) -> bool:
         """Unlock the vault or set initial vault password."""
         try:
+            # If no password is set yet, validate the new password
+            if not self.has_password:
+                is_valid, error_msg = self.validate_password(password)
+                if not is_valid:
+                    if no_raise:
+                        self.log_it(error_msg, notify=True, severity="error")
+                        return False
+                    raise ValueError(error_msg)
+
             if not self.verify_password(password):
                 self.lock()
                 error_msg = "Invalid password."
@@ -438,7 +509,7 @@ class SecretsManager(ParEventSystemBase):
             raise ValueError("No key available for decryption.")
         return decrypt(ciphertext, key)
 
-    def add_secret(self, key: str, value: str, no_raise: bool = False) -> None:
+    def add_secret(self, key: str, value: str, export_to_env: bool = True, no_raise: bool = False) -> None:
         """Adds a new secret, encrypts it, and saves it to the file."""
         if not self._key:
             error_msg = "Vault is locked. Use unlock() before adding a secret."
@@ -457,6 +528,7 @@ class SecretsManager(ParEventSystemBase):
         try:
             encrypted_value = self._encrypt(value)
             self._secrets[key.strip()] = encrypted_value
+            self._export_to_env[key.strip()] = export_to_env
             self._save_secrets()
             self.log_it(f"Secret '{key}' added successfully")
         except Exception as e:
@@ -523,6 +595,31 @@ class SecretsManager(ParEventSystemBase):
         """Decrypts ciphertext with the provided password."""
         return self._decrypt(ciphertext, self._derive_key(password))
 
+    def set_export_to_env(self, key: str, export: bool, no_raise: bool = False) -> None:
+        """Set whether a secret should be exported to environment variables."""
+        if not key or not key.strip():
+            error_msg = "Secret key cannot be empty"
+            if no_raise:
+                self.log_it(error_msg, notify=True, severity="error")
+                return
+            raise ValueError(error_msg)
+
+        key = key.strip()
+        if key not in self._secrets:
+            error_msg = f"No secret found for key: {key}"
+            if no_raise:
+                self.log_it(error_msg, notify=True, severity="warning")
+                return
+            raise KeyError(error_msg)
+
+        self._export_to_env[key] = export
+        self._save_secrets()
+        self.log_it(f"Export setting for '{key}' updated to {export}")
+
+    def get_export_to_env(self, key: str) -> bool:
+        """Get whether a secret should be exported to environment variables."""
+        return self._export_to_env.get(key, True)
+
     def remove_secret(self, key: str, no_raise: bool = False) -> None:
         """Removes the secret associated with the given key and saves the changes."""
         if not key or not key.strip():
@@ -539,6 +636,9 @@ class SecretsManager(ParEventSystemBase):
             self._secure_clear_string(encrypted_value)
 
             del self._secrets[key]
+            # Also remove export setting
+            if key in self._export_to_env:
+                del self._export_to_env[key]
             self._save_secrets()
             self.log_it(f"Secret '{key}' removed successfully")
         else:
@@ -556,6 +656,7 @@ class SecretsManager(ParEventSystemBase):
             self._secure_clear_string(encrypted_value)
 
         self._secrets.clear()
+        self._export_to_env.clear()
 
         # Clear the existing key securely before regenerating salt
         if self._key is not None:
@@ -585,6 +686,9 @@ class SecretsManager(ParEventSystemBase):
         try:
             imported_count = 0
             for key, encrypted_value in self._secrets.items():
+                # Only export if marked for export
+                if not self._export_to_env.get(key, True):
+                    continue
                 try:
                     decrypted_value = self._decrypt(encrypted_value)
                     if decrypted_value:

@@ -186,8 +186,20 @@ class ProviderManager(ParEventSystemBase):
                 self.app.post_message(RefreshProviderModelsRequested(None))
             return
 
-        if self.cache_file.stat().st_mtime < time.time() - 7 * 24 * 60 * 60:
-            self.log_it("Models file is older than 7 days requesting refresh")
+        # Check if any provider's cache has expired
+        cache_expired = False
+        cache_age_seconds = time.time() - self.cache_file.stat().st_mtime
+
+        for provider in settings.provider_cache_hours:
+            provider_cache_seconds = settings.provider_cache_hours[provider] * 60 * 60
+            if cache_age_seconds > provider_cache_seconds:
+                self.log_it(
+                    f"Models file is older than {settings.provider_cache_hours[provider]} hours for {provider.value}, requesting refresh"
+                )
+                cache_expired = True
+                break
+
+        if cache_expired:
             refresh = True
 
         if refresh:
@@ -225,6 +237,41 @@ class ProviderManager(ParEventSystemBase):
             if m.lower().startswith(model_name):
                 return m
         return ""
+
+    def get_cache_info(self, provider: LlmProvider) -> dict[str, Any]:
+        """Get cache information for a specific provider."""
+        if not self.cache_file.exists():
+            return {
+                "cache_age_hours": 0,
+                "cache_expired": True,
+                "cache_size_kb": 0,
+                "last_refresh": None,
+                "model_count": 0,
+            }
+
+        cache_age_seconds = time.time() - self.cache_file.stat().st_mtime
+        cache_age_hours = cache_age_seconds / 3600
+        provider_cache_hours = settings.provider_cache_hours.get(provider, 168)
+        cache_expired = cache_age_seconds > (provider_cache_hours * 3600)
+        cache_size_kb = self.cache_file.stat().st_size / 1024
+        last_refresh = self.cache_file.stat().st_mtime
+        model_count = len(self.provider_models.get(provider, []))
+
+        return {
+            "cache_age_hours": round(cache_age_hours, 1),
+            "cache_expired": cache_expired,
+            "cache_size_kb": round(cache_size_kb, 1),
+            "last_refresh": last_refresh,
+            "model_count": model_count,
+        }
+
+    def refresh_provider_models(self, provider: LlmProvider) -> None:
+        """Refresh models for a specific provider."""
+        self.log_it(f"Refreshing models for provider: {provider.value}")
+
+        # Currently refreshes all models (the existing refresh_models method)
+        # TODO: Make this more selective to refresh only the specified provider
+        self.refresh_models()
 
 
 provider_manager = ProviderManager()

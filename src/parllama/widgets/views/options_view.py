@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from par_ai_core.llm_config import LlmConfig
 from par_ai_core.llm_providers import LlmProvider, provider_base_urls
 from textual import on
@@ -13,6 +15,7 @@ from textual.widgets import Button, Checkbox, Input, Label, Select, Static
 
 import parllama
 from parllama.messages.messages import ClearChatInputHistory, ProviderModelSelected
+from parllama.provider_manager import provider_manager
 from parllama.settings_manager import settings
 from parllama.theme_manager import theme_manager
 from parllama.utils import shorten_path, valid_tabs
@@ -70,6 +73,41 @@ class OptionsView(Horizontal):
         """Initialise the screen."""
         super().__init__(**kwargs)
         self._provider_changed = False
+
+    def _get_cache_status_text(self, provider: LlmProvider) -> str:
+        """Get cache status text for a provider."""
+        cache_info = provider_manager.get_cache_info(provider)
+        if cache_info["last_refresh"]:
+            last_refresh = datetime.fromtimestamp(cache_info["last_refresh"]).strftime("%m/%d %H:%M")
+            status = "Expired" if cache_info["cache_expired"] else "Fresh"
+            return f"{status} | Age: {cache_info['cache_age_hours']}h | Models: {cache_info['model_count']} | Last: {last_refresh}"
+        return "No cache"
+
+    def _create_cache_controls(self, provider: LlmProvider) -> ComposeResult:
+        """Create cache controls for a provider."""
+        provider_name = provider.value.lower()
+
+        yield Label("Cache Duration (hours)")
+        yield InputBlurSubmit(
+            value=str(settings.provider_cache_hours[provider]),
+            max_length=5,
+            type="integer",
+            validators=[Integer(minimum=1, maximum=8760)],
+            id=f"{provider_name}_cache_hours",
+        )
+
+        yield Label("Cache Status")
+        yield Static(
+            self._get_cache_status_text(provider),
+            id=f"{provider_name}_cache_status",
+        )
+
+        with Horizontal():
+            yield Button(
+                f"Refresh {provider.value} Models",
+                id=f"refresh_{provider_name}_models",
+                variant="primary",
+            )
 
     def compose(self) -> ComposeResult:  # pylint: disable=too-many-statements
         """Compose the content of the view."""
@@ -291,6 +329,7 @@ class OptionsView(Horizontal):
                             validators=[Integer(minimum=0, maximum=300)],
                             id="ollama_ps_poll_interval",
                         )
+                        yield from self._create_cache_controls(LlmProvider.OLLAMA)
 
                     with Vertical(classes="section") as aips2:
                         aips2.border_title = "OpenAI"
@@ -308,6 +347,7 @@ class OptionsView(Horizontal):
                             password=True,
                             id="openai_api_key",
                         )
+                        yield from self._create_cache_controls(LlmProvider.OPENAI)
                     with Vertical(classes="section") as aips3:
                         aips3.border_title = "Groq"
                         yield Label("Base URL")
@@ -324,6 +364,7 @@ class OptionsView(Horizontal):
                             password=True,
                             id="groq_api_key",
                         )
+                        yield from self._create_cache_controls(LlmProvider.GROQ)
                     with Vertical(classes="section") as aips4:
                         aips4.border_title = "Anthropic"
                         yield Label("Base URL")
@@ -340,6 +381,7 @@ class OptionsView(Horizontal):
                             password=True,
                             id="anthropic_api_key",
                         )
+                        yield from self._create_cache_controls(LlmProvider.ANTHROPIC)
                     with Vertical(classes="section") as aips5:
                         aips5.border_title = "Gemini"
                         yield Label("API Key")
@@ -349,6 +391,7 @@ class OptionsView(Horizontal):
                             password=True,
                             id="google_api_key",
                         )
+                        yield from self._create_cache_controls(LlmProvider.GEMINI)
                     with Vertical(classes="section") as aips6:
                         aips6.border_title = "xAI"
                         yield Label("Base URL")
@@ -365,6 +408,7 @@ class OptionsView(Horizontal):
                             password=True,
                             id="xai_api_key",
                         )
+                        yield from self._create_cache_controls(LlmProvider.XAI)
                     with Vertical(classes="section") as aips7:
                         aips7.border_title = "OpenRouter"
                         yield Label("Base URL")
@@ -381,6 +425,7 @@ class OptionsView(Horizontal):
                             password=True,
                             id="openrouter_api_key",
                         )
+                        yield from self._create_cache_controls(LlmProvider.OPENROUTER)
                     with Vertical(classes="section") as aips8:
                         aips8.border_title = "Deepseek"
                         yield Label("Base URL")
@@ -397,6 +442,7 @@ class OptionsView(Horizontal):
                             password=True,
                             id="deepseek_api_key",
                         )
+                        yield from self._create_cache_controls(LlmProvider.DEEPSEEK)
                     with Vertical(classes="section") as aips9:
                         aips9.border_title = "LiteLLM"
                         yield Label("Base URL")
@@ -413,6 +459,7 @@ class OptionsView(Horizontal):
                             password=True,
                             id="litellm_api_key",
                         )
+                        yield from self._create_cache_controls(LlmProvider.LITELLM)
                     with Vertical(classes="section") as aips2:
                         aips2.border_title = "LlamaCPP"
                         yield Label("Base URL")
@@ -423,6 +470,7 @@ class OptionsView(Horizontal):
                             validators=HttpValidator(),
                             id="llamacpp_base_url",
                         )
+                        yield from self._create_cache_controls(LlmProvider.LLAMACPP)
 
                     with Vertical(classes="section") as aips5:
                         aips5.border_title = "Langchain"
@@ -464,6 +512,15 @@ class OptionsView(Horizontal):
         """Handle delete chat history button pressed"""
         event.stop()
         self.app.post_message(ClearChatInputHistory())
+
+    @on(Button.Pressed)
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle button pressed events"""
+        event.stop()
+        button_id = event.control.id
+
+        if button_id and button_id.startswith("refresh_") and button_id.endswith("_models"):
+            self.on_refresh_button_pressed(event)
 
     @on(ProviderModelSelected)
     def on_provider_model_selected(self, event: ProviderModelSelected) -> None:
@@ -611,9 +668,75 @@ class OptionsView(Horizontal):
             settings.retry_backoff_factor = float(ctrl.value)
         elif ctrl.id == "retry_max_delay":
             settings.retry_max_delay = float(ctrl.value)
+        # Cache hours inputs
+        elif ctrl.id == "ollama_cache_hours":
+            settings.provider_cache_hours[LlmProvider.OLLAMA] = int(ctrl.value)
+        elif ctrl.id == "openai_cache_hours":
+            settings.provider_cache_hours[LlmProvider.OPENAI] = int(ctrl.value)
+        elif ctrl.id == "groq_cache_hours":
+            settings.provider_cache_hours[LlmProvider.GROQ] = int(ctrl.value)
+        elif ctrl.id == "anthropic_cache_hours":
+            settings.provider_cache_hours[LlmProvider.ANTHROPIC] = int(ctrl.value)
+        elif ctrl.id == "gemini_cache_hours":
+            settings.provider_cache_hours[LlmProvider.GEMINI] = int(ctrl.value)
+        elif ctrl.id == "xai_cache_hours":
+            settings.provider_cache_hours[LlmProvider.XAI] = int(ctrl.value)
+        elif ctrl.id == "openrouter_cache_hours":
+            settings.provider_cache_hours[LlmProvider.OPENROUTER] = int(ctrl.value)
+        elif ctrl.id == "deepseek_cache_hours":
+            settings.provider_cache_hours[LlmProvider.DEEPSEEK] = int(ctrl.value)
+        elif ctrl.id == "litellm_cache_hours":
+            settings.provider_cache_hours[LlmProvider.LITELLM] = int(ctrl.value)
+        elif ctrl.id == "llamacpp_cache_hours":
+            settings.provider_cache_hours[LlmProvider.LLAMACPP] = int(ctrl.value)
         else:
             self.notify(f"Unhandled input: {ctrl.id}", severity="error", timeout=settings.notification_timeout_extended)
             return
         settings.save()
         if self._provider_changed:
             self._provider_changed = False
+
+    def on_refresh_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle provider refresh button pressed"""
+        event.stop()
+        button_id = event.control.id
+
+        if not button_id or not button_id.startswith("refresh_"):
+            return
+
+        if button_id == "refresh_ollama_models":
+            provider_manager.refresh_provider_models(LlmProvider.OLLAMA)
+            self._update_cache_status(LlmProvider.OLLAMA)
+        elif button_id == "refresh_openai_models":
+            provider_manager.refresh_provider_models(LlmProvider.OPENAI)
+            self._update_cache_status(LlmProvider.OPENAI)
+        elif button_id == "refresh_groq_models":
+            provider_manager.refresh_provider_models(LlmProvider.GROQ)
+            self._update_cache_status(LlmProvider.GROQ)
+        elif button_id == "refresh_anthropic_models":
+            provider_manager.refresh_provider_models(LlmProvider.ANTHROPIC)
+            self._update_cache_status(LlmProvider.ANTHROPIC)
+        elif button_id == "refresh_gemini_models":
+            provider_manager.refresh_provider_models(LlmProvider.GEMINI)
+            self._update_cache_status(LlmProvider.GEMINI)
+        elif button_id == "refresh_xai_models":
+            provider_manager.refresh_provider_models(LlmProvider.XAI)
+            self._update_cache_status(LlmProvider.XAI)
+        elif button_id == "refresh_openrouter_models":
+            provider_manager.refresh_provider_models(LlmProvider.OPENROUTER)
+            self._update_cache_status(LlmProvider.OPENROUTER)
+        elif button_id == "refresh_deepseek_models":
+            provider_manager.refresh_provider_models(LlmProvider.DEEPSEEK)
+            self._update_cache_status(LlmProvider.DEEPSEEK)
+        elif button_id == "refresh_litellm_models":
+            provider_manager.refresh_provider_models(LlmProvider.LITELLM)
+            self._update_cache_status(LlmProvider.LITELLM)
+        elif button_id == "refresh_llamacpp_models":
+            provider_manager.refresh_provider_models(LlmProvider.LLAMACPP)
+            self._update_cache_status(LlmProvider.LLAMACPP)
+
+    def _update_cache_status(self, provider: LlmProvider) -> None:
+        """Update cache status display for a provider."""
+        provider_name = provider.value.lower()
+        status_widget = self.query_one(f"#{provider_name}_cache_status", Static)
+        status_widget.update(self._get_cache_status_text(provider))

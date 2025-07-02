@@ -87,6 +87,8 @@ class SecretsView(Vertical):
                         yield self.password_input
                         yield Label("New Password")
                         yield self.new_password_input
+                        if not secrets_manager.locked:
+                            yield Button("Lock Vault", id="lock_vault", variant="error")
                 with Vertical(classes="height-auto plr-1"):
                     with Button(
                         "Import from ENV",
@@ -95,8 +97,7 @@ class SecretsView(Vertical):
                     ) as b:
                         b.tooltip = "Import all matching environment variables from your environment."
                     yield Button("Clear Vault", id="clear_vault")
-                    yield Static("Enter password and press enter to set password / unlock.")
-                    yield Static("Blank password locks vault.")
+                    yield Static("Enter password and press enter to unlock.")
                     yield Static("Enter password and new password to change password.")
                     yield Static("Mouse over fields to see corresponding environment variables.")
 
@@ -254,12 +255,41 @@ class SecretsView(Vertical):
         if p1 != p2:
             self.notify("Passwords do not match", severity="error", timeout=settings.notification_timeout_extended)
             return
+
+        # Validate password meets security requirements
+        is_valid, error_msg = secrets_manager.validate_password(p1)
+        if not is_valid:
+            self.notify(error_msg, severity="error", timeout=settings.notification_timeout_extended)
+            return
+
         secrets_manager.unlock(p1)
         self.notify("Password set")
         with self.prevent(Input.Changed):
             self.password_input.value = ""
             self.new_password_input.value = ""
 
+        await self.recompose()
+
+    @on(Button.Pressed, "#lock_vault")
+    async def lock_vault(self, event: Button.Pressed) -> None:
+        """Lock the vault"""
+        event.stop()
+        # Confirm if there are existing secrets
+        if len(secrets_manager) > 0:
+            result = await self.app.push_screen(
+                YesNoDialog(
+                    title="Lock Vault",
+                    question="Are you sure you want to lock the vault? You will need to enter your password to unlock it again.",
+                )
+            )
+            if not result:
+                return
+
+        secrets_manager.lock()
+        self.notify("Vault locked")
+        with self.prevent(Input.Changed):
+            self.password_input.value = ""
+            self.new_password_input.value = ""
         await self.recompose()
 
     # pylint: disable=too-many-branches,too-many-return-statements
@@ -278,11 +308,14 @@ class SecretsView(Vertical):
             try:
                 v: str = ctrl.value.strip()
                 if not v:
-                    secrets_manager.lock()
+                    self.notify(
+                        "Password cannot be empty", severity="error", timeout=settings.notification_timeout_extended
+                    )
+                    return
                 else:
                     secrets_manager.unlock(v)
                 if secrets_manager.locked:
-                    self.notify("Vault locked")
+                    self.notify("Invalid password", severity="error", timeout=settings.notification_timeout_extended)
                 else:
                     self.notify("Vault unlocked")
             except ValueError as e:

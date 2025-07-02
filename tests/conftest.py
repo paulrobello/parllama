@@ -31,7 +31,7 @@ def secrets_manager(secrets_file):
     with patch.object(manager, '_acquire_file_lock') as mock_lock:
         mock_file = mock_open()
         mock_lock.return_value.__enter__.return_value = mock_file.return_value
-        manager.unlock("test_password")
+        manager.unlock("TestPass123!")  # Strong password that meets validation requirements
     
     return manager
 
