@@ -833,6 +833,11 @@ graph TD
         K[ChatMessageWidget]
         K --> L[ParMarkdown]
         K --> M[Edit Controls]
+        
+        N[ImportFabricDialog]
+        N --> O[ProgressBar]
+        N --> P[Status Labels]
+        N --> Q[Pattern Checkboxes]
     end
 ```
 
@@ -876,11 +881,110 @@ async def do_operation():
     # Long-running background operation
 ```
 
+### 6. Progress Tracking Pattern
+```python
+# Thread-safe progress updates via message system
+def progress_callback(self, progress: int, status: str, detail: str = "") -> None:
+    self.post_message(ImportProgressUpdate(progress=progress, status=status, detail=detail))
+
+@on(ImportProgressUpdate)
+def on_import_progress_update(self, event: ImportProgressUpdate) -> None:
+    # Update UI components with progress information
+    self.update_progress(event.progress, event.status, event.detail)
+```
+
 ### 5. Factory Pattern
 ```python
 def build_chat_model(self) -> BaseChatModel:
     # Create provider-specific model instance
 ```
+
+## Enhanced Import System Architecture
+
+### Fabric Import Progress Enhancement
+
+The import system has been significantly enhanced with comprehensive progress tracking and improved user experience:
+
+#### Progress Tracking System
+
+**Multi-Phase Progress Model**
+```python
+# Progress is divided into logical phases:
+# Phase 1: Download (0-30%) - Network download with real-time progress
+# Phase 2: Extraction (30-50%) - ZIP validation and extraction
+# Phase 3: Caching (50-60%) - Local cache setup
+# Phase 4: Pattern Parsing (60-90%) - Individual pattern processing  
+# Phase 5: Import (90-100%) - Selected pattern import
+```
+
+**Thread-Safe Progress Communication**
+```python
+# Progress updates flow from background thread to UI via message system
+class ImportProgressUpdate(Message):
+    progress: int      # 0-100 percentage
+    status: str        # Current operation description
+    detail: str = ""   # Additional context/error details
+
+# Background worker sends progress updates
+def progress_callback(progress: int, status: str, detail: str = "") -> None:
+    self.post_message(ImportProgressUpdate(progress=progress, status=status, detail=detail))
+```
+
+#### Enhanced Error Handling
+
+**Context-Aware Recovery Suggestions**
+```python
+def _get_network_recovery_suggestion(self, error_msg: str) -> str:
+    """Provide specific recovery steps based on error type."""
+    if "timeout" in error_msg.lower():
+        return "Check your internet connection speed and try again."
+    elif "ssl" in error_msg.lower():
+        return "SSL/Certificate issue. Check system date/time and network settings."
+    # ... more specific suggestions
+```
+
+**Error Classification System**
+- **Network Errors**: Connection, timeout, SSL, proxy issues
+- **Validation Errors**: File size, security, format problems
+- **Extraction Errors**: Zip bomb, path traversal, corruption detection
+- **Security Errors**: File validation, content checking failures
+
+#### UI Components
+
+**Progress Dialog Enhancement**
+```python
+# Progress section with dynamic visibility
+with Vertical(id="progress_section"):
+    yield Static("Status: Ready", id="status_label")          # Current operation
+    yield ProgressBar(total=100, id="progress_bar")           # Visual progress bar
+    yield Static("", id="detail_label", shrink=False)        # Detailed information
+
+# Auto-hide when not needed
+progress_section.display = len(import_fabric_manager.prompts) == 0
+```
+
+#### Security and File Size Configuration
+
+**Enhanced File Size Limits**
+```python
+# Updated limits for better usability while maintaining security
+max_file_size_mb: float = 50.0       # General files (5x increase)
+max_image_size_mb: float = 50.0      # Images for vision models (10x increase)
+max_zip_size_mb: float = 250.0       # Archives like Fabric repo (5x increase)
+max_total_attachment_size_mb: float = 250.0  # Combined attachments (2.5x increase)
+```
+
+**Security Validation Pipeline**
+```python
+# Multi-layer validation for imported content
+1. URL Validation: Ensure downloads from trusted sources
+2. File Size Validation: Respect configured limits per file type
+3. Content Validation: Format-specific checking (ZIP, JSON, images)
+4. Security Scanning: Path traversal, zip bomb, filename validation
+5. Extraction Validation: Limits on file count and total size
+```
+
+This architecture provides a robust, user-friendly import system that maintains security while offering clear feedback and error recovery guidance throughout the entire import process.
 
 ## Architecture Diagrams
 

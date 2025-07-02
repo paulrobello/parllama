@@ -255,3 +255,55 @@ Implemented comprehensive provider disable functionality to prevent connection t
 - ✅ Provides explicit user control over which providers are active
 - ✅ Maintains full backward compatibility with existing configurations
 - ✅ Robust error handling and provider name mapping
+
+### Fabric Import Progress Enhancement ✅ COMPLETED
+
+#### Overview
+Implemented comprehensive progress tracking and enhanced user experience for Fabric pattern imports to address the "black box" nature of the import process.
+
+#### Implementation Details
+- **Enhanced Import Dialog**: Added `ProgressBar`, status labels, and detailed information display with dynamic visibility
+- **Multi-Phase Progress Tracking**: 
+  - Download (0-30%): Real-time download progress with MB/total display
+  - Extraction (30-50%): ZIP validation and security scanning  
+  - Caching (50-60%): Local cache setup
+  - Pattern Parsing (60-90%): Individual pattern processing with counters
+  - Import (90-100%): Selected pattern import with individual progress
+- **Thread-Safe Communication**: Used `ImportProgressUpdate` message system for UI updates from worker threads
+- **Enhanced Error Handling**: Context-aware recovery suggestions for network, validation, and extraction errors
+
+#### Technical Implementation
+- **Progress Callback System**: Added progress callback parameters to all major methods in `ImportFabricManager`
+- **Message System**: Created `ImportProgressUpdate` message for thread-safe UI updates
+- **Error Classification**: Specific recovery suggestions for different error types (network, validation, extraction, security)
+- **UI Enhancements**: Progress section with auto-show/hide, detailed status messages, and error recovery guidance
+
+#### Files Modified
+- `src/parllama/dialogs/import_fabric_dialog.py`: Enhanced dialog with progress components and message handling
+- `src/parllama/prompt_utils/import_fabric.py`: Added progress callbacks and enhanced error handling throughout import pipeline
+- `src/parllama/messages/messages.py`: Added `ImportProgressUpdate` message class
+
+#### Benefits
+- ✅ Users see real-time progress through all import phases instead of generic loading indicator
+- ✅ Clear status messages explain what's happening at each step
+- ✅ Context-aware error messages with specific recovery suggestions
+- ✅ Thread-safe implementation using Textual's message system
+- ✅ Enhanced user experience transforms "black box" operation into transparent process
+- ✅ Maintains all existing security validations and file size limits
+
+### Enhanced File Size Limits ✅ COMPLETED
+
+#### Overview
+Increased file size limits across the application to improve usability while maintaining security protections.
+
+#### Changes Made
+- **General Files**: 10MB → 50MB (5x increase)
+- **Images**: 5MB → 50MB (10x increase) - Better support for high-resolution images with vision models
+- **ZIP Archives**: 50MB → 250MB (5x increase) - Handles larger Fabric repository downloads
+- **Total Attachments**: 100MB → 250MB (2.5x increase)
+
+#### Benefits
+- ✅ Eliminates most size-related import failures for Fabric patterns
+- ✅ Better support for high-resolution images with vision models
+- ✅ More generous limits while maintaining comprehensive security validation
+- ✅ Improved user experience for content-heavy workflows

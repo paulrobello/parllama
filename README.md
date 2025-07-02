@@ -443,6 +443,8 @@ if anything remains to be fixed before the commit is allowed.
 
 ### v0.3.26
 
+* **Enhanced Fabric Import with Progress Tracking**
+* **Increased File Size Limits for Better Usability**
 * Enhanced URL validation to preserve case sensitivity for case-sensitive endpoints
 * Improved security logging and error handling throughout secrets management
 * Implemented comprehensive file validation and security system

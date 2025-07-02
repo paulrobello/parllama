@@ -179,11 +179,11 @@ class Settings(BaseModel):
 
     # File validation settings
     file_validation_enabled: bool = True
-    max_file_size_mb: float = 10.0
-    max_image_size_mb: float = 5.0
+    max_file_size_mb: float = 50.0
+    max_image_size_mb: float = 50.0
     max_json_size_mb: float = 20.0
-    max_zip_size_mb: float = 50.0
-    max_total_attachment_size_mb: float = 100.0
+    max_zip_size_mb: float = 250.0
+    max_total_attachment_size_mb: float = 250.0
     allowed_image_extensions: list[str] = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"]
     allowed_json_extensions: list[str] = [".json"]
     allowed_markdown_extensions: list[str] = [".md", ".markdown", ".txt"]

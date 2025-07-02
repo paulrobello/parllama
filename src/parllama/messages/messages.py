@@ -382,6 +382,15 @@ class ImportReady(Message):
 
 
 @dataclass
+class ImportProgressUpdate(Message):
+    """Import progress update message."""
+
+    progress: int
+    status: str
+    detail: str = ""
+
+
+@dataclass
 class ToggleInputMode(Message):
     """Toggle between single and multi-line input mode."""
 
