@@ -17,7 +17,7 @@ except Exception as _:
     pass
 
 __author__ = "Paul Robello"
-__copyright__ = "Copyright 2024, Paul Robello"
+__copyright__ = "Copyright 2025, Paul Robello"
 __credits__ = ["Paul Robello"]
 __maintainer__ = "Paul Robello"
 __email__ = "probello@gmail.com"

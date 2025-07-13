@@ -2,11 +2,47 @@ name: Release 🐍 distribution
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (optional - will auto-detect if not provided)'
+        required: false
+        type: string
 
 jobs:
+  build:
+    name: Build distribution 📦
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python with uv
+        uses: ./.github/actions/setup-python-uv
+
+      - name: Validate version
+        id: get_version
+        uses: ./.github/actions/validate-version
+        with:
+          version-override: ${{ inputs.version }}
+
+      - name: Run tests and checks
+        run: |
+          make checkall
+
+      - name: Build package
+        run: make package
+
+      - name: Store the distribution packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+
   github-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
+    needs: build
     permissions:
       contents: write
       id-token: write
@@ -15,42 +51,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Download all the dists
+        uses: actions/download-artifact@v4
         with:
-          python-version: '3.11'
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v4
-
-      - name: Install dependencies
-        run: |
-          uv sync
-
-      - name: Get version from __init__.py
-        id: get_version
-        run: |
-          version=$(uv run python -c "from src.parllama import __version__; print(__version__)")
-          echo "Raw version output: $version"
-          echo "VERSION=$version" >> $GITHUB_ENV
-
-      - name: Check version
-        id: check_version
-        run: |
-          echo "Version in env: ${{ env.VERSION }}"
-          if [ -z "${{ env.VERSION }}" ]; then
-            echo "Error: VERSION is empty"
-            exit 1
-          fi
-
-      - name: Restore cached build artifacts
-        uses: actions/cache@v4
-        with:
-          path: dist
-          key: ${{ runner.os }}-3.11-x64-${{ hashFiles('**/pyproject.toml') }}-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-3.11-x64-${{ hashFiles('**/pyproject.toml') }}-
-            ${{ runner.os }}-3.11-x64-
+          name: python-package-distributions
+          path: dist/
 
       - name: Sign the dists with Sigstore
         uses: sigstore/gh-action-sigstore-python@v3.0.0
@@ -63,8 +68,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
+          tag="v${{ needs.build.outputs.version }}"
+          echo "Creating release for tag: $tag"
           gh release create \
-          'release-v${{ env.VERSION }}' \
+          "$tag" \
           --repo '${{ github.repository }}' \
           --generate-notes \
           --latest
@@ -73,13 +81,27 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
+          tag="v${{ needs.build.outputs.version }}"
+          echo "Uploading artifacts to release: $tag"
           gh release upload \
-          'release-v${{ env.VERSION }}' dist/** \
+          "$tag" dist/** \
           --repo '${{ github.repository }}'
 
       - name: Discord notification
+        if: always() && needs.build.result == 'success'
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         uses: Ilshidur/action-discord@master
         with:
-          args: 'A new release ${{ github.ref_name }} has been created for {{ EVENT_PAYLOAD.repository.full_name }}.'
+          args: '🎉 New release v${{ needs.build.outputs.version }} has been created for ${{ github.repository }}! 🚀'
+        continue-on-error: true
+
+      - name: Discord notification - failure
+        if: failure()
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        uses: Ilshidur/action-discord@master
+        with:
+          args: '❌ Failed to create release v${{ needs.build.outputs.version }} for ${{ github.repository }}. Check the workflow logs for details.'
+        continue-on-error: true

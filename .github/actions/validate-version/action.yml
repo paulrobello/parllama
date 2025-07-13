@@ -1,0 +1,55 @@
+name: 'Validate Version'
+description: 'Get and validate project version from __init__.py'
+inputs:
+  version-override:
+    description: 'Version to use instead of auto-detection'
+    required: false
+    default: ''
+
+outputs:
+  version:
+    description: 'The validated version'
+    value: ${{ steps.get_version.outputs.version }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Get version from __init__.py
+      id: get_version
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [ -n "${{ inputs.version-override }}" ]; then
+          version="${{ inputs.version-override }}"
+          echo "Using provided version: $version"
+          # Validate provided version
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Error: Provided version '$version' has invalid format. Must be x.y.z"
+            exit 1
+          fi
+        else
+          version=$(uv run python -c "from src.parllama import __version__; print(__version__)" 2>/dev/null || { echo "Error: Failed to get version from __init__.py"; exit 1; })
+          echo "Auto-detected version: $version"
+          # Validate auto-detected version
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Error: Auto-detected version '$version' has invalid format. Must be x.y.z"
+            exit 1
+          fi
+        fi
+        echo "version=$version" >> $GITHUB_OUTPUT
+        echo "VERSION=$version" >> $GITHUB_ENV
+
+    - name: Validate version format
+      shell: bash
+      run: |
+        set -euo pipefail
+        version="${{ steps.get_version.outputs.version }}"
+        if [ -z "$version" ]; then
+          echo "Error: Version is empty"
+          exit 1
+        fi
+        if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "Error: Invalid version format '$version'. Must be x.y.z"
+          exit 1
+        fi
+        echo "Version validation passed: $version"
