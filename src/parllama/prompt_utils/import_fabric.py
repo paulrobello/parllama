@@ -113,7 +113,7 @@ class ImportFabricManager(ParEventSystemBase):
                 # Validate expected structure
                 if progress_callback:
                     progress_callback(45, "Validating structure...", "Checking for patterns folder")
-                patterns_source_path = os.path.join(extracted_folder_path, "fabric-main", "patterns")
+                patterns_source_path = os.path.join(extracted_folder_path, "Fabric-main", "data", "patterns")
                 if not os.path.exists(patterns_source_path):
                     raise FileNotFoundError("Patterns folder not found in the downloaded zip.")
 
