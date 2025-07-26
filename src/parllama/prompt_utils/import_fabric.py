@@ -281,14 +281,16 @@ class ImportFabricManager(ParEventSystemBase):
 
     def _get_network_recovery_suggestion(self, error_msg: str) -> str:
         """Get network-specific recovery suggestion."""
-        if "timeout" in error_msg.lower():
-            return "Check your internet connection speed and try again."
+        if "timeout" in error_msg.lower() or "timed out" in error_msg.lower():
+            return f"Connection timed out after {settings.http_request_timeout}s. Check your internet speed, try again, or increase the timeout in Options."
         elif "connection refused" in error_msg.lower():
             return "GitHub may be temporarily unavailable. Try again in a few minutes."
         elif "ssl" in error_msg.lower() or "certificate" in error_msg.lower():
             return "SSL/Certificate issue. Check your system date/time and network settings."
         elif "proxy" in error_msg.lower():
             return "Check your proxy settings or try from a different network."
+        elif "dns" in error_msg.lower() or "name resolution" in error_msg.lower():
+            return "DNS resolution failed. Check your internet connection and DNS settings."
         else:
             return "Check your internet connection and ensure GitHub.com is accessible."
 
@@ -324,10 +326,17 @@ class ImportFabricManager(ParEventSystemBase):
                 raise ValueError(f"Unauthorized download URL: {url}")
 
             if progress_callback:
-                progress_callback(15, "Connecting...", "Establishing connection to GitHub")
+                progress_callback(
+                    15,
+                    "Connecting...",
+                    f"Establishing connection to GitHub (timeout: {settings.http_request_timeout}s)",
+                )
 
             response = requests.get(url, timeout=settings.http_request_timeout, stream=True)
             response.raise_for_status()
+
+            if progress_callback:
+                progress_callback(18, "Connected successfully", "Connection established, preparing download")
 
             # Check content length before downloading
             content_length = response.headers.get("content-length")
@@ -373,6 +382,12 @@ class ImportFabricManager(ParEventSystemBase):
             if progress_callback:
                 progress_callback(30, "Download complete", f"Downloaded {final_size_mb:.2f}MB successfully")
 
+        except requests.Timeout as e:
+            error_msg = f"Connection timed out after {settings.http_request_timeout} seconds"
+            recovery_suggestion = "Try increasing the HTTP timeout in Options or check your internet connection speed"
+            if progress_callback:
+                progress_callback(0, "Connection timeout", f"{error_msg}\n\nSuggestion: {recovery_suggestion}")
+            raise RuntimeError(f"Connection timeout: {error_msg}\n\nTry: {recovery_suggestion}") from e
         except requests.RequestException as e:
             error_msg = str(e)
             recovery_suggestion = self._get_network_recovery_suggestion(error_msg)

@@ -85,7 +85,7 @@ graph TD
     B --> E[StatusBar]
     B --> F[PsStatusBar]
     B --> G[TabbedContent]
-    
+
     G --> H[LocalModelView]
     G --> I[SiteModelView]
     G --> J[ChatView]
@@ -94,7 +94,7 @@ graph TD
     G --> M[ModelCreateView]
     G --> N[OptionsView]
     G --> O[LogView]
-    
+
     J --> P[SessionList]
     J --> Q[ChatTabs]
     J --> R[UserInput]
@@ -119,14 +119,14 @@ flowchart LR
         B --> C[Widget B]
         B --> D[Widget C]
     end
-    
+
     subgraph "Background Layer (Par Events)"
         E[Manager] -->|post_event| F[Event System]
         F --> G[Session]
         F --> H[Prompt]
         F -->|bubble| I[Parent]
     end
-    
+
     B -.->|triggers| F
     F -.->|updates| B
 ```
@@ -143,7 +143,7 @@ sequenceDiagram
     participant ChatSession
     participant LLM
     participant UI
-    
+
     User->>UserInput: Types message
     UserInput->>ChatTab: Submit
     ChatTab->>ChatSession: send_chat()
@@ -164,7 +164,7 @@ sequenceDiagram
     participant JobQueue
     participant OllamaAPI
     participant UI
-    
+
     User->>LocalModelView: Pull Model
     LocalModelView->>App: LocalModelPullRequested
     App->>JobQueue: Add PullModelJob
@@ -192,12 +192,12 @@ graph TD
         A --> D[chats/]
         A --> E[prompts/]
         A --> F[themes/]
-        
+
         D --> G[session_uuid.json]
         E --> H[prompt_uuid.json]
         F --> I[theme_name.json]
     end
-    
+
     subgraph "Cache Storage"
         J[XDG_CACHE_HOME/parllama]
         J --> K[ollama/]
@@ -300,23 +300,23 @@ graph TD
         A --> E[Groq]
         A --> F[Others...]
     end
-    
+
     subgraph "Configuration"
         G[Settings]
         G --> H[API Keys]
         G --> I[Base URLs]
-        
+
         J[Secrets Manager]
         J --> K[Encrypted Vault]
     end
-    
+
     subgraph "Usage"
         L[ChatSession]
         L --> M[LlmConfig]
         M --> N["build_chat_model()"]
         N --> O[LangChain Model]
     end
-    
+
     A --> G
     A --> J
     L --> A
@@ -345,28 +345,28 @@ graph TD
         A --> C[Settings Persistence]
         A --> D[Backward Compatibility]
     end
-    
+
     subgraph "Provider Manager Layer"
         E[refresh_models()]
         E --> F[Check disabled_providers]
         F --> G[Skip Disabled Providers]
         F --> H[Process Enabled Providers]
     end
-    
+
     subgraph "UI Layer"
         I[ProviderModelSelect]
         I --> J[get_filtered_provider_select_options()]
         J --> K[Filter Disabled Providers]
         K --> L[UI Dropdowns]
     end
-    
+
     subgraph "Options Screen"
         M[_create_disable_checkbox()]
         M --> N[Per-Provider Checkboxes]
         N --> O[Event Handler]
         O --> P[Provider Name Mapping]
     end
-    
+
     A --> E
     A --> I
     B --> A
@@ -392,10 +392,10 @@ def refresh_models(self):
         # Check if provider is explicitly disabled
         if settings.disabled_providers.get(p, False):
             continue  # Skip disabled providers entirely
-        
+
         if not is_provider_api_key_set(p):
             continue  # Skip providers without API keys
-        
+
         # Process enabled providers...
 ```
 
@@ -405,7 +405,7 @@ def get_filtered_provider_select_options() -> list[tuple[str, LlmProvider]]:
     """Get provider select options with disabled providers filtered out."""
     opts = get_provider_select_options()
     # Filter out any disabled providers
-    opts = [(name, provider) for name, provider in opts 
+    opts = [(name, provider) for name, provider in opts
             if not settings.disabled_providers.get(provider, False)]
     return opts
 ```
@@ -492,14 +492,14 @@ graph TD
         C[CLI Arguments]
         D[Settings JSON File]
     end
-    
+
     subgraph "Settings Manager"
         E[Settings Class]
         E --> F[Validation & Type Checking]
         E --> G[Backward Compatibility]
         E --> H[Auto-save Functionality]
     end
-    
+
     subgraph "Application Components"
         I[App Core]
         J[Network Operations]
@@ -507,12 +507,12 @@ graph TD
         L[Job Processing]
         M[Notification System]
     end
-    
+
     A --> E
     B --> E
     C --> E
     D --> E
-    
+
     E --> I
     E --> J
     E --> K
@@ -583,7 +583,7 @@ from parllama.settings_manager import settings
 response = requests.get(url, timeout=settings.http_request_timeout)
 
 # Use configurable notification timeouts
-self.notify("Error occurred", severity="error", 
+self.notify("Error occurred", severity="error",
            timeout=settings.notification_timeout_error)
 
 # Use configurable job queue settings
@@ -615,20 +615,20 @@ graph TD
         A --> D[Validation Logic]
         A --> E[Transition Logging]
     end
-    
+
     subgraph "Application States"
         F[IDLE]
         G[REFRESHING]
         H[PROCESSING_JOBS]
         I[SHUTDOWN]
     end
-    
+
     subgraph "Operation Flags"
         J[is_busy]
         K[is_refreshing]
         L[state locks]
     end
-    
+
     A --> F
     A --> G
     A --> H
@@ -697,13 +697,13 @@ def can_start_operation(self, operation_type: str = "operation") -> tuple[bool, 
     """Check if a new operation can be started"""
     if self.current_state == AppState.SHUTDOWN:
         return False, "Application is shutting down"
-    
+
     if self.is_refreshing:
         return False, "A model refresh is already in progress. Please wait."
-    
+
     if self.is_busy:
         return False, "A job is already in progress. Please wait."
-    
+
     return True, ""
 ```
 
@@ -713,7 +713,7 @@ def set_busy(self, busy: bool, operation: str = "") -> bool:
     """Set busy state and auto-transition main state"""
     # Update busy flag
     self._is_busy = busy
-    
+
     # Auto-transition main application state
     if busy and self.current_state == AppState.IDLE:
         self._transition_to(AppState.PROCESSING_JOBS, f"job processing ({operation})")
@@ -815,25 +815,25 @@ graph TD
         A[UserInput]
         A --> B[InputWithHistory]
         A --> C[UserTextArea]
-        
+
         D[ProviderModelSelect]
         D --> E[Provider Select]
         D --> F[Model Select]
     end
-    
+
     subgraph "List Widgets"
         G[SessionList]
         G --> H[SessionListItem]
-        
+
         I[PromptList]
         I --> J[PromptListItem]
     end
-    
+
     subgraph "Display Widgets"
         K[ChatMessageWidget]
         K --> L[ParMarkdown]
         K --> M[Edit Controls]
-        
+
         N[ImportFabricDialog]
         N --> O[ProgressBar]
         N --> P[Status Labels]
@@ -999,27 +999,27 @@ graph TB
         Widgets[Widgets]
         Dialogs[Dialogs]
     end
-    
+
     subgraph "Message Layer"
         TMsg[Textual Messages]
         PEvent[Par Events]
         RegSys[Registration System]
     end
-    
+
     subgraph "Business Logic"
         Managers[Managers]
         Sessions[Chat Sessions]
         Jobs[Job Queue]
         Providers[Provider System]
     end
-    
+
     subgraph "Configuration Layer"
         ConfigMgr[Configuration Manager]
         ConfigVal[Config Validation]
         EnvVars[Environment Variables]
         Defaults[Default Values]
     end
-    
+
     subgraph "Data Layer"
         Settings[Settings Files]
         Chats[Chat Storage]
@@ -1027,31 +1027,31 @@ graph TB
         Themes[Theme Storage]
         Cache[Cache]
     end
-    
+
     subgraph "External Services"
         Ollama[Ollama API]
         OpenAI[OpenAI API]
         Cloud[Other LLMs]
     end
-    
+
     UI --> TMsg
     TMsg --> Managers
     Managers --> PEvent
     PEvent --> Sessions
-    
+
     Managers --> ConfigMgr
     ConfigMgr --> ConfigVal
     ConfigMgr --> EnvVars
     ConfigMgr --> Defaults
     ConfigMgr --> Settings
-    
+
     Sessions --> Chats
     Managers --> Cache
-    
+
     Providers --> Ollama
     Providers --> OpenAI
     Providers --> Cloud
-    
+
     Views --> Widgets
     Screens --> Views
     UI --> Screens
@@ -1070,7 +1070,7 @@ stateDiagram-v2
     Updating --> Streaming: More Chunks
     Streaming --> Complete: Finished
     Complete --> Idle: Reset
-    
+
     Loading --> Error: Load Failed
     Processing --> Error: Process Failed
     Streaming --> Error: Stream Failed
@@ -1087,7 +1087,7 @@ stateDiagram-v2
 
 ## Security Architecture
 
-1. **API Key Protection**: 
+1. **API Key Protection**:
    - Environment variables
    - Encrypted secrets vault
    - Separate storage from settings
@@ -1112,7 +1112,7 @@ Three critical memory leak issues were identified and resolved to ensure stable 
 ### 1. Widget Subscription Management
 **Problem**: The `notify_subs` dictionary in `app.py` retained references to destroyed widgets indefinitely.
 
-**Solution**: 
+**Solution**:
 - Replaced `set[MessagePump]` with `WeakSet[MessagePump]` in the subscription system
 - WeakSet automatically removes references when widgets are garbage collected
 - No manual cleanup required for dead widget references

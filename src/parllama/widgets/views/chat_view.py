@@ -95,6 +95,7 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
             min-height: 3;
             max-height: 15;
             background: $surface-darken-1;
+            width: 0.99fr;
             #send_button {
                 min-width: 7;
                 width: 7;

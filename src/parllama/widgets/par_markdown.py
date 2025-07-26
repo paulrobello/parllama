@@ -6,30 +6,16 @@ from typing import Self
 
 import clipman
 from markdown_it import MarkdownIt
+from markdown_it.token import Token
 from rich.syntax import Syntax
 from textual import events, on
+from textual._slug import slug
 from textual.app import ComposeResult
 from textual.await_complete import AwaitComplete
-from textual.events import Mount
 from textual.message import Message
 from textual.widgets import Markdown, Static
-from textual.widgets._markdown import (
-    HEADINGS,
-    MarkdownBlock,
-    MarkdownBlockQuote,
-    MarkdownBulletList,
-    MarkdownHorizontalRule,
-    MarkdownOrderedList,
-    MarkdownOrderedListItem,
-    MarkdownParagraph,
-    MarkdownTable,
-    MarkdownTBody,
-    MarkdownTD,
-    MarkdownTH,
-    MarkdownTHead,
-    MarkdownTR,
-    MarkdownUnorderedListItem,
-)
+from textual.widgets._markdown import MarkdownFence, MarkdownUnorderedListItem
+from textual.widgets.markdown import MarkdownBlock
 
 
 class FenceCopyButton(Static):
@@ -86,7 +72,7 @@ class FenceCopyButton(Static):
         return self
 
 
-class ParMarkdownFence(MarkdownBlock):
+class ParMarkdownFence(MarkdownFence):
     """A fence Markdown block."""
 
     DEFAULT_CSS = """
@@ -108,14 +94,11 @@ class ParMarkdownFence(MarkdownBlock):
     }
     """
 
-    def __init__(self, markdown: Markdown, code: str, lexer: str) -> None:
-        super().__init__(markdown, classes="thinking" if lexer in ["thinking", "think"] else "")
-        self.border_title = lexer.capitalize()
-        self.code = code
-        # self.app.log_it(f"=={lexer}==")
-        # self.lexer = lexer if lexer in ["thinking", "text"] else "text"
-        self.lexer = lexer
-        self.theme = self._markdown.code_dark_theme if self.app.current_theme.dark else self._markdown.code_light_theme
+    def __init__(self, markdown: ParMarkdown, token: Token, code: str) -> None:
+        super().__init__(markdown, token, code)
+        if token.info in ["thinking", "think"]:
+            self.add_class("thinking")
+        self.border_title = token.info.capitalize()
         self.btn = FenceCopyButton(id="copy")
 
     def _block(self) -> Syntax:
@@ -125,17 +108,7 @@ class ParMarkdownFence(MarkdownBlock):
             word_wrap=self.lexer == "thinking",
             indent_guides=True,
             padding=(1, 2),
-            theme=self.theme,
         )
-
-    def _on_mount(self, _: Mount) -> None:
-        """Watch app theme switching."""
-        self.watch(self.app, "theme", self._retheme)
-
-    def _retheme(self) -> None:
-        """Rerender when the theme changes."""
-        self.theme = self._markdown.code_dark_theme if self.app.current_theme.dark else self._markdown.code_light_theme
-        self.get_child_by_type(Static).update(self._block())
 
     def compose(self) -> ComposeResult:
         yield Static(self._block(), expand=True, shrink=False, classes=self.lexer)
@@ -193,98 +166,22 @@ class ParMarkdown(Markdown):
         Returns:
             An optionally awaitable object. Await this to ensure that all children have been mounted.
         """
+        self._theme = self.app.theme
         parser = MarkdownIt("gfm-like") if self._parser_factory is None else self._parser_factory()
 
-        table_of_contents = []
-
-        def parse_markdown(tokens) -> Iterable[MarkdownBlock]:
-            """Create a stream of MarkdownBlock widgets from markdown.
-
-            Args:
-                tokens: List of tokens
-
-            Yields:
-                Widgets for mounting.
-            """
-
-            stack: list[MarkdownBlock] = []
-            stack_append = stack.append
-            block_id: int = 0
-
-            for token in tokens:
-                token_type = token.type
-                if token_type == "heading_open":
-                    block_id += 1
-                    stack_append(HEADINGS[token.tag](self, id=f"block{block_id}"))
-                elif token_type == "hr":
-                    yield MarkdownHorizontalRule(self)
-                elif token_type == "paragraph_open":
-                    stack_append(MarkdownParagraph(self))
-                elif token_type == "blockquote_open":
-                    stack_append(MarkdownBlockQuote(self))
-                elif token_type == "bullet_list_open":
-                    stack_append(MarkdownBulletList(self))
-                elif token_type == "ordered_list_open":
-                    stack_append(MarkdownOrderedList(self))
-                elif token_type == "list_item_open":
-                    if token.info:
-                        stack_append(MarkdownOrderedListItem(self, token.info))
-                    else:
-                        item_count = sum(1 for block in stack if isinstance(block, MarkdownUnorderedListItem))
-                        stack_append(
-                            MarkdownUnorderedListItem(
-                                self,
-                                self.BULLETS[item_count % len(self.BULLETS)],
-                            )
-                        )
-                elif token_type == "table_open":
-                    stack_append(MarkdownTable(self))
-                elif token_type == "tbody_open":
-                    stack_append(MarkdownTBody(self))
-                elif token_type == "thead_open":
-                    stack_append(MarkdownTHead(self))
-                elif token_type == "tr_open":
-                    stack_append(MarkdownTR(self))
-                elif token_type == "th_open":
-                    stack_append(MarkdownTH(self))
-                elif token_type == "td_open":
-                    stack_append(MarkdownTD(self))
-                elif token_type.endswith("_close"):
-                    block = stack.pop()
-                    if token.type == "heading_close":
-                        heading = block._text.plain
-                        level = int(token.tag[1:])
-                        table_of_contents.append((level, heading, block.id))
-                    if stack:
-                        stack[-1]._blocks.append(block)
-                    else:
-                        yield block
-                elif token_type == "inline":
-                    stack[-1].build_from_token(token)
-                elif token_type in ("fence", "code_block"):
-                    fence = ParMarkdownFence(self, token.content.rstrip(), token.info)
-                    if stack:
-                        stack[-1]._blocks.append(fence)
-                    else:
-                        yield fence
-                else:
-                    external = self.unhandled_token(token)
-                    if external is not None:
-                        if stack:
-                            stack[-1]._blocks.append(external)
-                        else:
-                            yield external
-
         markdown_block = self.query("MarkdownBlock")
+        self._markdown = markdown
+        self._table_of_contents = None
 
         async def await_update() -> None:
             """Update in batches."""
             BATCH_SIZE = 200
             batch: list[MarkdownBlock] = []
-            tokens = await asyncio.get_running_loop().run_in_executor(None, parser.parse, markdown)
 
             # Lock so that you can't update with more than one document simultaneously
             async with self.lock:
+                tokens = await asyncio.get_running_loop().run_in_executor(None, parser.parse, markdown)
+
                 # Remove existing blocks for the first batch only
                 removed: bool = False
 
@@ -303,7 +200,7 @@ class ParMarkdown(Markdown):
                             await self.mount_all(batch)
                         removed = True
 
-                for block in parse_markdown(tokens):
+                for block in self._parse_markdown(tokens):
                     batch.append(block)
                     if len(batch) == BATCH_SIZE:
                         await mount_batch(batch)
@@ -313,8 +210,93 @@ class ParMarkdown(Markdown):
                 if not removed:
                     await markdown_block.remove()
 
-            self._table_of_contents = table_of_contents
-
-            self.post_message(Markdown.TableOfContentsUpdated(self, self._table_of_contents).set_sender(self))
+            lines = markdown.splitlines()
+            self._last_parsed_line = len(lines) - (1 if lines and lines[-1] else 0)
+            self.post_message(Markdown.TableOfContentsUpdated(self, self.table_of_contents).set_sender(self))
 
         return AwaitComplete(await_update())
+
+    def _parse_markdown(self, tokens: Iterable[Token]) -> Iterable[MarkdownBlock]:
+        """Create a stream of MarkdownBlock widgets from markdown.
+
+        Args:
+            tokens: List of tokens.
+
+        Yields:
+            Widgets for mounting.
+        """
+
+        stack: list[MarkdownBlock] = []
+        stack_append = stack.append
+
+        get_block_class = self.get_block_class
+
+        for token in tokens:
+            token_type = token.type
+            if token_type == "heading_open":
+                stack_append(get_block_class(token.tag)(self, token))
+            elif token_type == "hr":
+                yield get_block_class("hr")(self, token)
+            elif token_type == "paragraph_open":
+                stack_append(get_block_class("paragraph_open")(self, token))
+            elif token_type == "blockquote_open":
+                stack_append(get_block_class("blockquote_open")(self, token))
+            elif token_type == "bullet_list_open":
+                stack_append(get_block_class("bullet_list_open")(self, token))
+            elif token_type == "ordered_list_open":
+                stack_append(get_block_class("ordered_list_open")(self, token))
+            elif token_type == "list_item_open":
+                if token.info:
+                    stack_append(get_block_class("list_item_ordered_open")(self, token, str(token.info)))  # type: ignore[misc]
+                else:
+                    item_count = sum(1 for block in stack if isinstance(block, MarkdownUnorderedListItem))
+                    stack_append(
+                        get_block_class("list_item_unordered_open")(
+                            self,
+                            token,
+                            str(self.BULLETS[item_count % len(self.BULLETS)]),  # type: ignore[misc]
+                        )
+                    )
+            elif token_type == "table_open":
+                stack_append(get_block_class("table_open")(self, token))
+            elif token_type == "tbody_open":
+                stack_append(get_block_class("tbody_open")(self, token))
+            elif token_type == "thead_open":
+                stack_append(get_block_class("thead_open")(self, token))
+            elif token_type == "tr_open":
+                stack_append(get_block_class("tr_open")(self, token))
+            elif token_type == "th_open":
+                stack_append(get_block_class("th_open")(self, token))
+            elif token_type == "td_open":
+                stack_append(get_block_class("td_open")(self, token))
+            elif token_type.endswith("_close"):
+                block = stack.pop()
+                if token.type == "heading_close":
+                    block.id = f"heading-{slug(block._content.plain)}-{id(block)}"
+                if stack:
+                    stack[-1]._blocks.append(block)
+                else:
+                    yield block
+            elif token_type == "inline":
+                stack[-1].build_from_token(token)
+            elif token_type in ("fence", "code_block"):
+                fence = ParMarkdownFence(self, token, token.content.rstrip())
+                if stack:
+                    stack[-1]._blocks.append(fence)
+                else:
+                    yield fence
+            # elif token_type in ("fence", "code_block"):
+            #     fence_class = get_block_class(token_type)
+            #     assert issubclass(fence_class, MarkdownFence)
+            #     fence = fence_class(self, token, token.content.rstrip())
+            #     if stack:
+            #         stack[-1]._blocks.append(fence)
+            #     else:
+            #         yield fence
+            else:
+                external = self.unhandled_token(token)
+                if external is not None:
+                    if stack:
+                        stack[-1]._blocks.append(external)
+                    else:
+                        yield external

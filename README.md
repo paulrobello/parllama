@@ -30,11 +30,11 @@
     * [Where we are](#where-we-are)Ï
     * [Where we're going](#where-were-going)
 * [What's new](#whats-new)
+  * [v0.3.27](#v0327)
   * [v0.3.26](#v0326)
   * [v0.3.25](#v0325)
   * [v0.3.24](#v0324)
-  * [v0.3.23](#v0323)
-  * [older...](#v0322) 
+  * [older...](#v0323)
 
 [![PyPI](https://img.shields.io/pypi/v/parllama)](https://pypi.org/project/parllama/)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/parllama.svg)](https://pypi.org/project/parllama/)  
@@ -47,7 +47,7 @@
 
 ## About
 PAR LLAMA is a TUI (Text UI) application designed for easy management and use of Ollama based LLMs.  (It also works with most major cloud provided LLMs)
-The application was built with [Textual](https://textual.textualize.io/) and [Rich](https://github.com/Textualize/rich?tab=readme-ov-file) and my [PAR AI Core](https://github.com/paulrobello/par_ai_core). 
+The application was built with [Textual](https://textual.textualize.io/) and [Rich](https://github.com/Textualize/rich?tab=readme-ov-file) and my [PAR AI Core](https://github.com/paulrobello/par_ai_core).
 It runs on all major OS's including but not limited to Windows, Windows WSL, Mac, and Linux.
 
 [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://buymeacoffee.com/probello3)
@@ -415,7 +415,7 @@ if anything remains to be fixed before the commit is allowed.
 * Q: Does ParLlama require Ollama?
   * A: No. ParLlama can be used with most online AI providers
 * Q: Does ParLlama support vision LLMs?
-  * A: Yes. If the selected provider / model supports vision you can add images to the chat via /slash commands 
+  * A: Yes. If the selected provider / model supports vision you can add images to the chat via /slash commands
 
 ## Roadmap
 
@@ -440,6 +440,13 @@ if anything remains to be fixed before the commit is allowed.
 
 
 ## What's new
+
+### v0.3.27
+
+* Fixed Fabric import due to upstream library changes (PR https://github.com/paulrobello/parllama/pull/61)
+* Added better Markdown streaming support thank to upstream library changes
+* Fixed chat tab send bar layout issues
+* Fixed thinking fence not showing correctly sometimes
 
 ### v0.3.26
 
@@ -474,7 +481,7 @@ if anything remains to be fixed before the commit is allowed.
 * Major code quality and type safety improvements
 * Implemented centralized state management system
 * Enhanced provider cache system with configurable per-provider durations
-* Added comprehensive provider disable functionality with checkboxes for all AI providers 
+* Added comprehensive provider disable functionality with checkboxes for all AI providers
   - Disabled providers are excluded from model refresh operations and UI dropdowns to prevent timeouts
 * Added automatic local model list refresh after successful model downloads
 

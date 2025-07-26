@@ -26,13 +26,13 @@ def secrets_file(temp_dir):
 def secrets_manager(secrets_file):
     """Create a SecretsManager instance for testing."""
     manager = SecretsManager(secrets_file)
-    
+
     # Mock the file operations for the unlock call
     with patch.object(manager, '_acquire_file_lock') as mock_lock:
         mock_file = mock_open()
         mock_lock.return_value.__enter__.return_value = mock_file.return_value
         manager.unlock("TestPass123!")  # Strong password that meets validation requirements
-    
+
     return manager
 
 

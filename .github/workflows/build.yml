@@ -67,7 +67,7 @@ jobs:
           version="${{ steps.get_version.outputs.version }}"
           tag="v$version"
           echo "Checking if tag $tag already exists..."
-          
+
           TAG_EXISTS=$(git tag --list "$tag" || true)
           if [ -n "$TAG_EXISTS" ]; then
             echo "::warning::Tag $tag already exists. Consider bumping the version."

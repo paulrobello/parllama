@@ -159,7 +159,7 @@ class Settings(BaseModel):
     job_queue_max_size: int = 150
 
     # HTTP timeout settings
-    http_request_timeout: float = 10.0
+    http_request_timeout: float = 30.0
     provider_model_request_timeout: float = 5.0
     update_check_timeout: float = 5.0
     image_fetch_timeout: float = 10.0

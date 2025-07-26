@@ -11,7 +11,6 @@ from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Vertical
-from textual.content import Content
 from textual.events import Hide, Mount, Show, Unmount
 from textual.message import Message
 from textual.widgets import Markdown, Static, TextArea
@@ -80,7 +79,6 @@ class ChatMessageWidget(Vertical, can_focus=True):
     msg: ParllamaChatMessage
     markdown: Markdown
     editor: TextArea | None = None
-    placeholder: Static
     session: ChatSession
     update_delay: float = 1
     is_final: bool = False
@@ -97,10 +95,6 @@ class ChatMessageWidget(Vertical, can_focus=True):
         self.session = session
         self.msg = msg
         self.markdown = ParMarkdown(self.markdown_raw if is_final else "")
-        self.placeholder = Static(self.markdown_raw if not is_final else "")
-
-        self.markdown.display = is_final
-        self.placeholder.display = not is_final
         self.is_final = is_final
         self.border_title = self.msg.role
         self.fence_num: int = -1
@@ -136,7 +130,6 @@ class ChatMessageWidget(Vertical, can_focus=True):
     def compose(self) -> ComposeResult:
         """Compose the content of the widget."""
         yield self.markdown
-        yield self.placeholder
         if self.msg.images:
             yield Static(id="image", expand=True)
 
@@ -157,20 +150,18 @@ class ChatMessageWidget(Vertical, can_focus=True):
     @property
     def markdown_raw(self) -> str:
         """The raw markdown."""
-        return self.raw_text.replace("<think>", "\n```thinking\n").replace("</think>", "\n```\n")
+        # First fix malformed tags, then convert to markdown
+        text = self.raw_text
+        text = text.replace("<thinkinking", "<think>")
+        text = text.replace("</thinkinking", "</think>")
+        text = text.replace("<think>", "\n```thinking\n")
+        text = text.replace("</think>", "\n```\n")
+        return text
 
     async def update(self) -> None:
         """Update the document with new Markdown."""
-        if self.is_final:
-            # self.post_message(LogIt(f"updating message {self.role}", notify=True))
-            self.placeholder.update("")
-            await self.markdown.update(self.markdown_raw)
-            self.placeholder.display = False
-            self.markdown.display = True
-        else:
-            self.placeholder.update(Content(self.markdown_raw))
-            self.markdown.display = False
-            self.placeholder.display = True
+        current_content = self.markdown_raw
+        await self.markdown.update(current_content)
 
     async def action_delete_msg(self) -> None:
         """Handle the delete message action."""
@@ -187,7 +178,6 @@ class ChatMessageWidget(Vertical, can_focus=True):
             self.notify("Only completed messages can be edited", severity="error")
             return
         self.markdown.display = False
-        self.placeholder.display = False
         self.editor = TextArea(self.raw_text, tab_behavior="indent")
         await self.mount(self.editor)
         self.editor.focus()
@@ -202,6 +192,7 @@ class ChatMessageWidget(Vertical, can_focus=True):
             self.msg.content = self.msg.content.split("</think>")[1]
         await self.editor.remove()
         self.editor = None
+        self.markdown.display = True
         await self.update()
         self.session.save()
 
