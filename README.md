@@ -30,6 +30,7 @@
     * [Where we are](#where-we-are)Ï
     * [Where we're going](#where-were-going)
 * [What's new](#whats-new)
+  * [v0.3.28](#v0328)
   * [v0.3.27](#v0327)
   * [v0.3.26](#v0326)
   * [v0.3.25](#v0325)
@@ -440,6 +441,12 @@ if anything remains to be fixed before the commit is allowed.
 
 
 ## What's new
+
+### v0.3.28
+
+* Fix some outdated dependencies
+* Fixed delete chat tab on macOS sometimes not working
+* Streamlined markdown fences
 
 ### v0.3.27
 

@@ -131,7 +131,7 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
             show=True,
         ),
         Binding(
-            key="ctrl+delete",
+            key="ctrl+delete,backspace+delete",
             action="remove_tab",
             description="Remove Tab",
             key_display="^del",
