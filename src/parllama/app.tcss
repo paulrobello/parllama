@@ -128,6 +128,10 @@ Rule {
     margin: 0;
 }
 
+LoadingIndicator.-textual-loading-indicator {
+    background: $panel;
+}
+
 .list {
     margin: 0 1 0 0;
     border: solid blue;
