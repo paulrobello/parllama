@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Self
 
 import clipman
@@ -11,6 +12,27 @@ from textual.message import Message
 from textual.widgets import Markdown, Static
 from textual.widgets._markdown import MarkdownFence
 from textual.widgets.markdown import MarkdownBlock
+
+
+def sanitize_class_name(name: str) -> str:
+    """Sanitize a string to be used as a CSS class name.
+
+    CSS class names must contain only letters, numbers, underscores, or hyphens,
+    and must not begin with a number.
+
+    Args:
+        name: The string to sanitize.
+
+    Returns:
+        A sanitized string safe to use as a CSS class name.
+    """
+    # Replace invalid characters with hyphens
+    sanitized = re.sub(r"[^a-zA-Z0-9_-]", "-", name)
+    # Ensure it doesn't start with a number
+    if sanitized and sanitized[0].isdigit():
+        sanitized = f"lang-{sanitized}"
+    # Return a default if empty
+    return sanitized or "unknown"
 
 
 class FenceCopyButton(Static):
@@ -106,7 +128,9 @@ class ParMarkdownFence(MarkdownFence):
         )
 
     def compose(self) -> ComposeResult:
-        yield Static(self._block(), expand=True, shrink=False, classes=self.lexer)
+        # Sanitize the lexer name to ensure it's a valid CSS class name
+        lexer_class = sanitize_class_name(self.lexer) if self.lexer else ""
+        yield Static(self._block(), expand=True, shrink=False, classes=lexer_class)
         yield self.btn
 
     @on(FenceCopyButton.Pressed, "#copy")
