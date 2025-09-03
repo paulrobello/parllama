@@ -3,7 +3,11 @@
 ## Table of Contents
 
 * [About](#about)
-   * [Screenshots](#screenshots)
+* [Features](#features)
+   * [Core Capabilities](#core-capabilities)
+   * [Advanced Features](#advanced-features)
+   * [Technical Excellence](#technical-excellence)
+* [Screenshots](#screenshots)
 * [Prerequisites for running](#prerequisites-for-running)
 * [Prerequisites for dev](#prerequisites-for-dev)
 * [Prerequisites for huggingface model quantization](#prerequisites-for-huggingface-model-quantization)
@@ -30,12 +34,12 @@
     * [Where we are](#where-we-are)Ï
     * [Where we're going](#where-were-going)
 * [What's new](#whats-new)
+  * [v0.4.0](#v040)
   * [v0.3.28](#v0328)
   * [v0.3.27](#v0327)
   * [v0.3.26](#v0326)
   * [v0.3.25](#v0325)
-  * [v0.3.24](#v0324)
-  * [older...](#v0323)
+  * [older...](#v0324)
 
 [![PyPI](https://img.shields.io/pypi/v/parllama)](https://pypi.org/project/parllama/)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/parllama.svg)](https://pypi.org/project/parllama/)  
@@ -52,6 +56,32 @@ The application was built with [Textual](https://textual.textualize.io/) and [Ri
 It runs on all major OS's including but not limited to Windows, Windows WSL, Mac, and Linux.
 
 [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://buymeacoffee.com/probello3)
+
+## Features
+
+### Core Capabilities
+- **Multi-Provider Support**: Seamlessly work with Ollama, OpenAI, Anthropic, Groq, XAI, OpenRouter, Deepseek, and LiteLLM
+- **Vision Model Support**: Chat with images using vision-capable models like LLaVA and GPT-4 Vision
+- **Session Management**: Save, load, organize, and export chat sessions with full conversation history
+- **Custom Prompts**: Create, import, and manage a library of custom system prompts and templates
+- **Fabric Integration**: Import and use Fabric patterns as reusable prompts
+- **Model Management**: Pull, delete, copy, create, and quantize models with native Ollama support
+
+### Advanced Features
+- **Smart Model Caching**: Intelligent per-provider model caching with configurable durations
+- **Provider Management**: Enable/disable providers, manage API keys, and configure endpoints
+- **Theme System**: Dark/light modes with custom theme support via JSON configuration
+- **Auto-naming**: Automatically name chat sessions using LLM-generated titles
+- **Slash Commands**: Extensive command system for quick actions and navigation
+- **Export Options**: Export conversations as Markdown files for documentation
+- **Security**: Comprehensive file validation and secure operations for all data handling
+
+### Technical Excellence
+- **Async Architecture**: Non-blocking operations for smooth, responsive UI performance
+- **Type Safety**: Fully typed Python codebase with comprehensive type checking
+- **Extensible Design**: Easy to add new providers, features, and customizations
+- **Cross-Platform**: Native support for Windows, macOS, Linux, and WSL
+- **Hot Reload**: Development mode with automatic UI updates on code changes
 
 ## Screenshots
 Supports Dark and Light mode as well as custom themes.
@@ -180,7 +210,8 @@ make setup
 ## Command line arguments
 ```
 usage: parllama [-h] [-v] [-d DATA_DIR] [-u OLLAMA_URL] [-t THEME_NAME] [-m {dark,light}]
-                [-s {local,site,chat,prompts,tools,create,options,logs}] [--use-last-tab-on-startup {0,1}] [-p PS_POLL] [-a {0,1}]
+                [-s {local,site,chat,prompts,tools,create,options,logs}] [--use-last-tab-on-startup {0,1}]
+                [--load-local-models-on-startup {0,1}] [-p PS_POLL] [-a {0,1}]
                 [--restore-defaults] [--purge-cache] [--purge-chats] [--purge-prompts] [--no-save] [--no-chat-save]
 
 PAR LLAMA -- Ollama TUI.
@@ -200,6 +231,8 @@ options:
                         Starting tab. Defaults to local
   --use-last-tab-on-startup {0,1}
                         Use last tab on startup. Defaults to 1
+  --load-local-models-on-startup {0,1}
+                        Load local models on startup. Defaults to 1
   -p PS_POLL, --ps-poll PS_POLL
                         Interval in seconds to poll ollama ps command. 0 = disable. Defaults to 3
   -a {0,1}, --auto-name-session {0,1}
@@ -441,6 +474,11 @@ if anything remains to be fixed before the commit is allowed.
 
 
 ## What's new
+
+### v0.4.0
+
+* Fixed type checking issue with ClickableLabel widget accessing incorrect property
+* Changed from accessing `renderable` to `content` property to align with Textual API
 
 ### v0.3.28
 

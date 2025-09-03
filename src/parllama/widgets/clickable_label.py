@@ -30,11 +30,11 @@ class ClickableLabel(Label):
     @property
     def plain_text(self) -> str:
         """Return the plain text of the label."""
-        if isinstance(self.renderable, str):
-            return self.renderable
-        if isinstance(self.renderable, Text):
-            return cast(Text, self.renderable).plain
-        raise ValueError("Unknown renderable type")
+        if isinstance(self.content, str):
+            return self.content
+        if isinstance(self.content, Text):
+            return cast(Text, self.content).plain
+        raise ValueError("Unknown content type")
 
     def on_click(self) -> None:
         """Called when the label is clicked."""
