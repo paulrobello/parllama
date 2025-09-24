@@ -193,6 +193,18 @@ class Settings(BaseModel):
     max_zip_compression_ratio: float = 100.0
     sanitize_filenames: bool = True
 
+    # Execution settings
+    execution_enabled: bool = True
+    execution_timeout_seconds: int = 30
+    execution_max_output_size: int = 10000
+    execution_temp_dir: Path = Path()
+    execution_templates_file: Path = Path()
+    execution_history_file: Path = Path()
+    execution_require_confirmation: bool = True
+    execution_allowed_commands: list[str] = ["uv", "python3", "python", "node", "tsc", "bash", "sh", "zsh", "fish"]
+    execution_background_limit: int = 3
+    execution_history_max_entries: int = 100
+
     # pylint: disable=too-many-branches, too-many-statements
     def __init__(self) -> None:
         """Initialize Manager."""
@@ -262,12 +274,22 @@ class Settings(BaseModel):
         self.chat_history_file = self.data_dir / "chat_history.json"
         self.secrets_file = self.data_dir / "secrets.json"
 
+        # Execution-related file paths
+        execution_dir = self.data_dir / "execution"
+        self.execution_temp_dir = self.cache_dir / "execution" / "temp"
+        self.execution_templates_file = execution_dir / "templates.json"
+        self.execution_history_file = execution_dir / "history.json"
+
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.image_cache_dir.mkdir(parents=True, exist_ok=True)
         self.ollama_cache_dir.mkdir(parents=True, exist_ok=True)
         self.chat_dir.mkdir(parents=True, exist_ok=True)
         self.prompt_dir.mkdir(parents=True, exist_ok=True)
         self.export_md_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create execution directories
+        execution_dir.mkdir(parents=True, exist_ok=True)
+        self.execution_temp_dir.mkdir(parents=True, exist_ok=True)
 
         if not self.data_dir.exists():
             raise FileNotFoundError(f"Par Llama data directory does not exist: {self.data_dir}")
@@ -534,6 +556,21 @@ class Settings(BaseModel):
                 disabled_providers[LlmProvider.LITELLM] = True
 
             self.disabled_providers = disabled_providers
+
+            # Execution settings (backwards compatible)
+            self.execution_enabled = data.get("execution_enabled", self.execution_enabled)
+            self.execution_timeout_seconds = max(
+                1, data.get("execution_timeout_seconds", self.execution_timeout_seconds)
+            )
+            self.execution_max_output_size = max(
+                100, data.get("execution_max_output_size", self.execution_max_output_size)
+            )
+            self.execution_background_limit = max(
+                1, data.get("execution_background_limit", self.execution_background_limit)
+            )
+            saved_execution_allowed_commands = data.get("execution_allowed_commands")
+            if saved_execution_allowed_commands and isinstance(saved_execution_allowed_commands, list):
+                self.execution_allowed_commands = saved_execution_allowed_commands
 
             self.update_env()
         except (FileNotFoundError, SecureFileOpsError):

@@ -24,26 +24,26 @@ PAR LLAMA follows a layered architecture with clear separation of concerns:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    UI Layer (Textual)                    │
+│                    UI Layer (Textual)                   │
 │  Screens, Views, Widgets, Dialogs, User Interactions    │
 ├─────────────────────────────────────────────────────────┤
-│                  Message System Layer                    │
+│                  Message System Layer                   │
 │    Textual Messages (UI) | Par Events (Background)      │
 ├─────────────────────────────────────────────────────────┤
-│                   Business Logic Layer                   │
+│                   Business Logic Layer                  │
 │  Managers, Sessions, Providers, Job Processing          │
 ├─────────────────────────────────────────────────────────┤
-│                Configuration Management Layer            │
+│                Configuration Management Layer           │
 │   Settings Manager, Environment Variables, Validation   │
 ├─────────────────────────────────────────────────────────┤
-│              File Validation and Security Layer          │
+│              File Validation and Security Layer         │
 │  FileValidator, SecureFileOperations, Content Checking  │
 ├─────────────────────────────────────────────────────────┤
-│                 Data Persistence Layer                   │
+│                 Data Persistence Layer                  │
 │   JSON Files, Settings, Themes, Sessions, Prompts       │
 ├─────────────────────────────────────────────────────────┤
-│                  External Services Layer                 │
-│      Ollama API, OpenAI, Anthropic, Other LLMs         │
+│                  External Services Layer                │
+│      Ollama API, OpenAI, Anthropic, Other LLMs          │
 └─────────────────────────────────────────────────────────┘
 ```
 

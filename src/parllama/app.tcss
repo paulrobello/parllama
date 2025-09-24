@@ -176,3 +176,118 @@ Widget {
     scrollbar-color-active: $primary;
     scrollbar-color-hover: $primary-darken-1;
 }
+
+ExecutionView {
+    #toolbar {
+        height: 3;
+        background: $surface-darken-1;
+        padding: 0 0 0 1;
+        Button {
+            margin-right: 1;
+        }
+
+    }
+
+    #template_list {
+        height: 1fr;
+        border: solid $accent;
+    }
+
+    ExecutionTemplateListItem {
+        height: auto;
+        min-height: 7;
+        padding: 1;
+        border: solid $accent;
+        Vertical {
+            height: auto;
+            min-height: 4;
+            width: 1fr;
+            margin: 0;
+            Horizontal {
+                height: auto;
+
+            }
+        }
+        .button_row {
+            height: 3;
+            width: auto;
+            margin: 1 0 0 0;
+            dock: right;
+            align: right middle;
+            Button {
+                margin: 0 1;
+            }
+        }
+
+        Label {
+            height: 1;
+            margin: 0;
+        }
+    }
+
+    #stats {
+        height: 3;
+        width: 1fr;
+        background: $surface;
+        padding: 0 0 0 1;
+        align: left middle;
+        Button {
+            dock: right;
+            margin-right: 1;
+        }
+    }
+}
+
+
+EditExecutionTemplateDialog {
+    align: center middle;
+    background: black 75%;
+
+
+    &> Vertical {
+        background: $panel;
+        height: auto;
+        width: 80;
+        min-height: 25;
+        border: thick $primary;
+        padding: 1;
+    }
+
+    Input {
+        width: 70;
+        margin: 1 0;
+    }
+
+    TextArea {
+        width: 70;
+        height: 4;
+        margin: 1 0;
+    }
+
+    Label {
+        margin-top: 1;
+        width: auto;
+    }
+
+    Button {
+        margin: 1;
+    }
+
+    #buttons {
+        width: 100%;
+        align-horizontal: right;
+    }
+
+    #template_vars {
+        background: $surface-darken-1;
+        border: solid $accent;
+        padding: 1;
+        margin: 1 0;
+        width: 70;
+        height: 8;
+    }
+
+    #template_vars Label {
+        margin: 0;
+    }
+}

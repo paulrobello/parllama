@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from par_ai_core.llm_config import LlmConfig
 from par_ai_core.llm_providers import LlmProvider, provider_base_urls, provider_name_to_enum
@@ -22,6 +23,9 @@ from parllama.utils import shorten_path, valid_tabs
 from parllama.validators.http_validator import HttpValidator
 from parllama.widgets.input_blur_submit import InputBlurSubmit
 from parllama.widgets.provider_model_select import ProviderModelSelect
+
+if TYPE_CHECKING:
+    from parllama.app import ParLlamaApp
 
 
 class OptionsView(Horizontal):
@@ -73,6 +77,7 @@ class OptionsView(Horizontal):
         """Initialise the screen."""
         super().__init__(**kwargs)
         self._provider_changed = False
+        self._execution_settings_changed = False
 
     def _get_cache_status_text(self, provider: LlmProvider) -> str:
         """Get cache status text for a provider."""
@@ -294,6 +299,20 @@ class OptionsView(Horizontal):
                             label="Close session config on submit",
                             value=settings.close_session_config_on_submit,
                             id="close_session_config_on_submit",
+                        )
+
+                    with Vertical(classes="section") as vse:
+                        vse.border_title = "Template Execution"
+                        yield Checkbox(
+                            label="Execution enabled (Ctrl+R on chat messages)",
+                            value=settings.execution_enabled,
+                            id="execution_enabled",
+                        )
+                        yield Label("Allowed commands (comma separated)")
+                        yield InputBlurSubmit(
+                            value=", ".join(settings.execution_allowed_commands),
+                            max_length=200,
+                            id="execution_allowed_commands",
                         )
 
                     with Vertical(classes="section") as vscs:
@@ -600,6 +619,9 @@ class OptionsView(Horizontal):
             settings.langchain_config.tracing = ctrl.value
         elif ctrl.id == "enable_network_retries":
             settings.enable_network_retries = ctrl.value
+        elif ctrl.id == "execution_enabled":
+            settings.execution_enabled = ctrl.value
+            self._execution_settings_changed = True
         elif ctrl.id and ctrl.id.startswith("disable_") and ctrl.id.endswith("_provider"):
             # Extract provider name from checkbox id (e.g., "disable_litellm_provider" -> "litellm")
             provider_name = ctrl.id.replace("disable_", "").replace("_provider", "")
@@ -740,12 +762,23 @@ class OptionsView(Horizontal):
             settings.provider_cache_hours[LlmProvider.LITELLM] = int(ctrl.value)
         elif ctrl.id == "llamacpp_cache_hours":
             settings.provider_cache_hours[LlmProvider.LLAMACPP] = int(ctrl.value)
+        elif ctrl.id == "execution_allowed_commands":
+            # Parse comma-separated list and clean up whitespace
+            commands = [cmd.strip() for cmd in ctrl.value.split(",") if cmd.strip()]
+            settings.execution_allowed_commands = commands
+            self._execution_settings_changed = True
         else:
             self.notify(f"Unhandled input: {ctrl.id}", severity="error", timeout=settings.notification_timeout_extended)
             return
         settings.save()
         if self._provider_changed:
             self._provider_changed = False
+        if self._execution_settings_changed:
+            # Update the command executor with new settings
+            app: ParLlamaApp = self.app  # type: ignore[assignment]
+            if hasattr(app, "command_executor"):
+                app.command_executor.update_settings(settings)
+            self._execution_settings_changed = False
 
     def on_refresh_button_pressed(self, event: Button.Pressed) -> None:
         """Handle provider refresh button pressed"""

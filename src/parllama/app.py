@@ -34,11 +34,20 @@ from parllama.chat_manager import ChatManager, chat_manager
 from parllama.dialogs.help_dialog import HelpDialog
 from parllama.dialogs.information import InformationDialog
 from parllama.dialogs.theme_dialog import ThemeDialog
+from parllama.execution.command_executor import CommandExecutor
+
+# Execution system imports
+from parllama.execution.execution_manager import ExecutionManager, execution_manager as global_execution_manager
+from parllama.execution.template_matcher import TemplateMatcher
 from parllama.messages.messages import (
     ChangeTab,
+    ChatMessage,
     ClearChatInputHistory,
     DeletePrompt,
     DeleteSession,
+    ExecuteMessageRequested,
+    ExecutionCompleted,
+    ExecutionFailed,
     LocalCreateModelFromExistingRequested,
     LocalModelCopied,
     LocalModelCopyRequested,
@@ -165,6 +174,9 @@ class ParLlamaApp(App[None]):
     async def on_mount(self) -> None:
         """Display the screen."""
         self.main_screen = MainScreen()
+
+        # Initialize execution system
+        await self._initialize_execution_system()
 
         await self.push_screen(self.main_screen)
         if settings.check_for_updates:
@@ -817,6 +829,155 @@ Some functions are only available via slash / commands on that chat tab. You can
                 severity=event.severity,
                 timeout=event.timeout or int(settings.notification_timeout_info),
             )
+
+    async def _initialize_execution_system(self) -> None:
+        """Initialize the execution system."""
+        from parllama.execution import execution_manager
+
+        global global_execution_manager
+
+        # Initialize the global execution manager
+        global_execution_manager = ExecutionManager(self)
+        global_execution_manager.initialize_from_settings(settings)
+
+        # Set the global variable in the execution_manager module
+        execution_manager.execution_manager = global_execution_manager
+
+        # Initialize command executor and template matcher
+        self.command_executor = CommandExecutor(settings)
+        self.template_matcher = TemplateMatcher()
+
+        # Load templates and history
+        await global_execution_manager.load_templates()
+        await global_execution_manager.load_execution_history()
+
+    @on(ExecuteMessageRequested)
+    async def on_execute_message_requested(self, event: ExecuteMessageRequested) -> None:
+        """Handle execution request."""
+        event.stop()
+
+        if not settings.execution_enabled:
+            self.notify("Code execution is disabled", severity="warning")
+            return
+
+        try:
+            # Find matching templates
+            if global_execution_manager is None:
+                self.notify("Execution system not initialized", severity="error")
+                return
+
+            templates = global_execution_manager.get_enabled_templates()
+            matching_templates = self.template_matcher.find_matching_templates(event.content, templates)
+
+            if not matching_templates:
+                self.notify("No execution templates match this content", severity="warning")
+                return
+
+            # Use the best matching template
+            best_match = matching_templates[0]
+            template = best_match["template"]
+
+            # Extract the specific code to execute from applicable blocks
+            applicable_blocks = best_match.get("applicable_blocks", [])
+            if applicable_blocks:
+                # Use the first applicable code block
+                code_block = applicable_blocks[0]
+                content_to_execute = code_block["code"]
+                self.notify(f"Executing {code_block['language']} code block", severity="information")
+            else:
+                # Fallback: use get_executable_content to extract code
+                executable_parts = self.template_matcher.get_executable_content(event.content)
+                if executable_parts:
+                    content_to_execute = executable_parts[0]["content"]
+                    self.notify(f"Executing {executable_parts[0]['language']} code", severity="information")
+                else:
+                    content_to_execute = event.content
+                    self.notify("No code blocks found, executing entire content", severity="warning")
+
+            # Check if confirmation is required
+            requires_confirmation, warnings = self.template_matcher.should_require_confirmation(
+                content_to_execute, template
+            )
+
+            if requires_confirmation and settings.execution_require_confirmation:
+                # For now, just show warnings and proceed - full confirmation dialog would be added later
+                if warnings:
+                    warning_text = "; ".join(warnings)
+                    self.notify(f"Executing with warnings: {warning_text}", severity="warning")
+
+            # Execute the template with the extracted code content
+            result = await self.command_executor.execute_template(
+                template=template,
+                content=content_to_execute,
+                message_id=event.message_id,
+            )
+
+            # Add to execution history
+            if global_execution_manager:
+                global_execution_manager.add_execution_result(result)
+
+            # Post completion message
+            self.post_message(
+                ExecutionCompleted(message_id=event.message_id, result=result.to_dict(), add_to_chat=True)
+            )
+
+            # Notify success/failure
+            if result.success:
+                self.notify(f"Executed successfully: {template.name}", severity="information")
+            else:
+                self.notify(f"Execution failed: {result.error_message or 'Unknown error'}", severity="error")
+
+        except Exception as e:
+            import traceback
+
+            error_details = f"{str(e)} - {traceback.format_exc()}"
+            self.notify(f"Execution error: {str(e)}", severity="error")
+            self.post_message(
+                ExecutionFailed(message_id=event.message_id, template_id=event.template_id or "", error=error_details)
+            )
+
+    @on(ExecutionCompleted)
+    def on_execution_completed(self, event: ExecutionCompleted) -> None:
+        """Handle execution completion."""
+        event.stop()
+
+        if event.add_to_chat:
+            # Add execution result as a new message to the current chat session
+            try:
+                from parllama.chat_message import ParllamaChatMessage
+                from parllama.execution.execution_result import ExecutionResult
+
+                result = ExecutionResult.from_dict(event.result)
+
+                # Create a new assistant message with the execution result
+                formatted_output = result.get_formatted_output()
+
+                # Get the current session from the chat view
+                chat_view = self.main_screen.chat_view
+                if hasattr(chat_view, "session") and chat_view.session:
+                    execution_message = ParllamaChatMessage(role="assistant", content=formatted_output)
+
+                    chat_view.session.add_message(execution_message)
+                    # Follow the same notification pattern as send_chat
+                    chat_view.session._notify_subs(
+                        ChatMessage(parent_id=chat_view.session.id, message_id=execution_message.id, is_final=True)
+                    )
+                    from parllama.messages.par_chat_messages import ParChatUpdated
+
+                    chat_view.session.post_message(
+                        ParChatUpdated(parent_id=chat_view.session.id, message_id=execution_message.id, is_final=True)
+                    )
+                    chat_view.session.save()
+                    self.log_it(f"Execution result added to chat session: {chat_view.session.name}")
+
+            except Exception as e:
+                self.notify(f"Error adding execution result to chat: {str(e)}", severity="error")
+
+    @on(ExecutionFailed)
+    def on_execution_failed(self, event: ExecutionFailed) -> None:
+        """Handle execution failure."""
+        event.stop()
+        self.log_it(f"Execution failed for message {event.message_id}: {event.error}")
 
     def log_it(self, msg: ConsoleRenderable | RichCast | str | object) -> None:
         """Log a message to the log view"""

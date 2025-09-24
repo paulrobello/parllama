@@ -445,3 +445,50 @@ class HistoryNext(Message):
     def control(self) -> Input | TextArea:
         """Alias for self.input."""
         return self.input
+
+
+# ---------- Execution Related Messages ---------- #
+
+
+@dataclass
+class ExecuteMessageRequested(AppRequest):
+    """Request to execute message content."""
+
+    message_id: str
+    content: str
+    template_id: str | None = None
+
+
+@dataclass
+class ExecutionCompleted(Message):
+    """Execution completed notification."""
+
+    message_id: str
+    result: dict  # ExecutionResult as dict to avoid circular imports
+    add_to_chat: bool = True
+
+
+@dataclass
+class ExecutionFailed(Message):
+    """Execution failed notification."""
+
+    message_id: str
+    template_id: str
+    error: str
+
+
+@dataclass
+class ExecutionTemplateSelected(Message):
+    """Execution template selected for running."""
+
+    message_id: str
+    content: str
+    template_id: str
+
+
+@dataclass
+class ExecutionCancelled(Message):
+    """Execution was cancelled by user."""
+
+    message_id: str
+    template_id: str

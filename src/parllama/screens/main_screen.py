@@ -14,6 +14,7 @@ from parllama.messages.messages import ModelInteractRequested, PsMessage, Status
 from parllama.settings_manager import TabType, settings
 from parllama.widgets.views.chat_view import ChatView
 from parllama.widgets.views.create_model_view import ModelCreateView
+from parllama.widgets.views.execution_view import ExecutionView
 from parllama.widgets.views.local_model_view import LocalModelView
 from parllama.widgets.views.log_view import LogView
 from parllama.widgets.views.model_tools_view import ModelToolsView
@@ -41,6 +42,7 @@ class MainScreen(Screen[None]):
     chat_view: ChatView
     model_tools_view: ModelToolsView
     create_view: ModelCreateView
+    execution_view: ExecutionView
     options_view: OptionsView
     # secrets_view: SecretsView
     rag_view: RagView
@@ -59,6 +61,7 @@ class MainScreen(Screen[None]):
         self.prompt_view = PromptView(id="prompt_view")
         self.create_view = ModelCreateView(id="model_create")
         self.model_tools_view = ModelToolsView(id="model_tools")
+        self.execution_view = ExecutionView(id="execution_view")
         # self.secrets_view = SecretsView(id="secrets")
         self.options_view = OptionsView(id="options")
 
@@ -100,6 +103,8 @@ class MainScreen(Screen[None]):
                 yield self.model_tools_view
             with TabPane("Create", id="Create"):
                 yield self.create_view
+            with TabPane("Execution", id="Execution"):
+                yield self.execution_view
             with TabPane("Options", id="Options"):
                 yield self.options_view
             # with TabPane("Secrets", id="Secrets"):

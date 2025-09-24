@@ -25,7 +25,8 @@
 * [Quick start Ollama chat workflow](#Quick-start-Ollama-chat-workflow)
 * [Quick start image chat workflow](#Quick-start-image-chat-workflow)
 * [Quick start OpenAI provider chat workflow](#Quick-start-OpenAI-provider-chat-workflow)
-* [Custom Prompts](#Custom-Prompts)
+* [Custom Prompts](#custom-prompts)
+* [Template Execution](#template-execution)
 * [Themes](#themes)
 * [Screen Help](https://github.com/paulrobello/parllama/blob/main/src/parllama/help.md)
 * [Contributing](#contributing)
@@ -34,12 +35,12 @@
     * [Where we are](#where-we-are)Ï
     * [Where we're going](#where-were-going)
 * [What's new](#whats-new)
+  * [v0.5.0](#v050)
   * [v0.4.0](#v040)
   * [v0.3.28](#v0328)
   * [v0.3.27](#v0327)
   * [v0.3.26](#v0326)
-  * [v0.3.25](#v0325)
-  * [older...](#v0324)
+  * [older...](#v0325)
 
 [![PyPI](https://img.shields.io/pypi/v/parllama)](https://pypi.org/project/parllama/)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/parllama.svg)](https://pypi.org/project/parllama/)  
@@ -68,6 +69,7 @@ It runs on all major OS's including but not limited to Windows, Windows WSL, Mac
 - **Model Management**: Pull, delete, copy, create, and quantize models with native Ollama support
 
 ### Advanced Features
+- **Template Execution**: Secure code execution system with configurable command allowlists and safety controls
 - **Smart Model Caching**: Intelligent per-provider model caching with configurable durations
 - **Provider Management**: Enable/disable providers, manage API keys, and configure endpoints
 - **Theme System**: Dark/light modes with custom theme support via JSON configuration
@@ -368,10 +370,57 @@ llama-server -mu URL_TO_MODEL
 ```
 
 ## Custom Prompts
-You can create a library of custom prompts for easy starting of new chats.  
-You can set up system prompts and user messages to prime conversations with the option of sending immediately to the LLM upon loading of the prompt.  
-Currently, importing prompts from the popular Fabric project is supported with more on the way.  
+You can create a library of custom prompts for easy starting of new chats.
+You can set up system prompts and user messages to prime conversations with the option of sending immediately to the LLM upon loading of the prompt.
+Currently, importing prompts from the popular Fabric project is supported with more on the way.
 
+## Template Execution
+PAR LLAMA includes a powerful yet secure template execution system that allows you to run code snippets and commands directly from chat messages. This feature enables interactive development workflows, data analysis, and quick testing without leaving the chat interface.
+
+### Security & Safety
+The execution system is designed with security as a top priority:
+- **Command Allowlists**: Only pre-approved commands can be executed
+- **Content Validation**: Dangerous patterns are automatically detected and blocked
+- **Sandboxing**: Commands run in a controlled environment with restricted permissions
+- **Timeout Protection**: All executions have configurable time limits
+- **Output Limiting**: Command output is truncated to prevent resource exhaustion
+
+### Configuration
+Template execution settings are configurable in the Options tab under "Template Execution":
+
+- **Execution Enabled**: Toggle to enable/disable the execution feature (Ctrl+R on chat messages)
+- **Allowed Commands**: Comma-separated list of base commands permitted for execution
+  - Default includes: `uv`, `python3`, `python`, `node`, `tsc`, `bash`, `sh`, `zsh`, `fish`
+  - Add your own trusted commands as needed
+  - Changes take effect immediately without restart
+
+### Usage
+1. **Enable Execution**: Ensure "Execution enabled" is checked in Options
+2. **Create Executable Content**: Paste or type code/commands in a chat message
+3. **Execute**: Press **Ctrl+R** on any chat message to execute its content
+4. **Review Results**: Execution results appear as a new chat response with:
+   - Command that was executed
+   - Standard output and error streams
+   - Exit code and execution time
+   - Any temporary files created
+
+### Execution Templates
+The system supports flexible execution templates that can:
+- Execute inline code directly from message content
+- Create temporary files for multi-line scripts
+- Set custom working directories
+- Configure environment variables
+- Run commands in foreground or background
+- Handle different programming languages and tools
+
+### Best Practices
+- Start with a restrictive allowed commands list and expand as needed
+- Test execution templates with non-destructive commands first
+- Be cautious with commands that modify files or system state
+- Use the timeout settings to prevent long-running processes
+- Review execution results before relying on outputs
+
+This feature transforms PAR LLAMA into a powerful development companion, enabling seamless transitions between conversation and code execution.
 
 ## Themes
 Themes are json files stored in the themes folder in the data directory which defaults to **~/.parllama/themes**  
@@ -474,6 +523,15 @@ if anything remains to be fixed before the commit is allowed.
 
 
 ## What's new
+
+### v0.5.0
+
+* **Template Execution System**: Added secure code execution feature with configurable command allowlists
+  - Execute code snippets and commands directly from chat messages using Ctrl+R
+  - Comprehensive security controls including command validation and content filtering
+  - Configurable execution settings in Options tab (execution enabled toggle, allowed commands list)
+  - Support for multiple programming languages and command-line tools
+  - Settings now properly persist between application sessions
 
 ### v0.4.0
 

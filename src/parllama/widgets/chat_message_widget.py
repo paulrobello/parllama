@@ -21,7 +21,7 @@ from parllama.chat_message import (
     image_to_base64,
     try_get_image_type,
 )
-from parllama.messages.messages import SendToClipboard
+from parllama.messages.messages import ExecuteMessageRequested, SendToClipboard
 from parllama.models.ollama_data import MessageRoles
 from parllama.settings_manager import fetch_and_cache_image
 from parllama.widgets.par_markdown import ParMarkdown, ParMarkdownFence
@@ -33,6 +33,7 @@ class ChatMessageWidget(Vertical, can_focus=True):
     BINDINGS = [
         Binding(key="ctrl+c", action="copy_to_clipboard", show=True),
         Binding(key="ctrl+shift+c", action="copy_fence_clipboard", show=True),
+        Binding(key="ctrl+r", action="run_message", description="Run", show=True),
         Binding(key="e", action="edit_item", description="Edit", show=True),
         Binding(key="escape", action="exit_edit", show=False, priority=True),
         Binding(
@@ -222,6 +223,29 @@ class ChatMessageWidget(Vertical, can_focus=True):
         fence: ParMarkdownFence = fences[self.fence_num]
         self.notify(f"Fence {self.fence_num + 1} of {len(fences)} type: {fence.lexer}")
         self.app.post_message(SendToClipboard(fence.code))
+
+    def action_run_message(self) -> None:
+        """Run the message content using execution templates."""
+        # Only allow running assistant messages (code responses)
+        if self.msg.role != "assistant":
+            self.notify("Only assistant messages can be executed", severity="warning")
+            return
+
+        # Check if execution is enabled
+        from parllama.settings_manager import settings
+
+        if not settings.execution_enabled:
+            self.notify("Code execution is disabled", severity="warning")
+            return
+
+        # Get the content to execute
+        content = self.raw_text.strip()
+        if not content:
+            self.notify("No content to execute", severity="warning")
+            return
+
+        # Post message to request execution
+        self.app.post_message(ExecuteMessageRequested(widget=self, message_id=self.msg.id, content=content))
 
     @on(Mount)
     @on(Unmount)
