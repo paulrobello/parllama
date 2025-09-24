@@ -79,3 +79,17 @@ jobs:
         with:
           args: '❌ Failed to publish ${{ github.repository }} v${{ needs.build.outputs.version }} to PyPI. Check the workflow logs for details.'
         continue-on-error: true
+
+  # Global failure notification for any job failure
+  notify-failure:
+    runs-on: ubuntu-latest
+    needs: [build, publish-to-pypi]
+    if: always() && contains(needs.*.result, 'failure')
+    steps:
+      - name: Discord notification - Workflow failure
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        uses: Ilshidur/action-discord@master
+        with:
+          args: '💥 PyPI publish workflow FAILED for ${{ github.repository }}. Check logs for details!'
+        continue-on-error: true

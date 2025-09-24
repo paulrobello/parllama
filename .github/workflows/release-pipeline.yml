@@ -1,0 +1,324 @@
+name: Release Pipeline 🚀
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (optional - will auto-detect if not provided)'
+        required: false
+        type: string
+      skip-testpypi:
+        description: 'Skip TestPyPI publication (go straight to release)'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  # Stage 1: Build and Tag
+  build-and-tag:
+    name: Build and Create Tag 📦🏷️
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+      tag-created: ${{ steps.create-tag.outputs.tag-created }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python with uv
+        uses: ./.github/actions/setup-python-uv
+
+      - name: Validate version
+        id: get_version
+        uses: ./.github/actions/validate-version
+        with:
+          version-override: ${{ inputs.version }}
+
+      - name: Run tests and checks
+        run: |
+          make checkall
+
+      - name: Build package
+        run: make package
+
+      - name: Check if tag exists
+        id: check_tag
+        run: |
+          set -euo pipefail
+          tag="v${{ steps.get_version.outputs.version }}"
+          if git rev-parse "$tag" >/dev/null 2>&1; then
+            echo "tag-exists=true" >> $GITHUB_OUTPUT
+            echo "Tag $tag already exists"
+          else
+            echo "tag-exists=false" >> $GITHUB_OUTPUT
+            echo "Tag $tag does not exist"
+          fi
+
+      - name: Create and push tag
+        id: create-tag
+        if: steps.check_tag.outputs.tag-exists == 'false'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag="v${{ steps.get_version.outputs.version }}"
+          echo "Creating and pushing tag: $tag"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$tag" -m "Release $tag"
+          git push origin "$tag"
+          echo "tag-created=true" >> $GITHUB_OUTPUT
+          echo "✅ Created and pushed tag: $tag"
+
+      - name: Tag already exists
+        if: steps.check_tag.outputs.tag-exists == 'true'
+        run: |
+          tag="v${{ steps.get_version.outputs.version }}"
+          echo "tag-created=false" >> $GITHUB_OUTPUT
+          echo "⚠️ Tag $tag already exists, skipping tag creation"
+
+      - name: Discord notification - Build success
+        if: success()
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        uses: Ilshidur/action-discord@master
+        with:
+          args: '✅ Build completed for ${{ github.repository }} v${{ steps.get_version.outputs.version }}. Release pipeline starting...'
+        continue-on-error: true
+
+      - name: Discord notification - Build failure
+        if: failure()
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        uses: Ilshidur/action-discord@master
+        with:
+          args: '❌ PIPELINE HALTED: Build failed for ${{ github.repository }} v${{ steps.get_version.outputs.version }}. Check logs!'
+        continue-on-error: true
+
+      - name: Store the distribution packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+
+  # Stage 2: Publish to TestPyPI (optional)
+  publish-testpypi:
+    name: Publish to TestPyPI 🧪
+    runs-on: ubuntu-latest
+    needs: build-and-tag
+    if: ${{ !inputs.skip-testpypi }}
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/parllama
+    permissions:
+      id-token: write
+    steps:
+      - name: Download distribution packages
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+
+      - name: Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          skip-existing: true
+
+      - name: Discord notification - TestPyPI success
+        if: success()
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        uses: Ilshidur/action-discord@master
+        with:
+          args: '✅ Successfully published ${{ github.repository }} v${{ needs.build-and-tag.outputs.version }} to TestPyPI! 🧪 Ready for release.'
+        continue-on-error: true
+
+      - name: Discord notification - TestPyPI failure
+        if: failure()
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        uses: Ilshidur/action-discord@master
+        with:
+          args: '❌ Failed to publish ${{ github.repository }} v${{ needs.build-and-tag.outputs.version }} to TestPyPI. Pipeline halted.'
+        continue-on-error: true
+
+  # Stage 3: Create GitHub Release
+  github-release:
+    name: Create GitHub Release 📋
+    runs-on: ubuntu-latest
+    needs: [build-and-tag, publish-testpypi]
+    if: always() && needs.build-and-tag.result == 'success' && (needs.publish-testpypi.result == 'success' || needs.publish-testpypi.result == 'skipped')
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download distribution packages
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+
+      - name: Sign the dists with Sigstore
+        uses: sigstore/gh-action-sigstore-python@v3.0.0
+        with:
+          inputs: >-
+            ./dist/*.tar.gz
+            ./dist/*.whl
+
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="v${{ needs.build-and-tag.outputs.version }}"
+          echo "Creating release for tag: $tag"
+          gh release create \
+          "$tag" \
+          --repo '${{ github.repository }}' \
+          --generate-notes \
+          --latest
+
+      - name: Upload artifacts to GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="v${{ needs.build-and-tag.outputs.version }}"
+          echo "Uploading artifacts to release: $tag"
+          gh release upload \
+          "$tag" dist/** \
+          --repo '${{ github.repository }}'
+
+      - name: Discord notification - Release success
+        if: success()
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        uses: Ilshidur/action-discord@master
+        with:
+          args: '🎉 GitHub Release v${{ needs.build-and-tag.outputs.version }} created for ${{ github.repository }}! Ready for PyPI.'
+        continue-on-error: true
+
+      - name: Discord notification - Release failure
+        if: failure()
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        uses: Ilshidur/action-discord@master
+        with:
+          args: '❌ Failed to create GitHub Release v${{ needs.build-and-tag.outputs.version }} for ${{ github.repository }}. Pipeline halted.'
+        continue-on-error: true
+
+  # Stage 4: Publish to PyPI
+  publish-pypi:
+    name: Publish to PyPI 🎉
+    runs-on: ubuntu-latest
+    needs: [build-and-tag, github-release]
+    if: needs.github-release.result == 'success'
+    environment:
+      name: pypi
+      url: https://pypi.org/p/parllama
+    permissions:
+      id-token: write
+    steps:
+      - name: Download distribution packages
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+      - name: Discord notification - PyPI success
+        if: success()
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        uses: Ilshidur/action-discord@master
+        with:
+          args: '🚀 SUCCESS! ${{ github.repository }} v${{ needs.build-and-tag.outputs.version }} published to PyPI! Release pipeline complete.'
+        continue-on-error: true
+
+      - name: Discord notification - PyPI failure
+        if: failure()
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        uses: Ilshidur/action-discord@master
+        with:
+          args: '❌ FINAL STAGE FAILED: Could not publish ${{ github.repository }} v${{ needs.build-and-tag.outputs.version }} to PyPI. Check logs.'
+        continue-on-error: true
+
+  # Summary job
+  pipeline-summary:
+    name: Pipeline Summary 📊
+    runs-on: ubuntu-latest
+    needs: [build-and-tag, publish-testpypi, github-release, publish-pypi]
+    if: always()
+    steps:
+      - name: Pipeline Summary
+        run: |
+          echo "# Release Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+          echo "**Version**: v${{ needs.build-and-tag.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Tag Created**: ${{ needs.build-and-tag.outputs.tag-created }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Stage Results" >> $GITHUB_STEP_SUMMARY
+          echo "- Build & Tag: ${{ needs.build-and-tag.result }} ${{ needs.build-and-tag.result == 'success' && '✅' || '❌' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- TestPyPI: ${{ needs.publish-testpypi.result }} ${{ needs.publish-testpypi.result == 'success' && '✅' || needs.publish-testpypi.result == 'skipped' && '⏭️' || '❌' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- GitHub Release: ${{ needs.github-release.result }} ${{ needs.github-release.result == 'success' && '✅' || '❌' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- PyPI: ${{ needs.publish-pypi.result }} ${{ needs.publish-pypi.result == 'success' && '✅' || '❌' }}" >> $GITHUB_STEP_SUMMARY
+
+      - name: Final Discord notification - Complete success
+        if: needs.publish-pypi.result == 'success'
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        uses: Ilshidur/action-discord@master
+        with:
+          args: '🎊 RELEASE PIPELINE COMPLETE! ${{ github.repository }} v${{ needs.build-and-tag.outputs.version }} is now live on PyPI and GitHub Releases! 🎊'
+        continue-on-error: true
+
+      - name: Final Discord notification - Pipeline incomplete
+        if: needs.publish-pypi.result != 'success' && (needs.build-and-tag.result == 'success' || needs.github-release.result == 'success')
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        uses: Ilshidur/action-discord@master
+        with:
+          args: '⚠️ Release pipeline incomplete for ${{ github.repository }} v${{ needs.build-and-tag.outputs.version }}. Some stages failed - check workflow logs.'
+        continue-on-error: true
+
+  # Global failure notification
+  notify-pipeline-failure:
+    name: Notify Pipeline Failure 🚨
+    runs-on: ubuntu-latest
+    needs: [build-and-tag, publish-testpypi, github-release, publish-pypi]
+    if: always() && contains(needs.*.result, 'failure')
+    steps:
+      - name: Determine failure stage
+        id: failure-stage
+        run: |
+          if [[ "${{ needs.build-and-tag.result }}" == "failure" ]]; then
+            echo "stage=Build & Tag" >> $GITHUB_OUTPUT
+            echo "emoji=🔨" >> $GITHUB_OUTPUT
+          elif [[ "${{ needs.publish-testpypi.result }}" == "failure" ]]; then
+            echo "stage=TestPyPI Publication" >> $GITHUB_OUTPUT
+            echo "emoji=🧪" >> $GITHUB_OUTPUT
+          elif [[ "${{ needs.github-release.result }}" == "failure" ]]; then
+            echo "stage=GitHub Release Creation" >> $GITHUB_OUTPUT
+            echo "emoji=📋" >> $GITHUB_OUTPUT
+          elif [[ "${{ needs.publish-pypi.result }}" == "failure" ]]; then
+            echo "stage=PyPI Publication" >> $GITHUB_OUTPUT
+            echo "emoji=🎉" >> $GITHUB_OUTPUT
+          else
+            echo "stage=Unknown" >> $GITHUB_OUTPUT
+            echo "emoji=❓" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Discord notification - Pipeline failure
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        uses: Ilshidur/action-discord@master
+        with:
+          args: '${{ steps.failure-stage.outputs.emoji }} PIPELINE FAILURE: ${{ steps.failure-stage.outputs.stage }} failed for ${{ github.repository }} v${{ needs.build-and-tag.outputs.version || ''unknown'' }}. Manual intervention required!'
+        continue-on-error: true
