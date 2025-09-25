@@ -20,7 +20,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.get_version.outputs.version }}
-      tag-created: ${{ steps.create-tag.outputs.tag-created }}
+      tag-created: ${{ steps.tag_result.outputs.tag-created }}
+      tag-exists: ${{ steps.check_tag.outputs.tag-exists }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -72,11 +73,23 @@ jobs:
           echo "✅ Created and pushed tag: $tag"
 
       - name: Tag already exists
+        id: tag-exists
         if: steps.check_tag.outputs.tag-exists == 'true'
         run: |
           tag="v${{ steps.get_version.outputs.version }}"
           echo "tag-created=false" >> $GITHUB_OUTPUT
           echo "⚠️ Tag $tag already exists, skipping tag creation"
+
+      - name: Set tag result output
+        id: tag_result
+        run: |
+          if [[ "${{ steps.check_tag.outputs.tag-exists }}" == "true" ]]; then
+            echo "tag-created=false" >> $GITHUB_OUTPUT
+            echo "Tag already exists, setting tag-created=false"
+          else
+            echo "tag-created=true" >> $GITHUB_OUTPUT
+            echo "New tag created, setting tag-created=true"
+          fi
 
       - name: Discord notification - Build success
         if: success()
@@ -170,7 +183,23 @@ jobs:
             ./dist/*.tar.gz
             ./dist/*.whl
 
+      - name: Check if release exists
+        id: check_release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="v${{ needs.build-and-tag.outputs.version }}"
+          if gh release view "$tag" --repo '${{ github.repository }}' >/dev/null 2>&1; then
+            echo "release-exists=true" >> $GITHUB_OUTPUT
+            echo "Release $tag already exists"
+          else
+            echo "release-exists=false" >> $GITHUB_OUTPUT
+            echo "Release $tag does not exist"
+          fi
+
       - name: Create GitHub Release
+        if: steps.check_release.outputs.release-exists == 'false'
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
@@ -183,6 +212,12 @@ jobs:
           --generate-notes \
           --latest
 
+      - name: Release already exists
+        if: steps.check_release.outputs.release-exists == 'true'
+        run: |
+          tag="v${{ needs.build-and-tag.outputs.version }}"
+          echo "ℹ️ Release $tag already exists, skipping release creation"
+
       - name: Upload artifacts to GitHub Release
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -190,9 +225,12 @@ jobs:
           set -euo pipefail
           tag="v${{ needs.build-and-tag.outputs.version }}"
           echo "Uploading artifacts to release: $tag"
+
+          # Upload artifacts, overwrite if they already exist
           gh release upload \
           "$tag" dist/** \
-          --repo '${{ github.repository }}'
+          --repo '${{ github.repository }}' \
+          --clobber
 
       - name: Discord notification - Release success
         if: success()
@@ -232,6 +270,8 @@ jobs:
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true
 
       - name: Discord notification - PyPI success
         if: success()
