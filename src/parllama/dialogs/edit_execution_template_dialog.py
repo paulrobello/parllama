@@ -16,6 +16,58 @@ class EditExecutionTemplateDialog(ModalScreen[ExecutionTemplate | None]):
     """Modal dialog that allows execution template editing."""
 
     DEFAULT_CSS = """
+    EditExecutionTemplateDialog {
+        align: center middle;
+        background: black 75%;
+
+
+        &> Vertical {
+            background: $panel;
+            height: auto;
+            width: 80;
+            min-height: 25;
+            border: thick $primary;
+            padding: 1;
+        }
+
+        Input {
+            width: 70;
+            margin: 1 0;
+        }
+
+        TextArea {
+            width: 70;
+            height: 4;
+            margin: 1 0;
+        }
+
+        Label {
+            margin-top: 1;
+            width: auto;
+        }
+
+        Button {
+            margin: 1;
+        }
+
+        #buttons {
+            width: 100%;
+            align-horizontal: right;
+        }
+
+        #template_vars {
+            background: $surface-darken-1;
+            border: solid $accent;
+            padding: 1;
+            margin: 1 0;
+            width: 70;
+            height: 8;
+        }
+
+        #template_vars Label {
+            margin: 0;
+        }
+    }
     """
 
     BINDINGS = [

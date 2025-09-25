@@ -492,3 +492,10 @@ class ExecutionCancelled(Message):
 
     message_id: str
     template_id: str
+
+
+@dataclass
+class MemoryUpdated(Message):
+    """Memory content has been updated."""
+
+    new_content: str

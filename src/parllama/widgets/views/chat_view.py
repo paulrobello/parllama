@@ -72,6 +72,10 @@ valid_commands: list[str] = [
     "/history.clear",
     "/add.image",
     "/prompt.load ",
+    "/remember ",
+    "/forget ",
+    "/memory.clear",
+    "/memory.status",
 ]
 
 
@@ -347,6 +351,10 @@ Chat Commands:
 /prompt.load prompt_name - Load a custom prompt using current tabs model and temperature
 /add.image image_path_or_url prompt - Add an image via path or url to the active chat session
 /history.clear - Clear chat input history
+/remember [information] - Add information to memory using AI assistance
+/forget [information] - Remove information from memory using AI assistance
+/memory.clear - Clear all memory content
+/memory.status - Show current memory status and content
                         """,
                 )
             )
@@ -499,8 +507,124 @@ Chat Commands:
             self.active_tab.do_send_message("")
         elif cmd == "history.clear":
             self.app.post_message(ClearChatInputHistory())
+        elif cmd.startswith("remember "):
+            # Extract the information to remember
+            (_, info_to_remember) = cmd_raw.split(" ", 1)
+            info_to_remember = info_to_remember.strip()
+            if not info_to_remember:
+                self.notify("Usage: /remember [information to remember]", severity="error")
+                return
+            await self._handle_remember_command(info_to_remember)
+        elif cmd.startswith("forget "):
+            # Extract the information to forget
+            (_, info_to_forget) = cmd_raw.split(" ", 1)
+            info_to_forget = info_to_forget.strip()
+            if not info_to_forget:
+                self.notify("Usage: /forget [information to forget]", severity="error")
+                return
+            await self._handle_forget_command(info_to_forget)
+        elif cmd == "memory.clear":
+            await self._handle_memory_clear_command()
+        elif cmd == "memory.status":
+            self._handle_memory_status_command()
         else:
             self.notify(f"Unknown command: {cmd}", severity="error")
+
+    async def _handle_remember_command(self, info_to_remember: str) -> None:
+        """Handle the /remember command."""
+
+        from parllama.memory_manager import memory_manager
+
+        try:
+            # Get current memory content
+            current_memory = memory_manager.memory_content
+
+            # Get LLM config for memory operations
+            llm_config = memory_manager.get_default_llm_config()
+            if not llm_config:
+                self.notify("No LLM configuration available for memory operations", severity="error")
+                return
+
+            # Use LLM to update memory
+            self.notify("Updating memory with AI assistance...", severity="information")
+            updated_memory = await memory_manager.remember_information(current_memory, info_to_remember, llm_config)
+
+            # Save updated memory
+            memory_manager.memory_content = updated_memory
+            self.notify("Memory updated successfully", severity="information")
+
+        except Exception as e:
+            self.notify(f"Error updating memory: {str(e)}", severity="error")
+
+    async def _handle_forget_command(self, info_to_forget: str) -> None:
+        """Handle the /forget command."""
+        from parllama.memory_manager import memory_manager
+
+        try:
+            # Get current memory content
+            current_memory = memory_manager.memory_content
+            if not current_memory.strip():
+                self.notify("No memory content to modify", severity="warning")
+                return
+
+            # Get LLM config for memory operations
+            llm_config = memory_manager.get_default_llm_config()
+            if not llm_config:
+                self.notify("No LLM configuration available for memory operations", severity="error")
+                return
+
+            # Use LLM to update memory
+            self.notify("Updating memory with AI assistance...", severity="information")
+            updated_memory = await memory_manager.forget_information(current_memory, info_to_forget, llm_config)
+
+            # Save updated memory
+            memory_manager.memory_content = updated_memory
+            self.notify("Memory updated successfully", severity="information")
+
+        except Exception as e:
+            self.notify(f"Error updating memory: {str(e)}", severity="error")
+
+    async def _handle_memory_clear_command(self) -> None:
+        """Handle the /memory.clear command."""
+        from parllama.dialogs.yes_no_dialog import YesNoDialog
+        from parllama.memory_manager import memory_manager
+
+        result = await self.app.push_screen_wait(
+            YesNoDialog(
+                title="Clear Memory",
+                question="Are you sure you want to clear all memory content?\nThis action cannot be undone.",
+                yes_label="Clear",
+                no_label="Cancel",
+            )
+        )
+
+        if result:
+            memory_manager.clear_memory()
+            self.notify("Memory cleared successfully")
+
+    def _handle_memory_status_command(self) -> None:
+        """Handle the /memory.status command."""
+        from parllama.memory_manager import memory_manager
+
+        if not memory_manager.is_memory_enabled:
+            if settings.memory_enabled:
+                status_msg = "Memory injection is enabled but no memory content is set"
+            else:
+                status_msg = "Memory injection is disabled"
+        else:
+            memory_length = len(memory_manager.memory_content)
+            status_msg = f"Memory injection is enabled - {memory_length} characters stored"
+
+        memory_content = memory_manager.memory_content.strip()
+        if memory_content:
+            preview = memory_content[:200] + "..." if len(memory_content) > 200 else memory_content
+            full_msg = f"{status_msg}\n\nCurrent memory content:\n{preview}"
+        else:
+            full_msg = status_msg
+
+        from parllama.dialogs.information import InformationDialog
+
+        self.app.push_screen(InformationDialog(title="Memory Status", message=full_msg))
 
     @on(Button.Pressed, "#stop_button")
     def on_stop_button_pressed(self, event: Button.Pressed) -> None:

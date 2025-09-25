@@ -17,6 +17,7 @@ from parllama.widgets.views.create_model_view import ModelCreateView
 from parllama.widgets.views.execution_view import ExecutionView
 from parllama.widgets.views.local_model_view import LocalModelView
 from parllama.widgets.views.log_view import LogView
+from parllama.widgets.views.memory_view import MemoryView
 from parllama.widgets.views.model_tools_view import ModelToolsView
 from parllama.widgets.views.options_view import OptionsView
 from parllama.widgets.views.prompt_view import PromptView
@@ -44,6 +45,7 @@ class MainScreen(Screen[None]):
     create_view: ModelCreateView
     execution_view: ExecutionView
     options_view: OptionsView
+    memory_view: MemoryView
     # secrets_view: SecretsView
     rag_view: RagView
     log_view: LogView
@@ -62,6 +64,7 @@ class MainScreen(Screen[None]):
         self.create_view = ModelCreateView(id="model_create")
         self.model_tools_view = ModelToolsView(id="model_tools")
         self.execution_view = ExecutionView(id="execution_view")
+        self.memory_view = MemoryView(id="memory_view")
         # self.secrets_view = SecretsView(id="secrets")
         self.options_view = OptionsView(id="options")
 
@@ -107,6 +110,8 @@ class MainScreen(Screen[None]):
                 yield self.execution_view
             with TabPane("Options", id="Options"):
                 yield self.options_view
+            with TabPane("Memory", id="Memory"):
+                yield self.memory_view
             # with TabPane("Secrets", id="Secrets"):
             #     yield self.secrets_view
             # with TabPane("Rag", id="Rag"):

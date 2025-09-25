@@ -257,6 +257,51 @@ class ChatSession(ChatMessageContainer):
         self._changes.add("num_ctx")
         self.save()
 
+    def _ensure_memory_injection(self) -> None:
+        """Ensure memory is injected as the first system message if needed."""
+        from parllama.memory_manager import memory_manager
+
+        # Only inject memory if:
+        # 1. Memory is enabled and has content
+        # 2. This is a new conversation (no user messages exist yet)
+        # 3. Memory hasn't already been injected
+        if not memory_manager.is_memory_enabled:
+            return
+
+        # Check if we have any user or assistant messages (indicating conversation has started)
+        has_conversation_messages = any(msg.role in ("user", "assistant") for msg in self.messages)
+
+        # Check if memory is already injected (look for system message with memory content)
+        memory_content = memory_manager.get_memory_for_injection()
+        if not memory_content:
+            return
+
+        # Check if memory is already present in existing system messages
+        memory_already_present = any(
+            msg.role == "system" and memory_content.strip() in msg.content for msg in self.messages
+        )
+
+        # Only inject if this is a new conversation and memory isn't already present
+        if not has_conversation_messages and not memory_already_present:
+            # Create memory system message
+            memory_message = ParllamaChatMessage(
+                role="system",
+                content=f"User Memory (remember this context for the entire conversation):\n\n{memory_content}",
+            )
+
+            # Add as the first message, but after any existing system prompt
+            existing_system_msg = self.system_prompt
+            if existing_system_msg:
+                # If there's already a system prompt, prepend memory to it
+                combined_content = f"{memory_message.content}\n\n---\n\n{existing_system_msg.content}"
+                existing_system_msg.content = combined_content
+                self._changes.add("system_prompt")
+                self._changes.add("messages")
+                self.save()
+            else:
+                # No existing system message, add memory as new system message
+                self.add_message(memory_message, prepend=True)
+
     # pylint: disable=too-many-branches, too-many-statements
     async def send_chat(self, from_user: str) -> bool:
         """Send a chat message to LLM"""
@@ -264,6 +309,9 @@ class ChatSession(ChatMessageContainer):
         is_aborted = False
         msg: ParllamaChatMessage | None = None
         try:
+            # Check if we need to inject memory at the start of conversation
+            self._ensure_memory_injection()
+
             if from_user:
                 # self.log_it("CM adding user message")
                 msg = ParllamaChatMessage(role="user", content=from_user)

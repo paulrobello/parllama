@@ -101,6 +101,62 @@ class ExecutionView(Container):
     """Widget for managing execution templates."""
 
     DEFAULT_CSS = """
+    ExecutionView {
+        #toolbar {
+            height: 3;
+            background: $surface-darken-1;
+            padding: 0 0 0 1;
+            Button {
+                margin-right: 1;
+            }
+        }
+
+        #template_list {
+            height: 1fr;
+            border: solid $accent;
+        }
+
+        ExecutionTemplateListItem {
+            height: auto;
+            min-height: 7;
+            padding: 1;
+            border: solid $accent;
+            Vertical {
+                height: auto;
+                min-height: 4;
+                width: 1fr;
+                margin: 0;
+                Horizontal {
+                    height: auto;
+                }
+            }
+            .button_row {
+                height: 3;
+                width: auto;
+                margin: 1 0 0 0;
+                dock: right;
+                align: right middle;
+                Button {
+                    margin: 0 1;
+                }
+            }
+            Label {
+                height: 1;
+                margin: 0;
+            }
+        }
+        #stats {
+            height: 3;
+            width: 1fr;
+            background: $surface;
+            padding: 0 0 0 1;
+            align: left middle;
+            Button {
+                dock: right;
+                margin-right: 1;
+            }
+        }
+    }
     """
 
     def __init__(self, **kwargs) -> None:

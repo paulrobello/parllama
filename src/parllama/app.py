@@ -144,6 +144,11 @@ class ParLlamaApp(App[None]):
         update_manager.set_app(self)
         import_fabric_manager.set_app(self)
 
+        # Initialize memory manager
+        from parllama.memory_manager import memory_manager
+
+        memory_manager._app = self
+
         self.job_timer = None
         self.ps_timer = None
         self.title = __application_title__

@@ -26,6 +26,7 @@
 * [Quick start image chat workflow](#Quick-start-image-chat-workflow)
 * [Quick start OpenAI provider chat workflow](#Quick-start-OpenAI-provider-chat-workflow)
 * [Custom Prompts](#custom-prompts)
+* [Memory System](#memory-system)
 * [Template Execution](#template-execution)
 * [Themes](#themes)
 * [Screen Help](https://github.com/paulrobello/parllama/blob/main/src/parllama/help.md)
@@ -35,12 +36,12 @@
     * [Where we are](#where-we-are)Ï
     * [Where we're going](#where-were-going)
 * [What's new](#whats-new)
+  * [v0.6.0](#v060)
   * [v0.5.0](#v050)
   * [v0.4.0](#v040)
   * [v0.3.28](#v0328)
   * [v0.3.27](#v0327)
-  * [v0.3.26](#v0326)
-  * [older...](#v0325)
+  * [older...](#v0326)
 
 [![PyPI](https://img.shields.io/pypi/v/parllama)](https://pypi.org/project/parllama/)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/parllama.svg)](https://pypi.org/project/parllama/)  
@@ -69,6 +70,7 @@ It runs on all major OS's including but not limited to Windows, Windows WSL, Mac
 - **Model Management**: Pull, delete, copy, create, and quantize models with native Ollama support
 
 ### Advanced Features
+- **Memory System**: Persistent user context that remembers information across all conversations with AI-powered updates
 - **Template Execution**: Secure code execution system with configurable command allowlists and safety controls
 - **Smart Model Caching**: Intelligent per-provider model caching with configurable durations
 - **Provider Management**: Enable/disable providers, manage API keys, and configure endpoints
@@ -374,6 +376,62 @@ You can create a library of custom prompts for easy starting of new chats.
 You can set up system prompts and user messages to prime conversations with the option of sending immediately to the LLM upon loading of the prompt.
 Currently, importing prompts from the popular Fabric project is supported with more on the way.
 
+## Memory System
+PAR LLAMA features a comprehensive memory system that allows you to maintain persistent context across all your conversations. This addresses the common issue of LLMs forgetting important information about you between chat sessions.
+
+### Core Features
+- **Memory Tab**: Dedicated interface for managing your personal information and preferences
+- **Automatic Injection**: Memory content is automatically injected as the first message in every new conversation
+- **AI-Powered Updates**: Use slash commands to intelligently update your memory with AI assistance
+- **Real-time Synchronization**: Changes made via commands instantly update the Memory tab interface
+
+### Managing Your Memory
+
+#### Memory Tab Interface
+Navigate to the **Memory** tab to:
+- **Edit Memory Content**: Use the large text area to add information about yourself, your preferences, work context, or any details you want the AI to remember
+- **Enable/Disable Memory**: Use the checkbox to control whether memory is injected into new conversations
+- **Save and Clear**: Use the Save button to persist changes or Clear to remove all memory content
+
+#### Slash Commands
+Memory can be dynamically updated from any chat using these commands:
+
+- **`/remember [information]`**: Add new information to your memory using AI assistance
+  - Example: `/remember I prefer concise technical explanations`
+  - Example: `/remember I work in Python and React development`
+
+- **`/forget [information]`**: Remove specific information from your memory using AI assistance
+  - Example: `/forget my old job title`
+  - Example: `/forget I mentioned liking verbose responses`
+
+- **`/memory.status`**: View your current memory content and status
+- **`/memory.clear`**: Clear all memory content (with confirmation)
+
+#### Example Memory Content
+```
+My name is Alex and I'm a senior software engineer working primarily with:
+- Python (FastAPI, Django)
+- React and TypeScript
+- AWS cloud infrastructure
+
+I prefer:
+- Concise, technical explanations
+- Code examples with comments
+- Best practices and security considerations
+
+Current projects:
+- Building a microservices API
+- Learning Rust programming language
+```
+
+### How Memory Works
+1. **Storage**: Memory content is securely stored in your local settings file
+2. **Injection**: When starting a new conversation, memory is automatically prepended as a system message
+3. **AI Updates**: Slash commands use your current LLM to intelligently modify memory content
+4. **Persistence**: All memory changes are immediately saved and synchronized across the interface
+
+The memory system transforms PAR LLAMA into a truly personalized AI assistant that remembers who you are and adapts to your preferences across all conversations.
+
 ## Template Execution
 PAR LLAMA includes a powerful yet secure template execution system that allows you to run code snippets and commands directly from chat messages. This feature enables interactive development workflows, data analysis, and quick testing without leaving the chat interface.
 
@@ -503,16 +561,19 @@ if anything remains to be fixed before the commit is allowed.
 ## Roadmap
 
 ### Where we are
-* Initial release - Find, maintain and create new models
-* Theme support
-* Connect to remote Ollama instances
-* Chat with history / conversation management
-* Chat tabs allow chat with multiple models at same time
-* Custom prompt library with import from Fabric
-* Auto complete of slash commands, input history, multi line edit
-* Ability to use cloud AI providers like OpenAI, Anthropic, Groq, Google, xAI, OpenRouter, LiteLLM
-* Use images with vision capable LLMs
-* Ability to copy code and other sub sections from chat
+* **Core Model Management** - Find, maintain, pull, delete, copy, and create new models with full Ollama integration
+* **Multi-Provider Support** - Seamless integration with Ollama, OpenAI, Anthropic, Groq, Google, xAI, OpenRouter, Deepseek, and LiteLLM
+* **Advanced Chat System** - Multi-tab conversations with full history management and session persistence
+* **Vision Model Support** - Chat with images using vision-capable LLMs like LLaVA and GPT-4 Vision
+* **Memory System** - Persistent user context across all conversations with AI-powered memory management
+* **Template Execution** - Secure code execution system with configurable command allowlists and safety controls
+* **Custom Prompt Library** - Create, manage, and import prompts from Fabric and other sources
+* **Theme System** - Full dark/light mode support with custom JSON-based theme configuration
+* **Smart Caching** - Intelligent per-provider model caching with configurable durations
+* **Comprehensive Slash Commands** - Extensive command system for navigation, session management, and memory operations
+* **Export Capabilities** - Export conversations as Markdown files for documentation
+* **Security & Validation** - Comprehensive file validation and secure operations for all data handling
+* **Cross-Platform Support** - Native support for Windows, macOS, Linux, and WSL environments
 
 ### Where we're going
 
@@ -523,6 +584,15 @@ if anything remains to be fixed before the commit is allowed.
 
 
 ## What's new
+
+### v0.6.0
+
+* **Memory System**: Comprehensive persistent user context across all conversations
+  - Dedicated Memory tab for managing personal information and preferences
+  - Automatic memory injection as first message in new conversations
+  - AI-powered memory updates via slash commands (`/remember`, `/forget`, `/memory.status`, `/memory.clear`)
+  - Real-time synchronization between slash commands and Memory tab interface
+  - Secure local storage with comprehensive file validation
 
 ### v0.5.0
 

@@ -205,6 +205,11 @@ class Settings(BaseModel):
     execution_background_limit: int = 3
     execution_history_max_entries: int = 100
 
+    # Memory settings
+    user_memory: str = ""
+    memory_enabled: bool = True
+    memory_llm_config: dict | None = None
+
     # pylint: disable=too-many-branches, too-many-statements
     def __init__(self) -> None:
         """Initialize Manager."""
@@ -571,6 +576,11 @@ class Settings(BaseModel):
             saved_execution_allowed_commands = data.get("execution_allowed_commands")
             if saved_execution_allowed_commands and isinstance(saved_execution_allowed_commands, list):
                 self.execution_allowed_commands = saved_execution_allowed_commands
+
+            # Memory settings loading
+            self.user_memory = data.get("user_memory", self.user_memory)
+            self.memory_enabled = data.get("memory_enabled", self.memory_enabled)
+            self.memory_llm_config = data.get("memory_llm_config", self.memory_llm_config)
 
             self.update_env()
         except (FileNotFoundError, SecureFileOpsError):
