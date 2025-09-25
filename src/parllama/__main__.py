@@ -5,9 +5,6 @@ from __future__ import annotations
 from parllama.app import ParLlamaApp
 from parllama.settings_manager import settings
 
-# import os
-
-
 # if os.environ.get("DEBUG"):
 #     import pydevd_pycharm  # type: ignore
 #

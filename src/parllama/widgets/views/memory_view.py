@@ -67,6 +67,7 @@ class MemoryView(Vertical):
                 text=settings.user_memory,
                 placeholder="Enter information about yourself that you want the AI to remember across all conversations...",
                 classes="memory-textarea",
+                id="memory_textarea",
             )
 
             with Vertical(classes="status-text"):

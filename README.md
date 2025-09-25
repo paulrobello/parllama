@@ -36,12 +36,12 @@
     * [Where we are](#where-we-are)Ï
     * [Where we're going](#where-were-going)
 * [What's new](#whats-new)
+  * [v0.6.1](#v061)
   * [v0.6.0](#v060)
   * [v0.5.0](#v050)
   * [v0.4.0](#v040)
   * [v0.3.28](#v0328)
-  * [v0.3.27](#v0327)
-  * [older...](#v0326)
+  * [older...](#v0327)
 
 [![PyPI](https://img.shields.io/pypi/v/parllama)](https://pypi.org/project/parllama/)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/parllama.svg)](https://pypi.org/project/parllama/)  
@@ -584,6 +584,17 @@ if anything remains to be fixed before the commit is allowed.
 
 
 ## What's new
+
+### v0.6.1
+
+* **gRPC Warning Suppression**: Fixed annoying gRPC ALTS warnings on startup
+  - Configured Google Generative AI to use REST transport instead of gRPC
+  - Eliminates "All log messages before absl::InitializeLog() is called" warnings
+  - Resolves "ALTS creds ignored" and "Not running on GCP" messages
+  - Provides clean startup experience without affecting functionality
+* **Memory View Fix**: Fixed crash in Memory tab due to missing TextArea widget ID
+  - Added missing `id="memory_textarea"` attribute to prevent AttributeError
+  - Ensures proper widget identification for memory management functionality
 
 ### v0.6.0
 

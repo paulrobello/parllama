@@ -137,7 +137,10 @@ class ProviderManager(ParEventSystemBase):
                         for m in data:
                             new_list.append(m["id"])
                 elif p == LlmProvider.GEMINI:
-                    genai.configure(api_key=settings.provider_api_keys[p] or os.environ.get(provider_env_key_names[p]))  # type: ignore
+                    genai.configure(  # type: ignore[attr-defined]
+                        api_key=settings.provider_api_keys[p] or os.environ.get(provider_env_key_names[p]),
+                        transport="rest",  # Use REST instead of gRPC to avoid ALTS warnings
+                    )
                     models = list(genai.list_models())  # type: ignore
                     if models:
                         models = [m for m in models if get_model_mode(p, m.name) in ["chat", "unknown"]]
