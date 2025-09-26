@@ -204,6 +204,13 @@ class Settings(BaseModel):
     execution_allowed_commands: list[str] = ["uv", "python3", "python", "node", "tsc", "bash", "sh", "zsh", "fish"]
     execution_background_limit: int = 3
     execution_history_max_entries: int = 100
+    execution_security_patterns: list[str] = [
+        "rm -rf",
+        "del /",
+        "mkfs",
+        "dd if=",
+        "> /dev/",
+    ]
 
     # Memory settings
     user_memory: str = ""
@@ -576,6 +583,10 @@ class Settings(BaseModel):
             saved_execution_allowed_commands = data.get("execution_allowed_commands")
             if saved_execution_allowed_commands and isinstance(saved_execution_allowed_commands, list):
                 self.execution_allowed_commands = saved_execution_allowed_commands
+
+            saved_execution_security_patterns = data.get("execution_security_patterns")
+            if saved_execution_security_patterns and isinstance(saved_execution_security_patterns, list):
+                self.execution_security_patterns = saved_execution_security_patterns
 
             # Memory settings loading
             self.user_memory = data.get("user_memory", self.user_memory)

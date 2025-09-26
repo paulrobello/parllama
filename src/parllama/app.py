@@ -850,7 +850,7 @@ Some functions are only available via slash / commands on that chat tab. You can
 
         # Initialize command executor and template matcher
         self.command_executor = CommandExecutor(settings)
-        self.template_matcher = TemplateMatcher()
+        self.template_matcher = TemplateMatcher(settings)
 
         # Load templates and history
         await global_execution_manager.load_templates()

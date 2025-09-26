@@ -36,12 +36,12 @@
     * [Where we are](#where-we-are)Ï
     * [Where we're going](#where-were-going)
 * [What's new](#whats-new)
+  * [v0.7.0](#v070)
   * [v0.6.1](#v061)
   * [v0.6.0](#v060)
   * [v0.5.0](#v050)
   * [v0.4.0](#v040)
-  * [v0.3.28](#v0328)
-  * [older...](#v0327)
+  * [older...](#v0328)
 
 [![PyPI](https://img.shields.io/pypi/v/parllama)](https://pypi.org/project/parllama/)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/parllama.svg)](https://pypi.org/project/parllama/)  
@@ -71,7 +71,7 @@ It runs on all major OS's including but not limited to Windows, Windows WSL, Mac
 
 ### Advanced Features
 - **Memory System**: Persistent user context that remembers information across all conversations with AI-powered updates
-- **Template Execution**: Secure code execution system with configurable command allowlists and safety controls
+- **Template Execution**: Secure code execution system with configurable command allowlists and customizable security patterns
 - **Smart Model Caching**: Intelligent per-provider model caching with configurable durations
 - **Provider Management**: Enable/disable providers, manage API keys, and configure endpoints
 - **Theme System**: Dark/light modes with custom theme support via JSON configuration
@@ -584,6 +584,23 @@ if anything remains to be fixed before the commit is allowed.
 
 
 ## What's new
+
+### v0.7.0
+
+* **Configurable Security Patterns**: Enhanced execution security with user-customizable safety controls
+  - Security patterns now configurable through Options page instead of hardcoded
+  - Default patterns focused only on filesystem safety (rm, del, mkfs, dd, /dev/)
+  - User can add/remove security patterns via comma-separated input field
+  - Changes take effect immediately without requiring application restart
+  - Critical security patterns (sudo, exec, eval) always remain protected
+  - Fixes false positives that were blocking legitimate Python f-string usage
+
+* **Improved Execution Result Formatting**: Cleaner display of code execution results
+  - CLI parameter scripts now show as `python -c <script>` instead of messy escaped code
+  - Executed code displayed in clean syntax-highlighted blocks for short scripts (≤10 lines)
+  - Smart language detection for proper syntax highlighting (Python, JavaScript, Bash)
+  - Intelligent command truncation for long commands with logical break points
+  - File-based executions remain unchanged for optimal readability
 
 ### v0.6.1
 

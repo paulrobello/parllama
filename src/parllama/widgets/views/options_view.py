@@ -314,6 +314,12 @@ class OptionsView(Horizontal):
                             max_length=200,
                             id="execution_allowed_commands",
                         )
+                        yield Label("Security patterns (comma separated, filesystem-focused)")
+                        yield InputBlurSubmit(
+                            value=", ".join(settings.execution_security_patterns),
+                            max_length=300,
+                            id="execution_security_patterns",
+                        )
 
                     with Vertical(classes="section") as vscs:
                         vscs.border_title = "Session Naming"
@@ -767,6 +773,11 @@ class OptionsView(Horizontal):
             commands = [cmd.strip() for cmd in ctrl.value.split(",") if cmd.strip()]
             settings.execution_allowed_commands = commands
             self._execution_settings_changed = True
+        elif ctrl.id == "execution_security_patterns":
+            # Parse comma-separated list and clean up whitespace
+            patterns = [pattern.strip() for pattern in ctrl.value.split(",") if pattern.strip()]
+            settings.execution_security_patterns = patterns
+            self._execution_settings_changed = True
         else:
             self.notify(f"Unhandled input: {ctrl.id}", severity="error", timeout=settings.notification_timeout_extended)
             return
@@ -774,10 +785,12 @@ class OptionsView(Horizontal):
         if self._provider_changed:
             self._provider_changed = False
         if self._execution_settings_changed:
-            # Update the command executor with new settings
+            # Update the command executor and template matcher with new settings
             app: ParLlamaApp = self.app  # type: ignore[assignment]
             if hasattr(app, "command_executor"):
                 app.command_executor.update_settings(settings)
+            if hasattr(app, "template_matcher"):
+                app.template_matcher.update_settings(settings)
             self._execution_settings_changed = False
 
     def on_refresh_button_pressed(self, event: Button.Pressed) -> None:

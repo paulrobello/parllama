@@ -134,7 +134,7 @@ class ExecutionTemplate:
 
         return command
 
-    def validate(self) -> list[str]:
+    def validate(self, security_patterns: list[str] | None = None) -> list[str]:
         """Validate template configuration and return list of errors."""
         errors = []
 
@@ -151,7 +151,12 @@ class ExecutionTemplate:
             errors.append("Timeout cannot exceed 300 seconds")
 
         # Check for potentially dangerous commands
-        dangerous_patterns = ["rm -rf", "del /", "format", "mkfs", "dd if="]
+        if security_patterns is not None:
+            dangerous_patterns = security_patterns
+        else:
+            # Fallback to default filesystem-focused patterns
+            dangerous_patterns = ["rm -rf", "del /", "mkfs", "dd if="]
+
         for pattern in dangerous_patterns:
             if pattern in self.command_template.lower():
                 errors.append(f"Command template contains potentially dangerous pattern: {pattern}")

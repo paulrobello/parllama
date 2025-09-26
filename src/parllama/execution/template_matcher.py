@@ -7,13 +7,15 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from parllama.execution.execution_template import ExecutionTemplate
+    from parllama.settings_manager import Settings
 
 
 class TemplateMatcher:
     """Matches content to appropriate execution templates."""
 
-    def __init__(self) -> None:
+    def __init__(self, settings: Settings | None = None) -> None:
         """Initialize the template matcher."""
+        self.settings = settings
         # Language detection patterns
         self.language_patterns = {
             "python": [
@@ -64,6 +66,10 @@ class TemplateMatcher:
             "inline_code": r"`([^`]+)`",
             "shebang": r"^#!.*",
         }
+
+    def update_settings(self, settings: Settings) -> None:
+        """Update the settings for this matcher instance."""
+        self.settings = settings
 
     def detect_language(self, content: str) -> list[str]:
         """Detect programming languages in the content."""
@@ -249,14 +255,25 @@ class TemplateMatcher:
         # Always require confirmation by default
         requires_confirmation = True
 
-        # Check for potentially dangerous patterns
-        dangerous_patterns = [
-            (r"\brm\s+-rf", "File deletion command"),
-            (r"\bdel\s+/", "Windows file deletion"),
-            (r"\bformat\s+", "Format command"),
-            (r"\bmkfs", "Filesystem creation"),
-            (r"\bdd\s+if=", "Direct disk access"),
-            (r">\s*/dev/", "Device file access"),
+        # Check for potentially dangerous patterns - use configurable patterns if available
+        if self.settings and self.settings.execution_security_patterns:
+            # Convert string patterns to regex patterns with descriptions
+            user_patterns = [
+                (re.escape(pattern), f"Security pattern: {pattern}")
+                for pattern in self.settings.execution_security_patterns
+            ]
+        else:
+            # Fallback to filesystem-focused patterns
+            user_patterns = [
+                (r"\brm\s+-rf", "File deletion command"),
+                (r"\bdel\s+/", "Windows file deletion"),
+                (r"\bmkfs", "Filesystem creation"),
+                (r"\bdd\s+if=", "Direct disk access"),
+                (r">\s*/dev/", "Device file access"),
+            ]
+
+        # Always include critical security patterns
+        critical_patterns = [
             (r"\bsudo\s+", "Privilege escalation"),
             (r"\bsu\s+", "User switching"),
             (r"__import__\s*\(\s*['\"]os['\"]", "OS module import"),
@@ -264,6 +281,8 @@ class TemplateMatcher:
             (r"\beval\s*\(", "Expression evaluation"),
             (r"\bopen\s*\(.*['\"][wr]", "File write operations"),
         ]
+
+        dangerous_patterns = user_patterns + critical_patterns
 
         content_lower = content.lower()
         for pattern, description in dangerous_patterns:

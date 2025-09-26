@@ -76,6 +76,41 @@ class ExecutionResult:
         """Get total character count of all output."""
         return len(self.stdout) + len(self.stderr)
 
+    def get_formatted_command(self) -> str:
+        """Get a clean, readable version of the command for display."""
+        # Check if this looks like a command with inline code (-c parameter)
+        if " -c '" in self.command and self.command.count("'") >= 2:
+            # Extract the command part and the code part
+            parts = self.command.split(" -c '", 1)
+            if len(parts) == 2:
+                cmd_part = parts[0]
+                return f"{cmd_part} -c <script>"
+
+        # Check for other inline execution patterns
+        if " -c " in self.command:
+            parts = self.command.split(" -c ", 1)
+            if len(parts) == 2:
+                return f"{parts[0]} -c <script>"
+
+        # Check for file execution patterns like "python script.py"
+        if any(ext in self.command for ext in [".py", ".js", ".ts", ".sh", ".bash"]):
+            # Keep file execution commands as-is since they're usually clean
+            return self.command
+
+        # For very long commands, try to shorten intelligently
+        if len(self.command) > 120:
+            # Try to find a good break point
+            if " && " in self.command:
+                first_part = self.command.split(" && ")[0]
+                return f"{first_part} && ..."
+            elif " | " in self.command:
+                first_part = self.command.split(" | ")[0]
+                return f"{first_part} | ..."
+            else:
+                return f"{self.command[:120]}..."
+
+        return self.command
+
     def get_formatted_output(self, max_length: int = 10000) -> str:
         """Get formatted output for display in chat."""
         output_parts = []
@@ -84,8 +119,27 @@ class ExecutionResult:
         status = "✅ Success" if self.success else f"❌ Failed (exit code: {self.exit_code})"
         output_parts.append(f"**Execution Result** - {status}")
         output_parts.append(f"Template: `{self.template_name}`")
-        output_parts.append(f"Command: `{self.command}`")
+        output_parts.append(f"Command: `{self.get_formatted_command()}`")
         output_parts.append(f"Duration: {self.execution_time:.2f}s")
+
+        # Show the executed code if it was inline script execution
+        if " -c " in self.command and self.content.strip():
+            # Only show code if it's reasonably short (under 10 lines)
+            code_lines = self.content.strip().split("\n")
+            if len(code_lines) <= 10:
+                # Detect language from command
+                language = "python"  # default
+                if "node" in self.command or "javascript" in self.template_name.lower():
+                    language = "javascript"
+                elif "bash" in self.command or "sh" in self.command:
+                    language = "bash"
+
+                output_parts.append("")
+                output_parts.append("**Executed Code:**")
+                output_parts.append(f"```{language}")
+                output_parts.append(self.content.strip())
+                output_parts.append("```")
+
         output_parts.append("")
 
         # Add stdout if present

@@ -98,8 +98,8 @@ class CommandExecutor:
         if not self.settings.execution_enabled:
             errors.append("Code execution is disabled")
 
-        # Validate template
-        template_errors = template.validate()
+        # Validate template with security patterns
+        template_errors = template.validate(self.settings.execution_security_patterns)
         errors.extend(template_errors)
 
         # Check command allowlist
@@ -109,20 +109,18 @@ class CommandExecutor:
             if base_command not in self.settings.execution_allowed_commands:
                 errors.append(f"Command '{base_command}' is not in allowed commands list")
 
-        # Content safety checks
-        dangerous_patterns = [
-            "rm -rf",
-            "del /",
-            "format ",
-            "mkfs",
-            "dd if=",
-            "> /dev/",
+        # Content safety checks - use configurable security patterns
+        dangerous_patterns = self.settings.execution_security_patterns.copy()
+
+        # Always include these critical security patterns regardless of user config
+        critical_patterns = [
             "sudo ",
             "su ",
             "__import__('os')",
             "exec(",
             "eval(",
         ]
+        dangerous_patterns.extend(critical_patterns)
 
         content_lower = content.lower()
         for pattern in dangerous_patterns:
