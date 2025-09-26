@@ -26,6 +26,8 @@ jobs:
   build-and-tag:
     name: Build and Create Tag 📦🏷️
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     outputs:
       version: ${{ steps.get_version.outputs.version }}
       tag-created: ${{ steps.tag_result.outputs.tag-created }}
