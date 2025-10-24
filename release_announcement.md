@@ -1,4 +1,4 @@
-**PAR LLAMA v0.6.0 Released - Terminal UI for LLMs with Memory & Code Execution**
+**PAR LLAMA v0.7.0 Released - Enhanced Memory & Execution Experience**
 
 # **What It Does**
 
@@ -6,9 +6,18 @@ A powerful Terminal User Interface (TUI) for managing and interacting with Ollam
 
 ![PAR LLAMA Chat Interface](https://raw.githubusercontent.com/paulrobello/parllama/main/docs/chat_dark_1.png)
 
-# **What's New in v0.6.0**
+# **What's New in v0.7.0**
 
-## **Memory System - REVOLUTIONARY NEW FEATURE**
+## **Improved Execution Experience**
+- **Better Result Formatting**: Clean, professional display of execution results
+- **Smart Command Display**: Shows 'python -c <script>' instead of escaped code for CLI parameters
+- **Syntax-Highlighted Code Blocks**: Short scripts (≤10 lines) display with proper syntax highlighting
+- **Intelligent Language Detection**: Automatic highlighting for Python, JavaScript, and Bash
+- **Clean Command Truncation**: Long commands truncated intelligently for better readability
+
+## **Previous Major Features (v0.6.0)**
+
+### **Memory System**
 - **Persistent User Context**: AI remembers who you are and your preferences across ALL conversations
 - **Memory Tab Interface**: Dedicated UI for managing your personal information and context
 - **AI-Powered Memory Updates**: Use `/remember` and `/forget` slash commands for intelligent memory management
@@ -16,14 +25,14 @@ A powerful Terminal User Interface (TUI) for managing and interacting with Ollam
 - **Real-time Synchronization**: Memory updates via commands instantly reflect in the Memory tab
 - **Smart Context Management**: Never repeat your preferences or background information again
 
-## **Template Execution System - POWERFUL DEVELOPMENT FEATURE**
+### **Template Execution System**
 - **Secure Code Execution**: Execute code snippets and commands directly from chat messages using **Ctrl+R**
 - **Multi-Language Support**: Python, JavaScript/Node.js, Bash, and shell scripts with automatic language detection
 - **Configurable Security**: Command allowlists, content validation, and comprehensive safety controls
 - **Interactive Development**: Transform PAR LLAMA into a powerful development companion
 - **Real-time Results**: Execution results appear as chat responses with output, errors, and timing
 
-## **Enhanced User Experience**
+### **Enhanced User Experience**
 - **Memory Slash Commands**: `/remember [info]`, `/forget [info]`, `/memory.status`, `/memory.clear`
 - **Intelligent Updates**: AI intelligently integrates new information into existing memory
 - **Secure Storage**: All memory data stored locally with comprehensive file validation
@@ -42,91 +51,24 @@ A powerful Terminal User Interface (TUI) for managing and interacting with Ollam
 - **Smart Caching**: Intelligent per-provider model caching with configurable durations
 - **Security**: Comprehensive file validation and secure operations
 
-# **Quick Setup**
-```bash
-# Install with pipx (recommended)
-pipx install parllama
-
-# Or install with pip
-pip install parllama
-
-# Or install with uv
-uv tool install parllama
-
-# Run the application
-parllama
-```
-
-# **Memory System in Action**
-
-Set up your persistent context once, and PAR LLAMA remembers forever:
-
-**Memory Tab Setup:**
-```
-My name is Sarah and I'm a senior Python developer at TechCorp.
-
-I prefer:
-- Concise, technical explanations
-- Code examples with detailed comments
-- Security-focused best practices
-
-Current projects:
-- Building FastAPI microservices
-- Migrating legacy Django apps
-- Learning Rust for system programming
-```
-
-**Dynamic Memory Updates via Chat:**
-```
-User: /remember I just got promoted to Tech Lead
-AI: ✅ Memory updated successfully
-
-User: /forget I mentioned learning Rust
-AI: ✅ Memory updated successfully
-
-User: /memory.status
-AI: Memory injection is enabled - 247 characters stored
-Current memory: My name is Sarah and I'm a Tech Lead at TechCorp...
-```
-
-**Every New Conversation Automatically Includes Your Context!**
-
-# **Template Execution in Action**
-
-Simply paste code in any chat message and press **Ctrl+R** to execute:
-
-**Python Example:**
-```python
-print("Hello from PAR LLAMA!")
-import math
-result = math.sqrt(16)
-print(f"Square root of 16 is: {result}")
-```
-*Press Ctrl+R → Executes instantly with output in chat*
-
-**Shell Commands:**
-```bash
-ls -la
-echo "Current directory contents"
-date
-```
-*Press Ctrl+R → Shows command output directly in conversation*
-
-# **Key Highlights**
-- **100% Python**: Built with Textual and Rich for a beautiful terminal experience
+# **Key Features**
+- **100% Python**: Built with Textual and Rich for a beautiful easy to use terminal experience. Dark and Light mode support, plus custom themes
 - **Cross-Platform**: Runs on Windows, macOS, Linux, and WSL
 - **Async Architecture**: Non-blocking operations for smooth performance
 - **Type Safe**: Fully typed with comprehensive type checking
-- **Extensible**: Easy to add new providers and features
 
 # **GitHub & PyPI**
 
 - GitHub: [https://github.com/paulrobello/parllama](https://github.com/paulrobello/parllama)
 - PyPI: [https://pypi.org/project/parllama/](https://pypi.org/project/parllama/)
 
-# **Who's This For?**
+# Comparison:
+I have seen many command line and web applications for interacting with LLM's but have not found any TUI related applications as feature reach as PAR LLAMA
 
-If you're working with LLMs and want a powerful terminal interface that **remembers who you are** and **bridges conversation and code execution** — PAR LLAMA v0.6.0 is a game-changer. Perfect for:
+
+# **Target Audience**
+
+If you're working with LLMs and want a powerful terminal interface that **remembers who you are** and **bridges conversation and code execution** — PAR LLAMA v0.7.0 is a game-changer. Perfect for:
 
 - **Developers**: Persistent context about your tech stack + execute code during AI conversations
 - **Data Scientists**: AI remembers your analysis preferences + run scripts without leaving chat
@@ -134,7 +76,3 @@ If you're working with LLMs and want a powerful terminal interface that **rememb
 - **Researchers**: Remembers your research focus + test experiments in real-time
 - **Consultants**: Different client contexts persist across sessions + rapid prototyping
 - **Anyone**: Who wants truly personalized AI conversations with seamless code execution
-
-**Configuration**: Set up your memory in the Memory tab. Enable template execution in Options → Template Execution. Configure your trusted command allowlist for security.
-
-**Note**: Ollama must be installed and running for local model support. Cloud providers require API keys configured in the Options screen.

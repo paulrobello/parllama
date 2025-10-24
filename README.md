@@ -36,12 +36,12 @@
     * [Where we are](#where-we-are)Ï
     * [Where we're going](#where-were-going)
 * [What's new](#whats-new)
+  * [v0.8.0](#v080)
   * [v0.7.0](#v070)
   * [v0.6.1](#v061)
   * [v0.6.0](#v060)
   * [v0.5.0](#v050)
-  * [v0.4.0](#v040)
-  * [older...](#v0328)
+  * [older...](#v040)
 
 [![PyPI](https://img.shields.io/pypi/v/parllama)](https://pypi.org/project/parllama/)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/parllama.svg)](https://pypi.org/project/parllama/)  
@@ -584,6 +584,15 @@ if anything remains to be fixed before the commit is allowed.
 
 
 ## What's new
+
+### v0.8.0
+
+* **Python 3.13 Support**: Added compatibility for Python 3.13 while maintaining support for Python 3.11 and 3.12
+  - Updated project configuration to support Python 3.11, 3.12, and 3.13
+  - CI/CD pipelines default to Python 3.13 for builds and testing
+  - Code quality tools (ruff, pyright) configured for Python 3.11 minimum compatibility
+  - Dependency updates for multi-version Python support
+* **Updated Dependencies**: Refreshed dependency lock file with latest compatible versions
 
 ### v0.7.0
 
