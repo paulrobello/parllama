@@ -380,7 +380,7 @@ class SecureFileOperations:
             self.create_directory(dir_path, parents=True, exist_ok=True)
 
     @contextmanager
-    def backup_file(self, file_path: Path) -> Generator[Path | None, None, None]:
+    def backup_file(self, file_path: Path) -> Generator[Path | None]:
         """Context manager that creates a backup of a file before operations.
 
         Args:

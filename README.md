@@ -36,12 +36,13 @@
     * [Where we are](#where-we-are)Ï
     * [Where we're going](#where-were-going)
 * [What's new](#whats-new)
+  * [v0.8.2](#v082)
+  * [v0.8.1](#v081)
   * [v0.8.0](#v080)
   * [v0.7.0](#v070)
   * [v0.6.1](#v061)
   * [v0.6.0](#v060)
-  * [v0.5.0](#v050)
-  * [older...](#v040)
+  * [older...](#v050)
 
 [![PyPI](https://img.shields.io/pypi/v/parllama)](https://pypi.org/project/parllama/)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/parllama.svg)](https://pypi.org/project/parllama/)  
@@ -584,6 +585,25 @@ if anything remains to be fixed before the commit is allowed.
 
 
 ## What's new
+
+### v0.8.2
+
+* **Updated Dependencies**: Upgraded core dependencies to latest versions
+  - langchain 1.0.7 (from 0.3.27)
+  - textual 6.6.0 (from 6.1.0)
+  - par-ai-core 0.5.3 (from 0.3.2)
+  - ollama 0.6.1 (from 0.5.1)
+  - Multiple security and infrastructure library updates
+* **Dependency Cleanup**: Optimized uv.lock file for better performance
+
+### v0.8.1
+
+* **Python 3.14 Support**: Added full compatibility for Python 3.14 while maintaining backward compatibility with Python 3.11+
+  - Updated project configuration to support Python 3.11, 3.12, 3.13, and 3.14
+  - CI/CD pipelines default to Python 3.14 for builds and testing
+  - Code quality tools (ruff, pyright) configured to target Python 3.14
+  - Modernized codebase to use Python 3.14 features (type statement, generic type parameters)
+* **Updated Dependencies**: Refreshed dependency lock file with latest compatible versions
 
 ### v0.8.0
 

@@ -7,10 +7,10 @@ import time
 from pathlib import Path
 from typing import Any
 
-import google.generativeai as genai  # type: ignore
 import orjson as json
 import requests
 from dotenv import load_dotenv
+from google import genai  # type: ignore
 from groq import Groq
 from openai import OpenAI
 from par_ai_core.llm_providers import (
@@ -137,16 +137,16 @@ class ProviderManager(ParEventSystemBase):
                         for m in data:
                             new_list.append(m["id"])
                 elif p == LlmProvider.GEMINI:
-                    genai.configure(  # type: ignore[attr-defined]
-                        api_key=settings.provider_api_keys[p] or os.environ.get(provider_env_key_names[p]),
-                        transport="rest",  # Use REST instead of gRPC to avoid ALTS warnings
+                    client = genai.Client(  # type: ignore[attr-defined]
+                        api_key=settings.provider_api_keys[p] or os.environ.get(provider_env_key_names[p])
                     )
-                    models = list(genai.list_models())  # type: ignore
+                    models = list(client.models.list())  # type: ignore
                     if models:
-                        models = [m for m in models if get_model_mode(p, m.name) in ["chat", "unknown"]]
-                        data = sorted(models, key=lambda m: m.name)  # type: ignore
+                        models = [m for m in models if m.name and get_model_mode(p, m.name) in ["chat", "unknown"]]
+                        data = sorted(models, key=lambda m: m.name or "")  # type: ignore
                         for m in data:
-                            new_list.append(m.name.split("/")[1])
+                            if m.name:
+                                new_list.append(m.name.split("/")[1])
                 else:
                     raise ValueError(f"Unknown provider: {p}")
                 # print(new_list)

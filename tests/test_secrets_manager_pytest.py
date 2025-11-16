@@ -442,6 +442,7 @@ class TestSecretsManagerFileOperations:
     def test_check_file_permissions_error(self, secrets_manager, temp_dir):
         """Test file permission checking with errors."""
         test_file = temp_dir / "test_file.json"
+        test_file.write_text("{}")  # Create the file so exists() returns True
 
         # Mock stat to raise OSError
         with patch.object(Path, 'stat', side_effect=OSError("Error")):

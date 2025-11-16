@@ -299,7 +299,7 @@ class ChatMessageContainer(ParEventSystemBase):
             self.clear_changes()
 
     @contextmanager
-    def batch_changes(self) -> Generator[None, None, None]:
+    def batch_changes(self) -> Generator[None]:
         """Batch changes"""
         # self.log_it("Starting batch changes")
         self._batching = True

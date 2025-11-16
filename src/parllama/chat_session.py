@@ -604,7 +604,7 @@ class ChatSession(ChatMessageContainer):
             msg = self.system_prompt
             if msg is not None:
                 self._notify_subs(ChatMessage(parent_id=self.id, message_id=msg.id))
-        nc: SessionChanges = SessionChanges()
+        nc: SessionChanges = set()
         for change in self._changes:
             if change in session_change_list:
                 nc.add(change)  # type: ignore

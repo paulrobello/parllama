@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Literal, TypeAlias
+from typing import Literal
 
 # TODO change to enums
-SessionChanges: TypeAlias = set[
+type SessionChanges = set[
     Literal[
         "name",
         "provider",
@@ -42,7 +42,7 @@ session_change_list: list[
     "reasoning_budget",
 ]
 
-PromptChanges: TypeAlias = set[Literal["name", "description", "messages", "submit_on_load"]]
+type PromptChanges = set[Literal["name", "description", "messages", "submit_on_load"]]
 prompt_change_list: list[Literal["name", "description", "messages", "submit_on_load"]] = [
     "name",
     "description",

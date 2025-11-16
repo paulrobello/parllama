@@ -200,7 +200,7 @@ class ChatPrompt(ChatMessageContainer):
             # self.log_it(f"CP is not dirty, not notifying: {self.name}")
             return False  # No need to save if no changes
         self.last_updated = datetime.now(UTC)
-        nc: PromptChanges = PromptChanges()
+        nc: PromptChanges = set()
         for change in self._changes:
             if change in prompt_change_list:
                 nc.add(change)  # type: ignore

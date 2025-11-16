@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
-from typing import Literal, TypeAlias
+from typing import Literal
 
 from textual.widgets import Button, Input
 from textual.widgets.button import ButtonVariant
@@ -14,7 +14,7 @@ from parllama.icons import HEAVY_PLUS_SIGN_EMOJI, PENCIL_EMOJI, TRASH_EMOJI
 
 DECIMAL_PRECESSION = 5
 
-TabType: TypeAlias = Literal[
+type TabType = Literal[
     "Local",
     "Site",
     "Chat",
