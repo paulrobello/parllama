@@ -49,13 +49,13 @@ keywords = [
 requires-python = ">=3.11"
 dependencies = [
     "argparse>=1.4.0",
-    "beautifulsoup4>=4.14.2",
+    "beautifulsoup4>=4.14.3",
     "build>=1.3.0",
     "cryptography>=46.0.3",
     "docker>=7.1.0",
     "httpx>=0.28.1",
     "humanize>=4.14.0",
-    "langchain>=1.0.7",
+    "langchain>=1.1.0",
     "ollama>=0.6.1",
     "pydantic>=2.11.3",
     "pydantic-core>=2.33.1",
@@ -64,15 +64,15 @@ dependencies = [
     "requests>=2.32.5",
     "rich>=14.2.0",
     "semver>=3.0.4",
-    "textual>=6.6.0",
+    "textual==6.6.0",
     "textual-fspicker>=0.6.0",
     "urllib3>=2.5.0",
     "rich-pixels>=3.0.1",
     "orjson>=3.11.4",
-    "par-ai-core>=0.5.3",
+    "par-ai-core>=0.5.4",
     "clipman>=3.3.3",
     "xdg-base-dirs>=6.0.2",
-    "google-genai>=1.50.1",
+    "google-genai>=1.52.0",
 ]
 packages = [
     "src/parllama",
@@ -109,15 +109,15 @@ dev = [
     "types-pytz>=2025.2.0.20251108",
     "types-requests>=2.32.4.20250913",
     "types-beautifulsoup4>=4.12.0.20250516",
-    "pre-commit>=4.4.0",
+    "pre-commit>=4.5.0",
     "google-api-python-client-stubs>=1.31.0",
     "pyinstrument>=5.1.1",
     "types-orjson>=3.6.2",
-    "ruff>=0.14.5",
+    "ruff>=0.14.7",
     "textual-dev>=1.8.0",
     "pytest>=9.0.1",
     "pytest-cov>=7.0.0",
-    "hatchling>=1.27.0",
+    "hatchling>=1.28.0",
 ]
 
 [tool.hatch.version]

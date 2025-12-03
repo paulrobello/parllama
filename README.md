@@ -36,13 +36,12 @@
     * [Where we are](#where-we-are)Ï
     * [Where we're going](#where-were-going)
 * [What's new](#whats-new)
+  * [v0.8.3](#v083)
   * [v0.8.2](#v082)
   * [v0.8.1](#v081)
   * [v0.8.0](#v080)
   * [v0.7.0](#v070)
-  * [v0.6.1](#v061)
-  * [v0.6.0](#v060)
-  * [older...](#v050)
+  * [older...](#v061)
 
 [![PyPI](https://img.shields.io/pypi/v/parllama)](https://pypi.org/project/parllama/)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/parllama.svg)](https://pypi.org/project/parllama/)  
@@ -585,6 +584,10 @@ if anything remains to be fixed before the commit is allowed.
 
 
 ## What's new
+
+### v0.8.3
+
+* **Textual Revert**: Reverted to prior version of textual package due to bug in newer version
 
 ### v0.8.2
 
