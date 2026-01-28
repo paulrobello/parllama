@@ -36,6 +36,7 @@
     * [Where we are](#where-we-are)Ï
     * [Where we're going](#where-were-going)
 * [What's new](#whats-new)
+  * [v0.8.4](#v084)
   * [v0.8.3](#v083)
   * [v0.8.2](#v082)
   * [v0.8.1](#v081)
@@ -584,6 +585,10 @@ if anything remains to be fixed before the commit is allowed.
 
 
 ## What's new
+
+### v0.8.4
+
+* **First Run Fix**: Fixed error message appearing on first run when settings.json doesn't exist yet (#69)
 
 ### v0.8.3
 
