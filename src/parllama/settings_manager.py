@@ -384,6 +384,10 @@ class Settings(BaseModel):
 
     def load_from_file(self) -> None:
         """Load settings from file."""
+        # Skip loading if settings file doesn't exist yet (first run)
+        if not self.settings_file.exists():
+            return
+
         try:
             # Use secure file operations to load settings JSON
             data = self._secure_ops.read_json_file(self.settings_file)
