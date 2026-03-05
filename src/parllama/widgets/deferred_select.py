@@ -1,6 +1,7 @@
 """Deferred select widget."""
 
 from collections.abc import Iterable
+from typing import TypeVar
 
 import rich.repr
 from rich.console import RenderableType
@@ -10,11 +11,12 @@ from textual.widgets import Select
 from textual.widgets._select import (
     BLANK,
     NoSelection,
-    SelectType,
 )  # pylint: disable=unused-import
 
+SelectType = TypeVar("SelectType")
 
-class DeferredSelect[SelectType](Select[SelectType]):
+
+class DeferredSelect(Select[SelectType]):
     """Deferred select widget."""
 
     _deferred_value: SelectType | NoSelection = BLANK

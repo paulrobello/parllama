@@ -41,8 +41,7 @@
   * [v0.8.2](#v082)
   * [v0.8.1](#v081)
   * [v0.8.0](#v080)
-  * [v0.7.0](#v070)
-  * [older...](#v061)
+  * [older...](#v070)
 
 [![PyPI](https://img.shields.io/pypi/v/parllama)](https://pypi.org/project/parllama/)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/parllama.svg)](https://pypi.org/project/parllama/)  
@@ -589,6 +588,11 @@ if anything remains to be fixed before the commit is allowed.
 ### v0.8.4
 
 * **First Run Fix**: Fixed error message appearing on first run when settings.json doesn't exist yet (#69)
+* **Python 3.11 Compatibility Fix**: Fixed syntax errors when running on Python 3.11
+  - Replaced PEP 695 `type` statement syntax (Python 3.12+) with `TypeAlias` annotations
+  - Replaced PEP 695 generic class syntax `class Foo[T]` with `TypeVar`-based generics
+  - Parenthesized multi-exception `except` clauses for Python 3.11 compatibility
+  - Set ruff target version to `py311` to match `requires-python` and prevent future regressions
 
 ### v0.8.3
 

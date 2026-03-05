@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import shutil
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, TypeAlias
 
 from textual.app import App
 from textual.theme import Theme
@@ -14,9 +14,9 @@ from parllama.par_event_system import ParEventSystemBase
 from parllama.secure_file_ops import SecureFileOperations, SecureFileOpsError
 from parllama.settings_manager import settings
 
-type ThemeMode = Literal["dark", "light"]
+ThemeMode: TypeAlias = Literal["dark", "light"]
 ThemeModes: list[ThemeMode] = ["dark", "light"]
-type Themes = dict[str, Theme]
+Themes: TypeAlias = dict[str, Theme]
 
 
 class InvalidThemeError(Exception):
