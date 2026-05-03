@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Security
+
+- **SEC-002**: Eliminated shell injection vulnerability in command executor. Content from LLM responses is now always written to temp files — never interpolated into shell commands. Replaced `create_subprocess_shell` with `create_subprocess_exec` + `shlex.split`.
+
+### Architecture
+
+- **ARC-001**: Extracted `ModelJobProcessor` and `ExecutionCoordinator` from `ParLlamaApp`, reducing app.py from 1,094 to ~759 lines (31%)
+- **ARC-002**: Converted all 8 module-level singletons to lazy initialization via `__getattr__`, eliminating import-time side effects and removing the pytest guard
+- **ARC-003**: Decomposed Settings (810-line God Class) into 10 Pydantic config group models with full backward compatibility
+- **ARC-004**: Split monolithic `messages.py` (539 lines, 70 message types) into 8 domain modules with re-export barrel
+- **ARC-005**: Extracted inline pub/sub logic into dedicated `EventBus` class
+
+### Code Quality
+
+- **QA-001/QA-002**: Replaced magic number `err_msg[18:]` + `ast.literal_eval` with `_parse_llm_error()` using `json.loads()`, deduplicated in two call sites
+- **QA-004**: Replaced 115-line `on_input_submitted` if/elif chain in OptionsView with declarative mapping tables
+- **QA-005**: Narrowed 44 `except Exception` instances to specific types across 24 files; eliminated all 13 silent `except Exception: pass` blocks
+- **QA-007**: Consolidated three identical catch blocks in `do_create_model` into single failure path
+
+### Documentation
+
+- **DOC-001**: Created `CHANGELOG.md` with version history from v0.2.5 through v0.8.4; trimmed README What's New section
+- **DOC-002**: Regenerated `help.md` with all 9 missing slash commands, removed spurious entries
+- **DOC-003**: Created `CONTRIBUTING.md` with development setup, code style, PR process, and conventions
+
 ## [0.8.4] - 2025-05-01
 
 ### Fixed
