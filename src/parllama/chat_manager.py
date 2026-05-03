@@ -321,4 +321,19 @@ class ChatManager(MessageSink):
             self.app.post_message(PromptListChanged())
 
 
-chat_manager = ChatManager()
+_chat_manager: ChatManager | None = None
+
+
+def _get_chat_manager() -> ChatManager:
+    """Lazily create the ChatManager singleton on first access."""
+    global _chat_manager
+    if _chat_manager is None:
+        _chat_manager = ChatManager()
+    return _chat_manager
+
+
+def __getattr__(name: str):  # type: ignore[misc]
+    """Module-level __getattr__ for lazy singleton initialization."""
+    if name == "chat_manager":
+        return _get_chat_manager()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

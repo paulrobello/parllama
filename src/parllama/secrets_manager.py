@@ -800,4 +800,19 @@ def gen_salt() -> bytes:
     return os.urandom(16)
 
 
-secrets_manager = SecretsManager(settings.secrets_file)
+_secrets_manager: SecretsManager | None = None
+
+
+def _get_secrets_manager() -> SecretsManager:
+    """Lazily create the SecretsManager singleton on first access."""
+    global _secrets_manager
+    if _secrets_manager is None:
+        _secrets_manager = SecretsManager(settings.secrets_file)
+    return _secrets_manager
+
+
+def __getattr__(name: str):  # type: ignore[misc]
+    """Module-level __getattr__ for lazy singleton initialization."""
+    if name == "secrets_manager":
+        return _get_secrets_manager()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

@@ -11,7 +11,6 @@ from textual.message import Message
 from textual.notifications import SeverityLevel
 
 from parllama.messages.messages import LogIt
-from parllama.settings_manager import settings
 
 
 class MessageSink:
@@ -53,6 +52,9 @@ class MessageSink:
         timeout: int | None = None,
     ) -> bool:
         """Emit a Textual log message and optionally request a notification."""
+        # Lazy import to avoid triggering Settings initialization at module import time
+        from parllama.settings_manager import settings
+
         if timeout is None:
             if severity == "error":
                 calc_timeout = int(settings.notification_timeout_error)

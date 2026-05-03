@@ -115,9 +115,15 @@ class Settings(BaseModel):
 
     model_config = {"arbitrary_types_allowed": True}
 
-    # pylint: disable=too-many-branches, too-many-statements
+    _initialized: bool = PrivateAttr(default=False)
+
     def __init__(self) -> None:
-        """Initialize Manager."""
+        """Initialize Settings with Pydantic defaults only.
+
+        No side effects (CLI parsing, directory creation, file I/O) occur here.
+        Call :func:`initialize_settings` or rely on the lazy module-level
+        ``settings`` singleton to trigger full initialization on first access.
+        """
         super().__init__()
 
         # Initialize secure file operations for settings
@@ -128,29 +134,19 @@ class Settings(BaseModel):
             sanitize_filenames=self.file_validation.sanitize_filenames,
         )
 
-        # Check if we're running under pytest
-        import sys
+    def _full_initialize(self, args: Namespace | None = None) -> None:
+        """Perform full initialization with CLI args, directory setup, and I/O.
 
-        if "pytest" in sys.modules:
-            args = Namespace(
-                no_save=False,
-                no_chat_save=False,
-                data_dir=None,
-                ollama_url=None,
-                starting_tab=None,
-                theme_name=None,
-                theme_mode=None,
-                use_last_tab_on_startup=None,
-                load_local_models_on_startup=None,
-                restore_defaults=False,
-                purge_cache=False,
-                purge_chats=False,
-                purge_prompts=False,
-                auto_name_session=None,
-                ps_poll=None,
-            )
-        else:
-            args: Namespace = get_args()
+        This is called lazily on first access to the module-level ``settings``
+        singleton.  It is safe to call multiple times -- subsequent calls are
+        no-ops.
+        """
+        if self._initialized:
+            return
+        self._initialized = True
+
+        if args is None:
+            args = get_args()
 
         self._setup_directories(args)
         self.load_from_file()
@@ -1291,36 +1287,72 @@ def _convert_paths_to_strings(data: dict) -> None:
                     _convert_paths_to_strings(item)
 
 
+# -- Module-level lazy singleton -------------------------------------------------
+
+_settings: Settings | None = None
+
+
+def initialize_settings(args: Namespace | None = None) -> Settings:
+    """Create and fully initialize the Settings singleton.
+
+    This is the single entry-point for constructing a ready-to-use Settings
+    instance.  It is idempotent -- calling it again after the singleton is
+    already initialized simply returns the existing instance.
+    """
+    global _settings
+    if _settings is None:
+        _settings = Settings()
+    _settings._full_initialize(args)
+    return _settings
+
+
+def _get_settings() -> Settings:
+    """Lazily create and fully initialize the Settings singleton on first access."""
+    return initialize_settings()
+
+
+def __getattr__(name: str):  # type: ignore[misc]
+    """Module-level __getattr__ for lazy singleton initialization."""
+    if name == "settings":
+        return _get_settings()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+# -- Module-level helper functions (use _get_settings() for lazy access) ---------
+
+
 def _fetch_image_with_retry(url: str, headers: dict) -> requests.Response:
     """Fetch image with retry logic."""
     from parllama.retry_utils import create_retry_config, retry_with_backoff
 
+    _s = _get_settings()
+
     @retry_with_backoff(
-        config=create_retry_config(
-            max_attempts=settings.image_fetch_max_attempts, base_delay=settings.image_fetch_base_delay
-        )
+        config=create_retry_config(max_attempts=_s.image_fetch_max_attempts, base_delay=_s.image_fetch_base_delay)
     )
     def _fetch():
-        return requests.get(url, headers=headers, timeout=settings.image_fetch_timeout)
+        return requests.get(url, headers=headers, timeout=_s.image_fetch_timeout)
 
     return _fetch()
 
 
 def fetch_and_cache_image(image_path: str | Path) -> tuple[Path, bytes]:
     """Fetch and cache an image."""
+    _s = _get_settings()
+
     # Create secure file operations for images
     image_secure_ops = SecureFileOperations(
-        max_file_size_mb=settings.max_image_size_mb,
-        allowed_extensions=settings.allowed_image_extensions,
-        validate_content=settings.validate_file_content,
-        sanitize_filenames=settings.sanitize_filenames,
+        max_file_size_mb=_s.max_image_size_mb,
+        allowed_extensions=_s.allowed_image_extensions,
+        validate_content=_s.validate_file_content,
+        sanitize_filenames=_s.sanitize_filenames,
     )
 
     if isinstance(image_path, str):
         image_path = image_path.strip()
         if image_path.startswith("http://") or image_path.startswith("https://"):
             ext = image_path.split(".")[-1].lower()
-            cache_file = Path(settings.image_cache_dir) / f"{md5_hash(image_path)}.{ext}"
+            cache_file = Path(_s.image_cache_dir) / f"{md5_hash(image_path)}.{ext}"
 
             if not cache_file.exists():
                 headers = {
@@ -1333,7 +1365,7 @@ def fetch_and_cache_image(image_path: str | Path) -> tuple[Path, bytes]:
                         raise FileNotFoundError("Failed to download image from URL")
 
                     # Validate image size before caching
-                    if len(data) > settings.max_image_size_mb * 1024 * 1024:
+                    if len(data) > _s.max_image_size_mb * 1024 * 1024:
                         raise FileNotFoundError(f"Image too large: {len(data) / (1024 * 1024):.2f}MB exceeds limit")
 
                     # Write using secure operations
@@ -1341,7 +1373,7 @@ def fetch_and_cache_image(image_path: str | Path) -> tuple[Path, bytes]:
                     cache_file.write_bytes(data)
 
                     # Validate the cached image
-                    if settings.validate_file_content:
+                    if _s.validate_file_content:
                         try:
                             image_secure_ops.validator.validate_file_path(cache_file)
                         except Exception as e:
@@ -1354,7 +1386,7 @@ def fetch_and_cache_image(image_path: str | Path) -> tuple[Path, bytes]:
                     raise FileNotFoundError(f"Failed to fetch image: {e}") from e
             else:
                 # Validate cached image if validation is enabled
-                if settings.validate_file_content:
+                if _s.validate_file_content:
                     try:
                         image_secure_ops.validator.validate_file_path(cache_file)
                     except Exception as e:
@@ -1373,13 +1405,10 @@ def fetch_and_cache_image(image_path: str | Path) -> tuple[Path, bytes]:
         raise FileNotFoundError(f"Image file not found: {image_path}")
 
     # Validate local image file
-    if settings.validate_file_content:
+    if _s.validate_file_content:
         try:
             image_secure_ops.validator.validate_file_path(image_path)
         except Exception as e:
             raise FileNotFoundError(f"Local image failed validation: {e}") from e
 
     return image_path, image_path.read_bytes()
-
-
-settings = Settings()

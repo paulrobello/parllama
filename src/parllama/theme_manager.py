@@ -137,4 +137,19 @@ class ThemeManager(MessageSink):
         self.app.theme = theme_name
 
 
-theme_manager = ThemeManager()
+_theme_manager: ThemeManager | None = None
+
+
+def _get_theme_manager() -> ThemeManager:
+    """Lazily create the ThemeManager singleton on first access."""
+    global _theme_manager
+    if _theme_manager is None:
+        _theme_manager = ThemeManager()
+    return _theme_manager
+
+
+def __getattr__(name: str):  # type: ignore[misc]
+    """Module-level __getattr__ for lazy singleton initialization."""
+    if name == "theme_manager":
+        return _get_theme_manager()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

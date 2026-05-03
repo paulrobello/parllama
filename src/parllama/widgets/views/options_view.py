@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -26,6 +27,26 @@ from parllama.widgets.provider_model_select import ProviderModelSelect
 
 if TYPE_CHECKING:
     from parllama.app import ParLlamaApp
+
+# Maps provider lowercase name to LlmProvider enum value.
+_PROVIDER_BY_WIDGET_NAME: dict[str, LlmProvider] = {
+    "ollama": LlmProvider.OLLAMA,
+    "openai": LlmProvider.OPENAI,
+    "groq": LlmProvider.GROQ,
+    "anthropic": LlmProvider.ANTHROPIC,
+    "gemini": LlmProvider.GEMINI,
+    "google": LlmProvider.GEMINI,  # Widget uses "google_api_key" for Gemini provider
+    "xai": LlmProvider.XAI,
+    "openrouter": LlmProvider.OPENROUTER,
+    "deepseek": LlmProvider.DEEPSEEK,
+    "litellm": LlmProvider.LITELLM,
+    "llamacpp": LlmProvider.LLAMACPP,
+}
+
+
+def _parse_comma_list(value: str) -> list[str]:
+    """Parse a comma-separated string into a cleaned list."""
+    return [item.strip() for item in value.split(",") if item.strip()]
 
 
 class OptionsView(Horizontal):
@@ -122,6 +143,156 @@ class OptionsView(Horizontal):
                 id=f"refresh_{provider_name}_models",
                 variant="primary",
             )
+
+    # ------------------------------------------------------------------
+    # Declarative mappings: widget_id -> (setter, optional side_effect)
+    #
+    # Each tuple is (setter_callable, side_effect_callable | None).
+    #   setter:  a function receiving (self, value) that persists the value.
+    #   side_effect: an optional function receiving (self, value) run after
+    #                the setter (e.g. flagging provider changes).
+    #
+    # These tables replace the former if/elif chains in on_input_submitted
+    # and on_checkbox_changed, and the provider-refresh dispatch in
+    # on_refresh_button_pressed.
+    # ------------------------------------------------------------------
+
+    # --- Input fields ---------------------------------------------------
+
+    def _set_provider_base_url(self, value: str) -> None:
+        """Set a provider base URL by extracting the provider from the widget ID."""
+        provider = _PROVIDER_BY_WIDGET_NAME[self._current_widget_id.rsplit("_base_url", 1)[0]]
+        settings.provider_base_urls[provider] = value or None
+
+    def _set_provider_api_key(self, value: str) -> None:
+        """Set a provider API key by extracting the provider from the widget ID."""
+        provider = _PROVIDER_BY_WIDGET_NAME[self._current_widget_id.rsplit("_api_key", 1)[0]]
+        settings.provider_api_keys[provider] = value or None
+
+    def _set_provider_cache_hours(self, value: str) -> None:
+        """Set a provider cache duration by extracting the provider from the widget ID."""
+        provider = _PROVIDER_BY_WIDGET_NAME[self._current_widget_id.replace("_cache_hours", "")]
+        settings.provider_cache_hours[provider] = int(value)
+
+    @staticmethod
+    def _set_ollama_base_url(view: OptionsView, value: str) -> None:
+        settings.provider_base_urls[LlmProvider.OLLAMA] = value
+        settings.ollama_host = value
+
+    @staticmethod
+    def _flag_provider_changed(view: OptionsView, value: str) -> None:
+        view._provider_changed = True
+
+    @staticmethod
+    def _flag_execution_changed(view: OptionsView, value: str) -> None:
+        view._execution_settings_changed = True
+
+    @staticmethod
+    def _set_execution_allowed_commands(view: OptionsView, value: str) -> None:
+        settings.execution_allowed_commands = _parse_comma_list(value)
+        view._execution_settings_changed = True
+
+    @staticmethod
+    def _set_execution_security_patterns(view: OptionsView, value: str) -> None:
+        settings.execution_security_patterns = _parse_comma_list(value)
+        view._execution_settings_changed = True
+
+    @staticmethod
+    def _set_langchain_base_url(view: OptionsView, value: str) -> None:
+        settings.langchain_config.base_url = value
+
+    @staticmethod
+    def _set_langchain_api_key(view: OptionsView, value: str) -> None:
+        settings.langchain_config.api_key = value
+
+    @staticmethod
+    def _set_langchain_project(view: OptionsView, value: str) -> None:
+        settings.langchain_config.project = value or "parllama"
+
+    # _current_widget_id is a transient attribute set by the dispatch loop
+    # so that parameterised setters can derive the provider from the ID.
+    _current_widget_id: str
+
+    _INPUT_FIELD_MAP: dict[
+        str, tuple[Callable[[OptionsView, str], None], Callable[[OptionsView, str], None] | None]
+    ] = {
+        # Provider base URLs
+        "ollama_base_url": (_set_ollama_base_url, None),
+        "openai_base_url": (_set_provider_base_url, _flag_provider_changed),
+        "groq_base_url": (_set_provider_base_url, _flag_provider_changed),
+        "anthropic_base_url": (_set_provider_base_url, _flag_provider_changed),
+        "xai_base_url": (_set_provider_base_url, _flag_provider_changed),
+        "openrouter_base_url": (_set_provider_base_url, _flag_provider_changed),
+        "deepseek_base_url": (_set_provider_base_url, _flag_provider_changed),
+        "litellm_base_url": (_set_provider_base_url, _flag_provider_changed),
+        "llamacpp_base_url": (_set_provider_base_url, _flag_provider_changed),
+        # Provider API keys
+        "openai_api_key": (_set_provider_api_key, _flag_provider_changed),
+        "groq_api_key": (_set_provider_api_key, _flag_provider_changed),
+        "anthropic_api_key": (_set_provider_api_key, _flag_provider_changed),
+        "xai_api_key": (_set_provider_api_key, _flag_provider_changed),
+        "openrouter_api_key": (_set_provider_api_key, _flag_provider_changed),
+        "deepseek_api_key": (_set_provider_api_key, _flag_provider_changed),
+        "litellm_api_key": (_set_provider_api_key, _flag_provider_changed),
+        "google_api_key": (_set_provider_api_key, _flag_provider_changed),
+        # Provider cache hours
+        "ollama_cache_hours": (_set_provider_cache_hours, None),
+        "openai_cache_hours": (_set_provider_cache_hours, None),
+        "groq_cache_hours": (_set_provider_cache_hours, None),
+        "anthropic_cache_hours": (_set_provider_cache_hours, None),
+        "gemini_cache_hours": (_set_provider_cache_hours, None),
+        "xai_cache_hours": (_set_provider_cache_hours, None),
+        "openrouter_cache_hours": (_set_provider_cache_hours, None),
+        "deepseek_cache_hours": (_set_provider_cache_hours, None),
+        "litellm_cache_hours": (_set_provider_cache_hours, None),
+        "llamacpp_cache_hours": (_set_provider_cache_hours, None),
+        # Simple int settings
+        "ollama_ps_poll_interval": (lambda v, val: setattr(settings, "ollama_ps_poll_interval", int(val)), None),
+        "chat_tab_max_length": (lambda v, val: setattr(settings, "chat_tab_max_length", int(val)), None),
+        "chat_input_history_length": (lambda v, val: setattr(settings, "chat_input_history_length", int(val)), None),
+        "max_retry_attempts": (lambda v, val: setattr(settings, "max_retry_attempts", int(val)), None),
+        # Simple float settings
+        "retry_base_delay": (lambda v, val: setattr(settings, "retry_base_delay", float(val)), None),
+        "retry_backoff_factor": (lambda v, val: setattr(settings, "retry_backoff_factor", float(val)), None),
+        "retry_max_delay": (lambda v, val: setattr(settings, "retry_max_delay", float(val)), None),
+        # Langchain
+        "langchain_base_url": (_set_langchain_base_url, None),
+        "langchain_api_key": (_set_langchain_api_key, None),
+        "langchain_project": (_set_langchain_project, None),
+        # Execution (comma-separated lists with side effects)
+        "execution_allowed_commands": (_set_execution_allowed_commands, None),
+        "execution_security_patterns": (_set_execution_security_patterns, None),
+    }
+
+    # --- Checkboxes -----------------------------------------------------
+
+    _CHECKBOX_MAP: dict[str, tuple[str, Callable[[OptionsView, bool], None] | None]] = {
+        "check_for_updates": ("check_for_updates", None),
+        "use_last_tab_on_startup": ("use_last_tab_on_startup", None),
+        "auto_name_session": ("auto_name_session", None),
+        "show_first_run": ("show_first_run", None),
+        "return_to_single_line_on_submit": ("return_to_single_line_on_submit", None),
+        "save_chat_input_history": ("save_chat_input_history", None),
+        "always_show_session_config": ("always_show_session_config", None),
+        "close_session_config_on_submit": ("close_session_config_on_submit", None),
+        "load_local_models_on_startup": ("load_local_models_on_startup", None),
+        "enable_network_retries": ("enable_network_retries", None),
+        "langchain_tracing": ("langchain_config.tracing", None),
+        "execution_enabled": (
+            "execution_enabled",
+            lambda view, val: setattr(view, "_execution_settings_changed", True),
+        ),
+    }
+
+    # --- Refresh buttons ------------------------------------------------
+    # Built from _PROVIDER_BY_WIDGET_NAME so adding a new provider only
+    # requires one entry in that dict.
+
+    _REFRESH_BUTTON_MAP: dict[str, LlmProvider] = {
+        f"refresh_{name}_models": provider for name, provider in _PROVIDER_BY_WIDGET_NAME.items()
+    }
+
+    # ------------------------------------------------------------------
 
     def compose(self) -> ComposeResult:  # pylint: disable=too-many-statements
         """Compose the content of the view."""
@@ -600,75 +771,52 @@ class OptionsView(Horizontal):
 
     @on(Checkbox.Changed)
     def on_checkbox_changed(self, event: Checkbox.Changed) -> None:
-        """Handle checkbox changed"""
+        """Handle checkbox changed via declarative mapping."""
         event.stop()
         ctrl: Checkbox = event.control
-        if ctrl.id == "check_for_updates":
-            settings.check_for_updates = ctrl.value
-        elif ctrl.id == "use_last_tab_on_startup":
-            settings.use_last_tab_on_startup = ctrl.value
-        elif ctrl.id == "auto_name_session":
-            settings.auto_name_session = ctrl.value
-        elif ctrl.id == "show_first_run":
-            settings.show_first_run = ctrl.value
-        elif ctrl.id == "return_to_single_line_on_submit":
-            settings.return_to_single_line_on_submit = ctrl.value
-        elif ctrl.id == "save_chat_input_history":
-            settings.save_chat_input_history = ctrl.value
-        elif ctrl.id == "always_show_session_config":
-            settings.always_show_session_config = ctrl.value
-        elif ctrl.id == "close_session_config_on_submit":
-            settings.close_session_config_on_submit = ctrl.value
-        elif ctrl.id == "load_local_models_on_startup":
-            settings.load_local_models_on_startup = ctrl.value
-        elif ctrl.id == "langchain_tracing":
-            settings.langchain_config.tracing = ctrl.value
-        elif ctrl.id == "enable_network_retries":
-            settings.enable_network_retries = ctrl.value
-        elif ctrl.id == "execution_enabled":
-            settings.execution_enabled = ctrl.value
-            self._execution_settings_changed = True
-        elif ctrl.id and ctrl.id.startswith("disable_") and ctrl.id.endswith("_provider"):
-            # Extract provider name from checkbox id (e.g., "disable_litellm_provider" -> "litellm")
-            provider_name = ctrl.id.replace("disable_", "").replace("_provider", "")
 
-            # Map lowercase provider names to correct enum values
-            provider_name_map = {
-                "ollama": "Ollama",
-                "llamacpp": "LlamaCpp",
-                "openrouter": "OpenRouter",
-                "openai": "OpenAI",
-                "gemini": "Gemini",
-                "github": "Github",
-                "xai": "XAI",
-                "anthropic": "Anthropic",
-                "groq": "Groq",
-                "mistral": "Mistral",
-                "deepseek": "Deepseek",
-                "litellm": "LiteLLM",
-                "bedrock": "Bedrock",
-                "azure": "Azure",
-            }
+        if not ctrl.id:
+            return
 
+        # Check the static checkbox -> settings mapping table first.
+        entry = self._CHECKBOX_MAP.get(ctrl.id)
+        if entry is not None:
+            attr_path, side_effect = entry
+            self._set_nested_attr(attr_path, ctrl.value)
+            if side_effect is not None:
+                side_effect(self, ctrl.value)
+            settings.save()
+            return
+
+        # Dynamic pattern: disable_<provider>_provider checkboxes.
+        if ctrl.id.startswith("disable_") and ctrl.id.endswith("_provider"):
+            provider_name = ctrl.id[len("disable_") : -len("_provider")]
             try:
-                mapped_name = provider_name_map.get(provider_name, provider_name)
-                provider = provider_name_to_enum(mapped_name)
+                provider = provider_name_to_enum(provider_name)
                 settings.disabled_providers[provider] = ctrl.value
+                settings.save()
             except (ValueError, KeyError):
                 self.notify(
                     f"Unknown provider: {provider_name}",
                     severity="error",
                     timeout=settings.notification_timeout_extended,
                 )
-        else:
-            self.notify(f"Unhandled input: {ctrl.id}", severity="error", timeout=settings.notification_timeout_extended)
             return
-        settings.save()
 
-    # pylint: disable=too-many-branches
+        self.notify(f"Unhandled input: {ctrl.id}", severity="error", timeout=settings.notification_timeout_extended)
+
+    @staticmethod
+    def _set_nested_attr(attr_path: str, value: object) -> None:
+        """Set a (possibly dotted) attribute on the settings singleton."""
+        obj: object = settings
+        parts = attr_path.split(".")
+        for part in parts[:-1]:
+            obj = getattr(obj, part)
+        setattr(obj, parts[-1], value)
+
     @on(Input.Submitted)
     def on_input_submitted(self, event: Input.Submitted) -> None:
-        """Handle input submission"""
+        """Handle input submission via declarative mapping."""
         event.stop()
         ctrl: Input = event.control
         if event.validation_result is not None and not event.validation_result.is_valid:
@@ -676,112 +824,25 @@ class OptionsView(Horizontal):
             self.notify(f"{ctrl.id} [{errors}]", severity="error", timeout=settings.notification_timeout_extended)
             return
 
-        if ctrl.id == "ollama_base_url":
-            settings.provider_base_urls[LlmProvider.OLLAMA] = ctrl.value
-            settings.ollama_host = ctrl.value
-        elif ctrl.id == "openai_base_url":
-            settings.provider_base_urls[LlmProvider.OPENAI] = ctrl.value or None
-            self._provider_changed = True
-        elif ctrl.id == "openai_api_key":
-            settings.provider_api_keys[LlmProvider.OPENAI] = ctrl.value or None
-            self._provider_changed = True
-        elif ctrl.id == "groq_base_url":
-            settings.provider_base_urls[LlmProvider.GROQ] = ctrl.value or None
-            self._provider_changed = True
-        elif ctrl.id == "groq_api_key":
-            settings.provider_api_keys[LlmProvider.GROQ] = ctrl.value or None
-            self._provider_changed = True
-        elif ctrl.id == "anthropic_base_url":
-            settings.provider_base_urls[LlmProvider.ANTHROPIC] = ctrl.value or None
-            self._provider_changed = True
-        elif ctrl.id == "anthropic_api_key":
-            settings.provider_api_keys[LlmProvider.ANTHROPIC] = ctrl.value or None
-            self._provider_changed = True
-        elif ctrl.id == "xai_base_url":
-            settings.provider_base_urls[LlmProvider.XAI] = ctrl.value or None
-            self._provider_changed = True
-        elif ctrl.id == "xai_api_key":
-            settings.provider_api_keys[LlmProvider.XAI] = ctrl.value or None
-            self._provider_changed = True
-        elif ctrl.id == "openrouter_base_url":
-            settings.provider_base_urls[LlmProvider.OPENROUTER] = ctrl.value or None
-            self._provider_changed = True
-        elif ctrl.id == "openrouter_api_key":
-            settings.provider_api_keys[LlmProvider.OPENROUTER] = ctrl.value or None
-            self._provider_changed = True
-        elif ctrl.id == "deepseek_base_url":
-            settings.provider_base_urls[LlmProvider.DEEPSEEK] = ctrl.value or None
-            self._provider_changed = True
-        elif ctrl.id == "deepseek_api_key":
-            settings.provider_api_keys[LlmProvider.DEEPSEEK] = ctrl.value or None
-            self._provider_changed = True
-        elif ctrl.id == "litellm_base_url":
-            settings.provider_base_urls[LlmProvider.LITELLM] = ctrl.value or None
-            self._provider_changed = True
-        elif ctrl.id == "litellm_api_key":
-            settings.provider_api_keys[LlmProvider.LITELLM] = ctrl.value or None
-            self._provider_changed = True
-        elif ctrl.id == "google_api_key":
-            settings.provider_api_keys[LlmProvider.GEMINI] = ctrl.value or None
-            self._provider_changed = True
-        elif ctrl.id == "llamacpp_base_url":
-            settings.provider_base_urls[LlmProvider.LLAMACPP] = ctrl.value or None
-            self._provider_changed = True
-        elif ctrl.id == "ollama_ps_poll_interval":
-            settings.ollama_ps_poll_interval = int(ctrl.value)
-        elif ctrl.id == "chat_tab_max_length":
-            settings.chat_tab_max_length = int(ctrl.value)
-        elif ctrl.id == "chat_input_history_length":
-            settings.chat_input_history_length = int(ctrl.value)
-        elif ctrl.id == "langchain_base_url":
-            settings.langchain_config.base_url = ctrl.value
-        elif ctrl.id == "langchain_api_key":
-            settings.langchain_config.api_key = ctrl.value
-        elif ctrl.id == "langchain_project":
-            settings.langchain_config.project = ctrl.value or "parllama"
-        elif ctrl.id == "max_retry_attempts":
-            settings.max_retry_attempts = int(ctrl.value)
-        elif ctrl.id == "retry_base_delay":
-            settings.retry_base_delay = float(ctrl.value)
-        elif ctrl.id == "retry_backoff_factor":
-            settings.retry_backoff_factor = float(ctrl.value)
-        elif ctrl.id == "retry_max_delay":
-            settings.retry_max_delay = float(ctrl.value)
-        # Cache hours inputs
-        elif ctrl.id == "ollama_cache_hours":
-            settings.provider_cache_hours[LlmProvider.OLLAMA] = int(ctrl.value)
-        elif ctrl.id == "openai_cache_hours":
-            settings.provider_cache_hours[LlmProvider.OPENAI] = int(ctrl.value)
-        elif ctrl.id == "groq_cache_hours":
-            settings.provider_cache_hours[LlmProvider.GROQ] = int(ctrl.value)
-        elif ctrl.id == "anthropic_cache_hours":
-            settings.provider_cache_hours[LlmProvider.ANTHROPIC] = int(ctrl.value)
-        elif ctrl.id == "gemini_cache_hours":
-            settings.provider_cache_hours[LlmProvider.GEMINI] = int(ctrl.value)
-        elif ctrl.id == "xai_cache_hours":
-            settings.provider_cache_hours[LlmProvider.XAI] = int(ctrl.value)
-        elif ctrl.id == "openrouter_cache_hours":
-            settings.provider_cache_hours[LlmProvider.OPENROUTER] = int(ctrl.value)
-        elif ctrl.id == "deepseek_cache_hours":
-            settings.provider_cache_hours[LlmProvider.DEEPSEEK] = int(ctrl.value)
-        elif ctrl.id == "litellm_cache_hours":
-            settings.provider_cache_hours[LlmProvider.LITELLM] = int(ctrl.value)
-        elif ctrl.id == "llamacpp_cache_hours":
-            settings.provider_cache_hours[LlmProvider.LLAMACPP] = int(ctrl.value)
-        elif ctrl.id == "execution_allowed_commands":
-            # Parse comma-separated list and clean up whitespace
-            commands = [cmd.strip() for cmd in ctrl.value.split(",") if cmd.strip()]
-            settings.execution_allowed_commands = commands
-            self._execution_settings_changed = True
-        elif ctrl.id == "execution_security_patterns":
-            # Parse comma-separated list and clean up whitespace
-            patterns = [pattern.strip() for pattern in ctrl.value.split(",") if pattern.strip()]
-            settings.execution_security_patterns = patterns
-            self._execution_settings_changed = True
-        else:
-            self.notify(f"Unhandled input: {ctrl.id}", severity="error", timeout=settings.notification_timeout_extended)
+        widget_id = ctrl.id
+        if widget_id is None:
             return
+
+        mapping = self._INPUT_FIELD_MAP.get(widget_id)
+        if mapping is None:
+            self.notify(
+                f"Unhandled input: {widget_id}", severity="error", timeout=settings.notification_timeout_extended
+            )
+            return
+
+        setter, side_effect = mapping
+        # Store widget ID so parameterised setters can derive the provider.
+        self._current_widget_id = widget_id
+        setter(self, ctrl.value)
+        if side_effect is not None:
+            side_effect(self, ctrl.value)
         settings.save()
+
         if self._provider_changed:
             self._provider_changed = False
         if self._execution_settings_changed:
@@ -794,43 +855,19 @@ class OptionsView(Horizontal):
             self._execution_settings_changed = False
 
     def on_refresh_button_pressed(self, event: Button.Pressed) -> None:
-        """Handle provider refresh button pressed"""
+        """Handle provider refresh button pressed via declarative mapping."""
         event.stop()
         button_id = event.control.id
 
-        if not button_id or not button_id.startswith("refresh_"):
+        if not button_id:
             return
 
-        if button_id == "refresh_ollama_models":
-            provider_manager.refresh_provider_models(LlmProvider.OLLAMA)
-            self._update_cache_status(LlmProvider.OLLAMA)
-        elif button_id == "refresh_openai_models":
-            provider_manager.refresh_provider_models(LlmProvider.OPENAI)
-            self._update_cache_status(LlmProvider.OPENAI)
-        elif button_id == "refresh_groq_models":
-            provider_manager.refresh_provider_models(LlmProvider.GROQ)
-            self._update_cache_status(LlmProvider.GROQ)
-        elif button_id == "refresh_anthropic_models":
-            provider_manager.refresh_provider_models(LlmProvider.ANTHROPIC)
-            self._update_cache_status(LlmProvider.ANTHROPIC)
-        elif button_id == "refresh_gemini_models":
-            provider_manager.refresh_provider_models(LlmProvider.GEMINI)
-            self._update_cache_status(LlmProvider.GEMINI)
-        elif button_id == "refresh_xai_models":
-            provider_manager.refresh_provider_models(LlmProvider.XAI)
-            self._update_cache_status(LlmProvider.XAI)
-        elif button_id == "refresh_openrouter_models":
-            provider_manager.refresh_provider_models(LlmProvider.OPENROUTER)
-            self._update_cache_status(LlmProvider.OPENROUTER)
-        elif button_id == "refresh_deepseek_models":
-            provider_manager.refresh_provider_models(LlmProvider.DEEPSEEK)
-            self._update_cache_status(LlmProvider.DEEPSEEK)
-        elif button_id == "refresh_litellm_models":
-            provider_manager.refresh_provider_models(LlmProvider.LITELLM)
-            self._update_cache_status(LlmProvider.LITELLM)
-        elif button_id == "refresh_llamacpp_models":
-            provider_manager.refresh_provider_models(LlmProvider.LLAMACPP)
-            self._update_cache_status(LlmProvider.LLAMACPP)
+        provider = self._REFRESH_BUTTON_MAP.get(button_id)
+        if provider is None:
+            return
+
+        provider_manager.refresh_provider_models(provider)
+        self._update_cache_status(provider)
 
     def _update_cache_status(self, provider: LlmProvider) -> None:
         """Update cache status display for a provider."""
