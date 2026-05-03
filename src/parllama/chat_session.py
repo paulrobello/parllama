@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import ast
 import base64
 import uuid
 from collections.abc import Iterator
@@ -287,6 +286,40 @@ class ChatSession(ChatMessageContainer):
                 # No existing system message, add memory as new system message
                 self.add_message(memory_message, prepend=True)
 
+    @staticmethod
+    def _parse_llm_error(err_msg: str) -> str:
+        """Parse an LLM provider error message and extract a human-readable description.
+
+        Provider exceptions often follow the pattern:
+            ``Error code: NNN - {'error': {'message': '...'}}``
+        This method safely extracts the nested ``message`` field when present,
+        falling back to the raw error string when parsing fails.
+
+        Args:
+            err_msg: Raw error string from an LLM provider exception.
+
+        Returns:
+            A cleaned-up error message suitable for displaying to the user.
+        """
+        # Strip the known prefix left by provider libraries (e.g. OpenAI).
+        # The format is "Error code: NNN - {json_payload}".
+        prefix = "Error code: "
+        body = err_msg.removeprefix(prefix)
+        # Remove the status code + separator after the prefix, e.g. "400 - "
+        dash_pos = body.find(" - ")
+        if dash_pos != -1:
+            body = body[dash_pos + 3 :]
+        # Try to parse the remainder as JSON to extract the nested message.
+        if body.lstrip().startswith("{"):
+            try:
+                err_dict = json.loads(body)
+                nested_msg = err_dict.get("error", {}).get("message")
+                if nested_msg:
+                    return str(nested_msg)
+            except (json.JSONDecodeError, ValueError, KeyError):
+                pass
+        return err_msg
+
     # pylint: disable=too-many-branches, too-many-statements
     async def send_chat(self, from_user: str) -> bool:
         """Send a chat message to LLM"""
@@ -408,10 +441,7 @@ class ChatSession(ChatMessageContainer):
                     self.log_it(e)
                     self.log_it("Error generating message", notify=True, severity="error")
                     if msg is not None:
-                        # err_msg = f"{err_msg}\n{traceback.format_exc()}"
-                        if err_msg[18:].startswith("{"):
-                            err_dict = ast.literal_eval(err_msg[18:])
-                            err_msg = err_dict.get("error", {}).get("message") or err_msg
+                        err_msg = self._parse_llm_error(err_msg)
 
                         msg.content += f"\n\n{err_msg}"
                         msg.content = msg.content.strip()
@@ -443,12 +473,7 @@ class ChatSession(ChatMessageContainer):
             self.log_it(e)
             self.log_it("Error generating message", notify=True, severity="error")
             if msg is not None:
-                err_msg = str(e)
-                if err_msg[18:].startswith("{"):
-                    err_dict = ast.literal_eval(err_msg[18:])
-                    err_msg = err_dict.get("error", {}).get("message") or err_msg
-
-                # err_msg = f"{err_msg}\n{traceback.format_exc()}"
+                err_msg = self._parse_llm_error(str(e))
 
                 msg.content += f"\n\n{err_msg}"
                 msg.content = msg.content.strip()

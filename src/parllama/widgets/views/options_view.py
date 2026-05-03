@@ -787,10 +787,10 @@ class OptionsView(Horizontal):
         if self._execution_settings_changed:
             # Update the command executor and template matcher with new settings
             app: ParLlamaApp = self.app  # type: ignore[assignment]
-            if hasattr(app, "command_executor"):
-                app.command_executor.update_settings(settings)
-            if hasattr(app, "template_matcher"):
-                app.template_matcher.update_settings(settings)
+            if hasattr(app, "execution_coordinator") and app.execution_coordinator.command_executor is not None:
+                app.execution_coordinator.command_executor.update_settings(settings)
+            if hasattr(app, "execution_coordinator") and app.execution_coordinator.template_matcher is not None:
+                app.execution_coordinator.template_matcher.update_settings(settings)
             self._execution_settings_changed = False
 
     def on_refresh_button_pressed(self, event: Button.Pressed) -> None:

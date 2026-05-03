@@ -5,24 +5,19 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Iterator
 from dataclasses import is_dataclass, replace
-from queue import Empty, Full, Queue
+from queue import Empty
 from weakref import WeakSet
 
 import clipman as clipboard
 import humanize
-import ollama
 from httpx import ConnectError
 from ollama import ProgressResponse
 from par_ai_core.llm_providers import LlmProvider
-from rich.columns import Columns
 from rich.console import ConsoleRenderable, RenderableType, RichCast
-from rich.progress_bar import ProgressBar
-from rich.style import Style
 from rich.text import Text
 from textual import on, work
 from textual.app import App
 from textual.binding import Binding
-from textual.color import Color
 from textual.message import Message
 from textual.message_pump import MessagePump
 from textual.notifications import SeverityLevel
@@ -32,14 +27,11 @@ from textual.widgets import Input, Select, TextArea
 
 from parllama import __application_title__
 from parllama.chat_manager import ChatManager, chat_manager
+from parllama.coordinators.execution_coordinator import ExecutionCoordinator
+from parllama.coordinators.model_job_processor import ModelJobProcessor
 from parllama.dialogs.help_dialog import HelpDialog
 from parllama.dialogs.information import InformationDialog
 from parllama.dialogs.theme_dialog import ThemeDialog
-from parllama.execution.command_executor import CommandExecutor
-
-# Execution system imports
-from parllama.execution.execution_manager import ExecutionManager, execution_manager as global_execution_manager
-from parllama.execution.template_matcher import TemplateMatcher
 from parllama.messages.messages import (
     ChangeTab,
     ChatGenerationAborted,
@@ -128,11 +120,12 @@ class ParLlamaApp(App[None]):
 
     notify_subs: dict[type[Message], WeakSet[MessagePump]]
     main_screen: MainScreen
-    job_queue: Queue[QueueJob]
     last_status: RenderableType = ""
     chat_manager: ChatManager
     job_timer: Timer | None
     ps_timer: Timer | None
+    model_job_processor: ModelJobProcessor
+    execution_coordinator: ExecutionCoordinator
 
     def __init__(self) -> None:
         """Initialize the application."""
@@ -141,6 +134,10 @@ class ParLlamaApp(App[None]):
 
         # Initialize state manager with logging capability
         self.state_manager = initialize_state_manager(self.log_it)
+
+        # Initialize coordinators (delegated from God Object decomposition)
+        self.model_job_processor = ModelJobProcessor(self)
+        self.execution_coordinator = ExecutionCoordinator(self)
 
         theme_manager.set_app(self)
         provider_manager.set_app(self)
@@ -159,8 +156,6 @@ class ParLlamaApp(App[None]):
         self.ps_timer = None
         self.title = __application_title__
 
-        # Limit job queue to prevent unbounded growth
-        self.job_queue = Queue[QueueJob](maxsize=settings.job_queue_max_size)
         self.last_status = ""
         if settings.theme_name not in theme_manager.list_themes():
             settings.theme_name = f"{settings.theme_name}_{settings.theme_mode}"
@@ -175,19 +170,14 @@ class ParLlamaApp(App[None]):
         Returns:
             bool: True if job was added successfully, False if queue is full
         """
-        try:
-            self.job_queue.put(job, timeout=settings.job_queue_put_timeout)
-            return True
-        except Full:
-            self.status_notify("Job queue is full. Please wait for current operations to complete.", severity="warning")
-            return False
+        return self.model_job_processor.add_job_to_queue(job)
 
     async def on_mount(self) -> None:
         """Display the screen."""
         self.main_screen = MainScreen()
 
         # Initialize execution system
-        await self._initialize_execution_system()
+        await self.execution_coordinator.initialize()
 
         await self.push_screen(self.main_screen)
         if settings.check_for_updates:
@@ -343,34 +333,8 @@ Some functions are only available via slash / commands on that chat tab. You can
         self.add_job_to_queue(CopyModelJob(modelName=event.src_model_name, dstModelName=event.dst_model_name))
 
     async def do_copy_local_model(self, event: CopyModelJob) -> None:
-        """Copy local model"""
-        try:
-            ret = ollama_dm.copy_model(event.modelName, event.dstModelName)
-            self.main_screen.local_view.post_message(
-                LocalModelCopied(
-                    src_model_name=event.modelName,
-                    dst_model_name=event.dstModelName,
-                    success=ret["status"] == "success",
-                )
-            )
-        except ollama.ResponseError as e:
-            self.handle_ollama_error("Model copy", event.modelName, e)
-            self.main_screen.local_view.post_message(
-                LocalModelCopied(
-                    src_model_name=event.modelName,
-                    dst_model_name=event.dstModelName,
-                    success=False,
-                )
-            )
-        except Exception as e:
-            self.handle_ollama_error("Model copy", event.modelName, e)
-            self.main_screen.local_view.post_message(
-                LocalModelCopied(
-                    src_model_name=event.modelName,
-                    dst_model_name=event.dstModelName,
-                    success=False,
-                )
-            )
+        """Copy local model. Delegates to ModelJobProcessor."""
+        await self.model_job_processor.do_copy_local_model(event)
 
     @on(LocalModelCopied)
     def on_local_model_copied(self, event: LocalModelCopied) -> None:
@@ -384,181 +348,34 @@ Some functions are only available via slash / commands on that chat tab. You can
             )
 
     async def do_progress(self, job: QueueJob, res: Iterator[ProgressResponse]) -> str:
-        """Update progress bar embedded in status bar"""
-        try:
-            last_status = ""
-            for msg in res:
-                if settings.shutting_down:
-                    break
-
-                last_status = msg.status or ""
-                pb: ProgressBar | None = None
-                percent = ""
-                if msg.total and msg.completed:
-                    percent = str(int(msg.completed / msg.total * 100)) + "%"
-                    primary_style = Style(color=Color.parse(self.current_theme.primary).rich_color)
-                    background_style = Style(color=Color.parse(self.current_theme.surface or "#111").rich_color)
-                    pb = ProgressBar(
-                        total=msg.total or 0,
-                        completed=msg.completed or 0,
-                        width=25,
-                        style=background_style,
-                        complete_style=primary_style,
-                        finished_style=primary_style,
-                    )
-                else:
-                    percent = ""
-                if percent and msg.status == "success":
-                    percent = "100%"
-                parts: list[RenderableType] = [
-                    Text.assemble(
-                        job.modelName,
-                        " ",
-                        msg.status or "",
-                        " ",
-                        percent,
-                        " ",
-                    )
-                ]
-                if pb:
-                    parts.append(pb)
-
-                self.post_message_all(StatusMessage(Columns(parts), log_it=False))
-            return last_status
-        except ollama.ResponseError as e:
-            self.post_message_all(StatusMessage(Text.assemble(("error:" + str(e), "red"))))
-            raise e
+        """Update progress bar. Delegates to ModelJobProcessor."""
+        return await self.model_job_processor.do_progress(job, res)
 
     async def do_pull(self, job: PullModelJob) -> None:
-        """Pull a model from ollama.com"""
-        try:
-            res: Iterator[ProgressResponse] = ollama_dm.pull_model(job.modelName)
-            last_status = await self.do_progress(job, res)
-
-            self.post_message_all(LocalModelPulled(model_name=job.modelName, success=last_status == "success"))
-        except Exception as e:
-            self.handle_ollama_error("Model pull", job.modelName, e)
-            self.post_message_all(LocalModelPulled(model_name=job.modelName, success=False))
+        """Pull a model from ollama.com. Delegates to ModelJobProcessor."""
+        await self.model_job_processor.do_pull(job)
 
     async def do_push(self, job: PushModelJob) -> None:
-        """Push a model to ollama.com"""
-        try:
-            res: Iterator[ProgressResponse] = ollama_dm.push_model(job.modelName)
-            last_status = await self.do_progress(job, res)
-
-            self.post_message_all(LocalModelPushed(model_name=job.modelName, success=last_status == "success"))
-        except Exception as e:
-            self.handle_ollama_error("Model push", job.modelName, e)
-            self.post_message_all(LocalModelPushed(model_name=job.modelName, success=False))
+        """Push a model to ollama.com. Delegates to ModelJobProcessor."""
+        await self.model_job_processor.do_push(job)
 
     async def do_create_model(self, job: CreateModelJob) -> None:
-        """Create a new local model"""
-        try:
-            self.main_screen.log_view.richlog.write(f"Creating model {job.modelName} from {job.modelFrom}...")
-            res = ollama_dm.create_model(
-                model_name=job.modelName,
-                model_from=job.modelFrom,
-                system_prompt=job.systemPrompt,
-                model_template=job.modelTemplate,
-                model_license=job.model_license,
-                quantize_level=job.quantizationLevel,
-            )
-            last_status = await self.do_progress(job, res)
-
-            self.main_screen.local_view.post_message(
-                LocalModelCreated(
-                    model_name=job.modelName,
-                    model_from=job.modelFrom,
-                    system_prompt=job.systemPrompt,
-                    model_template=job.modelTemplate,
-                    model_license=job.model_license,
-                    quantization_level=job.quantizationLevel,
-                    success=last_status == "success",
-                )
-            )
-        except ollama.ResponseError as e:
-            error_msg = self.handle_ollama_error("Model creation", job.modelName, e, custom_handling=True)
-
-            # Check for specific quantization errors
-            if "quantization is only supported for F16 and F32 models" in error_msg:
-                self.status_notify(
-                    "Quantization requires F16 or F32 base models. The selected model is already quantized.",
-                    severity="error",
-                )
-            elif "unsupported quantization type" in error_msg:
-                self.status_notify(
-                    "Invalid quantization level. Please use a supported type like q4_K_M, q5_K_M, etc.",
-                    severity="error",
-                )
-            else:
-                self.status_notify(f"Model creation failed: {error_msg}", severity="error")
-
-            self.main_screen.local_view.post_message(
-                LocalModelCreated(
-                    model_name=job.modelName,
-                    model_from=job.modelFrom,
-                    system_prompt=job.systemPrompt,
-                    model_template=job.modelTemplate,
-                    model_license=job.model_license,
-                    quantization_level=job.quantizationLevel,
-                    success=False,
-                )
-            )
-        except ConnectError as e:
-            self.handle_ollama_error("Model creation", job.modelName, e)
-            self.main_screen.local_view.post_message(
-                LocalModelCreated(
-                    model_name=job.modelName,
-                    model_from=job.modelFrom,
-                    system_prompt=job.systemPrompt,
-                    model_template=job.modelTemplate,
-                    model_license=job.model_license,
-                    quantization_level=job.quantizationLevel,
-                    success=False,
-                )
-            )
-        except Exception as e:
-            self.handle_ollama_error("Model creation", job.modelName, e)
-            self.main_screen.local_view.post_message(
-                LocalModelCreated(
-                    model_name=job.modelName,
-                    model_from=job.modelFrom,
-                    system_prompt=job.systemPrompt,
-                    model_template=job.modelTemplate,
-                    model_license=job.model_license,
-                    quantization_level=job.quantizationLevel,
-                    success=False,
-                )
-            )
+        """Create a new local model. Delegates to ModelJobProcessor."""
+        await self.model_job_processor.do_create_model(job)
 
     @work(group="do_jobs", thread=True)
     async def do_jobs(self) -> None:
-        """poll for queued jobs"""
+        """Poll for queued jobs."""
         while True:
             try:
-                job: QueueJob = self.job_queue.get(block=True, timeout=settings.job_queue_get_timeout)
+                job: QueueJob = self.model_job_processor.job_queue.get(
+                    block=True, timeout=settings.job_queue_get_timeout
+                )
                 if settings.shutting_down:
                     return
                 if not job:
                     continue
-                job_type = type(job).__name__
-                self.state_manager.set_busy(True, f"processing {job_type}")
-                try:
-                    if isinstance(job, PullModelJob):
-                        await self.do_pull(job)
-                    elif isinstance(job, PushModelJob):
-                        await self.do_push(job)
-                    elif isinstance(job, CopyModelJob):
-                        await self.do_copy_local_model(job)
-                    elif isinstance(job, CreateModelJob):
-                        await self.do_create_model(job)
-                    else:
-                        self.status_notify(
-                            f"Unknown job type {type(job)}",
-                            severity="error",
-                        )
-                finally:
-                    self.state_manager.set_busy(False, f"completed {job_type}")
+                await self.model_job_processor.process_job(job)
             except Empty:
                 if self._exit:
                     return
@@ -884,142 +701,17 @@ Some functions are only available via slash / commands on that chat tab. You can
                 timeout=event.timeout or int(settings.notification_timeout_info),
             )
 
-    async def _initialize_execution_system(self) -> None:
-        """Initialize the execution system."""
-        from parllama.execution import execution_manager
-
-        global global_execution_manager
-
-        # Initialize the global execution manager
-        global_execution_manager = ExecutionManager(self)
-        global_execution_manager.initialize_from_settings(settings)
-
-        # Set the global variable in the execution_manager module
-        execution_manager.execution_manager = global_execution_manager
-
-        # Initialize command executor and template matcher
-        self.command_executor = CommandExecutor(settings)
-        self.template_matcher = TemplateMatcher(settings)
-
-        # Load templates and history
-        await global_execution_manager.load_templates()
-        await global_execution_manager.load_execution_history()
-
     @on(ExecuteMessageRequested)
     async def on_execute_message_requested(self, event: ExecuteMessageRequested) -> None:
-        """Handle execution request."""
+        """Handle execution request. Delegates to ExecutionCoordinator."""
         event.stop()
-
-        if not settings.execution_enabled:
-            self.notify("Code execution is disabled", severity="warning")
-            return
-
-        try:
-            # Find matching templates
-            if global_execution_manager is None:
-                self.notify("Execution system not initialized", severity="error")
-                return
-
-            templates = global_execution_manager.get_enabled_templates()
-            matching_templates = self.template_matcher.find_matching_templates(event.content, templates)
-
-            if not matching_templates:
-                self.notify("No execution templates match this content", severity="warning")
-                return
-
-            # Use the best matching template
-            best_match = matching_templates[0]
-            template = best_match["template"]
-
-            # Extract the specific code to execute from applicable blocks
-            applicable_blocks = best_match.get("applicable_blocks", [])
-            if applicable_blocks:
-                # Use the first applicable code block
-                code_block = applicable_blocks[0]
-                content_to_execute = code_block["code"]
-                self.notify(f"Executing {code_block['language']} code block", severity="information")
-            else:
-                # Fallback: use get_executable_content to extract code
-                executable_parts = self.template_matcher.get_executable_content(event.content)
-                if executable_parts:
-                    content_to_execute = executable_parts[0]["content"]
-                    self.notify(f"Executing {executable_parts[0]['language']} code", severity="information")
-                else:
-                    content_to_execute = event.content
-                    self.notify("No code blocks found, executing entire content", severity="warning")
-
-            # Check if confirmation is required
-            requires_confirmation, warnings = self.template_matcher.should_require_confirmation(
-                content_to_execute, template
-            )
-
-            if requires_confirmation and settings.execution_require_confirmation:
-                # For now, just show warnings and proceed - full confirmation dialog would be added later
-                if warnings:
-                    warning_text = "; ".join(warnings)
-                    self.notify(f"Executing with warnings: {warning_text}", severity="warning")
-
-            # Execute the template with the extracted code content
-            result = await self.command_executor.execute_template(
-                template=template,
-                content=content_to_execute,
-                message_id=event.message_id,
-            )
-
-            # Add to execution history
-            if global_execution_manager:
-                global_execution_manager.add_execution_result(result)
-
-            # Post completion message
-            self.post_message(
-                ExecutionCompleted(message_id=event.message_id, result=result.to_dict(), add_to_chat=True)
-            )
-
-            # Notify success/failure
-            if result.success:
-                self.notify(f"Executed successfully: {template.name}", severity="information")
-            else:
-                self.notify(f"Execution failed: {result.error_message or 'Unknown error'}", severity="error")
-
-        except Exception as e:
-            import traceback
-
-            error_details = f"{str(e)} - {traceback.format_exc()}"
-            self.notify(f"Execution error: {str(e)}", severity="error")
-            self.post_message(
-                ExecutionFailed(message_id=event.message_id, template_id=event.template_id or "", error=error_details)
-            )
+        await self.execution_coordinator.handle_execute_message_requested(event)
 
     @on(ExecutionCompleted)
     def on_execution_completed(self, event: ExecutionCompleted) -> None:
-        """Handle execution completion."""
+        """Handle execution completion. Delegates to ExecutionCoordinator."""
         event.stop()
-
-        if event.add_to_chat:
-            # Add execution result as a new message to the current chat session
-            try:
-                from parllama.chat_message import ParllamaChatMessage
-                from parllama.execution.execution_result import ExecutionResult
-
-                result = ExecutionResult.from_dict(event.result)
-
-                # Create a new assistant message with the execution result
-                formatted_output = result.get_formatted_output()
-
-                # Get the current session from the chat view
-                chat_view = self.main_screen.chat_view
-                if hasattr(chat_view, "session") and chat_view.session:
-                    execution_message = ParllamaChatMessage(role="assistant", content=formatted_output)
-
-                    chat_view.session.add_message(execution_message)
-                    self.post_message(
-                        ChatMessage(parent_id=chat_view.session.id, message_id=execution_message.id, is_final=True)
-                    )
-                    chat_view.session.save()
-                    self.log_it(f"Execution result added to chat session: {chat_view.session.name}")
-
-            except Exception as e:
-                self.notify(f"Error adding execution result to chat: {str(e)}", severity="error")
+        self.execution_coordinator.handle_execution_completed(event)
 
     @on(ExecutionFailed)
     def on_execution_failed(self, event: ExecutionFailed) -> None:
@@ -1034,35 +726,8 @@ Some functions are only available via slash / commands on that chat tab. You can
     def handle_ollama_error(
         self, operation: str, model_name: str, error: Exception, custom_handling: bool = False
     ) -> str:
-        """Handle common Ollama error patterns.
-
-        Args:
-            operation: The operation being performed (e.g., "Model copy", "Model pull")
-            model_name: The name of the model involved
-            error: The exception that occurred
-            custom_handling: If True, only logs but doesn't send notifications (for custom error handling)
-
-        Returns:
-            The error message string for custom handling
-        """
-        if isinstance(error, ollama.ResponseError):
-            error_msg = str(error)
-            self.log_it(f"{operation} failed (ResponseError): {error_msg}")
-            if not custom_handling:
-                self.status_notify(f"{operation} failed: {error_msg}", severity="error")
-            return error_msg
-        elif isinstance(error, ConnectError):
-            error_msg = "Cannot connect to Ollama server"
-            self.log_it(f"{operation} failed: {error_msg}")
-            if not custom_handling:
-                self.status_notify("Cannot connect to Ollama server. Is it running?", severity="error")
-            return error_msg
-        else:
-            error_msg = str(error)
-            self.log_it(f"{operation} failed (unexpected error): {type(error).__name__}: {error_msg}")
-            if not custom_handling:
-                self.status_notify(f"{operation} failed: {error_msg}", severity="error")
-            return error_msg
+        """Handle common Ollama error patterns. Delegates to ModelJobProcessor."""
+        return self.model_job_processor.handle_ollama_error(operation, model_name, error, custom_handling)
 
     async def action_shutdown(self) -> None:
         """Quit the application"""
