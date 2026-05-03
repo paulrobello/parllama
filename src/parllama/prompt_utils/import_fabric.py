@@ -134,7 +134,7 @@ class ImportFabricManager(MessageSink):
             self.log_it(f"Failed to fetch Fabric patterns: {e}", notify=True, severity="error")
             raise
         except Exception as e:
-            error_msg = f"Unexpected error: {str(e)}"
+            error_msg = f"Unexpected error ({type(e).__name__}): {str(e)}"
             recovery_suggestion = "Please try again. If the problem persists, check your internet connection and ensure GitHub is accessible."
             if progress_callback:
                 progress_callback(0, "Unexpected error occurred", f"{error_msg}\n\nSuggestion: {recovery_suggestion}")

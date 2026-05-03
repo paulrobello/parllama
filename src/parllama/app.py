@@ -265,7 +265,7 @@ Some functions are only available via slash / commands on that chat tab. You can
             if isinstance(f, TextArea):
                 clipboard.copy(f.selected_text or f.text)
                 f.text = ""
-        except Exception as _:
+        except (OSError, AttributeError) as _:
             self.notify("Error with clipboard", severity="error")
 
     @on(SendToClipboard)
@@ -278,7 +278,7 @@ Some functions are only available via slash / commands on that chat tab. You can
             clipboard.copy(event.message)
             if event.notify:
                 self.notify("Copied to clipboard")
-        except Exception as _:
+        except (OSError, AttributeError) as _:
             self.notify("Error with clipboard", severity="error")
 
     @on(LocalModelPushRequested)

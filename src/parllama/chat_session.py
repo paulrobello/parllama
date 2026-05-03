@@ -386,7 +386,7 @@ class ChatSession(ChatMessageContainer):
                             msg.content += "\n\nAborted..."
                             self._emit(ChatGenerationAborted(self.id))
                             stream.close()  # type: ignore
-                        except Exception:  # pylint:disable=broad-except
+                        except (OSError, ValueError):  # pylint:disable=broad-except
                             pass
                         finally:
                             self._abort = False
@@ -438,7 +438,7 @@ class ChatSession(ChatMessageContainer):
                 ):
                     self._emit(ChatMessage(parent_id=self.id, message_id=msg.id, is_final=True))
                 else:
-                    self.log_it(e)
+                    self.log_it(f"Stream error ({type(e).__name__}): {e}")
                     self.log_it("Error generating message", notify=True, severity="error")
                     if msg is not None:
                         err_msg = self._parse_llm_error(err_msg)
@@ -470,7 +470,7 @@ class ChatSession(ChatMessageContainer):
                             )
                         )
         except Exception as e:  # pylint: disable=broad-except
-            self.log_it(e)
+            self.log_it(f"Chat generation error ({type(e).__name__}): {e}")
             self.log_it("Error generating message", notify=True, severity="error")
             if msg is not None:
                 err_msg = self._parse_llm_error(str(e))

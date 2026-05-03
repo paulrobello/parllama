@@ -64,7 +64,7 @@ class ExecutionManager:
                 try:
                     template = ExecutionTemplate.from_dict(template_dict)
                     self._templates[template.id] = template
-                except Exception as e:  # pylint: disable=broad-exception-caught
+                except (ValueError, KeyError, TypeError) as e:  # pylint: disable=broad-exception-caught
                     # Log error but continue loading other templates
                     print(f"Error loading template: {e}")
 
@@ -110,7 +110,7 @@ class ExecutionManager:
                 try:
                     result = ExecutionResult.from_dict(result_dict)
                     self._execution_history.append(result)
-                except Exception as e:  # pylint: disable=broad-exception-caught
+                except (ValueError, KeyError, TypeError) as e:  # pylint: disable=broad-exception-caught
                     print(f"Error loading execution result: {e}")
 
             self._history_loaded = True
@@ -298,7 +298,7 @@ class ExecutionManager:
 
                 self._templates[template.id] = template
                 imported_count += 1
-            except Exception as e:  # pylint: disable=broad-exception-caught
+            except (ValueError, KeyError, TypeError) as e:  # pylint: disable=broad-exception-caught
                 print(f"Error importing template: {e}")
 
         if imported_count > 0:
@@ -375,7 +375,7 @@ class ExecutionManager:
                 total_templates=0,
                 imported_count=0,
                 skipped_count=0,
-                errors=[f"Unexpected error: {e}"],
+                errors=[f"Unexpected error ({type(e).__name__}): {e}"],
                 warnings=[],
                 success=False,
             )
@@ -419,7 +419,7 @@ class ExecutionManager:
                     else:
                         self.app.log(f"Template '{template.name}' imported successfully")
 
-            except Exception as e:
+            except (ValueError, KeyError, TypeError) as e:
                 errors.append(f"Template {i + 1}: {e}")
                 skipped_count += 1
 
@@ -427,7 +427,7 @@ class ExecutionManager:
         if imported_count > 0:
             try:
                 await self.save_templates()
-            except Exception as e:
+            except (SecureFileOpsError, OSError) as e:
                 errors.append(f"Failed to save templates: {e}")
 
         # Log import completion

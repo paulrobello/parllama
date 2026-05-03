@@ -99,7 +99,7 @@ class ThemeManager(MessageSink):
             if theme_name != settings.theme_fallback_name:
                 try:
                     self.load_theme(settings.theme_fallback_name)
-                except Exception:
+                except (SecureFileOpsError, OSError, ValueError):
                     # If fallback also fails, log but don't crash
                     self.log_it(
                         f"Failed to load fallback theme {settings.theme_fallback_name}", notify=True, severity="error"

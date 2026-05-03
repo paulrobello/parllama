@@ -46,6 +46,7 @@ from parllama.settings.config_groups import (
     UIConfig,
 )
 from parllama.utils import TabType, get_args, valid_tabs
+from parllama.validators.file_validator import FileValidationError
 
 old_data_dir = Path("~/.parllama").expanduser()
 
@@ -1376,20 +1377,20 @@ def fetch_and_cache_image(image_path: str | Path) -> tuple[Path, bytes]:
                     if _s.validate_file_content:
                         try:
                             image_secure_ops.validator.validate_file_path(cache_file)
-                        except Exception as e:
+                        except FileValidationError as e:
                             # If validation fails, remove the cached file
                             if cache_file.exists():
                                 cache_file.unlink()
                             raise FileNotFoundError(f"Downloaded image failed validation: {e}") from e
 
-                except Exception as e:
+                except (requests.RequestException, OSError, FileValidationError) as e:
                     raise FileNotFoundError(f"Failed to fetch image: {e}") from e
             else:
                 # Validate cached image if validation is enabled
                 if _s.validate_file_content:
                     try:
                         image_secure_ops.validator.validate_file_path(cache_file)
-                    except Exception as e:
+                    except FileValidationError as e:
                         # If cached image is invalid, remove it and re-raise
                         if cache_file.exists():
                             cache_file.unlink()
@@ -1408,7 +1409,7 @@ def fetch_and_cache_image(image_path: str | Path) -> tuple[Path, bytes]:
     if _s.validate_file_content:
         try:
             image_secure_ops.validator.validate_file_path(image_path)
-        except Exception as e:
+        except FileValidationError as e:
             raise FileNotFoundError(f"Local image failed validation: {e}") from e
 
     return image_path, image_path.read_bytes()

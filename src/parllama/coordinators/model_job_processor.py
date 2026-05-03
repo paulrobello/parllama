@@ -197,7 +197,11 @@ class ModelJobProcessor:
             last_status = await self.do_progress(job, res)
 
             self._app.post_message_all(LocalModelPulled(model_name=job.modelName, success=last_status == "success"))
+        except (ollama.ResponseError, ConnectError) as e:
+            self.handle_ollama_error("Model pull", job.modelName, e)
+            self._app.post_message_all(LocalModelPulled(model_name=job.modelName, success=False))
         except Exception as e:
+            self._app.log_it(f"Model pull unexpected error for {job.modelName}: {type(e).__name__}: {e}")
             self.handle_ollama_error("Model pull", job.modelName, e)
             self._app.post_message_all(LocalModelPulled(model_name=job.modelName, success=False))
 
@@ -212,7 +216,11 @@ class ModelJobProcessor:
             last_status = await self.do_progress(job, res)
 
             self._app.post_message_all(LocalModelPushed(model_name=job.modelName, success=last_status == "success"))
+        except (ollama.ResponseError, ConnectError) as e:
+            self.handle_ollama_error("Model push", job.modelName, e)
+            self._app.post_message_all(LocalModelPushed(model_name=job.modelName, success=False))
         except Exception as e:
+            self._app.log_it(f"Model push unexpected error for {job.modelName}: {type(e).__name__}: {e}")
             self.handle_ollama_error("Model push", job.modelName, e)
             self._app.post_message_all(LocalModelPushed(model_name=job.modelName, success=False))
 
@@ -241,6 +249,7 @@ class ModelJobProcessor:
                 )
             )
         except Exception as e:
+            self._app.log_it(f"Model copy unexpected error for {event.modelName}: {type(e).__name__}: {e}")
             self.handle_ollama_error("Model copy", event.modelName, e)
             self._app.main_screen.local_view.post_message(
                 LocalModelCopied(
@@ -256,6 +265,7 @@ class ModelJobProcessor:
         Args:
             job: The create job containing model parameters.
         """
+        success = False
         try:
             self._app.main_screen.log_view.richlog.write(f"Creating model {job.modelName} from {job.modelFrom}...")
             res = ollama_dm.create_model(
@@ -267,18 +277,7 @@ class ModelJobProcessor:
                 quantize_level=job.quantizationLevel,
             )
             last_status = await self.do_progress(job, res)
-
-            self._app.main_screen.local_view.post_message(
-                LocalModelCreated(
-                    model_name=job.modelName,
-                    model_from=job.modelFrom,
-                    system_prompt=job.systemPrompt,
-                    model_template=job.modelTemplate,
-                    model_license=job.model_license,
-                    quantization_level=job.quantizationLevel,
-                    success=last_status == "success",
-                )
-            )
+            success = last_status == "success"
         except ollama.ResponseError as e:
             error_msg = self.handle_ollama_error("Model creation", job.modelName, e, custom_handling=True)
 
@@ -295,44 +294,21 @@ class ModelJobProcessor:
                 )
             else:
                 self._app.status_notify(f"Model creation failed: {error_msg}", severity="error")
-
-            self._app.main_screen.local_view.post_message(
-                LocalModelCreated(
-                    model_name=job.modelName,
-                    model_from=job.modelFrom,
-                    system_prompt=job.systemPrompt,
-                    model_template=job.modelTemplate,
-                    model_license=job.model_license,
-                    quantization_level=job.quantizationLevel,
-                    success=False,
-                )
-            )
-        except ConnectError as e:
-            self.handle_ollama_error("Model creation", job.modelName, e)
-            self._app.main_screen.local_view.post_message(
-                LocalModelCreated(
-                    model_name=job.modelName,
-                    model_from=job.modelFrom,
-                    system_prompt=job.systemPrompt,
-                    model_template=job.modelTemplate,
-                    model_license=job.model_license,
-                    quantization_level=job.quantizationLevel,
-                    success=False,
-                )
-            )
         except Exception as e:
+            self._app.log_it(f"Model creation unexpected error for {job.modelName}: {type(e).__name__}: {e}")
             self.handle_ollama_error("Model creation", job.modelName, e)
-            self._app.main_screen.local_view.post_message(
-                LocalModelCreated(
-                    model_name=job.modelName,
-                    model_from=job.modelFrom,
-                    system_prompt=job.systemPrompt,
-                    model_template=job.modelTemplate,
-                    model_license=job.model_license,
-                    quantization_level=job.quantizationLevel,
-                    success=False,
-                )
+
+        self._app.main_screen.local_view.post_message(
+            LocalModelCreated(
+                model_name=job.modelName,
+                model_from=job.modelFrom,
+                system_prompt=job.systemPrompt,
+                model_template=job.modelTemplate,
+                model_license=job.model_license,
+                quantization_level=job.quantizationLevel,
+                success=success,
             )
+        )
 
     # ------------------------------------------------------------------
     # Error handling

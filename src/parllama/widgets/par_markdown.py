@@ -140,7 +140,7 @@ class ParMarkdownFence(MarkdownFence):
         try:
             clipman.copy(self.code)
             self.notify("Copied to clipboard")
-        except Exception as _:
+        except (OSError, RuntimeError) as _:
             self.notify("Clipboard failed!", severity="error")
 
 

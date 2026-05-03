@@ -130,9 +130,8 @@ class ParllamaChatMessage(MessageSink):
                     {"type": "text", "text": self.content},
                     image_to_chat_message(image),
                 ]
-            except Exception as e:  # pylint: disable=broad-except
+            except (ValueError, OSError, KeyError) as e:  # pylint: disable=broad-except
                 content = str(e)
-                # content = "Image is missing, ignore this message."
         return (
             self.role,
             content,

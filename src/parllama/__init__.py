@@ -17,7 +17,7 @@ warnings.simplefilter("ignore", category=DeprecationWarning)
 
 try:
     clipman.init()
-except Exception as _:
+except (ImportError, OSError, RuntimeError):
     pass
 
 __author__ = "Paul Robello"

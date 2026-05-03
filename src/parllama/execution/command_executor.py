@@ -74,7 +74,7 @@ class CommandExecutor:
             result.execution_time = time.time() - start_time
             return result
 
-        except Exception as e:
+        except (subprocess.SubprocessError, OSError, ValueError) as e:
             return ExecutionResult(
                 template_id=template.id,
                 template_name=template.name,
@@ -82,6 +82,17 @@ class CommandExecutor:
                 content=content,
                 exit_code=-1,
                 error_message=f"Execution failed: {str(e)}",
+                execution_time=time.time() - start_time,
+                temp_files_created=temp_files,
+            )
+        except Exception as e:
+            return ExecutionResult(
+                template_id=template.id,
+                template_name=template.name,
+                command="",
+                content=content,
+                exit_code=-1,
+                error_message=f"Execution failed unexpectedly: {type(e).__name__}: {str(e)}",
                 execution_time=time.time() - start_time,
                 temp_files_created=temp_files,
             )
@@ -230,7 +241,7 @@ class CommandExecutor:
                 command=command,
                 content=content,
                 exit_code=-1,
-                error_message=f"Execution error: {str(e)}",
+                error_message=f"Execution error ({type(e).__name__}): {str(e)}",
                 temp_files_created=temp_files,
             )
 
@@ -318,7 +329,7 @@ class CommandExecutor:
                 temp_file = Path(temp_file_path)
                 if temp_file.exists():
                     temp_file.unlink()
-            except Exception:  # pylint: disable=broad-exception-caught
+            except OSError:
                 # Ignore cleanup errors - temp files will be cleaned up by OS eventually
                 pass
 
@@ -328,7 +339,7 @@ class CommandExecutor:
             try:
                 process.terminate()
                 self._active_processes.discard(process)
-            except Exception:  # pylint: disable=broad-exception-caught
+            except OSError:
                 pass
 
     def get_active_process_count(self) -> int:

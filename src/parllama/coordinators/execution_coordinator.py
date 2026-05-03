@@ -17,6 +17,7 @@ from parllama.messages.messages import (
     ExecutionCompleted,
     ExecutionFailed,
 )
+from parllama.secure_file_ops import SecureFileOpsError
 from parllama.settings_manager import settings
 
 if TYPE_CHECKING:
@@ -145,10 +146,19 @@ class ExecutionCoordinator:
             else:
                 self._app.notify(f"Execution failed: {result.error_message or 'Unknown error'}", severity="error")
 
+        except (ValueError, SecureFileOpsError, OSError, RuntimeError) as e:
+            import traceback
+
+            error_details = f"{str(e)} - {traceback.format_exc()}"
+            self._app.notify(f"Execution error: {str(e)}", severity="error")
+            self._app.post_message(
+                ExecutionFailed(message_id=event.message_id, template_id=event.template_id or "", error=error_details)
+            )
         except Exception as e:
             import traceback
 
             error_details = f"{str(e)} - {traceback.format_exc()}"
+            self._app.log_it(f"Unexpected execution error: {type(e).__name__}: {error_details}")
             self._app.notify(f"Execution error: {str(e)}", severity="error")
             self._app.post_message(
                 ExecutionFailed(message_id=event.message_id, template_id=event.template_id or "", error=error_details)
@@ -188,7 +198,10 @@ class ExecutionCoordinator:
                 chat_view.session.save()
                 self._app.log_it(f"Execution result added to chat session: {chat_view.session.name}")
 
+        except (ValueError, KeyError, AttributeError, OSError) as e:
+            self._app.notify(f"Error adding execution result to chat: {str(e)}", severity="error")
         except Exception as e:
+            self._app.log_it(f"Unexpected error adding execution result to chat: {type(e).__name__}: {e}")
             self._app.notify(f"Error adding execution result to chat: {str(e)}", severity="error")
 
     # ------------------------------------------------------------------

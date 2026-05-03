@@ -187,5 +187,5 @@ class EditExecutionTemplateDialog(ModalScreen[ExecutionTemplate | None]):
             # Return the updated template
             self.dismiss(self.template)
 
-        except Exception as e:
+        except (ValueError, KeyError, TypeError) as e:
             self.notify(f"Error saving template: {e}", severity="error")

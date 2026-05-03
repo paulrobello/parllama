@@ -75,10 +75,10 @@ class ExecutionTemplateListItem(ListItem):
                 try:
                     execution_view = self.screen.query_one(ExecutionView)
                     execution_view.app.call_later(execution_view.refresh_templates)
-                except Exception:
+                except (LookupError, OSError):
                     pass  # Ignore if we can't find the ExecutionView
                 self.notify(f"Template '{template.name}' updated")
-            except Exception as e:
+            except (ValueError, RuntimeError, OSError) as e:
                 self.notify(f"Error updating template: {e}", severity="error")
 
     @on(Button.Pressed, "#delete")
@@ -98,7 +98,7 @@ class ExecutionTemplateListItem(ListItem):
             try:
                 execution_view = self.screen.query_one(ExecutionView)
                 execution_view.app.call_later(execution_view.refresh_templates)
-            except Exception:
+            except (LookupError, OSError):
                 pass  # Ignore if we can't find the ExecutionView
             self.notify("Template deleted")
 
@@ -222,7 +222,7 @@ class ExecutionView(Container):
             # Update stats
             await self.update_stats()
 
-        except Exception as e:
+        except (ValueError, RuntimeError, OSError) as e:
             self.notify(f"Error loading templates: {e}", severity="error")
 
     async def update_stats(self) -> None:
@@ -242,7 +242,7 @@ class ExecutionView(Container):
             stats_label = self.query_one("#stats_label", Label)
             stats_label.update(stats_text)
 
-        except Exception:
+        except (RuntimeError, KeyError, LookupError):
             pass  # Ignore stats update errors
 
     def update_stats_sync(self) -> None:
@@ -262,7 +262,7 @@ class ExecutionView(Container):
             stats_label = self.query_one("#stats_label", Label)
             stats_label.update(stats_text)
 
-        except Exception:
+        except (RuntimeError, KeyError, LookupError):
             pass  # Ignore stats update errors
 
     @on(Button.Pressed, "#new_template")
@@ -319,7 +319,7 @@ class ExecutionView(Container):
             else:
                 self.notify(f"Import failed: {result.summary}", severity="error")
 
-        except Exception as e:
+        except (ValueError, RuntimeError, OSError) as e:
             self.notify(f"Import error: {e}", severity="error")
             if self.app and hasattr(self.app, "log"):
                 self.app.log(f"Import error: {e}")
@@ -359,7 +359,7 @@ class ExecutionView(Container):
             else:
                 self.notify("Export failed: Secure operations not available", severity="error")
 
-        except Exception as e:
+        except (ValueError, OSError, RuntimeError) as e:
             self.notify(f"Export error: {e}", severity="error")
 
     @on(Button.Pressed, "#refresh")
@@ -390,5 +390,5 @@ class ExecutionView(Container):
                 # Update stats immediately
                 self.update_stats_sync()
                 self.notify("Execution statistics reset", severity="information")
-            except Exception as e:
+            except (RuntimeError, OSError) as e:
                 self.notify(f"Error resetting stats: {e}", severity="error")

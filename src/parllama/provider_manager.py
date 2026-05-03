@@ -156,7 +156,7 @@ class ProviderManager(MessageSink):
                     self.app.post_message(ProviderModelsChanged(provider=p))
 
             except Exception as e:
-                self.log_it(f"Error model refresh {p}: {e}", severity="error")
+                self.log_it(f"Error model refresh {p}: {type(e).__name__}: {e}", severity="error")
                 continue
         self.save_models()
 
@@ -168,9 +168,15 @@ class ProviderManager(MessageSink):
                 return ollama_dm.get_model_context_length(model_name)
             metadata = get_model_metadata(provider.value.lower(), model_name)
             return metadata.get("max_input_tokens") or metadata.get("max_tokens") or 0
-        except Exception as e:
+        except (ValueError, KeyError, ConnectionError, OSError) as e:
             self.log_it(
                 f"Error getting model metadata {get_api_cost_model_name(provider_name=provider.value.lower(), model_name=model_name)}: {e}",
+                severity="error",
+            )
+            return 0
+        except Exception as e:
+            self.log_it(
+                f"Unexpected error getting model metadata {get_api_cost_model_name(provider_name=provider.value.lower(), model_name=model_name)}: {type(e).__name__}: {e}",
                 severity="error",
             )
             return 0
