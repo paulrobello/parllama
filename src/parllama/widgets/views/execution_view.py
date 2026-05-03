@@ -15,7 +15,13 @@ from textual.widgets import Button, Label, ListItem, ListView
 from parllama.dialogs.yes_no_dialog import YesNoDialog
 from parllama.execution.execution_manager import get_execution_manager
 from parllama.execution.execution_template import ExecutionTemplate
-from parllama.messages.messages import ExecutionCompleted, RegisterForUpdates
+from parllama.messages.messages import (
+    ExecutionCompleted,
+    ExecutionTemplateAdded,
+    ExecutionTemplateDeleted,
+    ExecutionTemplateUpdated,
+    RegisterForUpdates,
+)
 
 
 class ExecutionTemplateListItem(ListItem):
@@ -185,10 +191,10 @@ class ExecutionView(Container):
             RegisterForUpdates(
                 widget=self,
                 event_names=[
-                    "ExecutionTemplateAdded",
-                    "ExecutionTemplateUpdated",
-                    "ExecutionTemplateDeleted",
-                    "ExecutionCompleted",
+                    ExecutionTemplateAdded,
+                    ExecutionTemplateUpdated,
+                    ExecutionTemplateDeleted,
+                    ExecutionCompleted,
                 ],
             )
         )

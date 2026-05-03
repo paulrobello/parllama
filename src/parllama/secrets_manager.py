@@ -29,11 +29,11 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from orjson import JSONDecodeError
 from textual.app import App
 
-from parllama.par_event_system import ParEventSystemBase
+from parllama.message_sink import MessageSink
 from parllama.settings_manager import settings
 
 
-class SecretsManager(ParEventSystemBase):
+class SecretsManager(MessageSink):
     """
     Manager for application secrets.
     Uses PBKDF2 with HMAC-SHA256 to derive a key from a password,

@@ -90,8 +90,8 @@ class PromptView(Container):
             RegisterForUpdates(
                 widget=self,
                 event_names=[
-                    "DeletePrompt",
-                    "PromptDeleteRequested",
+                    DeletePrompt,
+                    PromptDeleteRequested,
                 ],
             )
         )

@@ -10,9 +10,8 @@ from typing import Any, Literal
 from ollama import Message as OMessage
 from par_ai_core.llm_image_utils import b64_encode_image
 
-from parllama.messages.par_chat_messages import ParChatUpdated
+from parllama.message_sink import MessageSink
 from parllama.models.ollama_data import MessageRoles, ToolCall
-from parllama.par_event_system import ParEventSystemBase
 from parllama.settings_manager import fetch_and_cache_image
 
 
@@ -45,7 +44,7 @@ def image_to_chat_message(image_url_str: str) -> dict[str, Any]:
 
 
 @dataclass
-class ParllamaChatMessage(ParEventSystemBase):
+class ParllamaChatMessage(MessageSink):
     """Chat message."""
 
     role: MessageRoles
@@ -84,6 +83,7 @@ class ParllamaChatMessage(ParEventSystemBase):
     ) -> None:
         """Initialize the chat message"""
         super().__init__(id=id)
+        self.parent: Any | None = None
         self.role = role
         self.content = content
         self.thinking = thinking
@@ -138,12 +138,6 @@ class ParllamaChatMessage(ParEventSystemBase):
             content,
             # TODO: Thinking tokens?
         )
-
-    def notify_changes(self) -> None:
-        """Notify changes to the chat message"""
-        if self.parent is None:
-            return
-        self.post_message(ParChatUpdated(parent_id=self.parent.id, message_id=self.id))
 
     def clone(self, new_id: bool = False) -> ParllamaChatMessage:
         """Clone the chat message"""

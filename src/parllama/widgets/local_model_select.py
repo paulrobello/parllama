@@ -41,8 +41,8 @@ class LocalModelSelect(Select[str]):
             RegisterForUpdates(
                 widget=self,
                 event_names=[
-                    "LocalModelDeleted",
-                    "LocalModelListLoaded",
+                    LocalModelDeleted,
+                    LocalModelListLoaded,
                 ],
             )
         )

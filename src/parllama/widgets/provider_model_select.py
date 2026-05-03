@@ -115,10 +115,7 @@ class ProviderModelSelect(Container):
         self.app.post_message(
             RegisterForUpdates(
                 widget=self,
-                event_names=[
-                    "ProviderModelsChanged",
-                    "SessionUpdated",
-                ],
+                event_names=[ProviderModelsChanged],
             )
         )
         if self.provider_select.value != Select.BLANK and not is_provider_api_key_set(
@@ -215,7 +212,7 @@ class ProviderModelSelect(Container):
 
         if event.provider and self.provider_select.value != event.provider:
             return
-        # self.app.post_message(LogIt("ProviderModelsChanged", notify=True))
+        # self.app.post_message(LogIt(ProviderModelsChanged, notify=True))
         if self.provider_select.value == Select.BLANK:
             self.post_message(
                 LogIt(

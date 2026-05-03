@@ -25,9 +25,9 @@ from ollama import ProgressResponse, StatusResponse
 from par_ai_core.utils import extract_url_auth, run_cmd
 
 from parllama.docker_utils import start_docker_container
+from parllama.message_sink import MessageSink
 from parllama.models.ollama_data import FullModel, ModelInfo, ModelShowPayload, SiteModel, SiteModelData
 from parllama.models.ollama_ps import OllamaPsResponse
-from parllama.par_event_system import ParEventSystemBase
 from parllama.retry_utils import create_retry_config, retry_with_backoff
 from parllama.settings_manager import settings
 from parllama.widgets.local_model_list_item import LocalModelListItem
@@ -57,7 +57,7 @@ def api_model_ps() -> OllamaPsResponse:
         return OllamaPsResponse()
 
 
-class OllamaDataManager(ParEventSystemBase):
+class OllamaDataManager(MessageSink):
     """Data manager for Par Llama."""
 
     ollama_site_categories: list[str] = ["popular", "featured", "newest"]

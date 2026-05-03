@@ -14,6 +14,7 @@ from parllama.chat_manager import chat_manager
 from parllama.chat_session import ChatSession
 from parllama.messages.messages import (
     PromptSelected,
+    ProviderModelsChanged,
     ProviderModelSelected,
     RegisterForUpdates,
     SessionSelected,
@@ -116,7 +117,6 @@ SessionConfig {
                 reasoning_effort=self.get_reasoning_effort(),
                 reasoning_budget=self.get_reasoning_budget(),
             ),
-            widget=self,
         )
 
     async def on_mount(self) -> None:
@@ -125,9 +125,9 @@ SessionConfig {
             RegisterForUpdates(
                 widget=self,
                 event_names=[
-                    "ProviderModelsChanged",
-                    "SessionSelected",
-                    "SessionUpdated",
+                    ProviderModelsChanged,
+                    SessionSelected,
+                    SessionUpdated,
                 ],
             )
         )
@@ -167,8 +167,6 @@ SessionConfig {
         """Start new session"""
         # self.notify("New session")
         with self.prevent(Input.Changed):
-            old_session = self.session
-            old_session.remove_sub(self)
             self.session = chat_manager.new_session(
                 session_name=session_name,
                 llm_config=LlmConfig(
@@ -179,7 +177,6 @@ SessionConfig {
                     reasoning_effort=self.get_reasoning_effort(),
                     reasoning_budget=self.get_reasoning_budget(),
                 ),
-                widget=self,
             )
             self.session_name_input.value = self.session.name
             # self.session.batching = False
@@ -318,13 +315,11 @@ SessionConfig {
     async def load_session(self, session_id: str) -> bool:
         """Load a session"""
         # self.app.post_message(LogIt("SC load_session: " + session_id))
-        session = chat_manager.get_session(session_id, self)
+        session = chat_manager.get_session(session_id)
         if session is None:
             self.notify(f"Chat session not found: {session_id}", severity="error")
             return False
         session.load()
-        old_session = self.session
-        old_session.remove_sub(self)
         self.session = session
 
         with self.prevent(Input.Changed, Select.Changed):
@@ -353,7 +348,6 @@ SessionConfig {
         prompt.load()
         # self.app.post_message(LogIt(f"{prompt.id},{prompt.name}"))
         old_session = self.session
-        old_session.remove_sub(self)
         llm_config: LlmConfig = old_session.llm_config.clone()
         if event.temperature is not None:
             llm_config.temperature = event.temperature
@@ -364,7 +358,6 @@ SessionConfig {
         self.session = chat_manager.new_session(
             session_name=prompt.name or old_session.name,
             llm_config=llm_config,
-            widget=self,
         )
         self.provider_model_select.provider_select.value = llm_config.provider
         self.set_model_name(self.session.llm_model_name)

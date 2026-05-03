@@ -8,19 +8,20 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from io import StringIO
+from typing import Any
 
 import orjson as json
 import rich.repr
 
 from parllama.chat_message import ParllamaChatMessage
-from parllama.messages.par_chat_messages import ParChatMessageDeleted
-from parllama.par_event_system import ParEventSystemBase
+from parllama.message_sink import MessageSink
+from parllama.messages.messages import ChatMessageDeleted
 from parllama.settings_manager import settings
 
 
 @rich.repr.auto
 @dataclass
-class ChatMessageContainer(ParEventSystemBase):
+class ChatMessageContainer(MessageSink):
     """Chat message container base class"""
 
     _name: str
@@ -46,6 +47,7 @@ class ChatMessageContainer(ParEventSystemBase):
     ):
         """Initialize the chat prompt"""
         super().__init__(id=id)
+        self.parent: Any | None = None
         self._batching = True
         self._changes = set()
         self._id_to_msg = {}
@@ -64,6 +66,20 @@ class ChatMessageContainer(ParEventSystemBase):
         self.last_updated = last_updated or datetime.now(UTC)
         self._loaded = messages is not None
         self._batching = False
+
+    def set_app(self, app) -> None:
+        """Set the app and propagate it to child messages."""
+        super().set_app(app)
+        for msg in self.messages:
+            msg.set_app(app)
+
+    def mount(self, child: ParllamaChatMessage) -> None:
+        """Attach a chat message to this container without event dispatch."""
+        child.parent = self
+        child.set_app(self.app)
+
+    def on_mount(self) -> None:
+        """Compatibility hook for container attachment."""
 
     def unload(self) -> None:
         """Unload the messages"""
@@ -135,7 +151,7 @@ class ChatMessageContainer(ParEventSystemBase):
             self._changes.add("system_prompt")
             self.save()
             if msg.parent:
-                self.post_message(ParChatMessageDeleted(parent_id=msg.parent.id, message_id=msg.id))
+                self._emit_textual_message(ChatMessageDeleted(parent_id=msg.parent.id, message_id=msg.id))
             return
 
         if len(self.messages) > 0 and self.messages[0].role == "system":
@@ -212,7 +228,7 @@ class ChatMessageContainer(ParEventSystemBase):
         for i, msg in enumerate(self.messages):
             if msg.id == key:
                 if msg.parent:
-                    self.post_message(ParChatMessageDeleted(parent_id=msg.parent.id, message_id=msg.id))
+                    self._emit_textual_message(ChatMessageDeleted(parent_id=msg.parent.id, message_id=msg.id))
 
                 msg = self.messages.pop(i)
                 self.last_updated = datetime.now(UTC)
@@ -272,6 +288,12 @@ class ChatMessageContainer(ParEventSystemBase):
     def save(self) -> bool:
         """Save chats to file"""
         raise NotImplementedError("save not implemented in base class")
+
+    def _emit_textual_message(self, event: ChatMessageDeleted) -> None:
+        """Emit a Textual message through the owning app."""
+        app = self.app or (self.parent.app if self.parent else None)
+        if app:
+            app.post_message(event)
 
     def clear_messages(self) -> None:
         """Clear all messages"""

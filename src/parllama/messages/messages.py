@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from par_ai_core.llm_config import LlmConfig
 from par_ai_core.llm_providers import LlmProvider
 from rich.console import ConsoleRenderable, RenderableType, RichCast
 from textual.message import Message
@@ -11,7 +12,7 @@ from textual.message_pump import MessagePump
 from textual.notifications import SeverityLevel
 from textual.widgets import Input, TextArea
 
-from parllama.messages.shared import SessionChanges
+from parllama.messages.shared import PromptChanges, SessionChanges
 from parllama.models.ollama_data import FullModel
 from parllama.utils import TabType
 
@@ -28,7 +29,7 @@ class RegisterForUpdates(Message):
     """Register widget for updates."""
 
     widget: MessagePump
-    event_names: list[str]
+    event_names: list[type[Message]]
 
 
 @dataclass
@@ -287,6 +288,13 @@ class PromptListLoaded(Message):
     """Prompt list loaded"""
 
 
+@dataclass
+class PromptUpdated(PromptMessage):
+    """Prompt was updated."""
+
+    changed: PromptChanges
+
+
 # ---------- Session Related Messages ---------- #
 
 
@@ -364,6 +372,14 @@ class SessionUpdated(SessionMessage):
     """Session Was Updated"""
 
     changed: SessionChanges
+
+
+@dataclass
+class SessionAutoNameRequested(SessionMessage):
+    """Request session be auto named."""
+
+    llm_config: LlmConfig
+    context: str
 
 
 @dataclass
@@ -448,6 +464,28 @@ class HistoryNext(Message):
 
 
 # ---------- Execution Related Messages ---------- #
+
+
+@dataclass
+class ExecutionTemplateMessage(Message):
+    """Execution template base message."""
+
+    template_id: str
+
+
+@dataclass
+class ExecutionTemplateAdded(ExecutionTemplateMessage):
+    """Execution template was added."""
+
+
+@dataclass
+class ExecutionTemplateUpdated(ExecutionTemplateMessage):
+    """Execution template was updated."""
+
+
+@dataclass
+class ExecutionTemplateDeleted(ExecutionTemplateMessage):
+    """Execution template was deleted."""
 
 
 @dataclass

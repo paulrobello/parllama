@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Iterator
+from dataclasses import is_dataclass, replace
 from queue import Empty, Full, Queue
 from weakref import WeakSet
 
@@ -41,7 +42,9 @@ from parllama.execution.execution_manager import ExecutionManager, execution_man
 from parllama.execution.template_matcher import TemplateMatcher
 from parllama.messages.messages import (
     ChangeTab,
+    ChatGenerationAborted,
     ChatMessage,
+    ChatMessageDeleted,
     ClearChatInputHistory,
     DeletePrompt,
     DeleteSession,
@@ -66,14 +69,17 @@ from parllama.messages.messages import (
     PromptListChanged,
     PromptListLoaded,
     PromptSelected,
+    PromptUpdated,
     ProviderModelsChanged,
     PsMessage,
     RefreshProviderModelsRequested,
     RegisterForUpdates,
     SendToClipboard,
+    SessionAutoNameRequested,
     SessionListChanged,
     SessionSelected,
     SessionToPrompt,
+    SessionUpdated,
     SetModelNameLoading,
     SiteModelsLoaded,
     SiteModelsRefreshRequested,
@@ -120,7 +126,7 @@ class ParLlamaApp(App[None]):
     ]
     CSS_PATH = "app.tcss"
 
-    notify_subs: dict[str, WeakSet[MessagePump]]
+    notify_subs: dict[type[Message], WeakSet[MessagePump]]
     main_screen: MainScreen
     job_queue: Queue[QueueJob]
     last_status: RenderableType = ""
@@ -131,7 +137,7 @@ class ParLlamaApp(App[None]):
     def __init__(self) -> None:
         """Initialize the application."""
         super().__init__()
-        self.notify_subs = {"*": WeakSet[MessagePump]()}
+        self.notify_subs = {}
 
         # Initialize state manager with logging capability
         self.state_manager = initialize_state_manager(self.log_it)
@@ -191,11 +197,11 @@ class ParLlamaApp(App[None]):
             RegisterForUpdates(
                 widget=self,
                 event_names=[
-                    "LocalModelPulled",
-                    "LocalModelPushed",
-                    "LocalModelCreated",
-                    "LocalModelDeleted",
-                    "LocalModelCopied",
+                    LocalModelPulled,
+                    LocalModelPushed,
+                    LocalModelCreated,
+                    LocalModelDeleted,
+                    LocalModelCopied,
                 ],
             )
         )
@@ -207,8 +213,6 @@ class ParLlamaApp(App[None]):
             settings.show_first_run = False
             settings.save()
             self.set_timer(settings.notification_timeout_info, self.show_first_run)
-
-        self.post_message(RefreshProviderModelsRequested(None))
 
     async def show_first_run(self) -> None:
         """Show first run screen"""
@@ -603,10 +607,10 @@ Some functions are only available via slash / commands on that chat tab. You can
     @on(RegisterForUpdates)
     def on_register_for_updates(self, event: RegisterForUpdates) -> None:
         """Register for updates event"""
-        for event_name in event.event_names:
-            if event_name not in self.notify_subs:
-                self.notify_subs[event_name] = WeakSet()
-            self.notify_subs[event_name].add(event.widget)
+        for event_type in event.event_names:
+            if event_type not in self.notify_subs:
+                self.notify_subs[event_type] = WeakSet()
+            self.notify_subs[event_type].add(event.widget)
 
     @on(LocalModelListRefreshRequested)
     def on_model_list_refresh_requested(self) -> None:
@@ -729,12 +733,14 @@ Some functions are only available via slash / commands on that chat tab. You can
         if isinstance(event, PsMessage):
             self.main_screen.post_message(event)
             return
-        sub_name = event.__class__.__name__
-        if sub_name in self.notify_subs:
-            # Convert to list to avoid RuntimeError if set changes during iteration
-            # WeakSet automatically removes dead references
-            for w in list(self.notify_subs[sub_name]):
-                w.post_message(event)
+        event_type = event.__class__
+        if event_type in self.notify_subs:
+            # Convert to list to avoid RuntimeError if set changes during iteration.
+            # WeakSet automatically removes dead references. Use a fresh message
+            # instance per recipient so stop/prevent_default state can't leak.
+            for w in list(self.notify_subs[event_type]):
+                message = replace(event) if is_dataclass(event) else event
+                w.post_message(message)
 
     @on(ChangeTab)
     def on_change_tab(self, event: ChangeTab) -> None:
@@ -781,6 +787,28 @@ Some functions are only available via slash / commands on that chat tab. You can
         event.stop()
         self.post_message_all(event)
 
+    @on(ChatMessage)
+    def on_chat_message(self, event: ChatMessage) -> None:
+        """Route chat message events to the chat view."""
+        event.stop()
+        self.main_screen.chat_view.post_message(
+            ChatMessage(parent_id=event.parent_id, message_id=event.message_id, is_final=event.is_final)
+        )
+
+    @on(ChatMessageDeleted)
+    def on_chat_message_deleted(self, event: ChatMessageDeleted) -> None:
+        """Route chat message deletion events to the chat view."""
+        event.stop()
+        self.main_screen.chat_view.post_message(
+            ChatMessageDeleted(parent_id=event.parent_id, message_id=event.message_id)
+        )
+
+    @on(ChatGenerationAborted)
+    def on_chat_generation_aborted(self, event: ChatGenerationAborted) -> None:
+        """Route chat generation abort events to the chat view."""
+        event.stop()
+        self.main_screen.chat_view.post_message(ChatGenerationAborted(session_id=event.session_id))
+
     @on(PromptListChanged)
     def on_prompt_list_changed(self, event: PromptListChanged) -> None:
         """Prompt list changed event"""
@@ -793,6 +821,13 @@ Some functions are only available via slash / commands on that chat tab. You can
         event.stop()
         self.post_message_all(event)
 
+    @on(SessionUpdated)
+    def on_session_updated(self, event: SessionUpdated) -> None:
+        """Session updated event."""
+        event.stop()
+        chat_manager.maybe_notify_session_updated(event.changed)
+        self.post_message_all(event)
+
     @on(PromptSelected)
     def on_prompt_selected(self, event: PromptSelected) -> None:
         """Session selected event"""
@@ -803,12 +838,26 @@ Some functions are only available via slash / commands on that chat tab. You can
     def on_delete_session(self, event: DeleteSession) -> None:
         """Delete session event"""
         event.stop()
+        chat_manager.delete_session(event.session_id)
         self.post_message_all(event)
+
+    @on(SessionAutoNameRequested)
+    def on_session_auto_name_requested(self, event: SessionAutoNameRequested) -> None:
+        """Session auto-name requested event."""
+        event.stop()
+        chat_manager.auto_name_session(event.session_id, event.llm_config, event.context)
+
+    @on(PromptUpdated)
+    def on_prompt_updated(self, event: PromptUpdated) -> None:
+        """Prompt updated event."""
+        event.stop()
+        chat_manager.notify_prompts_changed()
 
     @on(DeletePrompt)
     def on_delete_prompt(self, event: DeletePrompt) -> None:
         """Delete prompt event"""
         event.stop()
+        chat_manager.delete_prompt(event.prompt_id)
         self.post_message_all(event)
 
     @on(SessionToPrompt)
@@ -963,14 +1012,8 @@ Some functions are only available via slash / commands on that chat tab. You can
                     execution_message = ParllamaChatMessage(role="assistant", content=formatted_output)
 
                     chat_view.session.add_message(execution_message)
-                    # Follow the same notification pattern as send_chat
-                    chat_view.session._notify_subs(
+                    self.post_message(
                         ChatMessage(parent_id=chat_view.session.id, message_id=execution_message.id, is_final=True)
-                    )
-                    from parllama.messages.par_chat_messages import ParChatUpdated
-
-                    chat_view.session.post_message(
-                        ParChatUpdated(parent_id=chat_view.session.id, message_id=execution_message.id, is_final=True)
                     )
                     chat_view.session.save()
                     self.log_it(f"Execution result added to chat session: {chat_view.session.name}")
@@ -1027,7 +1070,7 @@ Some functions are only available via slash / commands on that chat tab. You can
         self.state_manager.shutdown()
         await self.action_quit()
 
-    @work(exclusive=True)
+    @work(exclusive=True, thread=True)
     async def refresh_provider_models(self) -> None:
         """Refresh provider models"""
         provider_manager.refresh_models()

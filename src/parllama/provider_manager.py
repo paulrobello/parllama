@@ -24,9 +24,9 @@ from par_ai_core.llm_providers import (
 from par_ai_core.pricing_lookup import get_api_cost_model_name, get_model_metadata, get_model_mode
 from textual.app import App
 
+from parllama.message_sink import MessageSink
 from parllama.messages.messages import ProviderModelsChanged, RefreshProviderModelsRequested
 from parllama.ollama_data_manager import ollama_dm
-from parllama.par_event_system import ParEventSystemBase
 from parllama.settings_manager import settings
 
 load_dotenv(Path(settings.data_dir) / ".env")
@@ -53,7 +53,7 @@ openai_model_context_windows = {
 }
 
 
-class ProviderManager(ParEventSystemBase):
+class ProviderManager(MessageSink):
     """Manages providers and their models"""
 
     provider_models: dict[LlmProvider, list[str]]
@@ -186,14 +186,16 @@ class ProviderManager(ParEventSystemBase):
         )
 
     def load_models(self, refresh: bool = False) -> None:
-        """Load the models from json cache file if exist and not expired, otherwise fetch new data."""
+        """Load provider models from cache and request background refresh if needed."""
         if not self.cache_file.exists():
             self.log_it("Models file does not exist, requesting refresh")
             if self.app:
                 self.app.post_message(RefreshProviderModelsRequested(None))
             return
 
-        # Check if any provider's cache has expired
+        # Check if any provider's cache has expired, but don't block startup on
+        # network/API refreshes. Load the cached data first and ask the app to
+        # refresh in a worker after the UI is mounted.
         cache_expired = False
         cache_age_seconds = time.time() - self.cache_file.stat().st_mtime
 
@@ -206,19 +208,14 @@ class ProviderManager(ParEventSystemBase):
                 cache_expired = True
                 break
 
-        if cache_expired:
-            refresh = True
-
-        if refresh:
-            self.refresh_models()
-            return
-
         provider_models = json.loads(self.cache_file.read_bytes())
         self.provider_models = {provider_name_to_enum(k): v for k, v in provider_models.items()}
         self.provider_models[LlmProvider.LLAMACPP] = ["default"]
 
         if self.app:
             self.app.post_message(ProviderModelsChanged())
+            if refresh or cache_expired:
+                self.app.post_message(RefreshProviderModelsRequested(None))
 
     def get_model_select_options(self, provider: LlmProvider) -> list[tuple[str, str]]:
         """Get select options."""

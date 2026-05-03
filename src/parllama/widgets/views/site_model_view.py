@@ -15,6 +15,7 @@ from textual.widgets import Input, ListView, Static, TabbedContent
 from parllama.messages.messages import (
     LocalModelPullRequested,
     RegisterForUpdates,
+    SetModelNameLoading,
     SiteModelsLoaded,
     SiteModelsRefreshRequested,
 )
@@ -102,6 +103,7 @@ class SiteModelView(Container):
             placeholder="Filter site models",
         )
         self.lv = SiteModelListView(id="site-model-list", initial_index=None)
+        self._loaded_once = False
 
     def compose(self) -> ComposeResult:
         """Compose the content of the view."""
@@ -120,12 +122,8 @@ class SiteModelView(Container):
         self.app.post_message(
             RegisterForUpdates(
                 widget=self,
-                event_names=["SiteModelsLoaded", "SetModelNameLoading"],
+                event_names=[SiteModelsLoaded, SetModelNameLoading],
             )
-        )
-        self.lv.loading = True
-        self.app.post_message(
-            SiteModelsRefreshRequested(widget=self, ollama_namespace=self.namespace_input.value, force=False)
         )
 
     def _on_show(self, event: Show) -> None:
@@ -133,8 +131,18 @@ class SiteModelView(Container):
         self.screen.sub_title = (  # pylint: disable=attribute-defined-outside-init
             "Site Models"
         )
+        if not self._loaded_once:
+            self._loaded_once = True
+            self.request_site_models_refresh(force=False)
         with self.screen.prevent(TabbedContent.TabActivated):
             self.search_input.focus()
+
+    def request_site_models_refresh(self, *, force: bool) -> None:
+        """Request site model loading when the Site tab is visible or explicitly refreshed."""
+        self.lv.loading = True
+        self.app.post_message(
+            SiteModelsRefreshRequested(widget=self, ollama_namespace=self.namespace_input.value, force=force)
+        )
 
     async def on_list_view_highlighted(self, event: ListView.Highlighted) -> None:
         """Update search field with model name"""
@@ -189,10 +197,8 @@ class SiteModelView(Container):
 
     def action_refresh_models(self):
         """Request refresh the site models."""
-        self.lv.loading = True
-        self.app.post_message(
-            SiteModelsRefreshRequested(widget=self, ollama_namespace=self.namespace_input.value, force=True)
-        )
+        self._loaded_once = True
+        self.request_site_models_refresh(force=True)
 
     @on(Input.Submitted, "#namespace")
     def on_namespace_submitted(self, event: Input.Submitted) -> None:

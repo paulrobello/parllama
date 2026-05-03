@@ -9,11 +9,11 @@ import requests
 from semver import Version
 
 from parllama import __version__
-from parllama.par_event_system import ParEventSystemBase
+from parllama.message_sink import MessageSink
 from parllama.settings_manager import settings
 
 
-class UpdateManager(ParEventSystemBase):
+class UpdateManager(MessageSink):
     """Update manager class"""
 
     url: str

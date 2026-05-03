@@ -14,7 +14,7 @@ import rich.repr
 
 from parllama.chat_message import ParllamaChatMessage
 from parllama.chat_message_container import ChatMessageContainer
-from parllama.messages.par_prompt_messages import ParPromptDelete, ParPromptUpdated
+from parllama.messages.messages import DeletePrompt, PromptUpdated
 from parllama.messages.shared import PromptChanges, prompt_change_list
 from parllama.secure_file_ops import SecureFileOperations, SecureFileOpsError
 from parllama.settings_manager import settings
@@ -84,11 +84,15 @@ class ChatPrompt(ChatMessageContainer):
 
     def delete(self) -> None:
         """Delete the prompt"""
-        self.post_message(ParPromptDelete(prompt_id=self.id))
+        app = self.app or (self.parent.app if self.parent else None)
+        if app:
+            app.post_message(DeletePrompt(prompt_id=self.id))
 
     def _notify_changed(self, changed: PromptChanges) -> None:
         """Notify changed"""
-        self.post_message(ParPromptUpdated(prompt_id=self.id, changed=changed))
+        app = self.app or (self.parent.app if self.parent else None)
+        if app:
+            app.post_message(PromptUpdated(prompt_id=self.id, changed=changed))
 
     @property
     def description(self) -> str:

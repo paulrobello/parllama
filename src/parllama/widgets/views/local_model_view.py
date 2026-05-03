@@ -27,6 +27,7 @@ from parllama.messages.messages import (
     LocalModelListRefreshRequested,
     LocalModelPulled,
     LocalModelPullRequested,
+    LocalModelPushed,
     LocalModelPushRequested,
     ModelInteractRequested,
     RegisterForUpdates,
@@ -132,11 +133,11 @@ class LocalModelView(Container):
             RegisterForUpdates(
                 widget=self,
                 event_names=[
-                    "LocalModelListLoaded",
-                    "LocalModelDeleted",
-                    "SetModelNameLoading",
-                    "LocalModelPulled",
-                    "LocalModelPushed",
+                    LocalModelListLoaded,
+                    LocalModelDeleted,
+                    SetModelNameLoading,
+                    LocalModelPulled,
+                    LocalModelPushed,
                 ],
             )
         )

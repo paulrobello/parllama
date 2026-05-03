@@ -79,14 +79,14 @@ class DeferredSelect(Select[SelectType]):
                 self.value = self._deferred_value
                 self._deferred_value = BLANK
                 return
-        self.set_timer(0.1, self.set_options)
 
     def set_options(self, options: Iterable[tuple[RenderableType, SelectType]] | None = None) -> None:
         """Set the options for the Select."""
         old_value = self.value
 
         if options is not None:
-            super().set_options(options)
+            with self.prevent(Select.Changed):
+                super().set_options(options)
 
         opts = [o[1] for o in self._options]
         if len(opts) == 0:
@@ -105,4 +105,3 @@ class DeferredSelect(Select[SelectType]):
                 self.value = self._deferred_value
             self._deferred_value = BLANK
             return
-        self.set_timer(0.1, self.set_options)

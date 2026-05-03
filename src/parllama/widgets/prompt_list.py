@@ -53,7 +53,7 @@ class PromptList(Vertical, can_focus=False, can_focus_children=True):
 
     def on_mount(self) -> None:
         """Register for updates"""
-        self.app.post_message(RegisterForUpdates(widget=self, event_names=["PromptListChanged", "PromptSelected"]))
+        self.app.post_message(RegisterForUpdates(widget=self, event_names=[PromptListChanged, PromptSelected]))
 
     def compose(self) -> ComposeResult:
         """Compose the content of the view."""

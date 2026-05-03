@@ -28,6 +28,7 @@ from parllama.messages.messages import (
     ChangeTab,
     ChatGenerationAborted,
     ChatMessage,
+    ChatMessageDeleted,
     ChatMessageSent,
     ClearChatInputHistory,
     DeleteSession,
@@ -209,12 +210,12 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
             RegisterForUpdates(
                 widget=self,
                 event_names=[
-                    "ProviderModelsChanged",
-                    "DeleteSession",
-                    "SessionSelected",
-                    "PromptListLoaded",
-                    "PromptListChanged",
-                    "PromptSelected",
+                    ProviderModelsChanged,
+                    DeleteSession,
+                    SessionSelected,
+                    PromptListLoaded,
+                    PromptListChanged,
+                    PromptSelected,
                 ],
             )
         )
@@ -724,6 +725,14 @@ Chat Commands:
         for tab in self.chat_tabs.query(ChatTab):
             if tab.session.id == event.parent_id:
                 await tab.on_chat_message(event)
+
+    @on(ChatMessageDeleted)
+    async def on_chat_message_deleted(self, event: ChatMessageDeleted) -> None:
+        """Route chat message deletion to correct tab."""
+        event.stop()
+        for tab in self.chat_tabs.query(ChatTab):
+            if tab.session.id == event.parent_id:
+                await tab.on_chat_message_deleted(event)
 
     @on(UpdateTabLabel)
     def on_update_tab_label(self, event: UpdateTabLabel) -> None:

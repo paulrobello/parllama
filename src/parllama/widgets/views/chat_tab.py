@@ -29,7 +29,6 @@ from parllama.messages.messages import (
     PromptSelected,
     SessionSelected,
     SessionUpdated,
-    UnRegisterForUpdates,
     UpdateChatControlStates,
     UpdateChatStatus,
     UpdateTabLabel,
@@ -68,7 +67,6 @@ class ChatTab(TabPane):
     def __init__(self, user_input: UserInput, session_list: SessionList, **kwargs) -> None:
         """Initialise the view."""
         self.session_config = SessionConfig(id="session_config")
-        self.session_config.session.add_sub(self)
 
         session_name = self.session_config.session.name
         super().__init__(
@@ -122,22 +120,7 @@ class ChatTab(TabPane):
 
     async def on_mount(self) -> None:
         """Set up the dialog once the DOM is ready."""
-        # self.app.post_message(
-        #     RegisterForUpdates(
-        #         widget=self,
-        #         event_names=[
-        #             "ChatMessageDeleted",
-        #         ],
-        #     )
-        # )
         self.notify_tab_label_changed()
-
-    async def on_unmount(self) -> None:
-        """Remove dialog from updates when unmounted."""
-        self.app.post_message(UnRegisterForUpdates(widget=self))
-        # Remove from session subscriptions
-        if self.session:
-            self.session.remove_sub(self)
 
     def _on_show(self, event: Show) -> None:
         """Handle show event"""

@@ -14,13 +14,13 @@ import requests
 from parllama.chat_manager import chat_manager
 from parllama.chat_message import ParllamaChatMessage
 from parllama.chat_prompt import ChatPrompt
-from parllama.par_event_system import ParEventSystemBase
+from parllama.message_sink import MessageSink
 from parllama.secure_file_ops import SecureFileOperations, SecureFileOpsError
 from parllama.settings_manager import settings
 from parllama.validators import FileValidationError, FileValidator
 
 
-class ImportFabricManager(ParEventSystemBase):
+class ImportFabricManager(MessageSink):
     """Import Fabric prompts from fabric repo."""
 
     id_to_prompt: dict[str, ChatPrompt]

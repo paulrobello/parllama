@@ -56,10 +56,12 @@ class SessionList(Vertical, can_focus=False, can_focus_children=True):
         """Initialise the view."""
         super().__init__(**kwargs)
         self.list_view = ListView(initial_index=None)
+        self._refresh_scheduled = False
+        self._selected_session_id: str | None = None
 
     async def on_mount(self) -> None:
         """Set up the dialog once the DOM is ready."""
-        self.app.post_message(RegisterForUpdates(widget=self, event_names=["SessionListChanged", "SessionSelected"]))
+        self.app.post_message(RegisterForUpdates(widget=self, event_names=[SessionListChanged, SessionSelected]))
 
     def on_unmount(self) -> None:
         """Clean up when unmounting."""
@@ -91,19 +93,40 @@ class SessionList(Vertical, can_focus=False, can_focus_children=True):
         self.list_view.index = old_index % num_children
 
     @on(SessionListChanged)
-    async def on_session_list_changed(self, event: SessionListChanged) -> None:
+    def on_session_list_changed(self, event: SessionListChanged) -> None:
         """Handle session list changed event."""
         event.stop()
-        # self.notify("SL session list changed")
-        selected_item: SessionListItem = cast(SessionListItem, self.list_view.highlighted_child)
-        # self.app.post_message(LogIt("SL Recompose: Session list changed"))
-        await self.recompose()
-        if not selected_item:
+        selected_item = self._highlighted_session_item()
+        if selected_item is not None:
+            self._selected_session_id = selected_item.session.id
+        if self._refresh_scheduled:
             return
-        for item in self.list_view.query(SessionListItem):
-            if item.session.id == selected_item.session.id:
-                self.list_view.index = self.list_view.children.index(item)
-                break
+        self._refresh_scheduled = True
+        self.call_later(self.refresh_sessions)
+
+    async def refresh_sessions(self) -> None:
+        """Rebuild session list items after a list-change notification burst."""
+        self._refresh_scheduled = False
+        selected_session_id = self._selected_session_id
+        await self.list_view.remove_children(list(self.list_view.children))
+        self.list_view.index = None
+        await self.list_view.extend(SessionListItem(session) for session in chat_manager.sorted_sessions)
+        if selected_session_id:
+            self._select_session(selected_session_id)
+
+    def _highlighted_session_item(self) -> SessionListItem | None:
+        """Return the highlighted session list item, if any."""
+        highlighted = self.list_view.highlighted_child
+        return highlighted if isinstance(highlighted, SessionListItem) else None
+
+    def _select_session(self, session_id: str) -> bool:
+        """Select a session by scanning direct ListView children only."""
+        for index, child in enumerate(self.list_view.children):
+            if isinstance(child, SessionListItem) and child.session.id == session_id:
+                self.list_view.index = index
+                self._selected_session_id = session_id
+                return True
+        return False
 
     @on(DblClickListItem.DoubleClicked)
     def action_load_item(self) -> None:
@@ -126,8 +149,5 @@ class SessionList(Vertical, can_focus=False, can_focus_children=True):
     def on_session_selected(self, event: SessionSelected) -> None:
         """Handle session selected event."""
         event.stop()
-        for item in self.list_view.query(SessionListItem):
-            if item.session.id == event.session_id:
-                # self.notify(f"Session selected {event.parent_id}")
-                self.list_view.index = self.list_view.children.index(item)
-                break
+        self._selected_session_id = event.session_id
+        self._select_session(event.session_id)

@@ -134,7 +134,7 @@ class MemoryView(Vertical):
     async def on_mount(self) -> None:
         """Called when the widget is mounted."""
         # Register to receive memory updates
-        self.app.post_message(RegisterForUpdates(widget=self, event_names=["MemoryUpdated"]))
+        self.app.post_message(RegisterForUpdates(widget=self, event_names=[MemoryUpdated]))
 
         # Update the textarea with current memory content
         memory_textarea = self.query_one("#memory_textarea", TextArea)

@@ -151,7 +151,7 @@ class UserInput(Widget, can_focus=False, can_focus_children=True):
             RegisterForUpdates(
                 widget=self,
                 event_names=[
-                    "ClearChatInputHistory",
+                    ClearChatInputHistory,
                 ],
             )
         )

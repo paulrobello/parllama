@@ -10,7 +10,7 @@ from typing import Any, Literal, TypeAlias
 from textual.app import App
 from textual.theme import Theme
 
-from parllama.par_event_system import ParEventSystemBase
+from parllama.message_sink import MessageSink
 from parllama.secure_file_ops import SecureFileOperations, SecureFileOpsError
 from parllama.settings_manager import settings
 
@@ -36,7 +36,7 @@ class ThemeModeError(InvalidThemeError):
         super().__init__(f"Theme '{theme_name}' does not have at least one of 'dark' or 'light' modes.")
 
 
-class ThemeManager(ParEventSystemBase):
+class ThemeManager(MessageSink):
     """Theme manager for Textual"""
 
     theme_folder: Path

@@ -3,25 +3,23 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Collection
 from typing import Any
 
 from ollama import Options as OllamaOptions
 from par_ai_core.llm_config import LlmConfig
 from textual.app import App
-from textual.message_pump import MessagePump
 
 from parllama.chat_message import ParllamaChatMessage
 from parllama.chat_prompt import ChatPrompt
 from parllama.chat_session import ChatSession
 from parllama.llm_session_helpers import llm_session_name
+from parllama.message_sink import MessageSink
 from parllama.messages.messages import ChangeTab, PromptListChanged, PromptListLoaded, SessionListChanged
-from parllama.messages.par_prompt_messages import ParPromptDelete, ParPromptUpdated
-from parllama.messages.par_session_messages import ParSessionAutoName, ParSessionDelete, ParSessionUpdated
-from parllama.par_event_system import ParEventSystemBase
 from parllama.settings_manager import settings
 
 
-class ChatManager(ParEventSystemBase):
+class ChatManager(MessageSink):
     """Chat manager class"""
 
     _id_to_session: dict[str, ChatSession]
@@ -45,6 +43,12 @@ class ChatManager(ParEventSystemBase):
         super().set_app(app)
         self.load_sessions()
         self.load_prompts()
+
+    def mount(self, child: ChatSession | ChatPrompt) -> None:
+        """Attach a session or prompt to this manager without event dispatch."""
+        child.parent = self
+        child.set_app(self.app)
+        child.on_mount()
 
     ############ Sessions #################
     @property
@@ -103,7 +107,6 @@ class ChatManager(ParEventSystemBase):
         *,
         session_name: str,
         llm_config: LlmConfig,
-        widget: MessagePump,
     ) -> ChatSession:
         """Create a new chat session"""
         # self.log_it("CM new_session")
@@ -115,31 +118,24 @@ class ChatManager(ParEventSystemBase):
         )
         self._id_to_session[session.id] = session
         self.mount(session)
-        session.add_sub(widget)
+        session.set_app(self.app)
         self.notify_sessions_changed()
         return session
 
-    def get_session(self, session_id: str, widget: MessagePump | None = None) -> ChatSession | None:
+    def get_session(self, session_id: str) -> ChatSession | None:
         """Get a chat session"""
         # self.log_it("get_session: " + session_id)
-
-        session = self._id_to_session.get(session_id)
-
-        if session is not None and widget:
-            session.add_sub(widget)
-        return session
+        return self._id_to_session.get(session_id)
 
     def get_prompt(self, prompt_id: str) -> ChatPrompt | None:
         """Get a chat prompt"""
         # self.log_it("get_prompt: " + prompt_id)
         return self._id_to_prompt.get(prompt_id)
 
-    def get_session_by_name(self, session_name: str, widget: MessagePump | None = None) -> ChatSession | None:
+    def get_session_by_name(self, session_name: str) -> ChatSession | None:
         """Get a chat session by name"""
         for session in self._id_to_session.values():
             if session.name == session_name:
-                if widget:
-                    session.add_sub(widget)
                 return session
         return None
 
@@ -161,13 +157,12 @@ class ChatManager(ParEventSystemBase):
         if self.app:
             self.app.post_message(SessionListChanged())
 
-    def get_or_create_session(  # pylint: disable=too-many-arguments
+    def get_or_create_session(
         self,
         *,
         session_id: str | None,
         session_name: str | None,
         llm_config: LlmConfig,
-        widget: MessagePump,
     ) -> ChatSession:
         """Get or create a chat session"""
         session: ChatSession | None = None
@@ -179,9 +174,7 @@ class ChatManager(ParEventSystemBase):
             session = self.new_session(
                 session_name=session_name,
                 llm_config=llm_config,
-                widget=widget,
             )
-        session.add_sub(widget)
         # session.batching = False
         return session
 
@@ -199,37 +192,28 @@ class ChatManager(ParEventSystemBase):
                     session.name_generated = True
                     self._id_to_session[session.id] = session
                     self.mount(session)
+                    session.set_app(self.app)
             except Exception as e:
                 self.log_it(f"Error loading session {e}", notify=True, severity="error")
 
-    def on_par_session_updated(self, event: ParSessionUpdated) -> None:
-        """Handle a ParSessionUpdated event"""
-        event.stop()
-        # self.log_it(
-        #     f"CM Session {event.session_id} updated. [{','.join(event.changed)}]"
-        # )
-        if "name" in event.changed or "model" in event.changed or "temperature" in event.changed:
+    def maybe_notify_session_updated(self, changed: Collection[str]) -> None:
+        """Notify session-list observers when list-visible fields changed."""
+        if "name" in changed or "model" in changed or "temperature" in changed:
             self.notify_sessions_changed()
 
-    def on_par_session_auto_name(self, event: ParSessionAutoName) -> None:
-        """Handle a ParSessionAutoName event"""
-        event.stop()
-        session = self.get_session(event.session_id)
+    def auto_name_session(self, session_id: str, llm_config: LlmConfig, context: str) -> None:
+        """Auto-name a session with the configured LLM."""
+        session = self.get_session(session_id)
         if not session:
             return
-        new_name = llm_session_name(event.context, event.llm_config)
+        new_name = llm_session_name(context, llm_config)
         if not new_name:
             return
-        # self.log_it(f"CM Session auto name {event.session_id} context: {event.context} named: {new_name}")
-        self.log_it(f"CM Session auto name {event.session_id} named: {new_name}")
+        # self.log_it(f"CM Session auto name {session_id} context: {context} named: {new_name}")
+        self.log_it(f"CM Session auto name {session_id} named: {new_name}")
 
         session.name = self.mk_session_name(new_name)
-        # self.log_it(f"CM Session {event.session_id} auto-named: {new_name}")
-
-    def on_par_session_delete(self, event: ParSessionDelete) -> None:
-        """Handle a ParDeleteSession event"""
-        event.stop()
-        self.delete_session(event.session_id)
+        # self.log_it(f"CM Session {session_id} auto-named: {new_name}")
 
     def session_to_prompt(
         self, session_id: str, submit_on_load: bool, prompt_name: str | None = None
@@ -253,6 +237,7 @@ class ChatManager(ParEventSystemBase):
         )
         self._id_to_prompt[prompt.id] = prompt
         self.mount(prompt)
+        prompt.set_app(self.app)
         self.notify_prompts_changed()
         prompt.description = "-"
         prompt.save()
@@ -303,6 +288,7 @@ class ChatManager(ParEventSystemBase):
                     prompt = ChatPrompt.from_json(fh.read())
                     self._id_to_prompt[prompt.id] = prompt
                     self.mount(prompt)
+                    prompt.set_app(self.app)
                     # self.log_it(prompt)
             except Exception as e:  # pylint: disable=broad-exception-caught
                 self.log_it(f"Error loading prompt {e}", notify=True, severity="error")
@@ -313,6 +299,7 @@ class ChatManager(ParEventSystemBase):
         """Add a custom prompt"""
         self._id_to_prompt[prompt.id] = prompt
         self.mount(prompt)
+        prompt.set_app(self.app)
         self.notify_prompts_changed()
 
     def delete_prompt(self, prompt_id: str) -> None:
@@ -332,17 +319,6 @@ class ChatManager(ParEventSystemBase):
         # self.log_it("CM Notify prompts changed")
         if self.app:
             self.app.post_message(PromptListChanged())
-
-    def on_par_prompt_updated(self, event: ParPromptUpdated) -> None:
-        """Handle a ParSessionUpdated event"""
-        event.stop()
-        # self.log_it(f"CM Prompt {event.prompt_id} updated. [{','.join(event.changed)}]")
-        self.notify_prompts_changed()
-
-    def on_par_prompt_delete(self, event: ParPromptDelete) -> None:
-        """Handle a ParDeleteSession event"""
-        event.stop()
-        self.delete_prompt(event.prompt_id)
 
 
 chat_manager = ChatManager()
