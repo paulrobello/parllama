@@ -588,7 +588,7 @@ class OptionsView(Horizontal):
         elif ctrl.id == "theme_name":
             if ctrl.value != Select.BLANK:
                 settings.theme_name = ctrl.value  # type: ignore
-                theme_manager.change_theme(settings.theme_name)
+                theme_manager.change_theme(settings.theme_name)  # type: ignore[arg-type]
         elif ctrl.id == "provider_name":
             pass
         elif ctrl.id == "model_name":
