@@ -790,7 +790,7 @@ class OptionsView(Horizontal):
 
         # Dynamic pattern: disable_<provider>_provider checkboxes.
         if ctrl.id.startswith("disable_") and ctrl.id.endswith("_provider"):
-            provider_name = ctrl.id[len("disable_") : -len("_provider")]
+            provider_name = ctrl.id[len("disable_") : -len("_provider")].capitalize()
             try:
                 provider = provider_name_to_enum(provider_name)
                 settings.disabled_providers[provider] = ctrl.value
