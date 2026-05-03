@@ -29,8 +29,6 @@ from parllama.messages.messages import ProviderModelsChanged, RefreshProviderMod
 from parllama.ollama_data_manager import ollama_dm
 from parllama.settings_manager import settings
 
-load_dotenv(Path(settings.data_dir) / ".env")
-
 openai_model_context_windows = {
     "chatgpt-4o-latest": 128_000,
     "gpt-4o-mini": 128_000,
@@ -61,6 +59,8 @@ class ProviderManager(MessageSink):
     def __init__(self):
         """Initialize the data manager."""
         super().__init__(id="data_manager")
+        # Load .env from data directory (deferred from module-level to avoid import-time side effects)
+        load_dotenv(Path(settings.data_dir) / ".env")
         self.provider_models = {}
         for p in llm_provider_types:
             self.provider_models[p] = []
@@ -156,7 +156,7 @@ class ProviderManager(MessageSink):
                     self.app.post_message(ProviderModelsChanged(provider=p))
 
             except Exception as e:
-                self.log_it(f"Error model refresh {p}: {e}", severity="error")
+                self.log_it(f"Error model refresh {p}: {type(e).__name__}: {e}", severity="error")
                 continue
         self.save_models()
 
@@ -168,9 +168,15 @@ class ProviderManager(MessageSink):
                 return ollama_dm.get_model_context_length(model_name)
             metadata = get_model_metadata(provider.value.lower(), model_name)
             return metadata.get("max_input_tokens") or metadata.get("max_tokens") or 0
-        except Exception as e:
+        except (ValueError, KeyError, ConnectionError, OSError) as e:
             self.log_it(
                 f"Error getting model metadata {get_api_cost_model_name(provider_name=provider.value.lower(), model_name=model_name)}: {e}",
+                severity="error",
+            )
+            return 0
+        except Exception as e:
+            self.log_it(
+                f"Unexpected error getting model metadata {get_api_cost_model_name(provider_name=provider.value.lower(), model_name=model_name)}: {type(e).__name__}: {e}",
                 severity="error",
             )
             return 0
@@ -278,4 +284,19 @@ class ProviderManager(MessageSink):
         self.refresh_models()
 
 
-provider_manager = ProviderManager()
+_provider_manager: ProviderManager | None = None
+
+
+def _get_provider_manager() -> ProviderManager:
+    """Lazily create the ProviderManager singleton on first access."""
+    global _provider_manager
+    if _provider_manager is None:
+        _provider_manager = ProviderManager()
+    return _provider_manager
+
+
+def __getattr__(name: str):  # type: ignore[misc]
+    """Module-level __getattr__ for lazy singleton initialization."""
+    if name == "provider_manager":
+        return _get_provider_manager()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

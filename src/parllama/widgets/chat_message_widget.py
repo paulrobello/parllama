@@ -114,7 +114,7 @@ class ChatMessageWidget(Vertical, can_focus=True):
                     self.msg.images[0] = image
                 png_bytes = base64.b64decode(image.split(",", maxsplit=2)[1])
                 image = Image.open(io.BytesIO(png_bytes))
-            except Exception:  # pylint: disable=broad-exception-caught
+            except (ValueError, OSError, KeyError):  # pylint: disable=broad-exception-caught
                 self.query_one("#image", Static).update("Image not found")
                 return
             height = 10

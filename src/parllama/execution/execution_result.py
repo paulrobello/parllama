@@ -224,7 +224,7 @@ class ExecutionResult:
                 temp_file = Path(temp_file_path)
                 if temp_file.exists():
                     temp_file.unlink()
-            except Exception:  # pylint: disable=broad-exception-caught
+            except OSError:
                 # Ignore cleanup errors - temp files will be cleaned up by OS eventually
                 pass
 

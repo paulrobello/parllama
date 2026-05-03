@@ -24,7 +24,7 @@ class CommandExecutor:
     def __init__(self, settings: Settings) -> None:
         """Initialize the command executor."""
         self.settings = settings
-        self._active_processes: set[subprocess.Popen] = set()
+        self._active_processes: set[asyncio.subprocess.Process] = set()
 
     def update_settings(self, settings: Settings) -> None:
         """Update the settings for this executor instance."""
@@ -54,18 +54,17 @@ class CommandExecutor:
                     execution_time=0.0,
                 )
 
-            # Prepare execution environment
-            temp_file_path = None
-            if "{{TEMP_FILE}}" in template.command_template:
-                temp_file_path = await self._create_temp_file(content, template)
-                temp_files.append(str(temp_file_path))
+            # Always write content to a temp file to avoid shell injection.
+            # Content is NEVER interpolated into the command string.
+            temp_file_path = await self._create_temp_file(content, template)
+            temp_files.append(str(temp_file_path))
 
-            # Generate command
-            command = self._generate_command(template, content, temp_file_path)
+            # Generate argv list (no shell interpretation)
+            argv = self._build_argv(template, temp_file_path)
 
             # Execute command
             result = await self._execute_command(
-                command=command,
+                argv=argv,
                 template=template,
                 content=content,
                 temp_files=temp_files,
@@ -74,7 +73,7 @@ class CommandExecutor:
             result.execution_time = time.time() - start_time
             return result
 
-        except Exception as e:
+        except (subprocess.SubprocessError, OSError, ValueError) as e:
             return ExecutionResult(
                 template_id=template.id,
                 template_name=template.name,
@@ -82,6 +81,17 @@ class CommandExecutor:
                 content=content,
                 exit_code=-1,
                 error_message=f"Execution failed: {str(e)}",
+                execution_time=time.time() - start_time,
+                temp_files_created=temp_files,
+            )
+        except Exception as e:
+            return ExecutionResult(
+                template_id=template.id,
+                template_name=template.name,
+                command="",
+                content=content,
+                exit_code=-1,
+                error_message=f"Execution failed unexpectedly: {type(e).__name__}: {str(e)}",
                 execution_time=time.time() - start_time,
                 temp_files_created=temp_files,
             )
@@ -102,8 +112,13 @@ class CommandExecutor:
         template_errors = template.validate(self.settings.execution_security_patterns)
         errors.extend(template_errors)
 
-        # Check command allowlist
-        command_parts = shlex.split(template.command_template.replace("{content}", "").replace("{{TEMP_FILE}}", ""))
+        # Check command allowlist using the base binary from the template
+        command_parts = shlex.split(
+            template.command_template.replace("{content}", " ")
+            .replace("{{I}}", " ")
+            .replace("{{TEMP_FILE}}", " ")
+            .strip()
+        )
         if command_parts:
             base_command = command_parts[0]
             if base_command not in self.settings.execution_allowed_commands:
@@ -147,42 +162,36 @@ class CommandExecutor:
         finally:
             temp_file.close()
 
-    def _generate_command(
-        self,
-        template: ExecutionTemplate,
-        content: str,
-        temp_file_path: Path | None = None,
-    ) -> str:
-        """Generate the actual command to execute."""
+    def _build_argv(self, template: ExecutionTemplate, temp_file_path: Path) -> list[str]:
+        """Build an argv list from the template, substituting the temp file path.
+
+        Content is NEVER interpolated into the command.  All placeholders
+        (``{content}``, ``{{I}}``, ``{{TEMP_FILE}}``) resolve to the temp
+        file path so that user/LLM content reaches the subprocess only
+        through the file system, never through the command line.
+        """
         command = template.command_template
+        temp_str = str(temp_file_path)
 
-        # Replace placeholders - use safer content insertion
-        if "{content}" in command:
-            # For inline content, escape it properly
-            escaped_content = content.replace("'", "'\"'\"'")
-            command = command.replace("{content}", escaped_content)
-
-        # Legacy placeholder support
-        if "{{I}}" in command:
-            escaped_content = content.replace("'", "'\"'\"'")
-            command = command.replace("{{I}}", escaped_content)
-
-        if "{{TEMP_FILE}}" in command and temp_file_path:
-            command = command.replace("{{TEMP_FILE}}", str(temp_file_path))
+        # All content-bearing placeholders resolve to the temp file
+        command = command.replace("{content}", temp_str)
+        command = command.replace("{{I}}", temp_str)
+        command = command.replace("{{TEMP_FILE}}", temp_str)
 
         if template.working_directory:
             command = command.replace("{{WORKING_DIR}}", template.working_directory)
 
-        return command
+        return shlex.split(command)
 
     async def _execute_command(
         self,
-        command: str,
+        argv: list[str],
         template: ExecutionTemplate,
         content: str,
         temp_files: list[str],
     ) -> ExecutionResult:
         """Execute the command safely using subprocess."""
+        command_display = " ".join(argv)
         try:
             # Prepare execution environment
             env = os.environ.copy()
@@ -204,11 +213,9 @@ class CommandExecutor:
 
             # Execute command
             if template.background:
-                # Background execution (non-blocking)
-                result = await self._execute_background(command, env, working_dir, template, content, temp_files)
+                result = await self._execute_background(argv, env, working_dir, template, content, temp_files)
             else:
-                # Foreground execution (blocking with timeout)
-                result = await self._execute_foreground(command, env, working_dir, template, content, temp_files)
+                result = await self._execute_foreground(argv, env, working_dir, template, content, temp_files)
 
             return result
 
@@ -216,7 +223,7 @@ class CommandExecutor:
             return ExecutionResult(
                 template_id=template.id,
                 template_name=template.name,
-                command=command,
+                command=command_display,
                 content=content,
                 exit_code=-1,
                 error_message=f"Command timed out after {template.timeout} seconds",
@@ -227,16 +234,16 @@ class CommandExecutor:
             return ExecutionResult(
                 template_id=template.id,
                 template_name=template.name,
-                command=command,
+                command=command_display,
                 content=content,
                 exit_code=-1,
-                error_message=f"Execution error: {str(e)}",
+                error_message=f"Execution error ({type(e).__name__}): {str(e)}",
                 temp_files_created=temp_files,
             )
 
     async def _execute_foreground(
         self,
-        command: str,
+        argv: list[str],
         env: dict,
         working_dir: Path,
         template: ExecutionTemplate,
@@ -244,13 +251,14 @@ class CommandExecutor:
         temp_files: list[str],
     ) -> ExecutionResult:
         """Execute command in foreground with timeout."""
-        process = await asyncio.create_subprocess_shell(
-            command,
+        process = await asyncio.create_subprocess_exec(
+            *argv,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
             env=env,
             cwd=working_dir,
         )
+        command_display = " ".join(argv)
 
         try:
             stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=template.timeout)
@@ -258,7 +266,7 @@ class CommandExecutor:
             return ExecutionResult(
                 template_id=template.id,
                 template_name=template.name,
-                command=command,
+                command=command_display,
                 content=content,
                 exit_code=process.returncode or 0,
                 stdout=stdout.decode("utf-8", errors="replace"),
@@ -276,11 +284,11 @@ class CommandExecutor:
                 process.kill()
                 await process.wait()
 
-            raise subprocess.TimeoutExpired(command, template.timeout)
+            raise subprocess.TimeoutExpired(command_display, template.timeout)
 
     async def _execute_background(
         self,
-        command: str,
+        argv: list[str],
         env: dict,
         working_dir: Path,
         template: ExecutionTemplate,
@@ -288,21 +296,22 @@ class CommandExecutor:
         temp_files: list[str],
     ) -> ExecutionResult:
         """Execute command in background (non-blocking)."""
-        # For background execution, we start the process and return immediately
-        # The result will contain process information rather than output
-        process = await asyncio.create_subprocess_shell(
-            command,
+        process = await asyncio.create_subprocess_exec(
+            *argv,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
             env=env,
             cwd=working_dir,
         )
 
-        # Return result indicating background execution started
+        # Track background process for cleanup
+        self._active_processes.add(process)
+
+        command_display = " ".join(argv)
         return ExecutionResult(
             template_id=template.id,
             template_name=template.name,
-            command=command,
+            command=command_display,
             content=content,
             exit_code=0,  # 0 indicates successful start
             stdout=f"Background process started with PID {process.pid}",
@@ -318,18 +327,18 @@ class CommandExecutor:
                 temp_file = Path(temp_file_path)
                 if temp_file.exists():
                     temp_file.unlink()
-            except Exception:  # pylint: disable=broad-exception-caught
+            except OSError:
                 # Ignore cleanup errors - temp files will be cleaned up by OS eventually
                 pass
 
     def terminate_all_processes(self) -> None:
-        """Terminate all active processes."""
-        for process in self._active_processes.copy():
+        """Terminate all active background processes."""
+        for process in list(self._active_processes):
             try:
                 process.terminate()
-                self._active_processes.discard(process)
-            except Exception:  # pylint: disable=broad-exception-caught
+            except OSError:
                 pass
+        self._active_processes.clear()
 
     def get_active_process_count(self) -> int:
         """Get the number of active background processes."""

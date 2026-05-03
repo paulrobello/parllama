@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from parllama.app import ParLlamaApp
-from parllama.settings_manager import settings
+from parllama.settings_manager import initialize_settings
 
 # if os.environ.get("DEBUG"):
 #     import pydevd_pycharm  # type: ignore
@@ -15,6 +15,7 @@ from parllama.settings_manager import settings
 
 def run() -> None:
     """Run the application."""
+    settings = initialize_settings()
     print(f"Settings folder {settings.data_dir}")
     ParLlamaApp().run()
 

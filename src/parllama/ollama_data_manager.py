@@ -50,10 +50,8 @@ def api_model_ps() -> OllamaPsResponse:
 
         ret = OllamaPsResponse(**res.json())
         return ret
-    except Exception:  # pylint: disable=broad-exception-caught
-        # print(f"Error: {e}")
-        # if res:
-        #     print(res.text)
+    except (httpx.HTTPError, ValueError, ConnectionError, OSError):  # pylint: disable=broad-exception-caught
+        # Network / parsing errors from the Ollama API are non-fatal; return empty response
         return OllamaPsResponse()
 
 
@@ -114,7 +112,7 @@ class OllamaDataManager(MessageSink):
                 if not isinstance(model_data, dict):
                     raise ValueError("Bad data")
                 ModelShowPayload(**model_data)
-            except Exception as _:
+            except (json.JSONDecodeError, ValueError, KeyError, OSError) as _:
                 cache_file.unlink()
                 model_data = None
         if not model_data:
@@ -150,8 +148,11 @@ class OllamaDataManager(MessageSink):
         all_models: list[LocalModelListItem] = []
         try:
             res = self._ollama_list_models()
-        except Exception as e:
+        except (ollama.ResponseError, ConnectionError, OSError) as e:
             self.log_it(f"Error loading Ollama Models: {e}")
+            return []
+        except Exception as e:
+            self.log_it(f"Unexpected error loading Ollama Models: {type(e).__name__}: {e}")
             return []
 
         for model in res.models:
@@ -195,8 +196,11 @@ class OllamaDataManager(MessageSink):
         """Delete a model."""
         try:
             ret = self._ollama_delete_model(model_name).status or False
-        except Exception as e:
+        except (ollama.ResponseError, ConnectionError, OSError) as e:
             self.log_it(f"Error deleting model {model_name}: {e}")
+            return False
+        except Exception as e:
+            self.log_it(f"Unexpected error deleting model {model_name}: {type(e).__name__}: {e}")
             return False
 
         if not ret:
@@ -247,8 +251,8 @@ class OllamaDataManager(MessageSink):
                 if ret.last_update and ret.last_update.timestamp() > (ret.last_update.timestamp() - 60 * 60 * 24):
                     self.site_models = [SiteModelListItem(m) for m in ret.models]
                     return self.site_models
-            except Exception as e:  # pylint: disable=broad-exception-caught
-                print(f"Error: {e}")
+            except (json.JSONDecodeError, ValueError, KeyError, OSError) as e:  # pylint: disable=broad-exception-caught
+                print(f"Error loading site models cache: {e}")
 
         url_base: str = f"https://ollama.com/{namespace}"
         models: list[SiteModel] = []
@@ -412,4 +416,19 @@ class OllamaDataManager(MessageSink):
         return model.num_ctx()
 
 
-ollama_dm: OllamaDataManager = OllamaDataManager()
+_ollama_dm: OllamaDataManager | None = None
+
+
+def _get_ollama_dm() -> OllamaDataManager:
+    """Lazily create the OllamaDataManager singleton on first access."""
+    global _ollama_dm
+    if _ollama_dm is None:
+        _ollama_dm = OllamaDataManager()
+    return _ollama_dm
+
+
+def __getattr__(name: str):  # type: ignore[misc]
+    """Module-level __getattr__ for lazy singleton initialization."""
+    if name == "ollama_dm":
+        return _get_ollama_dm()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

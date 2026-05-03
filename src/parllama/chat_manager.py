@@ -6,6 +6,7 @@ import os
 from collections.abc import Collection
 from typing import Any
 
+import orjson as json
 from ollama import Options as OllamaOptions
 from par_ai_core.llm_config import LlmConfig
 from textual.app import App
@@ -193,8 +194,10 @@ class ChatManager(MessageSink):
                     self._id_to_session[session.id] = session
                     self.mount(session)
                     session.set_app(self.app)
-            except Exception as e:
+            except (json.JSONDecodeError, ValueError, OSError, KeyError) as e:
                 self.log_it(f"Error loading session {e}", notify=True, severity="error")
+            except Exception as e:
+                self.log_it(f"Unexpected error loading session: {type(e).__name__}: {e}", notify=True, severity="error")
 
     def maybe_notify_session_updated(self, changed: Collection[str]) -> None:
         """Notify session-list observers when list-visible fields changed."""
@@ -290,8 +293,10 @@ class ChatManager(MessageSink):
                     self.mount(prompt)
                     prompt.set_app(self.app)
                     # self.log_it(prompt)
-            except Exception as e:  # pylint: disable=broad-exception-caught
+            except (json.JSONDecodeError, ValueError, OSError, KeyError) as e:  # pylint: disable=broad-exception-caught
                 self.log_it(f"Error loading prompt {e}", notify=True, severity="error")
+            except Exception as e:
+                self.log_it(f"Unexpected error loading prompt: {type(e).__name__}: {e}", notify=True, severity="error")
         if self.app:
             self.app.post_message(PromptListLoaded())
 
@@ -321,4 +326,19 @@ class ChatManager(MessageSink):
             self.app.post_message(PromptListChanged())
 
 
-chat_manager = ChatManager()
+_chat_manager: ChatManager | None = None
+
+
+def _get_chat_manager() -> ChatManager:
+    """Lazily create the ChatManager singleton on first access."""
+    global _chat_manager
+    if _chat_manager is None:
+        _chat_manager = ChatManager()
+    return _chat_manager
+
+
+def __getattr__(name: str):  # type: ignore[misc]
+    """Module-level __getattr__ for lazy singleton initialization."""
+    if name == "chat_manager":
+        return _get_chat_manager()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

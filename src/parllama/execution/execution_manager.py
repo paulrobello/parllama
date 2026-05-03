@@ -64,7 +64,7 @@ class ExecutionManager:
                 try:
                     template = ExecutionTemplate.from_dict(template_dict)
                     self._templates[template.id] = template
-                except Exception as e:  # pylint: disable=broad-exception-caught
+                except (ValueError, KeyError, TypeError) as e:  # pylint: disable=broad-exception-caught
                     # Log error but continue loading other templates
                     print(f"Error loading template: {e}")
 
@@ -110,7 +110,7 @@ class ExecutionManager:
                 try:
                     result = ExecutionResult.from_dict(result_dict)
                     self._execution_history.append(result)
-                except Exception as e:  # pylint: disable=broad-exception-caught
+                except (ValueError, KeyError, TypeError) as e:  # pylint: disable=broad-exception-caught
                     print(f"Error loading execution result: {e}")
 
             self._history_loaded = True
@@ -148,42 +148,42 @@ class ExecutionManager:
         default_templates = [
             ExecutionTemplate(
                 name="Python Script",
-                description="Execute Python code directly",
-                command_template="python3 -c '{content}'",
+                description="Execute Python code from temporary file",
+                command_template="python3 {{TEMP_FILE}}",
                 file_extensions=[".py"],
                 timeout=30,
             ),
             ExecutionTemplate(
                 name="Python File",
-                description="Execute Python code from temporary file",
+                description="Execute Python code from temporary file (long timeout)",
                 command_template="python3 {{TEMP_FILE}}",
                 file_extensions=[".py"],
                 timeout=60,
             ),
             ExecutionTemplate(
                 name="Node.js Script",
-                description="Execute JavaScript/Node.js code directly",
-                command_template="node -e '{content}'",
+                description="Execute JavaScript/Node.js code from temporary file",
+                command_template="node {{TEMP_FILE}}",
                 file_extensions=[".js"],
                 timeout=30,
             ),
             ExecutionTemplate(
                 name="Node.js File",
-                description="Execute JavaScript/Node.js code from file",
+                description="Execute JavaScript/Node.js code from file (long timeout)",
                 command_template="node {{TEMP_FILE}}",
                 file_extensions=[".js"],
                 timeout=60,
             ),
             ExecutionTemplate(
-                name="Bash Command",
-                description="Execute shell commands",
-                command_template="{content}",
+                name="Bash Script",
+                description="Execute shell script from temporary file",
+                command_template="bash {{TEMP_FILE}}",
                 file_extensions=[".sh", ".bash"],
                 timeout=30,
             ),
             ExecutionTemplate(
                 name="Shell Script",
-                description="Execute shell script from file",
+                description="Execute shell script from file (long timeout)",
                 command_template="bash {{TEMP_FILE}}",
                 file_extensions=[".sh", ".bash"],
                 timeout=60,
@@ -298,7 +298,7 @@ class ExecutionManager:
 
                 self._templates[template.id] = template
                 imported_count += 1
-            except Exception as e:  # pylint: disable=broad-exception-caught
+            except (ValueError, KeyError, TypeError) as e:  # pylint: disable=broad-exception-caught
                 print(f"Error importing template: {e}")
 
         if imported_count > 0:
@@ -375,7 +375,7 @@ class ExecutionManager:
                 total_templates=0,
                 imported_count=0,
                 skipped_count=0,
-                errors=[f"Unexpected error: {e}"],
+                errors=[f"Unexpected error ({type(e).__name__}): {e}"],
                 warnings=[],
                 success=False,
             )
@@ -419,7 +419,7 @@ class ExecutionManager:
                     else:
                         self.app.log(f"Template '{template.name}' imported successfully")
 
-            except Exception as e:
+            except (ValueError, KeyError, TypeError) as e:
                 errors.append(f"Template {i + 1}: {e}")
                 skipped_count += 1
 
@@ -427,7 +427,7 @@ class ExecutionManager:
         if imported_count > 0:
             try:
                 await self.save_templates()
-            except Exception as e:
+            except (SecureFileOpsError, OSError) as e:
                 errors.append(f"Failed to save templates: {e}")
 
         # Log import completion

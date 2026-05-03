@@ -358,8 +358,17 @@ class SecureFileOperations:
             temp_path.replace(file_path)
             temp_path = None  # Successfully renamed, don't clean up
 
-        except Exception:
+        except (OSError, ValueError, TypeError):
             # Clean up temporary file if something went wrong
+            if temp_path and temp_path.exists():
+                try:
+                    temp_path.unlink()
+                except OSError:
+                    pass  # Best effort cleanup
+            raise
+        except Exception:
+            # Catch-all for unexpected errors during atomic write
+            logger.exception(f"Unexpected error during atomic write to {file_path}")
             if temp_path and temp_path.exists():
                 try:
                     temp_path.unlink()
@@ -414,8 +423,18 @@ class SecureFileOperations:
 
             yield backup_path
 
-        except Exception:
+        except (OSError, shutil.Error):
             # If there was an error and we have a backup, restore it
+            if backup_path and backup_path.exists() and file_path.exists():
+                try:
+                    shutil.copy2(backup_path, file_path)
+                    logger.info(f"Restored file from backup: {file_path}")
+                except OSError as restore_error:
+                    logger.error(f"Failed to restore backup: {restore_error}")
+            raise
+        except Exception:
+            # Catch-all for unexpected errors during backup/restore
+            logger.exception(f"Unexpected error during backup of {file_path}")
             if backup_path and backup_path.exists() and file_path.exists():
                 try:
                     shutil.copy2(backup_path, file_path)

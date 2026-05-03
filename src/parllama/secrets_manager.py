@@ -144,7 +144,7 @@ class SecretsManager(MessageSink):
                             pass
 
                     return self.file
-                except Exception as e:
+                except OSError as e:
                     if self.file:
                         self.file.close()
                     raise e
@@ -189,7 +189,7 @@ class SecretsManager(MessageSink):
                 # Clear the reference
                 del mutable_copy
 
-        except Exception as e:
+        except (TypeError, AttributeError, UnicodeEncodeError, MemoryError) as e:
             # If secure clearing fails, log but don't raise
             self.log_it(f"Warning: Could not securely clear bytes from memory: {e}")
 
@@ -212,7 +212,7 @@ class SecretsManager(MessageSink):
                 # Clear the reference
                 del mutable_copy
 
-        except Exception as e:
+        except (TypeError, AttributeError, UnicodeEncodeError, MemoryError) as e:
             # If secure clearing fails, log but don't raise
             self.log_it(f"Warning: Could not securely clear string from memory: {e}")
 
@@ -229,7 +229,7 @@ class SecretsManager(MessageSink):
                     self._secure_clear_bytes(value)
                 elif isinstance(value, dict):
                     self._secure_clear_dict(value)
-        except Exception as e:
+        except (TypeError, AttributeError) as e:
             # If secure clearing fails, log but don't raise
             self.log_it(f"Warning: Could not securely clear dictionary from memory: {e}")
 
@@ -424,7 +424,7 @@ class SecretsManager(MessageSink):
 
             self.log_it("Password changed successfully", notify=True)
 
-        except Exception as e:
+        except (ValueError, TypeError, InvalidTag, OSError) as e:
             error_msg = f"Failed to change password: {e}"
             if no_raise:
                 self.log_it(error_msg, notify=True, severity="error")
@@ -486,7 +486,7 @@ class SecretsManager(MessageSink):
 
             return True
 
-        except Exception as e:
+        except (ValueError, TypeError, InvalidTag, OSError, RuntimeError) as e:
             self.lock()
             error_msg = f"Failed to unlock vault: {e}"
             if no_raise:
@@ -531,7 +531,7 @@ class SecretsManager(MessageSink):
             self._export_to_env[key.strip()] = export_to_env
             self._save_secrets()
             self.log_it(f"Secret '{key}' added successfully")
-        except Exception as e:
+        except (ValueError, TypeError, InvalidTag, OSError) as e:
             error_msg = f"Failed to add secret '{key}': {e}"
             if no_raise:
                 self.log_it(error_msg, notify=True, severity="error")
@@ -580,7 +580,7 @@ class SecretsManager(MessageSink):
                     return ""
 
             return self.get_secret(key, no_raise=no_raise)
-        except Exception as e:
+        except (ValueError, TypeError, InvalidTag, KeyError, OSError) as e:
             error_msg = f"Failed to get secret with password: {e}"
             if no_raise:
                 self.log_it(error_msg, severity="error")
@@ -695,7 +695,7 @@ class SecretsManager(MessageSink):
                         os.environ[key] = decrypted_value
                         imported_count += 1
                     # Note: We don't clear decrypted_value here since it's now in environment
-                except Exception as e:
+                except (ValueError, TypeError, InvalidTag) as e:
                     if no_raise:
                         self.log_it(f"Failed to import secret '{key}': {e}", severity="warning")
                         continue
@@ -705,7 +705,7 @@ class SecretsManager(MessageSink):
             if imported_count > 0:
                 self.log_it(f"Imported {imported_count} secrets to environment variables")
 
-        except Exception as e:
+        except (ValueError, TypeError, InvalidTag, OSError, RuntimeError) as e:
             error_msg = f"Failed to import secrets to environment: {e}"
             if no_raise:
                 self.log_it(error_msg, notify=True, severity="error")
@@ -800,4 +800,19 @@ def gen_salt() -> bytes:
     return os.urandom(16)
 
 
-secrets_manager = SecretsManager(settings.secrets_file)
+_secrets_manager: SecretsManager | None = None
+
+
+def _get_secrets_manager() -> SecretsManager:
+    """Lazily create the SecretsManager singleton on first access."""
+    global _secrets_manager
+    if _secrets_manager is None:
+        _secrets_manager = SecretsManager(settings.secrets_file)
+    return _secrets_manager
+
+
+def __getattr__(name: str):  # type: ignore[misc]
+    """Module-level __getattr__ for lazy singleton initialization."""
+    if name == "secrets_manager":
+        return _get_secrets_manager()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

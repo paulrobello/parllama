@@ -118,20 +118,41 @@ Chat with local LLMs and manage saved sessions
 ### Chat Tab input Slash Commands:
 Chat Commands:
 * /? or /help - Show slash command help dialog
+
+Tab Commands:
 * /tab.# - Switch to the tab with the given number
 * /tab.new - Create new tab and switch to it
 * /tab.remove - Remove the active tab
 * /tabs.clear - Clear / remove all tabs
+
+Session Commands:
 * /session.new [session_name] - Start new chat session in current tab with optional name
 * /session.name [session_name] - Select session name input or set the session name in current tab
+* /session.provider [provider_name] - Select the AI provider dropdown or set provider name in current tab
 * /session.model [model_name] - Select model dropdown or set model name in current tab
 * /session.temp [temperature] - Select temperature input or set temperature in current tab
 * /session.delete - Delete the chat session for current tab
 * /session.export - Export the conversation in current tab to a Markdown file
+* /session.import - Import a Markdown file into the current session
+* /session.summarize - Summarize conversation and replace it with a single message
 * /session.system_prompt [system_prompt] - Set system prompt in current tab
+* /session.clear_system_prompt - Remove system prompt in current tab
 * /session.to_prompt submit_on_load [prompt_name] - Copy current session to new custom prompt. submit_on_load = {0|1}
+
+Prompt Commands:
 * /prompt.load prompt_name - Load a custom prompt using current tabs model and temperature
+
+Image Commands:
 * /add.image image_path_or_url prompt - Add an image via path or url to the active chat session. Everything after the image path or url will be used as the prompt
+
+History Commands:
+* /history.clear - Clear chat input history
+
+Memory Commands:
+* /remember [information] - Add information to memory using AI assistance
+* /forget [information] - Remove information from memory using AI assistance
+* /memory.clear - Clear all memory content
+* /memory.status - Show current memory status and content
 
 ## Prompts Tab
 Allows you to create, edit, import and execute custom prompts

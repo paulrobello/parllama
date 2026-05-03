@@ -554,7 +554,7 @@ Chat Commands:
             memory_manager.memory_content = updated_memory
             self.notify("Memory updated successfully", severity="information")
 
-        except Exception as e:
+        except (ValueError, ConnectionError, OSError, RuntimeError) as e:
             self.notify(f"Error updating memory: {str(e)}", severity="error")
 
     async def _handle_forget_command(self, info_to_forget: str) -> None:
@@ -582,7 +582,7 @@ Chat Commands:
             memory_manager.memory_content = updated_memory
             self.notify("Memory updated successfully", severity="information")
 
-        except Exception as e:
+        except (ValueError, ConnectionError, OSError, RuntimeError) as e:
             self.notify(f"Error updating memory: {str(e)}", severity="error")
 
     async def _handle_memory_clear_command(self) -> None:

@@ -65,4 +65,19 @@ class UpdateManager(MessageSink):
                 print(e)
 
 
-update_manager = UpdateManager()
+_update_manager: UpdateManager | None = None
+
+
+def _get_update_manager() -> UpdateManager:
+    """Lazily create the UpdateManager singleton on first access."""
+    global _update_manager
+    if _update_manager is None:
+        _update_manager = UpdateManager()
+    return _update_manager
+
+
+def __getattr__(name: str):  # type: ignore[misc]
+    """Module-level __getattr__ for lazy singleton initialization."""
+    if name == "update_manager":
+        return _get_update_manager()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

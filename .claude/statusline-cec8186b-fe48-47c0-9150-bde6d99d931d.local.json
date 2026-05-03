@@ -1,0 +1,32 @@
+{
+  "updated_at": "2026-05-03T17:34:10Z",
+  "session_id": "cec8186b-fe48-47c0-9150-bde6d99d931d",
+  "model": "GLM-5.1",
+  "context_window": {
+    "used_percentage": 39,
+    "remaining_percentage": 61,
+    "context_window_size": 200000,
+    "current_input_tokens": 32,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 77120
+  },
+  "cost": {
+    "total_cost_usd": 7.824235000000002,
+    "total_duration_ms": 2643613,
+    "lines_added": 502,
+    "lines_removed": 0
+  },
+  "rate_limits": {
+    "five_hour_used_pct": null,
+    "five_hour_resets_at": null,
+    "seven_day_used_pct": null,
+    "seven_day_resets_at": null
+  },
+  "worktree": {
+    "name": null,
+    "branch": null
+  },
+  "agent_name": null,
+  "vim_mode": null,
+  "exceeds_90pct": false
+}
