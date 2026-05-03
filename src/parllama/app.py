@@ -4,9 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Iterator
-from dataclasses import is_dataclass, replace
 from queue import Empty
-from weakref import WeakSet
 
 import clipman as clipboard
 import humanize
@@ -19,7 +17,6 @@ from textual import on, work
 from textual.app import App
 from textual.binding import Binding
 from textual.message import Message
-from textual.message_pump import MessagePump
 from textual.notifications import SeverityLevel
 from textual.timer import Timer
 from textual.widget import Widget
@@ -32,6 +29,7 @@ from parllama.coordinators.model_job_processor import ModelJobProcessor
 from parllama.dialogs.help_dialog import HelpDialog
 from parllama.dialogs.information import InformationDialog
 from parllama.dialogs.theme_dialog import ThemeDialog
+from parllama.event_bus import EventBus
 from parllama.messages.messages import (
     ChangeTab,
     ChatGenerationAborted,
@@ -118,7 +116,7 @@ class ParLlamaApp(App[None]):
     ]
     CSS_PATH = "app.tcss"
 
-    notify_subs: dict[type[Message], WeakSet[MessagePump]]
+    event_bus: EventBus
     main_screen: MainScreen
     last_status: RenderableType = ""
     chat_manager: ChatManager
@@ -130,7 +128,7 @@ class ParLlamaApp(App[None]):
     def __init__(self) -> None:
         """Initialize the application."""
         super().__init__()
-        self.notify_subs = {}
+        self.event_bus = EventBus()
 
         # Initialize state manager with logging capability
         self.state_manager = initialize_state_manager(self.log_it)
@@ -418,16 +416,12 @@ Some functions are only available via slash / commands on that chat tab. You can
         """Unregister widget from all updates"""
         if not event.widget:
             return
-        for _, s in self.notify_subs.items():
-            s.discard(event.widget)
+        self.event_bus.unsubscribe(event.widget)
 
     @on(RegisterForUpdates)
     def on_register_for_updates(self, event: RegisterForUpdates) -> None:
         """Register for updates event"""
-        for event_type in event.event_names:
-            if event_type not in self.notify_subs:
-                self.notify_subs[event_type] = WeakSet()
-            self.notify_subs[event_type].add(event.widget)
+        self.event_bus.subscribe(event.widget, event.event_names)
 
     @on(LocalModelListRefreshRequested)
     def on_model_list_refresh_requested(self) -> None:
@@ -550,14 +544,7 @@ Some functions are only available via slash / commands on that chat tab. You can
         if isinstance(event, PsMessage):
             self.main_screen.post_message(event)
             return
-        event_type = event.__class__
-        if event_type in self.notify_subs:
-            # Convert to list to avoid RuntimeError if set changes during iteration.
-            # WeakSet automatically removes dead references. Use a fresh message
-            # instance per recipient so stop/prevent_default state can't leak.
-            for w in list(self.notify_subs[event_type]):
-                message = replace(event) if is_dataclass(event) else event
-                w.post_message(message)
+        self.event_bus.broadcast(event)
 
     @on(ChangeTab)
     def on_change_tab(self, event: ChangeTab) -> None:
