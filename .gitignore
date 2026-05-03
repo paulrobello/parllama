@@ -34,3 +34,4 @@
 /.vscode/
 /.ruff_cache/
 graphify-out/
+statusline-*.json
