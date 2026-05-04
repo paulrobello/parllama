@@ -36,11 +36,11 @@
     * [Where we are](#where-we-are)Ï
     * [Where we're going](#where-were-going)
 * [What's new](#whats-new)
+  * [v0.8.6](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md#086---2025-05-04)
   * [v0.8.5](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md#085---2025-05-03)
   * [v0.8.4](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md#084---2025-05-01)
   * [v0.8.3](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md#083---2025-04-28)
   * [v0.8.2](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md#082---2025-04-25)
-  * [v0.8.1](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md#081---2025-04-20)
   * [older...](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md)
 
 [![PyPI](https://img.shields.io/pypi/v/parllama)](https://pypi.org/project/parllama/)
@@ -562,7 +562,11 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, code style, commit
 
 ## What's new
 
-### v0.8.4 (Latest)
+### v0.8.6 (Latest)
+
+* **Edit & Continue**: Press `c` on any completed assistant message to continue generation from that point. Works with all providers. After stopping generation, edit the partial response with `e`, then press `c` to continue (#45)
+
+### v0.8.4
 
 * **First Run Fix**: Fixed error message appearing on first run when `settings.json` doesn't exist yet (#69)
 * **Python 3.11 Compatibility Fix**: Fixed syntax errors when running on Python 3.11

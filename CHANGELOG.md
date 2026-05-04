@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.6] - 2025-05-04
+
+### Added
+
+- **Edit & Continue**: Press `c` on any completed assistant message to continue generation from that point. Works with all providers. After stopping generation, edit the partial response with `e`, then press `c` to continue. Strips abort text automatically and appends continuation to the existing message (#45).
+
 ## [0.8.5] - 2025-05-03
 
 ### Added
