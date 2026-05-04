@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.5] - 2025-05-03
+
 ### Added
 
 - **Model Sort Selector**: Sort local and site models by size or name via dropdown in both Local and Site model tabs. Sort preference persists across restarts (#50).
