@@ -460,7 +460,6 @@ class ChatTab(TabPane):
     @on(ChatContinueRequested)
     async def on_chat_continue_requested(self, event: ChatContinueRequested) -> None:
         """Handle continue generation request."""
-        event.stop()
         if self.session.id != event.session_id:
             return
         if self.busy:

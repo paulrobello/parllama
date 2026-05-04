@@ -303,7 +303,7 @@ class AgentChatMessage(ChatMessageWidget):
         if self.session.is_generating:
             self.notify("LLM is busy", severity="error")
             return
-        self.app.post_message(ChatContinueRequested(session_id=self.session.id, message_id=self.msg.id))
+        self.post_message(ChatContinueRequested(session_id=self.session.id, message_id=self.msg.id))
 
 
 class UserChatMessage(ChatMessageWidget):
