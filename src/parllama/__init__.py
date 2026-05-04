@@ -9,16 +9,17 @@ import warnings
 # This must be set before importing langchain_core
 warnings.filterwarnings("ignore", message=".*Pydantic V1.*", category=UserWarning)
 
-import clipman  # noqa: E402
 from langchain_core._api import LangChainBetaWarning  # noqa: E402
 
 warnings.simplefilter("ignore", category=LangChainBetaWarning)
 warnings.simplefilter("ignore", category=DeprecationWarning)
 
 try:
+    import clipman  # noqa: E402
+
     clipman.init()
-except (ImportError, OSError, RuntimeError):
-    pass
+except Exception:
+    clipman = None  # type: ignore[assignment]
 
 __author__ = "Paul Robello"
 __copyright__ = "Copyright 2025, Paul Robello"
