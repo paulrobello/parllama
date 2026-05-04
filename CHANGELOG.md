@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Edit & Continue**: Press `c` on any completed assistant message to continue generation from that point. Works with all providers. After stopping generation, edit the partial response with `e`, then press `c` to continue. Strips abort text automatically and appends continuation to the existing message (#45).
+
+### Added
+
 - **Model Sort Selector**: Sort local and site models by size or name via dropdown in both Local and Site model tabs. Sort preference persists across restarts (#50).
 - **Template Picker for Ctrl+R**: When pressing Ctrl+R on a message with no auto-matching template (e.g. non-fenced content), a modal dialog now lists all enabled templates for manual selection instead of silently failing (#65).
 
