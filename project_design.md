@@ -16,7 +16,12 @@ PAR LLAMA is a sophisticated Terminal User Interface (TUI) application for manag
 8. [State Management Architecture](#state-management-architecture)
 9. [Widget Hierarchy](#widget-hierarchy)
 10. [Key Design Patterns](#key-design-patterns)
-11. [Architecture Diagrams](#architecture-diagrams)
+11. [Enhanced Import System Architecture](#enhanced-import-system-architecture)
+12. [Architecture Diagrams](#architecture-diagrams)
+13. [Execution and Template System](#execution-and-template-system)
+14. [Persistent Memory System](#persistent-memory-system)
+15. [Dialog System](#dialog-system)
+16. [Message System Organization](#message-system-organization)
 
 ## Architecture Overview
 
@@ -31,13 +36,19 @@ PAR LLAMA follows a layered architecture with clear separation of concerns:
 │    Textual Messages (UI) | Par Events (Background)      │
 ├─────────────────────────────────────────────────────────┤
 │                   Business Logic Layer                  │
-│  Managers, Sessions, Providers, Job Processing          │
+│  Managers, Sessions, Providers, Coordinators            │
+├─────────────────────────────────────────────────────────┤
+│            Execution & Template Layer                    │
+│  Command Executor, Template Matcher, Execution Manager  │
 ├─────────────────────────────────────────────────────────┤
 │                Configuration Management Layer           │
 │   Settings Manager, Environment Variables, Validation   │
 ├─────────────────────────────────────────────────────────┤
 │              File Validation and Security Layer         │
 │  FileValidator, SecureFileOperations, Content Checking  │
+├─────────────────────────────────────────────────────────┤
+│              Memory & Persistence Layer                 │
+│   Persistent Memory Manager, Sessions, Prompts          │
 ├─────────────────────────────────────────────────────────┤
 │                 Data Persistence Layer                  │
 │   JSON Files, Settings, Themes, Sessions, Prompts       │
@@ -69,7 +80,7 @@ flowchart TD
 ### Key Initialization Steps
 
 1. **Settings Loading**: Global singleton `settings` object created
-2. **Manager Registration**: Theme, Provider, Secrets, Ollama, Chat managers initialized
+2. **Manager Registration**: Theme, Provider, Secrets, Ollama, Chat, Memory, Execution managers initialized
 3. **UI Creation**: MainScreen with tabbed interface constructed
 4. **Background Tasks**: Job processing and PS polling timers started
 
@@ -92,13 +103,15 @@ graph TD
     G --> K[PromptView]
     G --> L[ModelToolsView]
     G --> M[ModelCreateView]
-    G --> N[OptionsView]
-    G --> O[LogView]
+    G --> N[ExecutionView]
+    G --> O[OptionsView]
+    G --> P[MemoryView]
+    G --> Q[LogView]
 
-    J --> P[SessionList]
-    J --> Q[ChatTabs]
-    J --> R[UserInput]
-    J --> S[SessionConfig]
+    J --> R[SessionList]
+    J --> S[ChatTabs]
+    J --> T[UserInput]
+    J --> U[SessionConfig]
 ```
 
 ### Navigation Patterns
@@ -192,17 +205,19 @@ graph TD
         A --> D[chats/]
         A --> E[prompts/]
         A --> F[themes/]
+        A --> G[execution_templates/]
+        A --> H[memory/]
 
-        D --> G[session_uuid.json]
-        E --> H[prompt_uuid.json]
-        F --> I[theme_name.json]
+        D --> I[session_uuid.json]
+        E --> J[prompt_uuid.json]
+        F --> K[theme_name.json]
     end
 
     subgraph "Cache Storage"
-        J[XDG_CACHE_HOME/parllama]
-        J --> K[ollama/]
-        J --> L[image/]
-        J --> M[provider_models.json]
+        L[XDG_CACHE_HOME/parllama]
+        L --> M[ollama/]
+        L --> N[image/]
+        L --> O[provider_models.json]
     end
 ```
 
@@ -819,25 +834,34 @@ graph TD
         D[ProviderModelSelect]
         D --> E[Provider Select]
         D --> F[Model Select]
+
+        G[SessionConfig]
+        G --> H[DeferredSelect]
     end
 
     subgraph "List Widgets"
-        G[SessionList]
-        G --> H[SessionListItem]
+        I[SessionList]
+        I --> J[SessionListItem]
 
-        I[PromptList]
-        I --> J[PromptListItem]
+        K[PromptList]
+        K --> L[PromptListItem]
+
+        M[LocalModelGridList]
+        M --> N[LocalModelListItem]
+
+        O[SiteModelListView]
+        O --> P[SiteModelListItem]
     end
 
     subgraph "Display Widgets"
-        K[ChatMessageWidget]
-        K --> L[ParMarkdown]
-        K --> M[Edit Controls]
+        Q[ChatMessageWidget]
+        Q --> R[ParMarkdown]
+        Q --> S[Edit Controls]
 
-        N[ImportFabricDialog]
-        N --> O[ProgressBar]
-        N --> P[Status Labels]
-        N --> Q[Pattern Checkboxes]
+        T[ImportFabricDialog]
+        T --> U[ProgressBar]
+        T --> V[Status Labels]
+        T --> W[Pattern Checkboxes]
     end
 ```
 
@@ -856,6 +880,8 @@ graph TD
 settings = Settings()
 theme_manager = ThemeManager()
 provider_manager = ProviderManager()
+memory_manager = MemoryManager()
+secrets_manager = SecretsManager()
 ```
 
 ### 2. Message-Based Architecture
@@ -995,15 +1021,16 @@ graph TB
     subgraph "Frontend Layer"
         UI[Textual UI]
         Screens[Screens]
-        Views[Views]
+        Views[Views in widgets/views/]
         Widgets[Widgets]
-        Dialogs[Dialogs]
+        Dialogs[Dialogs in dialogs/]
     end
 
     subgraph "Message Layer"
         TMsg[Textual Messages]
         PEvent[Par Events]
         RegSys[Registration System]
+        EventBus[EventBus]
     end
 
     subgraph "Business Logic"
@@ -1011,6 +1038,8 @@ graph TB
         Sessions[Chat Sessions]
         Jobs[Job Queue]
         Providers[Provider System]
+        Coordinators[Coordinators]
+        Execution[Execution Engine]
     end
 
     subgraph "Configuration Layer"
@@ -1026,6 +1055,7 @@ graph TB
         Prompts[Prompt Storage]
         Themes[Theme Storage]
         Cache[Cache]
+        Memory[Persistent Memory]
     end
 
     subgraph "External Services"
@@ -1038,6 +1068,7 @@ graph TB
     TMsg --> Managers
     Managers --> PEvent
     PEvent --> Sessions
+    Managers --> EventBus
 
     Managers --> ConfigMgr
     ConfigMgr --> ConfigVal
@@ -1047,6 +1078,10 @@ graph TB
 
     Sessions --> Chats
     Managers --> Cache
+    Managers --> Memory
+
+    Coordinators --> Jobs
+    Execution --> Coordinators
 
     Providers --> Ollama
     Providers --> OpenAI
@@ -1096,13 +1131,91 @@ stateDiagram-v2
 3. **Input Validation**: URL and path validation
 4. **Secure Defaults**: Conservative security settings
 
+## Execution and Template System
+
+### Architecture
+
+```mermaid
+graph TD
+    subgraph "Execution Engine"
+        A[ExecutionManager]
+        A --> B[CommandExecutor]
+        A --> C[TemplateMatcher]
+        A --> D[ExecutionTemplate]
+        A --> E[ExecutionResult]
+    end
+
+    subgraph "Coordinators"
+        F[ExecutionCoordinator]
+        F --> G[ModelJobProcessor]
+    end
+
+    subgraph "UI"
+        H[ExecutionView]
+        H --> I[EditExecutionTemplateDialog]
+        H --> J[SelectTemplateDialog]
+    end
+
+    A --> F
+    H --> A
+```
+
+### Key Components
+
+- **ExecutionManager** (`execution/execution_manager.py`): Orchestrates template execution
+- **CommandExecutor** (`execution/command_executor.py`): Runs commands from templates
+- **TemplateMatcher** (`execution/template_matcher.py`): Matches user input to templates
+- **ExecutionTemplate** (`execution/execution_template.py`): Template data model
+- **ExecutionCoordinator** (`coordinators/execution_coordinator.py`): Coordinates between UI and execution engine
+
+## Persistent Memory System
+
+### Architecture
+
+- **MemoryManager** (`memory_manager.py`): Manages persistent conversation memory across sessions
+- **MemoryView** (`widgets/views/memory_view.py`): UI for browsing and managing memories
+- Broadcasts updates to all registered UI widgets via the message system
+
+## Dialog System
+
+The application uses a dedicated `dialogs/` directory for modal overlays:
+
+- `import_fabric_dialog.py` - Fabric prompt import with progress tracking
+- `import_templates_dialog.py` - Execution template import
+- `import_results_dialog.py` - Import results display
+- `edit_prompt_dialog.py` / `edit_execution_template_dialog.py` - Prompt/template editors
+- `model_details_dialog.py` - Model information display
+- `theme_dialog.py` - Theme selection and management
+- `help_dialog.py` / `information.py` - Help and info dialogs
+- `password_dialog.py` - Secure password input
+- `select_template_dialog.py` - Template selection
+- `text_dialog.py` / `yes_no_dialog.py` - General-purpose dialogs
+
+## Message System Organization
+
+Messages are organized into domain-specific modules within `src/parllama/messages/`:
+
+| Module | Contents |
+|--------|----------|
+| `_base.py` | Base message classes (`AppRequest`) |
+| `chat_messages.py` | Chat generation, input history, message events |
+| `model_messages.py` | Model CRUD, pull/push/delete, loading states |
+| `provider_messages.py` | Provider model list changes and selection |
+| `session_messages.py` | Session lifecycle and selection |
+| `prompt_messages.py` | Prompt CRUD and selection |
+| `execution_messages.py` | Template CRUD and execution lifecycle |
+| `ui_messages.py` | Registration, status, clipboard, tab management, memory updates |
+| `shared.py` | Shared message utilities |
+
 ## Extensibility Points
 
 1. **New Providers**: Add to provider_manager.py
 2. **Custom Widgets**: Extend base widget classes
 3. **New Commands**: Add to slash command system
 4. **Theme Creation**: JSON-based theme files
-5. **Message Types**: Extend message definitions
+5. **Message Types**: Extend message definitions in `messages/` subdirectory
+6. **Execution Templates**: Add templates via execution engine
+7. **Memory Plugins**: Extend persistent memory manager
 
 ## Memory Leak Fixes Implementation
 
