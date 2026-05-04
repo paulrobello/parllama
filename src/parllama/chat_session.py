@@ -670,7 +670,8 @@ class ChatSession(ChatMessageContainer):
         """Continue generation from an edited assistant message.
 
         Strips any trailing abort suffix from the message, removes
-        any messages that follow it, and streams a new assistant response.
+        any messages that follow it, and appends streamed content to
+        the existing message.
         """
         if self._generating:
             return False
@@ -699,7 +700,6 @@ class ChatSession(ChatMessageContainer):
         self._changes.add("messages")
         self.save()
         is_aborted = False
-        new_msg: ParllamaChatMessage | None = None
         try:
             self._ensure_memory_injection()
 
@@ -714,9 +714,7 @@ class ChatSession(ChatMessageContainer):
                 chat_history,  # type: ignore
                 config=llm_run_manager.get_runnable_config(chat_model.name or ""),
             )
-            new_msg = ParllamaChatMessage(role="assistant")
-            self.add_message(new_msg)
-            self._emit(ChatMessage(parent_id=self.id, message_id=new_msg.id))
+            self._emit(ChatMessage(parent_id=self.id, message_id=msg.id, is_final=False))
             try:
                 for chunk in stream:
                     elapsed_time = datetime.now(UTC) - start_time
@@ -725,27 +723,27 @@ class ChatSession(ChatMessageContainer):
                             ttft = elapsed_time.total_seconds()
                         num_tokens += 1
                         if isinstance(chunk.content, str):
-                            new_msg.content += chunk.content
+                            msg.content += chunk.content
                         elif isinstance(chunk.content, list):
                             if len(chunk.content) > 0:
                                 part: str | dict[str, Any] = chunk.content[0]
                                 if isinstance(part, str):
-                                    new_msg.content += part
+                                    msg.content += part
                                 else:
                                     part_type: str = "?"
                                     if "type" in part:
                                         part_type = part["type"]
                                     if part_type == "text" and part_type in part:
-                                        new_msg.content += part[part_type]
+                                        msg.content += part[part_type]
                                     if part_type.startswith("think") and part_type in part:
-                                        new_msg.thinking += part[part_type]
+                                        msg.thinking += part[part_type]
 
                     if self._abort:
                         is_aborted = True
                         try:
-                            new_msg.content += self.ABORT_SUFFIX
+                            msg.content += self.ABORT_SUFFIX
                             self._emit(ChatGenerationAborted(self.id))
-                            self._emit(ChatMessage(parent_id=self.id, message_id=new_msg.id, is_final=True))
+                            self._emit(ChatMessage(parent_id=self.id, message_id=msg.id, is_final=True))
                             stream.close()  # type: ignore
                         except (OSError, ValueError):  # pylint:disable=broad-exception-caught
                             pass
@@ -787,21 +785,20 @@ class ChatSession(ChatMessageContainer):
                                 total_tokens=0,
                                 time_til_first_token=int(ttft),
                             )
-                    self._emit(ChatMessage(parent_id=self.id, message_id=new_msg.id, is_final=not chunk.content))
+                    self._emit(ChatMessage(parent_id=self.id, message_id=msg.id, is_final=not chunk.content))
             except Exception as e:
                 err_msg = str(e)
                 if self._llm_config.provider == LlmProvider.LLAMACPP and err_msg.startswith(
                     "object of type 'NoneType' has no len()"
                 ):
-                    self._emit(ChatMessage(parent_id=self.id, message_id=new_msg.id, is_final=True))
+                    self._emit(ChatMessage(parent_id=self.id, message_id=msg.id, is_final=True))
                 else:
                     self.log_it(f"Stream error ({type(e).__name__}): {e}")
                     self.log_it("Error generating message", notify=True, severity="error")
-                    if new_msg is not None:
-                        err_msg = self._parse_llm_error(err_msg)
-                        new_msg.content += f"\n\n{err_msg}"
-                        new_msg.content = new_msg.content.strip()
-                        self._emit(ChatMessage(parent_id=self.id, message_id=new_msg.id, is_final=True))
+                    err_msg = self._parse_llm_error(err_msg)
+                    msg.content += f"\n\n{err_msg}"
+                    msg.content = msg.content.strip()
+                    self._emit(ChatMessage(parent_id=self.id, message_id=msg.id, is_final=True))
 
             self._changes.add("messages")
             self.save()
@@ -809,14 +806,13 @@ class ChatSession(ChatMessageContainer):
         except Exception as e:  # pylint: disable=broad-exception-caught
             self.log_it(f"Continue generation error ({type(e).__name__}): {e}")
             self.log_it("Error generating message", notify=True, severity="error")
-            if new_msg is not None:
-                err_msg = self._parse_llm_error(str(e))
-                new_msg.content += f"\n\n{err_msg}"
-                new_msg.content = new_msg.content.strip()
-                self._changes.add("messages")
-                self.save()
-                self._emit(ChatMessage(parent_id=self.id, message_id=new_msg.id, is_final=True))
-                return False
+            err_msg = self._parse_llm_error(str(e))
+            msg.content += f"\n\n{err_msg}"
+            msg.content = msg.content.strip()
+            self._changes.add("messages")
+            self.save()
+            self._emit(ChatMessage(parent_id=self.id, message_id=msg.id, is_final=True))
+            return False
         finally:
             self._generating = False
 
