@@ -89,7 +89,6 @@ class ParllamaChatMessage(MessageSink):
         self.thinking = thinking
         self.images = images
         self.tool_calls = tool_calls
-        self._was_aborted = False
 
         if self.images:
             image = self.images[0]
