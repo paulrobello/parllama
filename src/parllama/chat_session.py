@@ -388,6 +388,7 @@ class ChatSession(ChatMessageContainer):
                         try:
                             msg.content += self.ABORT_SUFFIX
                             self._emit(ChatGenerationAborted(self.id))
+                            self._emit(ChatMessage(parent_id=self.id, message_id=msg.id, is_final=True))
                             stream.close()  # type: ignore
                         except (OSError, ValueError):  # pylint:disable=broad-except
                             pass
@@ -744,6 +745,7 @@ class ChatSession(ChatMessageContainer):
                         try:
                             new_msg.content += self.ABORT_SUFFIX
                             self._emit(ChatGenerationAborted(self.id))
+                            self._emit(ChatMessage(parent_id=self.id, message_id=new_msg.id, is_final=True))
                             stream.close()  # type: ignore
                         except (OSError, ValueError):  # pylint:disable=broad-exception-caught
                             pass
