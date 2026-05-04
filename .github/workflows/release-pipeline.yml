@@ -13,6 +13,9 @@ on:
         type: boolean
         default: false
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   # Stage 1: Build and Tag
   build-and-tag:
