@@ -196,6 +196,7 @@ class ChatMessageWidget(Vertical, can_focus=True):
         self.markdown.display = True
         await self.update()
         self.session.save()
+        self.focus()
 
     @staticmethod
     def mk_msg_widget(msg: ParllamaChatMessage, session: ChatSession, is_final: bool = False) -> ChatMessageWidget:
