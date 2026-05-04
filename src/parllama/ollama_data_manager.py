@@ -37,6 +37,33 @@ ps_pattern = re.compile(
     r"(?P<NAME>\S+)\s+(?P<ID>\S+)\s+(?P<SIZE>\d+\.\d+\s+\S+)\s+(?P<PROCESSOR>\d+%(?:/\d+%)?\s+\S+)\s+(?P<UNTIL>.+)"
 )
 
+MODEL_SORT_OPTIONS: list[tuple[str, str]] = [
+    ("Size (largest first)", "size_desc"),
+    ("Size (smallest first)", "size_asc"),
+    ("Name (A-Z)", "name_asc"),
+    ("Name (Z-A)", "name_desc"),
+]
+
+
+def _local_model_sort_key(option: str):
+    """Return a sort key function for LocalModelListItem based on the sort option."""
+    if option == "size_asc":
+        return lambda item: (item.model.size or 0, item.model.name.casefold())
+    if option == "name_asc":
+        return lambda item: item.model.name.casefold()
+    if option == "name_desc":
+        return lambda item: item.model.name.casefold()
+    # Default: size_desc
+    return lambda item: (-(item.model.size or 0), item.model.name.casefold())
+
+
+def _site_model_sort_key(option: str):
+    """Return a sort key function for SiteModelListItem based on the sort option."""
+    if option == "name_desc":
+        return lambda item: item.model.name.casefold()
+    # size_asc / size_desc / name_asc — site models have no size, all sort by name asc
+    return lambda item: item.model.name.casefold()
+
 
 @retry_with_backoff(config=create_retry_config(max_attempts=2, base_delay=0.5))
 def api_model_ps() -> OllamaPsResponse:
@@ -161,7 +188,7 @@ class OllamaDataManager(MessageSink):
             res3 = FullModel(**model.model_dump(), name=model.model)
             all_models.append(LocalModelListItem(res3))
             # break
-        all_models.sort(key=lambda item: (-(item.model.size or 0), item.model.name.casefold()))
+        all_models.sort(key=_local_model_sort_key(settings.local_model_sort))
         return all_models
 
     def refresh_models(self) -> list[LocalModelListItem]:

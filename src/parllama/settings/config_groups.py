@@ -62,6 +62,8 @@ class OllamaConfig(BaseModel):
     ollama_ps_poll_interval: int = 3
     load_local_models_on_startup: bool = True
     site_models_namespace: str = ""
+    local_model_sort: str = "size_desc"
+    site_model_sort: str = "name_asc"
 
 
 class UIConfig(BaseModel):

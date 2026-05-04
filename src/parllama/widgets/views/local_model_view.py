@@ -8,11 +8,11 @@ from typing import cast
 from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Container, VerticalScroll
+from textual.containers import Container, Horizontal, VerticalScroll
 from textual.events import Focus, Show
 from textual.screen import ScreenResultCallbackType
 from textual.widget import Widget
-from textual.widgets import Input, TabbedContent
+from textual.widgets import Input, Select, TabbedContent
 
 from parllama.dialogs.input_dialog import InputDialog
 from parllama.dialogs.model_details_dialog import ModelDetailsDialog
@@ -34,7 +34,7 @@ from parllama.messages.messages import (
     SetModelNameLoading,
     ShowLocalModel,
 )
-from parllama.ollama_data_manager import ollama_dm
+from parllama.ollama_data_manager import MODEL_SORT_OPTIONS, ollama_dm
 from parllama.settings_manager import settings
 from parllama.widgets.filter_input import FilterInput
 from parllama.widgets.local_model_grid_list import LocalModelGridList
@@ -94,8 +94,16 @@ class LocalModelView(Container):
     LocalModelView {
         height: 1fr;
         width: 1fr;
-        #search {
+        #toolbar {
+            height: 3;
             margin-bottom: 1;
+        }
+        #search {
+            width: 1fr;
+        }
+        #sort_select {
+            width: 28;
+            min-width: 28;
         }
         GridList {
             min-height: 1fr;
@@ -109,6 +117,11 @@ class LocalModelView(Container):
         super().__init__(**kwargs)
         self.sub_title = "Local Models"
         self.search_input = FilterInput(id="search", placeholder="Filter local models")
+        self.sort_select = Select[str](
+            options=MODEL_SORT_OPTIONS,
+            value=settings.local_model_sort,
+            id="sort_select",
+        )
         self.grid = LocalModelGridList(id="grid_view")
 
     def _on_show(self, event: Show) -> None:
@@ -121,7 +134,9 @@ class LocalModelView(Container):
     def compose(self) -> ComposeResult:
         """Compose the Main screen."""
         with self.prevent(Focus, TabbedContent.TabActivated):
-            yield self.search_input
+            with Horizontal(id="toolbar"):
+                yield self.search_input
+                yield self.sort_select
             with VerticalScroll():
                 with self.grid:
                     yield from ollama_dm.models
@@ -193,11 +208,16 @@ class LocalModelView(Container):
         self.grid.loading = False
         if self.search_input.value:
             self.grid.filter(self.search_input.value)
-        # if self.parent and cast(Widget, self.parent).has_focus:
-        #     if model_name:
-        #         self.grid.select_by_name(model_name)
-        #     else:
-        #         self.grid.select_first_item()
+
+    @on(Select.Changed, "#sort_select")
+    def on_sort_changed(self, event: Select.Changed) -> None:
+        """Re-sort local models when sort option changes."""
+        event.stop()
+        if event.value is Select.BLANK:
+            return
+        settings.local_model_sort = str(event.value)
+        settings.save()
+        self.action_refresh_models()
 
     @on(LocalModelDeleteRequested)
     def on_model_delete_requested(self, event: LocalModelDeleteRequested) -> None:

@@ -464,6 +464,22 @@ class Settings(BaseModel):
     def site_models_namespace(self, value: str) -> None:
         self.ollama.site_models_namespace = value
 
+    @property
+    def local_model_sort(self) -> str:
+        return self.ollama.local_model_sort
+
+    @local_model_sort.setter
+    def local_model_sort(self, value: str) -> None:
+        self.ollama.local_model_sort = value
+
+    @property
+    def site_model_sort(self) -> str:
+        return self.ollama.site_model_sort
+
+    @site_model_sort.setter
+    def site_model_sort(self, value: str) -> None:
+        self.ollama.site_model_sort = value
+
     # --- UIConfig delegation --------------------------------------------------
 
     @property
@@ -1149,6 +1165,8 @@ def _apply_flat_data_to_settings(settings_obj: Settings, data: dict) -> None:
     settings_obj.load_local_models_on_startup = data.get(
         "load_local_models_on_startup", settings_obj.load_local_models_on_startup
     )
+    settings_obj.local_model_sort = data.get("local_model_sort", settings_obj.local_model_sort)
+    settings_obj.site_model_sort = data.get("site_model_sort", settings_obj.site_model_sort)
 
     # Chat settings
     settings_obj.auto_name_session = data.get("auto_name_session", settings_obj.auto_name_session)

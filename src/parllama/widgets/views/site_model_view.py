@@ -10,7 +10,7 @@ from textual.binding import Binding
 from textual.containers import Container, Horizontal, Vertical
 from textual.events import Show
 from textual.suggester import SuggestFromList
-from textual.widgets import Input, ListView, Static, TabbedContent
+from textual.widgets import Input, ListView, Select, Static, TabbedContent
 
 from parllama.messages.messages import (
     LocalModelPullRequested,
@@ -19,7 +19,7 @@ from parllama.messages.messages import (
     SiteModelsLoaded,
     SiteModelsRefreshRequested,
 )
-from parllama.ollama_data_manager import ollama_dm
+from parllama.ollama_data_manager import MODEL_SORT_OPTIONS, ollama_dm
 from parllama.settings_manager import settings
 from parllama.widgets.input_tab_complete import InputTabComplete
 from parllama.widgets.site_model_list_item import SiteModelListItem
@@ -50,6 +50,12 @@ class SiteModelView(Container):
           #namespace {
             height: 3;
             width: 30;
+          }
+
+          #sort_select {
+            height: 3;
+            width: 28;
+            min-width: 28;
           }
         }
 
@@ -103,6 +109,11 @@ class SiteModelView(Container):
             placeholder="Filter site models",
         )
         self.lv = SiteModelListView(id="site-model-list", initial_index=None)
+        self.sort_select = Select[str](
+            options=MODEL_SORT_OPTIONS,
+            value=settings.site_model_sort,
+            id="sort_select",
+        )
         self._loaded_once = False
 
     def compose(self) -> ComposeResult:
@@ -113,6 +124,7 @@ class SiteModelView(Container):
             with Horizontal() as h:
                 h.can_focus = False
                 yield self.namespace_input
+                yield self.sort_select
                 yield self.search_input
             yield self.lv
 
@@ -217,3 +229,13 @@ class SiteModelView(Container):
         self.lv.mount(*ollama_dm.site_models)
         self.lv.loading = False
         self.namespace_input.suggester = SuggestFromList(ollama_dm.list_site_cache_files(), case_sensitive=False)
+
+    @on(Select.Changed, "#sort_select")
+    def on_sort_changed(self, event: Select.Changed) -> None:
+        """Re-sort site models when sort option changes."""
+        event.stop()
+        if event.value is Select.BLANK:
+            return
+        settings.site_model_sort = str(event.value)
+        settings.save()
+        self.action_refresh_models()

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Model Sort Selector**: Sort local and site models by size or name via dropdown in both Local and Site model tabs. Sort preference persists across restarts (#50).
+
+### Fixed
+
+- **Provider Disable Checkbox**: Fixed "Unknown provider" toast error when toggling provider disable checkboxes — provider name casing mismatch between widget ID and enum lookup.
+
 ### Security
 
 - **SEC-002**: Eliminated shell injection vulnerability in command executor. Content from LLM responses is now always written to temp files — never interpolated into shell commands. Replaced `create_subprocess_shell` with `create_subprocess_exec` + `shlex.split`.
