@@ -234,7 +234,7 @@ class SiteModelView(Container):
     def on_sort_changed(self, event: Select.Changed) -> None:
         """Re-sort site models when sort option changes."""
         event.stop()
-        if event.value is Select.BLANK:
+        if event.value is Select.NULL:
             return
         settings.site_model_sort = str(event.value)
         settings.save()

@@ -150,7 +150,7 @@ class PromptView(Container):
     @on(Select.Changed, "#model_name")
     def model_name_changed(self, event: Select.Changed) -> None:
         """Model name changed"""
-        if event.value == Select.BLANK:
+        if event.value == Select.NULL:
             chat_manager.prompt_llm_name = None
         else:
             chat_manager.prompt_llm_name = event.value  # type: ignore

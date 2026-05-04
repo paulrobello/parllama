@@ -243,8 +243,8 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         """Update disabled state of controls based on model and user input values"""
         self.send_button.disabled = (
             self.active_tab.busy
-            or self.active_tab.session_config.provider_model_select.provider_select.value == Select.BLANK
-            or self.active_tab.session_config.provider_model_select.model_select.value == Select.BLANK
+            or self.active_tab.session_config.provider_model_select.provider_select.value == Select.NULL
+            or self.active_tab.session_config.provider_model_select.model_select.value == Select.NULL
             or len(self.user_input.value.strip()) == 0
         )
         self.stop_button.disabled = not self.active_tab.busy or self.session.abort_pending
@@ -722,7 +722,7 @@ Chat Commands:
     def ai_provider(self) -> LlmProvider:
         """Get the AI provider"""
         v = self.session_config.provider_model_select.provider_select.value
-        if v == Select.BLANK:
+        if v == Select.NULL:
             return LlmProvider.OLLAMA
         return v  # type: ignore
 
@@ -730,7 +730,7 @@ Chat Commands:
     def ai_model(self) -> str:
         """Get the AI model"""
         v = self.session_config.provider_model_select.model_select.value
-        if v == Select.BLANK:
+        if v == Select.NULL:
             return ""
         return str(v)
 

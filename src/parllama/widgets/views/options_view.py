@@ -752,12 +752,12 @@ class OptionsView(Horizontal):
         event.stop()
         ctrl: Select = event.control
         if ctrl.id == "starting_tab":
-            if ctrl.value == Select.BLANK:
+            if ctrl.value == Select.NULL:
                 settings.starting_tab = "Local"
             else:
                 settings.starting_tab = ctrl.value  # type: ignore
         elif ctrl.id == "theme_name":
-            if ctrl.value != Select.BLANK:
+            if ctrl.value != Select.NULL:
                 settings.theme_name = ctrl.value  # type: ignore
                 theme_manager.change_theme(settings.theme_name)  # type: ignore[arg-type]
         elif ctrl.id == "provider_name":

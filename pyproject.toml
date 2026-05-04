@@ -64,7 +64,7 @@ dependencies = [
     "requests>=2.33.0",
     "rich>=14.3.3",
     "semver>=3.0.4",
-    "textual==6.6.0",
+    "textual>=8.2.5",
     "textual-fspicker>=1.0.0",
     "urllib3>=2.6.3",
     "rich-pixels>=3.0.1",

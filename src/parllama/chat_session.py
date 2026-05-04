@@ -592,7 +592,7 @@ class ChatSession(ChatMessageContainer):
     def is_valid(self) -> bool:
         """return true if session is valid"""
         return (
-            len(self.name) > 0 and len(self.llm_model_name) > 0 and self.llm_model_name not in ["Select.BLANK", "None"]
+            len(self.name) > 0 and len(self.llm_model_name) > 0 and self.llm_model_name not in ["Select.NULL", "None"]
             # and len(self.messages) > 0
         )
 

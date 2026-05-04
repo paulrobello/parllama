@@ -62,7 +62,7 @@ class CustomPromptMessageEdit(Vertical):
     @on(Select.Changed)
     def on_role_change(self) -> None:
         """Update the message role when the role select changes."""
-        if not self.role or self.role.value == Select.BLANK:
+        if not self.role or self.role.value == Select.NULL:
             return
         self.msg.role = self.role.value  # type: ignore
 

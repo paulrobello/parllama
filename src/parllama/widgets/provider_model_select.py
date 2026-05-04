@@ -100,14 +100,14 @@ class ProviderModelSelect(Container):
     def provider_name(self) -> LlmProvider:
         """Get provider name"""
         return (  # pyright: ignore [reportReturnType]
-            self.provider_select.value if self.provider_select.value != Select.BLANK else LlmProvider.OLLAMA
+            self.provider_select.value if self.provider_select.value != Select.NULL else LlmProvider.OLLAMA
         )
 
     @property
     def model_name(self) -> str:
         """Get model name"""
         return (  # pyright: ignore [reportReturnType]
-            self.model_select.value if self.model_select.value != Select.BLANK else ""
+            self.model_select.value if self.model_select.value != Select.NULL else ""
         )
 
     async def on_mount(self) -> None:
@@ -118,7 +118,7 @@ class ProviderModelSelect(Container):
                 event_names=[ProviderModelsChanged],
             )
         )
-        if self.provider_select.value != Select.BLANK and not is_provider_api_key_set(
+        if self.provider_select.value != Select.NULL and not is_provider_api_key_set(
             self.provider_select.value  # type: ignore
         ):
             self.notify(
@@ -137,7 +137,7 @@ class ProviderModelSelect(Container):
 
     def set_model_name(self, model_name: str) -> None:
         """Set model names"""
-        if self.provider_select.value == Select.BLANK:
+        if self.provider_select.value == Select.NULL:
             self.notify("Please select a provider first", severity="warning")
             return
         if model_name:
@@ -148,12 +148,12 @@ class ProviderModelSelect(Container):
                     self.model_select.deferred_value = model_name
                     return
             self.notify(f"Model not found: {model_name}", severity="warning")
-        self.model_select.value = Select.BLANK
+        self.model_select.value = Select.NULL
 
     @on(Select.Changed, "#provider_name")
     def provider_select_changed(self) -> None:
         """Provider select changed, update control states and save provider name"""
-        if self.provider_select.value != Select.BLANK:
+        if self.provider_select.value != Select.NULL:
             if not is_provider_api_key_set(self.provider_select.value):  # type: ignore
                 self.notify(
                     f"No API key set for {self.provider_select.value.value}",  # type: ignore
@@ -167,7 +167,7 @@ class ProviderModelSelect(Container):
                 settings.save()
             opts = provider_manager.get_model_select_options(self.provider_select.value)  # type: ignore
             self.model_select.set_options(opts)
-            if self.model_select.value == Select.BLANK:
+            if self.model_select.value == Select.NULL:
                 msv = provider_config[  # pyright: ignore [reportArgumentType]
                     self.provider_select.value
                 ].default_model
@@ -180,9 +180,9 @@ class ProviderModelSelect(Container):
 
     def notify_changed(self) -> None:
         """Notify changed"""
-        model_name = self.model_select.value if self.model_select.value != Select.BLANK else ""
+        model_name = self.model_select.value if self.model_select.value != Select.NULL else ""
         if not model_name:
-            model_name = self.model_select.deferred_value if self.model_select.deferred_value != Select.BLANK else ""
+            model_name = self.model_select.deferred_value if self.model_select.deferred_value != Select.NULL else ""
 
         self.post_message(
             ProviderModelSelected(
@@ -196,7 +196,7 @@ class ProviderModelSelect(Container):
         """Model select changed, update control states and save model name"""
         event.stop()
         if self.model_select.value not in (
-            Select.BLANK,
+            Select.NULL,
             settings.last_llm_config.model_name,
         ):
             if self.update_settings:
@@ -213,7 +213,7 @@ class ProviderModelSelect(Container):
         if event.provider and self.provider_select.value != event.provider:
             return
         # self.app.post_message(LogIt(ProviderModelsChanged, notify=True))
-        if self.provider_select.value == Select.BLANK:
+        if self.provider_select.value == Select.NULL:
             self.post_message(
                 LogIt(
                     "Got refresh with no provider selected",
@@ -228,8 +228,8 @@ class ProviderModelSelect(Container):
     def is_valid(self) -> bool:
         """Check if valid"""
         return (
-            self.provider_select.value != Select.BLANK
+            self.provider_select.value != Select.NULL
             and len(str(self.provider_select.value)) > 0
-            and self.model_select.value != Select.BLANK
+            and self.model_select.value != Select.NULL
             and len(str(self.model_select.value)) > 0
         )

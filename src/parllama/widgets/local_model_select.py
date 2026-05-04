@@ -55,7 +55,7 @@ class LocalModelSelect(Select[str]):
         if self._deferred_value is not None:
             old_v = self._deferred_value
             self._deferred_value = None  # Reset the deferred value.
-        elif self.value != Select.BLANK:
+        elif self.value != Select.NULL:
             old_v = self.value
         elif settings.last_llm_config.model_name:
             old_v = settings.last_llm_config.model_name

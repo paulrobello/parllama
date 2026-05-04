@@ -9,7 +9,7 @@ from textual import events
 from textual.message import Message
 from textual.widgets import Select
 from textual.widgets._select import (
-    BLANK,
+    NULL,
     NoSelection,
 )  # pylint: disable=unused-import
 
@@ -19,7 +19,7 @@ SelectType = TypeVar("SelectType")
 class DeferredSelect(Select[SelectType]):
     """Deferred select widget."""
 
-    _deferred_value: SelectType | NoSelection = BLANK
+    _deferred_value: SelectType | NoSelection = NULL
 
     @rich.repr.auto
     class BadDeferredValue(Message):
@@ -59,7 +59,7 @@ class DeferredSelect(Select[SelectType]):
 
     def _on_mount(self, _: events.Mount) -> None:
         """Handle mount event."""
-        # if self._deferred_value and self._deferred_value != BLANK:
+        # if self._deferred_value and self._deferred_value != NULL:
         #     self.post_message(LogIt(f"Deferred value {self._deferred_value}."))
 
     @property
@@ -71,13 +71,13 @@ class DeferredSelect(Select[SelectType]):
     def deferred_value(self, value: SelectType | NoSelection) -> None:
         """Set the deferred value."""
         self._deferred_value = value
-        if not self._deferred_value or self._deferred_value == BLANK:
-            self.value = BLANK
+        if not self._deferred_value or self._deferred_value == NULL:
+            self.value = NULL  # type: ignore[assignment]
             return
         for opts in self._options:
             if value == opts[1]:
                 self.value = self._deferred_value
-                self._deferred_value = BLANK
+                self._deferred_value = NULL
                 return
 
     def set_options(self, options: Iterable[tuple[RenderableType, SelectType]] | None = None) -> None:
@@ -92,16 +92,16 @@ class DeferredSelect(Select[SelectType]):
         if len(opts) == 0:
             return
 
-        if old_value != BLANK and old_value in opts:
+        if old_value != NULL and old_value in opts:
             with self.prevent(Select.Changed):
                 self.value = old_value
-                self._deferred_value = BLANK
+                self._deferred_value = NULL
                 return
 
-        if self._deferred_value is BLANK or not self._deferred_value:
+        if self._deferred_value is NULL or not self._deferred_value:
             return
         if self._deferred_value in opts:
             with self.prevent(Select.Changed):
                 self.value = self._deferred_value
-            self._deferred_value = BLANK
+            self._deferred_value = NULL
             return

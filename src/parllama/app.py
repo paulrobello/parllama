@@ -237,7 +237,7 @@ Some functions are only available via slash / commands on that chat tab. You can
         if isinstance(f, TextArea):
             f.text = ""
         if isinstance(f, Select):
-            f.value = Select.BLANK
+            f.value = Select.NULL
 
     def action_copy_to_clipboard(self) -> None:
         """Copy focused widget value to clipboard"""
@@ -246,7 +246,7 @@ Some functions are only available via slash / commands on that chat tab. You can
             return
 
         if isinstance(f, Input | Select):
-            self.app.post_message(SendToClipboard(str(f.value) if f.value and f.value != Select.BLANK else ""))
+            self.app.post_message(SendToClipboard(str(f.value) if f.value and f.value != Select.NULL else ""))
 
         if isinstance(f, TextArea):
             self.app.post_message(SendToClipboard(f.selected_text or f.text))
@@ -261,7 +261,7 @@ Some functions are only available via slash / commands on that chat tab. You can
                 clipboard.copy(f.value)
                 f.value = ""
             if isinstance(f, Select):
-                self.app.post_message(SendToClipboard(str(f.value) if f.value and f.value != Select.BLANK else ""))
+                self.app.post_message(SendToClipboard(str(f.value) if f.value and f.value != Select.NULL else ""))
             if isinstance(f, TextArea):
                 clipboard.copy(f.selected_text or f.text)
                 f.text = ""

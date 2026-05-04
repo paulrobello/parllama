@@ -306,7 +306,9 @@ SessionConfig {
 
         if "reasoning_effort" in event.changed:
             with self.prevent(Select.Changed):
-                self.reasoning_effort_select.value = self.session.reasoning_effort or Select.BLANK
+                self.reasoning_effort_select.value = (
+                    self.session.reasoning_effort if self.session.reasoning_effort else Select.NULL
+                )  # type: ignore[assignment]
 
         if "reasoning_budget" in event.changed:
             with self.prevent(Input.Changed, Input.Submitted):
@@ -327,7 +329,7 @@ SessionConfig {
             self.provider_model_select.provider_select.value = self.session.llm_provider_name
             self.provider_model_select.provider_select_changed()
             self.provider_model_select.set_model_name(self.session.llm_model_name)
-            if self.provider_model_select.model_select.value == Select.BLANK:
+            if self.provider_model_select.model_select.value == Select.NULL:
                 self.notify("Model defined in session is not installed", severity="warning")
             self.temperature_input.value = str(self.session.temperature)
 
@@ -361,7 +363,7 @@ SessionConfig {
         )
         self.provider_model_select.provider_select.value = llm_config.provider
         self.set_model_name(self.session.llm_model_name)
-        # if self.provider_model_select.model_select.value == Select.BLANK:
+        # if self.provider_model_select.model_select.value == Select.NULL:
         #     self.notify(
         #         f"Prompt model: {self.session.llm_model_name} not found",
         #         severity="warning",
