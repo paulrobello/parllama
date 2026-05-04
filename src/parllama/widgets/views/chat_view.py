@@ -350,7 +350,7 @@ Chat Commands:
 /session.clear_system_prompt - Remove system prompt in current tab
 /session.to_prompt submit_on_load [prompt_name] - Copy current session to new custom prompt. submit_on_load = {0|1}
 /prompt.load prompt_name - Load a custom prompt using current tabs model and temperature
-/add.image image_path_or_url prompt - Add an image via path or url to the active chat session
+/add.image image_path_or_url prompt (required) - Add an image via path or url to the active chat session
 /history.clear - Clear chat input history
 /remember [information] - Add information to memory using AI assistance
 /forget [information] - Remove information from memory using AI assistance
@@ -489,11 +489,32 @@ Chat Commands:
                 )
             )
         elif cmd.startswith("add.image "):
-            parts = cmd.split(" ")
-            if len(parts) < 3:
-                self.notify("Usage add.image FILE_NAME PROMPT", severity="error")
-            v = parts[1].strip()
-            p = " ".join(parts[2:])
+            arg_str = cmd[len("add.image ") :].strip()
+            if not arg_str:
+                self.notify("Usage: /add.image FILE_NAME_OR_URL PROMPT", severity="error")
+                return
+            # Handle quoted filenames (single or double quotes)
+            if arg_str.startswith('"'):
+                end = arg_str.find('"', 1)
+                if end == -1:
+                    self.notify("Unclosed double quote in filename", severity="error")
+                    return
+                v = arg_str[1:end]
+                p = arg_str[end + 1 :].strip()
+            elif arg_str.startswith("'"):
+                end = arg_str.find("'", 1)
+                if end == -1:
+                    self.notify("Unclosed single quote in filename", severity="error")
+                    return
+                v = arg_str[1:end]
+                p = arg_str[end + 1 :].strip()
+            else:
+                parts = arg_str.split(" ", 1)
+                v = parts[0]
+                p = parts[1] if len(parts) > 1 else ""
+            if not p:
+                self.notify("Prompt is required. Usage: /add.image FILE_NAME_OR_URL PROMPT", severity="error")
+                return
             if v.startswith("http://") or v.startswith("https://"):
                 msg = ParllamaChatMessage(role="user", content=p, images=[v])
             else:

@@ -10,10 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Model Sort Selector**: Sort local and site models by size or name via dropdown in both Local and Site model tabs. Sort preference persists across restarts (#50).
+- **Template Picker for Ctrl+R**: When pressing Ctrl+R on a message with no auto-matching template (e.g. non-fenced content), a modal dialog now lists all enabled templates for manual selection instead of silently failing (#65).
 
 ### Fixed
 
 - **Provider Disable Checkbox**: Fixed "Unknown provider" toast error when toggling provider disable checkboxes — provider name casing mismatch between widget ID and enum lookup.
+- **`/add.image` Spinner Bug**: Fixed infinite spinner when `/add.image` is used without a prompt — now validates that a prompt is provided before executing. Also added support for quoted filenames with single or double quotes.
 
 ### Security
 

@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 
 from parllama.execution.command_executor import CommandExecutor
 from parllama.execution.execution_manager import ExecutionManager
+from parllama.execution.execution_template import ExecutionTemplate
 from parllama.execution.template_matcher import TemplateMatcher
 from parllama.messages.messages import (
     ChatMessage,
@@ -103,7 +104,15 @@ class ExecutionCoordinator:
             matching_templates = self.template_matcher.find_matching_templates(event.content, templates)
 
             if not matching_templates:
-                self._app.notify("No execution templates match this content", severity="warning")
+                if not templates:
+                    self._app.notify("No execution templates available", severity="warning")
+                    return
+                from parllama.dialogs.select_template_dialog import SelectTemplateDialog
+
+                self._app.push_screen(
+                    SelectTemplateDialog(templates),
+                    self._make_template_picker_callback(event),
+                )
                 return
 
             # Use the best matching template
@@ -159,6 +168,69 @@ class ExecutionCoordinator:
 
             error_details = f"{str(e)} - {traceback.format_exc()}"
             self._app.log_it(f"Unexpected execution error: {type(e).__name__}: {error_details}")
+            self._app.notify(f"Execution error: {str(e)}", severity="error")
+            self._app.post_message(
+                ExecutionFailed(message_id=event.message_id, template_id=event.template_id or "", error=error_details)
+            )
+
+    def _make_template_picker_callback(self, event: ExecuteMessageRequested):
+        """Create a callback for the template picker dialog."""
+
+        async def on_template_selected(template: ExecutionTemplate | None) -> None:
+            if template is not None:
+                await self._execute_with_template(template, event)
+
+        return on_template_selected
+
+    async def _execute_with_template(self, template: ExecutionTemplate, event: ExecuteMessageRequested) -> None:
+        """Execute content using a user-selected template (from the picker dialog).
+
+        Args:
+            template: The template chosen by the user.
+            event: The original execution request event.
+        """
+        assert self.template_matcher is not None
+        assert self.command_executor is not None
+
+        try:
+            content_to_execute = event.content.strip()
+            if not content_to_execute:
+                self._app.notify("No content to execute", severity="warning")
+                return
+
+            em = self._get_execution_manager()
+
+            requires_confirmation, warnings = self.template_matcher.should_require_confirmation(
+                content_to_execute, template
+            )
+
+            if requires_confirmation and settings.execution_require_confirmation:
+                if warnings:
+                    warning_text = "; ".join(warnings)
+                    self._app.notify(f"Executing with warnings: {warning_text}", severity="warning")
+
+            result = await self.command_executor.execute_template(
+                template=template,
+                content=content_to_execute,
+                message_id=event.message_id,
+            )
+
+            if em:
+                em.add_execution_result(result)
+
+            self._app.post_message(
+                ExecutionCompleted(message_id=event.message_id, result=result.to_dict(), add_to_chat=True)
+            )
+
+            if result.success:
+                self._app.notify(f"Executed successfully: {template.name}", severity="information")
+            else:
+                self._app.notify(f"Execution failed: {result.error_message or 'Unknown error'}", severity="error")
+
+        except Exception as e:
+            import traceback
+
+            error_details = f"{str(e)} - {traceback.format_exc()}"
             self._app.notify(f"Execution error: {str(e)}", severity="error")
             self._app.post_message(
                 ExecutionFailed(message_id=event.message_id, template_id=event.template_id or "", error=error_details)
