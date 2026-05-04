@@ -23,6 +23,7 @@ from parllama.chat_message_container import ChatMessageContainer
 from parllama.messages.messages import (
     ChatGenerationAborted,
     ChatMessage,
+    ChatMessageDeleted,
     DeleteSession,
     SessionAutoNameRequested,
     SessionChanges,
@@ -662,6 +663,158 @@ class ChatSession(ChatMessageContainer):
     def stop_generation(self) -> None:
         """Stop LLM model generation"""
         self._abort = True
+
+    async def continue_generation(self, message_id: str) -> bool:
+        """Continue generation from an edited assistant message.
+
+        Strips any trailing 'Aborted...' text from the message, removes
+        any messages that follow it, and streams a new assistant response.
+        """
+        if self._generating:
+            return False
+
+        msg = self[message_id]
+        if msg is None or msg.role != "assistant":
+            return False
+
+        # Strip abort suffix if present
+        if msg.content.endswith("\n\nAborted..."):
+            msg.content = msg.content[: -len("\n\nAborted...")]
+            msg._was_aborted = False
+
+        # Remove all messages after the continued message
+        idx = next((i for i, m in enumerate(self.messages) if m.id == message_id), -1)
+        if idx == -1:
+            return False
+
+        removed_ids = [m.id for m in self.messages[idx + 1 :]]
+        self.messages = self.messages[: idx + 1]
+        for rid in removed_ids:
+            if rid in self._id_to_msg:
+                del self._id_to_msg[rid]
+                self._emit(ChatMessageDeleted(parent_id=self.id, message_id=rid))
+
+        self._changes.add("messages")
+        self.save()
+
+        # Stream a new assistant response
+        self._generating = True
+        is_aborted = False
+        new_msg: ParllamaChatMessage | None = None
+        try:
+            self._ensure_memory_injection()
+
+            num_tokens: int = 0
+            start_time = datetime.now(UTC)
+            ttft: float = 0.0
+
+            chat_history = [m.to_langchain_native() for m in self.messages]
+            chat_model = self._llm_config.build_chat_model()
+
+            stream: Iterator[BaseMessageChunk] = chat_model.stream(
+                chat_history,  # type: ignore
+                config=llm_run_manager.get_runnable_config(chat_model.name or ""),
+            )
+            new_msg = ParllamaChatMessage(role="assistant")
+            self.add_message(new_msg)
+            self._emit(ChatMessage(parent_id=self.id, message_id=new_msg.id))
+            try:
+                for chunk in stream:
+                    elapsed_time = datetime.now(UTC) - start_time
+                    if chunk.content:
+                        if num_tokens == 0:
+                            ttft = elapsed_time.total_seconds()
+                        num_tokens += 1
+                        if isinstance(chunk.content, str):
+                            new_msg.content += chunk.content
+                        elif isinstance(chunk.content, list):
+                            if len(chunk.content) > 0:
+                                part: str | dict[str, Any] = chunk.content[0]
+                                if isinstance(part, str):
+                                    new_msg.content += part
+                                else:
+                                    part_type: str = "?"
+                                    if "type" in part:
+                                        part_type = part["type"]
+                                    if part_type == "text" and part_type in part:
+                                        new_msg.content += part[part_type]
+                                    if part_type.startswith("think") and part_type in part:
+                                        new_msg.thinking += part[part_type]
+
+                    if self._abort:
+                        is_aborted = True
+                        new_msg._was_aborted = True
+                        try:
+                            new_msg.content += "\n\nAborted..."
+                            self._emit(ChatGenerationAborted(self.id))
+                            stream.close()  # type: ignore
+                        except (OSError, ValueError):  # pylint:disable=broad-exception-caught
+                            pass
+                        finally:
+                            self._abort = False
+                        break
+
+                    if (
+                        hasattr(chunk, "usage_metadata") and chunk.usage_metadata  # pyright: ignore [reportAttributeAccessIssue]
+                    ):
+                        usage_metadata = chunk.usage_metadata  # pyright: ignore [reportAttributeAccessIssue]
+                        self._stream_stats = TokenStats(
+                            model=self._llm_config.model_name,
+                            created_at=datetime.now(),
+                            total_duration=int(elapsed_time.total_seconds()),
+                            load_duration=0,
+                            prompt_eval_count=usage_metadata["input_tokens"],
+                            prompt_eval_duration=0,
+                            eval_count=usage_metadata["output_tokens"],
+                            eval_duration=int(elapsed_time.total_seconds() - ttft),
+                            input_tokens=usage_metadata["input_tokens"],
+                            output_tokens=usage_metadata["output_tokens"],
+                            total_tokens=usage_metadata["total_tokens"],
+                            time_til_first_token=int(ttft),
+                        )
+                    if hasattr(chunk, "response_metadata"):
+                        if "model" in chunk.response_metadata:
+                            self._stream_stats = TokenStats(
+                                model=chunk.response_metadata.get("model") or "?",
+                                created_at=chunk.response_metadata.get("created_at") or datetime.now(),
+                                total_duration=chunk.response_metadata.get("total_duration") or 0,
+                                load_duration=chunk.response_metadata.get("load_duration") or 0,
+                                prompt_eval_count=chunk.response_metadata.get("prompt_eval_count") or 0,
+                                prompt_eval_duration=chunk.response_metadata.get("prompt_eval_duration") or 0,
+                                eval_count=chunk.response_metadata.get("eval_count") or 0,
+                                eval_duration=int(chunk.response_metadata.get("eval_duration", 0) / 1_000_000_000) or 0,
+                                input_tokens=0,
+                                output_tokens=0,
+                                total_tokens=0,
+                                time_til_first_token=int(ttft),
+                            )
+                    self._emit(ChatMessage(parent_id=self.id, message_id=new_msg.id, is_final=not chunk.content))
+            except Exception as e:
+                self.log_it(f"Stream error ({type(e).__name__}): {e}")
+                self.log_it("Error generating message", notify=True, severity="error")
+                if new_msg is not None:
+                    err_msg = self._parse_llm_error(str(e))
+                    new_msg.content += f"\n\n{err_msg}"
+                    new_msg.content = new_msg.content.strip()
+
+            self._changes.add("messages")
+            self.save()
+
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            self.log_it(f"Continue generation error ({type(e).__name__}): {e}")
+            self.log_it("Error generating message", notify=True, severity="error")
+            if new_msg is not None:
+                err_msg = self._parse_llm_error(str(e))
+                new_msg.content += f"\n\n{err_msg}"
+                new_msg.content = new_msg.content.strip()
+                self._changes.add("messages")
+                self.save()
+                self._emit(ChatMessage(parent_id=self.id, message_id=new_msg.id, is_final=True))
+                return False
+        finally:
+            self._generating = False
+
+        return not is_aborted
 
     @property
     def abort_pending(self) -> bool:
