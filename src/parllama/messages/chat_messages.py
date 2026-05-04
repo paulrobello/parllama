@@ -21,6 +21,14 @@ class ChatGenerationAborted(SessionMessage):
 
 
 @dataclass
+class ChatContinueRequested(SessionMessage):
+    """Request to continue generation from an edited assistant message."""
+
+    message_id: str
+    """ID of the assistant message to continue from."""
+
+
+@dataclass
 class ChatMessage(Message):
     """Chat message class"""
 

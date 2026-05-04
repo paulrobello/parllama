@@ -26,6 +26,7 @@ from parllama.chat_message import ParllamaChatMessage
 from parllama.dialogs.information import InformationDialog
 from parllama.messages.messages import (
     ChangeTab,
+    ChatContinueRequested,
     ChatGenerationAborted,
     ChatMessage,
     ChatMessageDeleted,
@@ -843,6 +844,14 @@ Chat Commands:
         """Chat generation aborted event"""
         event.stop()
         self.notify("Chat Aborted", severity="warning")
+
+    @on(ChatContinueRequested)
+    def on_chat_continue_requested(self, event: ChatContinueRequested) -> None:
+        """Handle continue generation request."""
+        event.stop()
+        if self.session.id != event.session_id:
+            return
+        self.stop_button.disabled = False
 
     @on(TabbedContent.TabActivated)
     def on_tab_activated(self, msg: TabbedContent.TabActivated) -> None:

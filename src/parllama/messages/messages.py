@@ -18,6 +18,7 @@ from parllama.messages._base import AppRequest
 
 # Chat operations
 from parllama.messages.chat_messages import (
+    ChatContinueRequested,
     ChatGenerationAborted,
     ChatMessage,
     ChatMessageDeleted,
@@ -152,6 +153,7 @@ __all__ = [
     "SessionToPrompt",
     "SessionUpdated",
     # Chat
+    "ChatContinueRequested",
     "ChatGenerationAborted",
     "ChatMessage",
     "ChatMessageDeleted",

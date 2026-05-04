@@ -22,6 +22,7 @@ from parllama.chat_manager import ChatSession, chat_manager
 from parllama.chat_message import ParllamaChatMessage
 from parllama.llm_session_helpers import llm_summarize_session
 from parllama.messages.messages import (
+    ChatContinueRequested,
     ChatMessage,
     ChatMessageDeleted,
     ChatMessageSent,
@@ -448,6 +449,23 @@ class ChatTab(TabPane):
     def on_chat_message_sent(self) -> None:
         """Handle a chat message sent"""
         self.busy = False
+
+    @work(thread=True, name="msg_continue_worker")
+    async def do_continue_generation(self, message_id: str) -> None:
+        """Continue generation from an edited assistant message."""
+        self.busy = True
+        await self.session.continue_generation(message_id)
+        self.post_message(ChatMessageSent(self.session.id))
+
+    @on(ChatContinueRequested)
+    async def on_chat_continue_requested(self, event: ChatContinueRequested) -> None:
+        """Handle continue generation request."""
+        if self.session.id != event.session_id:
+            return
+        if self.busy:
+            self.notify("LLM is busy", severity="error")
+            return
+        self.do_continue_generation(event.message_id)
 
     def action_toggle_session_config(self) -> None:
         """Toggle session configuration panel"""
