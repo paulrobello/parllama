@@ -21,7 +21,7 @@ from parllama.chat_message import (
     image_to_base64,
     try_get_image_type,
 )
-from parllama.messages.messages import ExecuteMessageRequested, SendToClipboard
+from parllama.messages.messages import ChatContinueRequested, ExecuteMessageRequested, SendToClipboard
 from parllama.models.ollama_data import MessageRoles
 from parllama.settings_manager import fetch_and_cache_image
 from parllama.widgets.par_markdown import ParMarkdown, ParMarkdownFence
@@ -280,6 +280,10 @@ class SystemChatMessage(ChatMessageWidget):
 class AgentChatMessage(ChatMessageWidget):
     """Agent chat message widget"""
 
+    BINDINGS = [
+        Binding(key="c", action="continue_generation", description="Continue", show=True),
+    ]
+
     DEFAULT_CSS = """
     AgentChatMessage {
         background: $panel;
@@ -289,6 +293,16 @@ class AgentChatMessage(ChatMessageWidget):
         background: #ccc;
     }
     """
+
+    async def action_continue_generation(self) -> None:
+        """Continue generation from this assistant message."""
+        if not self.is_final:
+            self.notify("Only completed messages can be continued", severity="error")
+            return
+        if self.session.is_generating:
+            self.notify("LLM is busy", severity="error")
+            return
+        self.app.post_message(ChatContinueRequested(session_id=self.session.id, message_id=self.msg.id))
 
 
 class UserChatMessage(ChatMessageWidget):
