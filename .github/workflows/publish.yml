@@ -10,8 +10,6 @@ on:
   release:
     types: [ published ]
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build:
@@ -20,7 +18,7 @@ jobs:
     outputs:
       version: ${{ steps.get_version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Python with uv
         uses: ./.github/actions/setup-python-uv
@@ -39,7 +37,7 @@ jobs:
         run: make package
 
       - name: Store the distribution packages
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: python-package-distributions
           path: dist/
@@ -57,7 +55,7 @@ jobs:
 
     steps:
       - name: Download all the dists
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: python-package-distributions
           path: dist/
@@ -69,7 +67,7 @@ jobs:
         if: always() && needs.build.result == 'success'
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-        uses: Ilshidur/action-discord@master
+        uses: Ilshidur/action-discord@0.4.0
         with:
           args: '✅ Successfully published ${{ github.repository }} v${{ needs.build.outputs.version }} to PyPI! 🎉'
         continue-on-error: true
@@ -78,7 +76,7 @@ jobs:
         if: failure()
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-        uses: Ilshidur/action-discord@master
+        uses: Ilshidur/action-discord@0.4.0
         with:
           args: '❌ Failed to publish ${{ github.repository }} v${{ needs.build.outputs.version }} to PyPI. Check the workflow logs for details.'
         continue-on-error: true
@@ -92,7 +90,7 @@ jobs:
       - name: Discord notification - Workflow failure
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-        uses: Ilshidur/action-discord@master
+        uses: Ilshidur/action-discord@0.4.0
         with:
           args: '💥 PyPI publish workflow FAILED for ${{ github.repository }}. Check logs for details!'
         continue-on-error: true
