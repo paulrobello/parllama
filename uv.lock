@@ -2595,7 +2595,7 @@ requires-dist = [
     { name = "pydantic-core", specifier = ">=2.33.1" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "pytz", specifier = ">=2026.1.post1" },
-    { name = "requests", specifier = ">=2.32.5" },
+    { name = "requests", specifier = ">=2.33.0" },
     { name = "rich", specifier = ">=14.3.3" },
     { name = "rich-pixels", specifier = ">=3.0.1" },
     { name = "semver", specifier = ">=3.0.4" },
