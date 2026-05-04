@@ -382,6 +382,7 @@ class ChatSession(ChatMessageContainer):
 
                     if self._abort:
                         is_aborted = True
+                        msg._was_aborted = True
                         try:
                             msg.content += "\n\nAborted..."
                             self._emit(ChatGenerationAborted(self.id))
