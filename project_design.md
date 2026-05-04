@@ -38,7 +38,7 @@ PAR LLAMA follows a layered architecture with clear separation of concerns:
 │                   Business Logic Layer                  │
 │  Managers, Sessions, Providers, Coordinators            │
 ├─────────────────────────────────────────────────────────┤
-│            Execution & Template Layer                    │
+│            Execution & Template Layer                   │
 │  Command Executor, Template Matcher, Execution Manager  │
 ├─────────────────────────────────────────────────────────┤
 │                Configuration Management Layer           │
@@ -260,18 +260,22 @@ class SecureFileOperations:
 
 #### Configuration Settings
 
-14 new file validation settings added to `Settings` class:
+Settings are decomposed into Pydantic config groups (`settings/config_groups.py`). File validation settings are in `FileValidationConfig`:
 
 ```python
-# File validation settings
 file_validation_enabled: bool = True
-max_file_size_mb: float = 10.0
-max_image_size_mb: float = 5.0
+max_file_size_mb: float = 50.0
+max_image_size_mb: float = 50.0
 max_json_size_mb: float = 20.0
-max_zip_size_mb: float = 50.0
-max_total_attachment_size_mb: float = 100.0
-allowed_image_extensions: list[str] = [".jpg", ".jpeg", ".png", ...]
+max_zip_size_mb: float = 250.0
+max_total_attachment_size_mb: float = 250.0
+allowed_image_extensions: list[str] = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"]
+allowed_json_extensions: list[str] = [".json"]
+allowed_markdown_extensions: list[str] = [".md", ".markdown", ".txt"]
+allowed_zip_extensions: list[str] = [".zip"]
 validate_file_content: bool = True
+allow_zip_extraction: bool = True
+max_zip_compression_ratio: float = 100.0
 sanitize_filenames: bool = True
 ```
 
@@ -313,7 +317,16 @@ graph TD
         A --> C[OpenAI]
         A --> D[Anthropic]
         A --> E[Groq]
-        A --> F[Others...]
+        A --> F[Gemini]
+        A --> G[XAI]
+        A --> H[OpenRouter]
+        A --> I[Deepseek]
+        A --> J[LlamaCpp]
+        A --> K[Mistral]
+        A --> L[Bedrock]
+        A --> M[Azure]
+        A --> N[Github]
+        A --> O[LiteLLM]
     end
 
     subgraph "Configuration"
@@ -355,28 +368,28 @@ PAR LLAMA implements a comprehensive provider disable system that allows users t
 ```mermaid
 graph TD
     subgraph "Settings Layer"
-        A[disabled_providers: dict[LlmProvider, bool]]
+        A["disabled_providers: dict{LlmProvider, bool}"]
         A --> B[UI Checkboxes]
         A --> C[Settings Persistence]
         A --> D[Backward Compatibility]
     end
 
     subgraph "Provider Manager Layer"
-        E[refresh_models()]
-        E --> F[Check disabled_providers]
+        E["refresh_models()"]
+        E --> F["Check disabled_providers"]
         F --> G[Skip Disabled Providers]
         F --> H[Process Enabled Providers]
     end
 
     subgraph "UI Layer"
         I[ProviderModelSelect]
-        I --> J[get_filtered_provider_select_options()]
+        I --> J["get_filtered_provider_select_options()"]
         J --> K[Filter Disabled Providers]
         K --> L[UI Dropdowns]
     end
 
     subgraph "Options Screen"
-        M[_create_disable_checkbox()]
+        M["_create_disable_checkbox()"]
         M --> N[Per-Provider Checkboxes]
         N --> O[Event Handler]
         O --> P[Provider Name Mapping]
@@ -440,7 +453,7 @@ def _create_disable_checkbox(self, provider: LlmProvider) -> ComposeResult:
 #### Features
 
 **1. Universal Coverage**
-- All 12 providers (Ollama, OpenAI, Anthropic, Groq, etc.) have disable functionality
+- All 14 providers (Ollama, LlamaCpp, OpenRouter, OpenAI, Gemini, Github, XAI, Anthropic, Groq, Mistral, Deepseek, LiteLLM, Bedrock, Azure) have disable functionality
 - Consistent UI pattern across all provider sections
 
 **2. Smart Event Handling**
@@ -513,6 +526,20 @@ graph TD
         E --> F[Validation & Type Checking]
         E --> G[Backward Compatibility]
         E --> H[Auto-save Functionality]
+        E --> CG[Config Groups]
+    end
+
+    subgraph "Config Groups (Pydantic)"
+        CG1[ProviderConfig]
+        CG2[OllamaConfig]
+        CG3[UIConfig]
+        CG4[ChatConfig]
+        CG5[ExecutionConfig]
+        CG6[FileValidationConfig]
+        CG7[RetryConfig]
+        CG8[TimerConfig]
+        CG9[HttpConfig]
+        CG10[MemoryConfig]
     end
 
     subgraph "Application Components"
@@ -1183,6 +1210,7 @@ The application uses a dedicated `dialogs/` directory for modal overlays:
 - `import_fabric_dialog.py` - Fabric prompt import with progress tracking
 - `import_templates_dialog.py` - Execution template import
 - `import_results_dialog.py` - Import results display
+- `import_options_dialog.py` - Import configuration options
 - `edit_prompt_dialog.py` / `edit_execution_template_dialog.py` - Prompt/template editors
 - `model_details_dialog.py` - Model information display
 - `theme_dialog.py` - Theme selection and management
@@ -1190,6 +1218,8 @@ The application uses a dedicated `dialogs/` directory for modal overlays:
 - `password_dialog.py` - Secure password input
 - `select_template_dialog.py` - Template selection
 - `text_dialog.py` / `yes_no_dialog.py` - General-purpose dialogs
+- `error_dialog.py` - Error display
+- `input_dialog.py` - Generic input dialog
 
 ## Message System Organization
 
@@ -1198,6 +1228,7 @@ Messages are organized into domain-specific modules within `src/parllama/message
 | Module | Contents |
 |--------|----------|
 | `_base.py` | Base message classes (`AppRequest`) |
+| `messages.py` | Barrel re-export of all message classes |
 | `chat_messages.py` | Chat generation, input history, message events |
 | `model_messages.py` | Model CRUD, pull/push/delete, loading states |
 | `provider_messages.py` | Provider model list changes and selection |
@@ -1205,7 +1236,7 @@ Messages are organized into domain-specific modules within `src/parllama/message
 | `prompt_messages.py` | Prompt CRUD and selection |
 | `execution_messages.py` | Template CRUD and execution lifecycle |
 | `ui_messages.py` | Registration, status, clipboard, tab management, memory updates |
-| `shared.py` | Shared message utilities |
+| `shared.py` | Shared type aliases (`SessionChanges`, `PromptChanges`) |
 
 ## Extensibility Points
 
