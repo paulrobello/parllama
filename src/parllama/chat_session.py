@@ -53,6 +53,10 @@ class ChatSession(ChatMessageContainer):
     """Set to True if the session is currently being batched"""
     _stream_stats: TokenStats | None
     """Stream statistics"""
+    _total_cost: float
+    """Cumulative session cost in USD"""
+    _total_usage: dict[str, int | float]
+    """Cumulative token usage across all responses"""
     _llm_config: LlmConfig
     """LLM configuration"""
     _key_secure: str | None
@@ -82,6 +86,12 @@ class ChatSession(ChatMessageContainer):
         self._abort = False
         self._generating = False
         self._stream_stats = None
+        self._total_cost = 0.0
+        self._total_usage = {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "total_tokens": 0,
+        }
         self._llm_config = llm_config
 
         # Initialize secure file operations for chat sessions
@@ -134,6 +144,10 @@ class ChatSession(ChatMessageContainer):
                 elif isinstance(lc, dict):
                     self._llm_config = LlmConfig.from_json(lc)
 
+            # Restore cost and usage tracking
+            self._total_cost = data.get("total_cost", 0.0)
+            self._total_usage = data.get("total_usage", {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0})
+
             # Load messages
             msgs = data["messages"] or []
             for m in msgs:
@@ -167,6 +181,36 @@ class ChatSession(ChatMessageContainer):
     def stats(self) -> TokenStats | None:
         """Get the chat session stats"""
         return self._stream_stats
+
+    @property
+    def total_cost(self) -> float:
+        """Get cumulative session cost in USD"""
+        return self._total_cost
+
+    @property
+    def total_usage(self) -> dict[str, int | float]:
+        """Get cumulative token usage"""
+        return self._total_usage
+
+    def _accumulate_cost(self) -> None:
+        """Calculate and accumulate cost from latest streaming stats."""
+        if not self._stream_stats:
+            return
+        stats = self._stream_stats
+        usage_metadata: dict[str, int | float] = {
+            "input_tokens": stats.input_tokens,
+            "output_tokens": stats.output_tokens,
+            "total_tokens": stats.total_tokens,
+            "cache_write": 0,
+            "cache_read": 0,
+        }
+        from par_ai_core.pricing_lookup import get_api_call_cost
+
+        cost = get_api_call_cost(llm_config=self._llm_config, usage_metadata=usage_metadata)
+        self._total_cost += cost
+        self._total_usage["input_tokens"] += stats.input_tokens
+        self._total_usage["output_tokens"] += stats.output_tokens
+        self._total_usage["total_tokens"] += stats.total_tokens
 
     @property
     def llm_provider_name(self) -> LlmProvider:
@@ -450,6 +494,7 @@ class ChatSession(ChatMessageContainer):
                         msg.content += f"\n\n{err_msg}"
                         msg.content = msg.content.strip()
 
+            self._accumulate_cost()
             self._changes.add("messages")
             self.save()
 
@@ -526,6 +571,8 @@ class ChatSession(ChatMessageContainer):
                 "name_generated": self.name_generated,
                 "last_updated": self.last_updated.isoformat(),
                 "llm_config": self._llm_config.to_json(),
+                "total_cost": self._total_cost,
+                "total_usage": self._total_usage,
                 "messages": [m.to_dict() for m in self.messages],
             },
             str,
@@ -569,6 +616,9 @@ class ChatSession(ChatMessageContainer):
             session._salt = None  # pylint: disable=protected-access
 
         session._key_secure = data.get("__key__")  # pylint: disable=protected-access
+
+        session._total_cost = data.get("total_cost", 0.0)  # pylint: disable=protected-access
+        session._total_usage = data.get("total_usage", {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0})  # pylint: disable=protected-access
 
         return session
 
@@ -645,6 +695,8 @@ class ChatSession(ChatMessageContainer):
                 "name_generated": self.name_generated,
                 "last_updated": self.last_updated.isoformat(),
                 "llm_config": self._llm_config.to_json(),
+                "total_cost": self._total_cost,
+                "total_usage": self._total_usage,
                 "messages": [m.to_dict() for m in self.messages],
             }
 
@@ -800,6 +852,7 @@ class ChatSession(ChatMessageContainer):
                     msg.content = msg.content.strip()
                     self._emit(ChatMessage(parent_id=self.id, message_id=msg.id, is_final=True))
 
+            self._accumulate_cost()
             self._changes.add("messages")
             self.save()
 

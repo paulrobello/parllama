@@ -422,6 +422,10 @@ class ChatTab(TabPane):
             if stats.eval_count:
                 parts.append(f" | Res Tkns / Sec: {stats.eval_count / (stats.eval_duration or 1):.1f}")
 
+        total_cost = self.session.total_cost
+        if total_cost > 0:
+            parts.append(f" | Cost: ${total_cost:.4f}")
+
         self.session_status_bar.update(Text.assemble(*parts))
         self.update_control_states()
 
