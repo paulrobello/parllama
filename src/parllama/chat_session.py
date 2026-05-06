@@ -221,6 +221,8 @@ class ChatSession(ChatMessageContainer):
             "---",
             f"provider: {self._llm_config.provider.value}",
             f"model: {self._llm_config.model_name}",
+            f"context_window: {self._llm_config.num_ctx or ''}",
+            f"temperature: {self._llm_config.temperature}",
             f"date: {self.last_updated.isoformat()}",
             f"input_tokens: {usage['input_tokens']}",
             f"output_tokens: {usage['output_tokens']}",
