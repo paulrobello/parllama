@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Chat Cost Tracking**: Session status bar now shows cumulative cost (e.g. `Cost: $0.0123`) for paid providers. Token usage and cost are accumulated across all messages and persisted with the session file. Free providers (Ollama, LlamaCpp, Groq, GitHub) show no cost line.
+- **Markdown Export Frontmatter**: Exported markdown files now include YAML frontmatter with provider, model, date, token usage, and cost.
 
 ## [0.8.6] - 2025-05-04
 

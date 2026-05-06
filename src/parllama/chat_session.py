@@ -212,6 +212,31 @@ class ChatSession(ChatMessageContainer):
         self._total_usage["output_tokens"] += stats.output_tokens
         self._total_usage["total_tokens"] += stats.total_tokens
 
+    def __str__(self) -> str:
+        """Get markdown representation with YAML frontmatter."""
+        from io import StringIO
+
+        usage = self._total_usage
+        lines = [
+            "---",
+            f"provider: {self._llm_config.provider.value}",
+            f"model: {self._llm_config.model_name}",
+            f"date: {self.last_updated.isoformat()}",
+            f"input_tokens: {usage['input_tokens']}",
+            f"output_tokens: {usage['output_tokens']}",
+            f"total_tokens: {usage['total_tokens']}",
+            f"cost: {self._total_cost:.6f}",
+            "---",
+            "",
+            f"# {self.name}",
+            "",
+        ]
+        ret = StringIO()
+        ret.write("\n".join(lines))
+        for msg in self.messages:
+            ret.write(str(msg))
+        return ret.getvalue()
+
     @property
     def llm_provider_name(self) -> LlmProvider:
         """Get the LLM model name"""
