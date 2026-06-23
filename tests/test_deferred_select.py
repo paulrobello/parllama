@@ -39,7 +39,7 @@ async def test_missing_deferred_value_does_not_schedule_unbounded_retry_timer() 
 
         select.set_options([("Other", "other")])
 
-        assert select.value == Select.BLANK
+        assert select.value == Select.NULL
         assert select.deferred_value == "missing"
         assert scheduled == []
 

@@ -65,6 +65,10 @@ SessionConfig {
         """Initialise the view."""
         super().__init__(**kwargs)
 
+        # Select emits a spurious Changed on mount in textual >= 8.2.7; ignore it
+        # so the dropdown default (MEDIUM) does not clobber the session's value.
+        self._reasoning_effort_initialized = False
+
         session_name = chat_manager.mk_session_name("New Chat")
 
         self.provider_model_select = ProviderModelSelect(update_settings=True)
@@ -273,6 +277,12 @@ SessionConfig {
     def reasoning_effort_changed(self, event: Select.Changed) -> None:
         event.stop()
         event.prevent_default()
+        # Ignore the spurious Changed Select emits on mount (textual >= 8.2.7),
+        # which carries the dropdown default (MEDIUM) and would otherwise
+        # overwrite the session's reasoning_effort.
+        if not self._reasoning_effort_initialized:
+            self._reasoning_effort_initialized = True
+            return
         settings.last_llm_config.reasoning_effort = event.value if not isinstance(event.value, NoSelection) else None  # type: ignore
         self.session.reasoning_effort = settings.last_llm_config.reasoning_effort
         settings.save()

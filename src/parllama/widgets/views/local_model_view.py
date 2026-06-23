@@ -215,6 +215,10 @@ class LocalModelView(Container):
         event.stop()
         if event.value is Select.NULL:
             return
+        # Ignore the spurious Changed Select emits on mount (textual >= 8.2.7);
+        # event.value then equals the current sort, so there is nothing to do.
+        if str(event.value) == settings.local_model_sort:
+            return
         settings.local_model_sort = str(event.value)
         settings.save()
         self.action_refresh_models()

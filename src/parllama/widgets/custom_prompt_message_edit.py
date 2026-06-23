@@ -56,7 +56,10 @@ class CustomPromptMessageEdit(Vertical):
         """Compose the child widgets."""
         with Horizontal(id="tool_bar"):
             yield mk_trash_button()
-        yield self.role
+        # Suppress the spurious Changed Select emits on mount (textual >= 8.2.7)
+        # so opening the dialog does not immediately mark it dirty.
+        with self.prevent(Select.Changed):
+            yield self.role
         yield self.content
 
     @on(Select.Changed)

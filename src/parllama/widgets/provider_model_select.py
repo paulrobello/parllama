@@ -71,6 +71,10 @@ class ProviderModelSelect(Container):
         super().__init__(**kwargs)
 
         self.update_settings = update_settings
+        # Select emits a spurious Changed on mount in textual >= 8.2.7 (and again
+        # when the provider model cache refreshes during setup); __init__ already
+        # populated the initial provider's models, so ignore that first event.
+        self._provider_select_initialized = False
         if isinstance(provider, str):
             provider = provider_name_to_enum(provider)
         opts = get_filtered_provider_select_options()
@@ -153,6 +157,9 @@ class ProviderModelSelect(Container):
     @on(Select.Changed, "#provider_name")
     def provider_select_changed(self) -> None:
         """Provider select changed, update control states and save provider name"""
+        if not self._provider_select_initialized:
+            self._provider_select_initialized = True
+            return
         if self.provider_select.value != Select.NULL:
             if not is_provider_api_key_set(self.provider_select.value):  # type: ignore
                 self.notify(

@@ -751,6 +751,15 @@ class OptionsView(Horizontal):
         """Handle theme select changed"""
         event.stop()
         ctrl: Select = event.control
+        # Ignore the spurious Changed Select emits on mount (textual >= 8.2.7);
+        # the value then matches the current setting, so nothing actually changed.
+        if ctrl.id == "starting_tab":
+            effective = "Local" if ctrl.value == Select.NULL else ctrl.value
+            if effective == settings.starting_tab:
+                return
+        elif ctrl.id == "theme_name":
+            if ctrl.value == settings.theme_name:
+                return
         if ctrl.id == "starting_tab":
             if ctrl.value == Select.NULL:
                 settings.starting_tab = "Local"

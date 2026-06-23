@@ -36,11 +36,11 @@
     * [Where we are](#where-we-are)Ï
     * [Where we're going](#where-were-going)
 * [What's new](#whats-new)
+  * [v0.8.8](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md#088---2026-06-22)
   * [v0.8.7](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md#087---2025-05-05)
   * [v0.8.6](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md#086---2025-05-04)
   * [v0.8.5](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md#085---2025-05-03)
   * [v0.8.4](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md#084---2025-05-01)
-  * [v0.8.3](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md#083---2025-04-28)
   * [older...](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md)
 
 [![PyPI](https://img.shields.io/pypi/v/parllama)](https://pypi.org/project/parllama/)
@@ -562,7 +562,12 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, code style, commit
 
 ## What's new
 
-### v0.8.7 (Latest)
+### v0.8.8 (Latest)
+
+* **Dependency Upgrade**: Upgraded all dependencies to latest, including Textual 8.2.5 → 8.2.7, Pydantic, LangChain, OpenAI, and Protobuf 6 → 7
+* **Textual 8.2.7 Fixes**: Fixed several startup regressions caused by Textual 8.2.7 emitting `Select.Changed` on mount — duplicate model refreshes, reasoning effort reset to Medium, spurious provider/model events, the Edit Prompt dialog opening dirty, and the Options tab re-applying the theme
+
+### v0.8.7
 
 * **Chat Cost Tracking**: Session status bar now shows cumulative cost for paid providers. Token usage and cost are accumulated across all messages and persisted with the session file
 * **Markdown Export Frontmatter**: Exported markdown files now include YAML frontmatter with provider, model, date, token usage, and cost

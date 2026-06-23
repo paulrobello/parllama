@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.8] - 2026-06-22
+
+### Changed
+
+- **Dependency upgrade**: Upgraded all dependencies to latest via `uv lock --upgrade`, including Textual 8.2.5 → 8.2.7, Pydantic, LangChain, LangGraph, OpenAI, and Protobuf 6 → 7.
+
+### Fixed
+
+- **Startup regressions from Textual 8.2.7**: Textual 8.2.7 changed `Select` to emit a `Changed` message on mount with its initial value, which fired several change handlers during startup and caused regressions. Guards were added so the initial mount event is ignored:
+  - **Local Models** no longer triggers a duplicate model refresh and spurious settings save on startup, and no longer refreshes when "Load local models on startup" is disabled.
+  - **Reasoning Effort** is no longer reset to Medium on startup (previously overwrote the saved session value).
+  - **Provider/Model selector** no longer posts a spurious `ProviderModelSelected` event — and a duplicate "No API key" warning — on startup.
+  - **Edit Prompt dialog** no longer opens marked as dirty/unsaved.
+  - **Options tab** no longer re-applies the current theme and spuriously saves settings when opened.
+- **Deferred Select test**: Corrected a test assertion that compared against `Select.BLANK` (now an unrelated inherited value) instead of the documented `Select.NULL` sentinel.
+
 ## [0.8.7] - 2025-05-05
 
 ### Added

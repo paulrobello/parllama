@@ -236,6 +236,10 @@ class SiteModelView(Container):
         event.stop()
         if event.value is Select.NULL:
             return
+        # Ignore the spurious Changed that Select emits on mount (textual >= 8.2.7);
+        # the Site tab has not been shown yet, so there is nothing to refresh.
+        if not self._loaded_once:
+            return
         settings.site_model_sort = str(event.value)
         settings.save()
         self.action_refresh_models()
