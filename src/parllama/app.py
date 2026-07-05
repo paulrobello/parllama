@@ -2,17 +2,13 @@
 
 from __future__ import annotations
 
-import asyncio
 from collections.abc import Iterator
 from queue import Empty
 
-import clipman as clipboard
-import humanize
 from httpx import ConnectError
 from ollama import ProgressResponse
 from par_ai_core.llm_providers import LlmProvider
 from rich.console import ConsoleRenderable, RenderableType, RichCast
-from rich.text import Text
 from textual import on, work
 from textual.app import App
 from textual.binding import Binding
@@ -24,8 +20,11 @@ from textual.widgets import Input, Select, TextArea
 
 from parllama import __application_title__
 from parllama.chat_manager import ChatManager, chat_manager
+from parllama.coordinators.clipboard_service import ClipboardService
 from parllama.coordinators.execution_coordinator import ExecutionCoordinator
 from parllama.coordinators.model_job_processor import ModelJobProcessor
+from parllama.coordinators.ps_status_poller import PsStatusPoller
+from parllama.coordinators.session_event_router import SessionEventRouter
 from parllama.dialogs.help_dialog import HelpDialog
 from parllama.dialogs.information import InformationDialog
 from parllama.dialogs.theme_dialog import ThemeDialog
@@ -124,6 +123,9 @@ class ParLlamaApp(App[None]):
     ps_timer: Timer | None
     model_job_processor: ModelJobProcessor
     execution_coordinator: ExecutionCoordinator
+    clipboard_service: ClipboardService
+    ps_status_poller: PsStatusPoller
+    session_event_router: SessionEventRouter
 
     def __init__(self) -> None:
         """Initialize the application."""
@@ -136,6 +138,9 @@ class ParLlamaApp(App[None]):
         # Initialize coordinators (delegated from God Object decomposition)
         self.model_job_processor = ModelJobProcessor(self)
         self.execution_coordinator = ExecutionCoordinator(self)
+        self.clipboard_service = ClipboardService(self)
+        self.ps_status_poller = PsStatusPoller(self)
+        self.session_event_router = SessionEventRouter(self)
 
         theme_manager.set_app(self)
         provider_manager.set_app(self)
@@ -240,46 +245,17 @@ Some functions are only available via slash / commands on that chat tab. You can
             f.value = Select.NULL
 
     def action_copy_to_clipboard(self) -> None:
-        """Copy focused widget value to clipboard"""
-        f: Widget | None = self.screen.focused
-        if not f:
-            return
-
-        if isinstance(f, Input | Select):
-            self.app.post_message(SendToClipboard(str(f.value) if f.value and f.value != Select.NULL else ""))
-
-        if isinstance(f, TextArea):
-            self.app.post_message(SendToClipboard(f.selected_text or f.text))
+        """Copy focused widget value to clipboard. Delegates to ClipboardService."""
+        self.clipboard_service.copy_focused()
 
     def action_cut_to_clipboard(self) -> None:
-        """Cut focused widget value to clipboard"""
-        try:
-            f: Widget | None = self.screen.focused
-            if not f:
-                return
-            if isinstance(f, Input):
-                clipboard.copy(f.value)
-                f.value = ""
-            if isinstance(f, Select):
-                self.app.post_message(SendToClipboard(str(f.value) if f.value and f.value != Select.NULL else ""))
-            if isinstance(f, TextArea):
-                clipboard.copy(f.selected_text or f.text)
-                f.text = ""
-        except (OSError, AttributeError) as _:
-            self.notify("Error with clipboard", severity="error")
+        """Cut focused widget value to clipboard. Delegates to ClipboardService."""
+        self.clipboard_service.cut_focused()
 
     @on(SendToClipboard)
     def send_to_clipboard(self, event: SendToClipboard) -> None:
-        """Send string to clipboard"""
-        # works for remote ssh sessions
-        self.copy_to_clipboard(event.message)
-        # works for local sessions
-        try:
-            clipboard.copy(event.message)
-            if event.notify:
-                self.notify("Copied to clipboard")
-        except (OSError, AttributeError) as _:
-            self.notify("Error with clipboard", severity="error")
+        """Send string to clipboard. Delegates to ClipboardService."""
+        self.clipboard_service.send(event.message, event.notify)
 
     @on(LocalModelPushRequested)
     def on_model_push_requested(self, event: LocalModelPushRequested) -> None:
@@ -433,7 +409,7 @@ Some functions are only available via slash / commands on that chat tab. You can
         self.refresh_models()
 
     @work(group="refresh_models", thread=True)
-    async def refresh_models(self):
+    async def refresh_models(self) -> None:
         """Refresh the models."""
         self.state_manager.set_refreshing(True, "local models")
         try:
@@ -474,7 +450,7 @@ Some functions are only available via slash / commands on that chat tab. You can
         self.status_notify("Site models refreshed")
 
     @work(group="refresh_site_model", thread=True)
-    async def refresh_site_models(self, msg: SiteModelsRefreshRequested):
+    async def refresh_site_models(self, msg: SiteModelsRefreshRequested) -> None:
         """Refresh the site model."""
         operation = f"site models: {msg.ollama_namespace or 'models'}"
         self.state_manager.set_refreshing(True, operation)
@@ -493,35 +469,8 @@ Some functions are only available via slash / commands on that chat tab. You can
 
     @work(group="update_ps", thread=True)
     async def update_ps(self) -> None:
-        """Update ps status bar msg"""
-        was_blank = False
-        while not settings.shutting_down:
-            if settings.ollama_ps_poll_interval < 1:
-                self.post_message_all(PsMessage(msg=""))
-                break
-            await asyncio.sleep(settings.ollama_ps_poll_interval)
-            ret = ollama_dm.model_ps()
-            if len(ret.models) < 1:
-                if not was_blank:
-                    self.post_message_all(PsMessage(msg=""))
-                was_blank = True
-                continue
-            was_blank = False
-            info = ret.models[0]  # only take first one since ps status bar is a single line
-            self.post_message_all(
-                PsMessage(
-                    msg=Text.assemble(
-                        "Name: ",
-                        info.name,
-                        " Size: ",
-                        humanize.naturalsize(info.size_vram),
-                        " Processor: ",
-                        ret.processor,
-                        " Until: ",
-                        humanize.naturaltime(info.expires_at),
-                    )
-                )
-            )
+        """Update ps status bar msg. Delegates to PsStatusPoller."""
+        await self.ps_status_poller.poll()
 
     def status_notify(self, msg: str, severity: SeverityLevel = "information") -> None:
         """Show notification and update status bar"""
@@ -589,92 +538,85 @@ Some functions are only available via slash / commands on that chat tab. You can
     def on_session_list_changed(self, event: SessionListChanged) -> None:
         """Session list changed event"""
         event.stop()
-        self.post_message_all(event)
+        self.session_event_router.session_list_changed(event)
 
     @on(ChatMessage)
     def on_chat_message(self, event: ChatMessage) -> None:
         """Route chat message events to the chat view."""
         event.stop()
-        self.main_screen.chat_view.post_message(
-            ChatMessage(parent_id=event.parent_id, message_id=event.message_id, is_final=event.is_final)
-        )
+        self.session_event_router.chat_message(event)
 
     @on(ChatMessageDeleted)
     def on_chat_message_deleted(self, event: ChatMessageDeleted) -> None:
         """Route chat message deletion events to the chat view."""
         event.stop()
-        self.main_screen.chat_view.post_message(
-            ChatMessageDeleted(parent_id=event.parent_id, message_id=event.message_id)
-        )
+        self.session_event_router.chat_message_deleted(event)
 
     @on(ChatGenerationAborted)
     def on_chat_generation_aborted(self, event: ChatGenerationAborted) -> None:
         """Route chat generation abort events to the chat view."""
         event.stop()
-        self.main_screen.chat_view.post_message(ChatGenerationAborted(session_id=event.session_id))
+        self.session_event_router.chat_generation_aborted(event)
 
     @on(PromptListChanged)
     def on_prompt_list_changed(self, event: PromptListChanged) -> None:
         """Prompt list changed event"""
         event.stop()
-        self.post_message_all(event)
+        self.session_event_router.prompt_list_changed(event)
 
     @on(SessionSelected)
     def on_session_selected(self, event: SessionSelected) -> None:
         """Session selected event"""
         event.stop()
-        self.post_message_all(event)
+        self.session_event_router.session_selected(event)
 
     @on(SessionUpdated)
     def on_session_updated(self, event: SessionUpdated) -> None:
         """Session updated event."""
         event.stop()
-        chat_manager.maybe_notify_session_updated(event.changed)
-        self.post_message_all(event)
+        self.session_event_router.session_updated(event)
 
     @on(PromptSelected)
     def on_prompt_selected(self, event: PromptSelected) -> None:
         """Session selected event"""
         event.stop()
-        self.post_message_all(event)
+        self.session_event_router.prompt_selected(event)
 
     @on(DeleteSession)
     def on_delete_session(self, event: DeleteSession) -> None:
         """Delete session event"""
         event.stop()
-        chat_manager.delete_session(event.session_id)
-        self.post_message_all(event)
+        self.session_event_router.delete_session(event)
 
     @on(SessionAutoNameRequested)
     def on_session_auto_name_requested(self, event: SessionAutoNameRequested) -> None:
         """Session auto-name requested event."""
         event.stop()
-        chat_manager.auto_name_session(event.session_id, event.llm_config, event.context)
+        self.session_event_router.session_auto_name_requested(event)
 
     @on(PromptUpdated)
     def on_prompt_updated(self, event: PromptUpdated) -> None:
         """Prompt updated event."""
         event.stop()
-        chat_manager.notify_prompts_changed()
+        self.session_event_router.prompt_updated(event)
 
     @on(DeletePrompt)
     def on_delete_prompt(self, event: DeletePrompt) -> None:
         """Delete prompt event"""
         event.stop()
-        chat_manager.delete_prompt(event.prompt_id)
-        self.post_message_all(event)
+        self.session_event_router.delete_prompt(event)
 
     @on(SessionToPrompt)
     def on_session_to_prompt(self, event: SessionToPrompt) -> None:
         """Session to prompt event"""
         event.stop()
-        chat_manager.session_to_prompt(event.session_id, event.submit_on_load, event.prompt_name)
+        self.session_event_router.session_to_prompt(event)
 
     @on(PromptListLoaded)
     def on_prompt_list_loaded(self, event: PromptListLoaded) -> None:
         """Prompt list loaded event"""
         event.stop()
-        self.post_message_all(event)
+        self.session_event_router.prompt_list_loaded(event)
 
     @on(LogIt)
     def on_log_it(self, event: LogIt) -> None:

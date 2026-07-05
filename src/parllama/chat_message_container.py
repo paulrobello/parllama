@@ -12,6 +12,7 @@ from typing import Any
 
 import orjson as json
 import rich.repr
+from textual.app import App
 
 from parllama.chat_message import ParllamaChatMessage
 from parllama.message_sink import MessageSink
@@ -67,7 +68,7 @@ class ChatMessageContainer(MessageSink):
         self._loaded = messages is not None
         self._batching = False
 
-    def set_app(self, app) -> None:
+    def set_app(self, app: App[Any] | None) -> None:
         """Set the app and propagate it to child messages."""
         super().set_app(app)
         for msg in self.messages:

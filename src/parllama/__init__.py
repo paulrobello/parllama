@@ -18,7 +18,7 @@ try:
     import clipman  # noqa: E402
 
     clipman.init()
-except Exception:
+except Exception:  # noqa: BLE001
     clipman = None  # type: ignore[assignment]
 
 __author__ = "Paul Robello"

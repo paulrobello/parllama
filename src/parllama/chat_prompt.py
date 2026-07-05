@@ -77,7 +77,7 @@ class ChatPrompt(ChatMessageContainer):
             for m in msgs:
                 self.add_message(ParllamaChatMessage(**m))
             self._loaded = True
-        except (Exception, SecureFileOpsError) as e:  # pylint: disable=broad-exception-caught
+        except (Exception, SecureFileOpsError) as e:  # noqa: BLE001  pylint: disable=broad-exception-caught
             self.log_it(f"Error loading prompt {e}", notify=True, severity="error")
         finally:
             self._batching = False

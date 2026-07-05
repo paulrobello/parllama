@@ -10,9 +10,6 @@ from typing import Any
 import orjson as json
 import requests
 from dotenv import load_dotenv
-from google import genai  # type: ignore
-from groq import Groq
-from openai import OpenAI
 from par_ai_core.llm_providers import (
     LlmProvider,
     is_provider_api_key_set,
@@ -68,101 +65,157 @@ class ProviderManager(MessageSink):
         self.cache_file = Path(settings.provider_models_file)
 
     def set_app(self, app: App[Any] | None) -> None:
-        """Set the app."""
+        """Set the app and trigger the initial model load.
+
+        Args:
+            app: The Textual app instance used for message emission, or None to detach.
+        """
         super().set_app(app)
         self.load_models()
 
-    # pylint: disable=too-many-branches
     def refresh_models(self):
-        """Refresh model lists from all available configured providers."""
+        """Refresh model lists from all available configured providers.
+
+        Iterates every known provider, skipping ones that are disabled or have no
+        API key configured, queries each provider's API for its current model list,
+        and updates ``self.provider_models`` in place. Errors for an individual
+        provider are logged and do not stop the refresh of the remaining providers.
+        Persists the refreshed lists to the cache file when finished.
+        """
         self.log_it("Refreshing provider models")
         for p in llm_provider_types:
-            try:
-                new_list = []
-                # Check if provider is explicitly disabled
-                if settings.disabled_providers.get(p, False):
-                    # self.log_it(f"Skipping {p} because it is disabled", notify=True)
-                    continue
-                if not is_provider_api_key_set(p):
-                    # self.log_it(f"Skipping {p} because it has no API key", notify=True)
-                    continue
-                if p == LlmProvider.OLLAMA:
-                    new_list = ollama_dm.get_model_names()
-                elif p == LlmProvider.LLAMACPP:
-                    models = OpenAI(base_url=settings.provider_base_urls[p] or provider_base_urls[p]).models.list()
-                    data = sorted(models.data, key=lambda m: m.created, reverse=True)
-                    for m in data:
-                        new_list.append(m.id or "default")
-                elif p in [LlmProvider.OPENAI, LlmProvider.OPENROUTER, LlmProvider.XAI, LlmProvider.DEEPSEEK]:
-                    models = list(
-                        OpenAI(
-                            base_url=settings.provider_base_urls[p] or provider_base_urls[p],
-                            api_key=settings.provider_api_keys[p] or os.environ.get(provider_env_key_names[p]),
-                        )
-                        .models.list()
-                        .data
-                    )
-                    if models:
-                        models = [m for m in models if get_model_mode(p, m.id) in ["chat", "unknown"]]
-                        if models[0].created is not None:
-                            data = sorted(models, key=lambda m: m.created, reverse=True)
-                        else:
-                            data = sorted(models, key=lambda m: m.id)
-                        for m in data:
-                            new_list.append(m.id)
-                elif p == LlmProvider.GROQ:
-                    models = Groq(base_url=settings.provider_base_urls[p] or provider_base_urls[p]).models.list().data
-                    if models:
-                        models = [m for m in models if get_model_mode(p, m.id) in ["chat", "unknown"]]
-                        data = sorted(models, key=lambda m: m.created, reverse=True)
-                        for m in data:
-                            new_list.append(m.id)
-                elif p == LlmProvider.ANTHROPIC:
-                    import anthropic
-
-                    models = list(anthropic.Anthropic().models.list(limit=50))
-                    if models:
-                        models = [m for m in models if get_model_mode(p, m.id) in ["chat", "unknown"]]
-                        data = sorted(models, key=lambda m: m.created_at, reverse=True)
-                        for m in data:
-                            new_list.append(m.id)
-                elif p == LlmProvider.LITELLM:
-                    models = requests.get(
-                        f"{settings.provider_base_urls[p] or provider_base_urls[p]}/models",
-                        timeout=settings.provider_model_request_timeout,
-                    ).json()["data"]
-                    if models:
-                        models = [m for m in models if get_model_mode(p, m["id"]) in ["chat", "unknown"]]
-                        data = sorted(models, key=lambda m: m["created"], reverse=True)
-                        for m in data:
-                            new_list.append(m["id"])
-                elif p == LlmProvider.GEMINI:
-                    client = genai.Client(  # type: ignore[attr-defined]
-                        api_key=settings.provider_api_keys[p] or os.environ.get(provider_env_key_names[p])
-                    )
-                    models = list(client.models.list())  # type: ignore
-                    if models:
-                        models = [m for m in models if m.name and get_model_mode(p, m.name) in ["chat", "unknown"]]
-                        data = sorted(models, key=lambda m: m.name or "")  # type: ignore
-                        for m in data:
-                            if m.name:
-                                new_list.append(m.name.split("/")[1])
-                else:
-                    raise ValueError(f"Unknown provider: {p}")
-                # print(new_list)
-
-                self.provider_models[p] = new_list
-                if self.app:
-                    self.app.post_message(ProviderModelsChanged(provider=p))
-
-            except Exception as e:
-                self.log_it(f"Error model refresh {p}: {type(e).__name__}: {e}", severity="error")
-                continue
+            self._refresh_one_provider(p)
         self.save_models()
+
+    def _refresh_one_provider(self, p: LlmProvider) -> None:
+        """Refresh and store the model list for a single provider.
+
+        Skips providers that are disabled or missing an API key. Errors are
+        logged and swallowed so a single provider failure never aborts a
+        multi-provider refresh. Does not persist the cache — callers call
+        ``save_models`` once after refreshing.
+
+        Args:
+            p: The provider to refresh.
+        """
+        try:
+            new_list = self._fetch_provider_model_list(p)
+            if new_list is None:
+                return
+            self.provider_models[p] = new_list
+            if self.app:
+                self.app.post_message(ProviderModelsChanged(provider=p))
+        except Exception as e:  # noqa: BLE001
+            self.log_it(f"Error model refresh {p}: {type(e).__name__}: {e}", severity="error")
+
+    def _fetch_provider_model_list(self, p: LlmProvider) -> list[str] | None:
+        """Query a single provider's current chat-model list from its API.
+
+        Heavy provider SDKs (``openai``, ``groq``, ``google-genai``,
+        ``anthropic``) are imported lazily inside their branches so importing
+        this module does not pull them in at startup.
+
+        Args:
+            p: The provider to query.
+
+        Returns:
+            The provider's model names, or ``None`` if the provider is disabled
+            or has no API key configured.
+
+        Raises:
+            ValueError: If ``p`` is an unknown provider.
+        """
+        if settings.disabled_providers.get(p, False):
+            return None
+        if not is_provider_api_key_set(p):
+            return None
+
+        new_list: list[str] = []
+        if p == LlmProvider.OLLAMA:
+            new_list = ollama_dm.get_model_names()
+        elif p == LlmProvider.LLAMACPP:
+            from openai import OpenAI
+
+            models = OpenAI(base_url=settings.provider_base_urls[p] or provider_base_urls[p]).models.list()
+            data = sorted(models.data, key=lambda m: m.created, reverse=True)
+            for m in data:
+                new_list.append(m.id or "default")
+        elif p in [LlmProvider.OPENAI, LlmProvider.OPENROUTER, LlmProvider.XAI, LlmProvider.DEEPSEEK]:
+            from openai import OpenAI
+
+            models = list(
+                OpenAI(
+                    base_url=settings.provider_base_urls[p] or provider_base_urls[p],
+                    api_key=settings.provider_api_keys[p] or os.environ.get(provider_env_key_names[p]),
+                )
+                .models.list()
+                .data
+            )
+            if models:
+                models = [m for m in models if get_model_mode(p, m.id) in ["chat", "unknown"]]
+                if models[0].created is not None:
+                    data = sorted(models, key=lambda m: m.created, reverse=True)
+                else:
+                    data = sorted(models, key=lambda m: m.id)
+                for m in data:
+                    new_list.append(m.id)
+        elif p == LlmProvider.GROQ:
+            from groq import Groq
+
+            models = Groq(base_url=settings.provider_base_urls[p] or provider_base_urls[p]).models.list().data
+            if models:
+                models = [m for m in models if get_model_mode(p, m.id) in ["chat", "unknown"]]
+                data = sorted(models, key=lambda m: m.created, reverse=True)
+                for m in data:
+                    new_list.append(m.id)
+        elif p == LlmProvider.ANTHROPIC:
+            import anthropic
+
+            models = list(anthropic.Anthropic().models.list(limit=50))
+            if models:
+                models = [m for m in models if get_model_mode(p, m.id) in ["chat", "unknown"]]
+                data = sorted(models, key=lambda m: m.created_at, reverse=True)
+                for m in data:
+                    new_list.append(m.id)
+        elif p == LlmProvider.LITELLM:
+            models = requests.get(
+                f"{settings.provider_base_urls[p] or provider_base_urls[p]}/models",
+                timeout=settings.provider_model_request_timeout,
+            ).json()["data"]
+            if models:
+                models = [m for m in models if get_model_mode(p, m["id"]) in ["chat", "unknown"]]
+                data = sorted(models, key=lambda m: m["created"], reverse=True)
+                for m in data:
+                    new_list.append(m["id"])
+        elif p == LlmProvider.GEMINI:
+            from google import genai  # type: ignore
+
+            client = genai.Client(  # type: ignore[attr-defined]
+                api_key=settings.provider_api_keys[p] or os.environ.get(provider_env_key_names[p])
+            )
+            models = list(client.models.list())  # type: ignore
+            if models:
+                models = [m for m in models if m.name and get_model_mode(p, m.name) in ["chat", "unknown"]]
+                data = sorted(models, key=lambda m: m.name or "")  # type: ignore
+                for m in data:
+                    if m.name:
+                        new_list.append(m.name.split("/")[1])
+        else:
+            raise ValueError(f"Unknown provider: {p}")
+
+        return new_list
 
     # pylint: disable=too-many-return-statements, too-many-branches
     def get_model_context_length(self, provider: LlmProvider, model_name: str) -> int:
-        """Get model cntext length. Return 0 if unknown."""
+        """Get a model's context length.
+
+        Args:
+            provider: The provider that hosts the model.
+            model_name: The name of the model to look up.
+
+        Returns:
+            The model's maximum context length in tokens, or 0 if unknown or on error.
+        """
         try:
             if provider == LlmProvider.OLLAMA:
                 return ollama_dm.get_model_context_length(model_name)
@@ -174,7 +227,7 @@ class ProviderManager(MessageSink):
                 severity="error",
             )
             return 0
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             self.log_it(
                 f"Unexpected error getting model metadata {get_api_cost_model_name(provider_name=provider.value.lower(), model_name=model_name)}: {type(e).__name__}: {e}",
                 severity="error",
@@ -182,7 +235,10 @@ class ProviderManager(MessageSink):
             return 0
 
     def save_models(self):
-        """Save the models to json cache file."""
+        """Save the current provider model lists to the JSON cache file.
+
+        Overwrites ``self.cache_file`` with the contents of ``self.provider_models``.
+        """
         self.cache_file.write_bytes(
             json.dumps(
                 {k.value: v for k, v in self.provider_models.items()},
@@ -192,7 +248,17 @@ class ProviderManager(MessageSink):
         )
 
     def load_models(self, refresh: bool = False) -> None:
-        """Load provider models from cache and request background refresh if needed."""
+        """Load provider models from cache and request a background refresh if needed.
+
+        Reads the cached provider model lists from disk when available and posts
+        a ``ProviderModelsChanged`` message. If the cache file is missing, any
+        provider's cache has expired, or ``refresh`` is True, a
+        ``RefreshProviderModelsRequested`` message is posted so the app can refresh
+        models in a worker without blocking startup.
+
+        Args:
+            refresh: Force a background refresh request even if the cache is fresh.
+        """
         if not self.cache_file.exists():
             self.log_it("Models file does not exist, requesting refresh")
             if self.app:
@@ -224,19 +290,42 @@ class ProviderManager(MessageSink):
                 self.app.post_message(RefreshProviderModelsRequested(None))
 
     def get_model_select_options(self, provider: LlmProvider) -> list[tuple[str, str]]:
-        """Get select options."""
+        """Get (label, value) select options for a provider's known models.
+
+        Args:
+            provider: The provider to get model select options for.
+
+        Returns:
+            A list of (model_name, model_name) tuples suitable for a Select widget.
+        """
         if provider == LlmProvider.OLLAMA:
             return ollama_dm.get_model_select_options()
         return [(m, m) for m in self.provider_models[provider]]
 
     def get_model_names(self, provider: LlmProvider) -> list[str]:
-        """Get select options."""
+        """Get the known model names for a provider.
+
+        Args:
+            provider: The provider to get model names for.
+
+        Returns:
+            A list of model names cached for the provider.
+        """
         if provider == LlmProvider.OLLAMA:
             return ollama_dm.get_model_names()
         return self.provider_models[provider]
 
     def get_model_name_fuzzy(self, provider: LlmProvider, model_name: str) -> str:
-        """Get model name fuzzy."""
+        """Resolve a possibly partial or differently-cased model name.
+
+        Args:
+            provider: The provider whose known models to search.
+            model_name: The candidate model name to resolve (case-insensitive).
+
+        Returns:
+            The matching known model name, preferring an exact match then a
+            prefix match, or an empty string if no match is found.
+        """
         models = self.get_model_names(provider)
         model_name = model_name.lower()
         for m in models:
@@ -249,7 +338,16 @@ class ProviderManager(MessageSink):
         return ""
 
     def get_cache_info(self, provider: LlmProvider) -> dict[str, Any]:
-        """Get cache information for a specific provider."""
+        """Get cache information for a specific provider.
+
+        Args:
+            provider: The provider to report cache status for.
+
+        Returns:
+            A dict with ``cache_age_hours``, ``cache_expired``, ``cache_size_kb``,
+            ``last_refresh`` (epoch seconds, or None if no cache file), and
+            ``model_count`` for the provider.
+        """
         if not self.cache_file.exists():
             return {
                 "cache_age_hours": 0,
@@ -276,12 +374,17 @@ class ProviderManager(MessageSink):
         }
 
     def refresh_provider_models(self, provider: LlmProvider) -> None:
-        """Refresh models for a specific provider."""
-        self.log_it(f"Refreshing models for provider: {provider.value}")
+        """Refresh models for a single provider and persist the cache.
 
-        # Currently refreshes all models (the existing refresh_models method)
-        # TODO: Make this more selective to refresh only the specified provider
-        self.refresh_models()
+        Only the requested provider is queried, avoiding unnecessary API calls
+        to every other configured provider.
+
+        Args:
+            provider: The provider to refresh.
+        """
+        self.log_it(f"Refreshing models for provider: {provider.value}")
+        self._refresh_one_provider(provider)
+        self.save_models()
 
 
 _provider_manager: ProviderManager | None = None

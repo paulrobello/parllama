@@ -203,15 +203,6 @@ wheels = [
 ]
 
 [[package]]
-name = "argparse"
-version = "1.4.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/18/dd/e617cfc3f6210ae183374cd9f6a26b20514bbb5a792af97949c5aacddf0f/argparse-1.4.0.tar.gz", hash = "sha256:62b089a55be1d8949cd2bc7e0df0bddb9e028faefc8c32038cc84862aefdd6e4", size = 70508, upload-time = "2015-09-12T20:22:16.217Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/f2/94/3af39d34be01a24a6e65433d19e107099374224905f1e0cc6bbe1fd22a2f/argparse-1.4.0-py2.py3-none-any.whl", hash = "sha256:c31647edb69fd3d465a847ea3157d37bed1f95f19760b11a47aa91c04b666314", size = 23000, upload-time = "2015-09-14T16:03:16.137Z" },
-]
-
-[[package]]
 name = "attrs"
 version = "26.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2580,9 +2571,7 @@ wheels = [
 name = "parllama"
 source = { editable = "." }
 dependencies = [
-    { name = "argparse" },
     { name = "beautifulsoup4" },
-    { name = "build" },
     { name = "clipman" },
     { name = "cryptography" },
     { name = "docker" },
@@ -2614,6 +2603,7 @@ web = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "build" },
     { name = "google-api-python-client-stubs" },
     { name = "hatchling" },
     { name = "pre-commit" },
@@ -2631,9 +2621,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "argparse", specifier = ">=1.4.0" },
     { name = "beautifulsoup4", specifier = ">=4.15.0" },
-    { name = "build", specifier = ">=1.5.0" },
     { name = "clipman", specifier = ">=3.3.3" },
     { name = "cryptography", specifier = ">=49.0.0" },
     { name = "docker", specifier = ">=7.1.0" },
@@ -2662,6 +2650,7 @@ provides-extras = ["web"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "build", specifier = ">=1.5.0" },
     { name = "google-api-python-client-stubs", specifier = ">=1.37.0" },
     { name = "hatchling", specifier = ">=1.30.1" },
     { name = "pre-commit", specifier = ">=4.6.0" },

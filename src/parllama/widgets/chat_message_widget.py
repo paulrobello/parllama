@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import io
+import time
 
 from PIL import Image
 from rich_pixels import Pixels
@@ -13,6 +14,7 @@ from textual.binding import Binding
 from textual.containers import Vertical
 from textual.events import Hide, Mount, Show, Unmount
 from textual.message import Message
+from textual.timer import Timer
 from textual.widgets import Markdown, Static, TextArea
 
 from parllama.chat_manager import ChatSession
@@ -81,7 +83,9 @@ class ChatMessageWidget(Vertical, can_focus=True):
     markdown: Markdown
     editor: TextArea | None = None
     session: ChatSession
-    update_delay: float = 1
+    # Minimum seconds between intermediate streaming re-renders (~10 Hz). The
+    # final render is never throttled. See ``update`` for the rationale.
+    update_delay: float = 0.1
     is_final: bool = False
 
     def __init__(
@@ -99,6 +103,8 @@ class ChatMessageWidget(Vertical, can_focus=True):
         self.is_final = is_final
         self.border_title = self.msg.role
         self.fence_num: int = -1
+        self._last_render_ts: float = 0.0
+        self._pending_render_timer: Timer | None = None
         # if self.msg.images:
         #     self.border_subtitle = f"Image: {str(self.msg.images[0])}"
 
@@ -160,9 +166,38 @@ class ChatMessageWidget(Vertical, can_focus=True):
         return text
 
     async def update(self) -> None:
-        """Update the document with new Markdown."""
-        current_content = self.markdown_raw
-        await self.markdown.update(current_content)
+        """Update the rendered markdown, throttling intermediate streaming frames.
+
+        During streaming (``is_final`` is False) ``ParMarkdown`` re-parses the
+        entire message on every chunk, which is O(n^2) work over a long
+        response. Intermediate renders are coalesced to at most one per
+        ``update_delay`` seconds; the final render (``is_final`` True) is always
+        performed immediately so the completed message is never left stale.
+        """
+        if self.is_final:
+            self._cancel_pending_render()
+            await self._render_now()
+            return
+
+        elapsed = time.monotonic() - self._last_render_ts
+        if elapsed >= self.update_delay:
+            await self._render_now()
+        elif self._pending_render_timer is None:
+            # Schedule a single trailing render so the latest streamed content
+            # still appears even if no further chunk arrives this window.
+            self._pending_render_timer = self.set_timer(self.update_delay - elapsed, self._render_now)
+
+    async def _render_now(self) -> None:
+        """Render the current markdown content immediately."""
+        self._pending_render_timer = None
+        self._last_render_ts = time.monotonic()
+        await self.markdown.update(self.markdown_raw)
+
+    def _cancel_pending_render(self) -> None:
+        """Cancel any scheduled trailing streaming render."""
+        if self._pending_render_timer is not None:
+            self._pending_render_timer.stop()
+            self._pending_render_timer = None
 
     async def action_delete_msg(self) -> None:
         """Handle the delete message action."""

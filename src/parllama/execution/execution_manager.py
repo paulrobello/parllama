@@ -6,6 +6,7 @@ import asyncio
 import uuid
 from datetime import datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import rich.repr
 from textual.app import App
@@ -14,6 +15,9 @@ from parllama.execution.execution_result import ExecutionResult
 from parllama.execution.execution_template import ExecutionTemplate
 from parllama.execution.import_result import ImportResult
 from parllama.secure_file_ops import SecureFileOperations, SecureFileOpsError
+
+if TYPE_CHECKING:
+    from parllama.settings_manager import Settings
 
 
 @rich.repr.auto
@@ -33,7 +37,7 @@ class ExecutionManager:
         self.history_file: Path | None = None
         self.secure_ops: SecureFileOperations | None = None
 
-    def initialize_from_settings(self, settings) -> None:
+    def initialize_from_settings(self, settings: Settings) -> None:
         """Initialize file paths and secure operations from settings."""
         from parllama.settings_manager import settings as app_settings
 
@@ -45,6 +49,16 @@ class ExecutionManager:
             validate_content=app_settings.validate_file_content,
             sanitize_filenames=app_settings.sanitize_filenames,
         )
+
+    def _log_error(self, msg: str) -> None:
+        """Report an error via the app's log_it mechanism, if available.
+
+        Textual takes over the terminal via the alternate screen buffer, so a
+        bare ``print()`` here would be lost or corrupt the display.
+        """
+        log_it = getattr(self.app, "log_it", None)
+        if callable(log_it):
+            log_it(msg, severity="error")
 
     async def load_templates(self) -> None:
         """Load execution templates from storage."""
@@ -64,14 +78,14 @@ class ExecutionManager:
                 try:
                     template = ExecutionTemplate.from_dict(template_dict)
                     self._templates[template.id] = template
-                except (ValueError, KeyError, TypeError) as e:  # pylint: disable=broad-exception-caught
+                except (ValueError, KeyError, TypeError) as e:
                     # Log error but continue loading other templates
-                    print(f"Error loading template: {e}")
+                    self._log_error(f"Error loading template: {e}")
 
             self._templates_loaded = True
 
         except SecureFileOpsError as e:
-            print(f"Error loading execution templates: {e}")
+            self._log_error(f"Error loading execution templates: {e}")
             # Create default templates as fallback
             await self._create_default_templates()
 
@@ -90,7 +104,7 @@ class ExecutionManager:
             self.secure_ops.write_json_file(self.templates_file, templates_data, atomic=True)
 
         except SecureFileOpsError as e:
-            print(f"Error saving execution templates: {e}")
+            self._log_error(f"Error saving execution templates: {e}")
 
     async def load_execution_history(self) -> None:
         """Load execution history from storage."""
@@ -110,13 +124,13 @@ class ExecutionManager:
                 try:
                     result = ExecutionResult.from_dict(result_dict)
                     self._execution_history.append(result)
-                except (ValueError, KeyError, TypeError) as e:  # pylint: disable=broad-exception-caught
-                    print(f"Error loading execution result: {e}")
+                except (ValueError, KeyError, TypeError) as e:
+                    self._log_error(f"Error loading execution result: {e}")
 
             self._history_loaded = True
 
         except SecureFileOpsError as e:
-            print(f"Error loading execution history: {e}")
+            self._log_error(f"Error loading execution history: {e}")
             self._execution_history = []
             self._history_loaded = True
 
@@ -141,7 +155,7 @@ class ExecutionManager:
             self._execution_history = recent_history
 
         except SecureFileOpsError as e:
-            print(f"Error saving execution history: {e}")
+            self._log_error(f"Error saving execution history: {e}")
 
     async def _create_default_templates(self) -> None:
         """Create default execution templates."""
@@ -298,8 +312,8 @@ class ExecutionManager:
 
                 self._templates[template.id] = template
                 imported_count += 1
-            except (ValueError, KeyError, TypeError) as e:  # pylint: disable=broad-exception-caught
-                print(f"Error importing template: {e}")
+            except (ValueError, KeyError, TypeError) as e:
+                self._log_error(f"Error importing template: {e}")
 
         if imported_count > 0:
             asyncio.create_task(self.save_templates())
@@ -370,7 +384,7 @@ class ExecutionManager:
                 warnings=[],
                 success=False,
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             return ImportResult(
                 total_templates=0,
                 imported_count=0,

@@ -94,7 +94,7 @@ Please update the memory according to the instruction above. Return only the upd
                 self._app.notify(f"Error updating memory: {str(e)}", severity="error")
             # Return original memory if LLM call fails
             return current_memory
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             if self._app:
                 self._app.notify(f"Unexpected error updating memory: {type(e).__name__}: {str(e)}", severity="error")
             return current_memory

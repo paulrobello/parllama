@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime
 
 import httpx
@@ -11,6 +12,8 @@ from semver import Version
 from parllama import __version__
 from parllama.message_sink import MessageSink
 from parllama.settings_manager import settings
+
+logger = logging.getLogger(__name__)
 
 
 class UpdateManager(MessageSink):
@@ -55,14 +58,14 @@ class UpdateManager(MessageSink):
                         timeout=int(settings.notification_timeout_extended),
                     )
                 else:
-                    print(f"New version available: {latest_version}")
+                    logger.info("New version available: %s", latest_version)
             settings.last_version_check = datetime.now(UTC)
             settings.save()
         except (ValueError, TypeError) as e:
             if self.app:
                 self.log_it(e, notify=True, severity="error")
             else:
-                print(e)
+                logger.error("Failed to check for updates: %s", e)
 
 
 _update_manager: UpdateManager | None = None

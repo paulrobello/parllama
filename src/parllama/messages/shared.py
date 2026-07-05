@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from typing import Literal, TypeAlias
 
-# TODO change to enums
+# Note: these are string literals rather than enums so they can be used directly as
+# dict/set keys that round-trip through JSON (session persistence) without a custom
+# encoder/decoder. Revisit only if a shared Enum + JSON codec is introduced project-wide.
 SessionChanges: TypeAlias = set[
     Literal[
         "name",

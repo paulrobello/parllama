@@ -166,6 +166,6 @@ class MainScreen(Screen[None]):
         """Model interact requested event"""
         msg.stop()
 
-    def action_open_mailto(self):
+    def action_open_mailto(self) -> None:
         """Open mailto link."""
         self.app.open_url("mailto:probello@gmail.com")

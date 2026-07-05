@@ -66,11 +66,10 @@ class ChatSession(ChatMessageContainer):
     _salt: bytes | None
     """Used with password to derive the en/decryption key."""
 
-    # pylint: disable=too-many-arguments
     def __init__(
         self,
         *,
-        id: str | None = None,  # pylint: disable=redefined-builtin
+        id: str | None = None,
         name: str,
         llm_config: LlmConfig,
         messages: list[ParllamaChatMessage] | list[dict] | None = None,
@@ -157,7 +156,7 @@ class ChatSession(ChatMessageContainer):
             for m in msgs:
                 self.add_message(ParllamaChatMessage(**m))
             self._loaded = True
-        except (Exception, SecureFileOpsError) as e:  # pylint: disable=broad-exception-caught
+        except (Exception, SecureFileOpsError) as e:  # noqa: BLE001
             self.log_it(f"Error loading session {e}", notify=True, severity="error")
         finally:
             self._batching = False
@@ -387,16 +386,152 @@ class ChatSession(ChatMessageContainer):
         if body.lstrip().startswith("{"):
             try:
                 err_dict = json.loads(body)
-                nested_msg = err_dict.get("error", {}).get("message")
-                if nested_msg:
-                    return str(nested_msg)
-            except (json.JSONDecodeError, ValueError, KeyError):
+                if isinstance(err_dict, dict):
+                    nested_msg = err_dict.get("error", {}).get("message")
+                    if nested_msg:
+                        return str(nested_msg)
+            except (json.JSONDecodeError, ValueError, KeyError, AttributeError):
                 pass
         return err_msg
 
-    # pylint: disable=too-many-branches, too-many-statements
+    @staticmethod
+    def _append_chunk_content(msg: ParllamaChatMessage, content: str | list) -> None:
+        """Append a streamed chunk's text/thinking content onto the message in place.
+
+        Args:
+            msg: The assistant message being built up from the stream.
+            content: The raw ``chunk.content`` value, either a string or a list of
+                content parts (as produced by some providers for multi-part
+                responses, e.g. text + thinking blocks).
+        """
+        if isinstance(content, str):
+            msg.content += content
+        elif isinstance(content, list) and len(content) > 0:
+            part: str | dict[str, Any] = content[0]
+            if isinstance(part, str):
+                msg.content += part
+            else:
+                part_type: str = "?"
+                if "type" in part:
+                    part_type = part["type"]
+                if part_type == "text" and part_type in part:
+                    msg.content += part[part_type]
+                if part_type.startswith("think") and part_type in part:
+                    msg.thinking += part[part_type]
+
+    def _update_stream_stats_from_chunk(self, chunk: BaseMessageChunk, elapsed_time: Any, ttft: float) -> None:
+        """Update ``self._stream_stats`` from a chunk's usage/response metadata, if present.
+
+        Args:
+            chunk: The streamed message chunk from the LLM provider.
+            elapsed_time: Time elapsed since the request started.
+            ttft: Time to first token, in seconds.
+        """
+        if hasattr(chunk, "usage_metadata") and chunk.usage_metadata:  # pyright: ignore [reportAttributeAccessIssue]
+            usage_metadata = chunk.usage_metadata  # pyright: ignore [reportAttributeAccessIssue]
+            self._stream_stats = TokenStats(
+                model=self._llm_config.model_name,
+                created_at=datetime.now(),
+                total_duration=int(elapsed_time.total_seconds()),
+                load_duration=0,
+                prompt_eval_count=usage_metadata["input_tokens"],
+                prompt_eval_duration=0,
+                eval_count=usage_metadata["output_tokens"],
+                eval_duration=int(elapsed_time.total_seconds() - ttft),
+                input_tokens=usage_metadata["input_tokens"],
+                output_tokens=usage_metadata["output_tokens"],
+                total_tokens=usage_metadata["total_tokens"],
+                time_til_first_token=int(ttft),
+            )
+        if hasattr(chunk, "response_metadata"):
+            if "model" in chunk.response_metadata:
+                self._stream_stats = TokenStats(
+                    model=chunk.response_metadata.get("model") or "?",
+                    created_at=chunk.response_metadata.get("created_at") or datetime.now(),
+                    total_duration=chunk.response_metadata.get("total_duration") or 0,
+                    load_duration=chunk.response_metadata.get("load_duration") or 0,
+                    prompt_eval_count=chunk.response_metadata.get("prompt_eval_count") or 0,
+                    prompt_eval_duration=chunk.response_metadata.get("prompt_eval_duration") or 0,
+                    eval_count=chunk.response_metadata.get("eval_count") or 0,
+                    eval_duration=int(chunk.response_metadata.get("eval_duration", 0) / 1_000_000_000) or 0,
+                    input_tokens=0,
+                    output_tokens=0,
+                    total_tokens=0,
+                    time_til_first_token=int(ttft),
+                )
+
+    def _handle_stream_error(self, e: Exception, msg: ParllamaChatMessage) -> str | None:
+        """Log a streaming error and determine the message text to append to ``msg``.
+
+        Some providers (e.g. llama.cpp) raise a benign ``NoneType has no len()``
+        error when a stream ends normally; that case is treated as a clean
+        finish rather than a real error, and a final ``ChatMessage`` is emitted
+        directly here so the caller does not need to.
+
+        Args:
+            e: The exception raised while iterating the stream.
+            msg: The in-progress assistant message associated with the stream.
+
+        Returns:
+            The human-readable error text to append to ``msg.content``, or
+            ``None`` if the error was already handled and no text should be
+            appended.
+        """
+        err_msg = str(e)
+        if self._llm_config.provider == LlmProvider.LLAMACPP and err_msg.startswith(
+            "object of type 'NoneType' has no len()"
+        ):
+            self._emit(ChatMessage(parent_id=self.id, message_id=msg.id, is_final=True))
+            return None
+
+        self.log_it(f"Stream error ({type(e).__name__}): {e}")
+        self.log_it("Error generating message", notify=True, severity="error")
+        return self._parse_llm_error(err_msg)
+
+    def _maybe_trigger_auto_naming(self, is_aborted: bool) -> None:
+        """Request an LLM-generated session name if auto-naming is enabled and due.
+
+        Args:
+            is_aborted: Whether the generation that just completed was aborted;
+                auto-naming is skipped in that case.
+        """
+        if is_aborted or not settings.auto_name_session or not settings.auto_name_session_llm_config:
+            return
+        if self.name_generated:
+            return
+
+        self.name_generated = True
+        user_msg = self.get_first_user_message()
+        ai_msg = self.get_first_ai_message()
+        if user_msg and ai_msg and user_msg.content and ai_msg.content:
+            self.log_it("Auto naming session", notify=True)
+            app = self.app or (self.parent.app if self.parent else None)
+            if app:
+                app.post_message(
+                    SessionAutoNameRequested(
+                        session_id=self.id,
+                        llm_config=LlmConfig.from_json(settings.auto_name_session_llm_config),
+                        context=f"#USER\n{user_msg.content}\n\n#ASSISTANT\n{ai_msg.content}",
+                    )
+                )
+
     async def send_chat(self, from_user: str) -> bool:
-        """Send a chat message to LLM"""
+        """Send a chat message to the configured LLM and stream the response.
+
+        Appends the user's message (if any) to the session, then streams the
+        assistant's reply from the configured LLM, updating the in-progress
+        assistant message as chunks arrive. Handles user-initiated aborts and
+        provider errors, persists the session, and may trigger auto-naming.
+
+        Args:
+            from_user: The user's message content to send. Pass an empty
+                string to continue generation without adding a new user
+                message (e.g. when regenerating a response).
+
+        Returns:
+            True if generation completed normally; False if it was aborted
+            by the user or failed with an error.
+        """
         self._generating = True
         is_aborted = False
         msg: ParllamaChatMessage | None = None
@@ -438,21 +573,7 @@ class ChatSession(ChatMessageContainer):
                         if num_tokens == 0:
                             ttft = elapsed_time.total_seconds()
                         num_tokens += 1
-                        if isinstance(chunk.content, str):
-                            msg.content += chunk.content
-                        elif isinstance(chunk.content, list):
-                            if len(chunk.content) > 0:
-                                part: str | dict[str, Any] = chunk.content[0]
-                                if isinstance(part, str):
-                                    msg.content += part
-                                else:
-                                    part_type: str = "?"
-                                    if "type" in part:
-                                        part_type = part["type"]
-                                    if part_type == "text" and part_type in part:
-                                        msg.content += part[part_type]
-                                    if part_type.startswith("think") and part_type in part:
-                                        msg.thinking += part[part_type]
+                        self._append_chunk_content(msg, chunk.content)
 
                     if self._abort:
                         is_aborted = True
@@ -461,91 +582,26 @@ class ChatSession(ChatMessageContainer):
                             self._emit(ChatGenerationAborted(self.id))
                             self._emit(ChatMessage(parent_id=self.id, message_id=msg.id, is_final=True))
                             stream.close()  # type: ignore
-                        except (OSError, ValueError):  # pylint:disable=broad-except
+                        except (OSError, ValueError):
                             pass
                         finally:
                             self._abort = False
                         break
 
-                    if (
-                        hasattr(chunk, "usage_metadata") and chunk.usage_metadata  # pyright: ignore [reportAttributeAccessIssue]
-                    ):
-                        # self.log_it(chunk)
-                        usage_metadata = (
-                            chunk.usage_metadata  # pyright: ignore [reportAttributeAccessIssue]
-                        )
-                        self._stream_stats = TokenStats(
-                            model=self._llm_config.model_name,
-                            created_at=datetime.now(),
-                            total_duration=int(elapsed_time.total_seconds()),
-                            load_duration=0,
-                            prompt_eval_count=usage_metadata["input_tokens"],
-                            prompt_eval_duration=0,
-                            eval_count=usage_metadata["output_tokens"],
-                            eval_duration=int(elapsed_time.total_seconds() - ttft),
-                            input_tokens=usage_metadata["input_tokens"],
-                            output_tokens=usage_metadata["output_tokens"],
-                            total_tokens=usage_metadata["total_tokens"],
-                            time_til_first_token=int(ttft),
-                        )
-                        # self.log_it(self._stream_stats)
-                    if hasattr(chunk, "response_metadata"):
-                        if "model" in chunk.response_metadata:
-                            self._stream_stats = TokenStats(
-                                model=chunk.response_metadata.get("model") or "?",
-                                created_at=chunk.response_metadata.get("created_at") or datetime.now(),
-                                total_duration=chunk.response_metadata.get("total_duration") or 0,
-                                load_duration=chunk.response_metadata.get("load_duration") or 0,
-                                prompt_eval_count=chunk.response_metadata.get("prompt_eval_count") or 0,
-                                prompt_eval_duration=chunk.response_metadata.get("prompt_eval_duration") or 0,
-                                eval_count=chunk.response_metadata.get("eval_count") or 0,
-                                eval_duration=int(chunk.response_metadata.get("eval_duration", 0) / 1_000_000_000) or 0,
-                                input_tokens=0,
-                                output_tokens=0,
-                                total_tokens=0,
-                                time_til_first_token=int(ttft),
-                            )
+                    self._update_stream_stats_from_chunk(chunk, elapsed_time, ttft)
                     self._emit(ChatMessage(parent_id=self.id, message_id=msg.id, is_final=not chunk.content))
-            except Exception as e:
-                err_msg = str(e)
-                if self._llm_config.provider == LlmProvider.LLAMACPP and err_msg.startswith(
-                    "object of type 'NoneType' has no len()"
-                ):
-                    self._emit(ChatMessage(parent_id=self.id, message_id=msg.id, is_final=True))
-                else:
-                    self.log_it(f"Stream error ({type(e).__name__}): {e}")
-                    self.log_it("Error generating message", notify=True, severity="error")
-                    if msg is not None:
-                        err_msg = self._parse_llm_error(err_msg)
-
-                        msg.content += f"\n\n{err_msg}"
-                        msg.content = msg.content.strip()
+            except Exception as e:  # noqa: BLE001
+                err_msg = self._handle_stream_error(e, msg)
+                if err_msg is not None:
+                    msg.content += f"\n\n{err_msg}"
+                    msg.content = msg.content.strip()
 
             self._accumulate_cost()
             self._changes.add("messages")
             self.save()
 
-            if (
-                not is_aborted
-                and settings.auto_name_session
-                and settings.auto_name_session_llm_config
-                and not self.name_generated
-            ):
-                self.name_generated = True
-                user_msg = self.get_first_user_message()
-                ai_msg = self.get_first_ai_message()
-                if user_msg and ai_msg and user_msg.content and ai_msg.content:
-                    self.log_it("Auto naming session", notify=True)
-                    app = self.app or (self.parent.app if self.parent else None)
-                    if app:
-                        app.post_message(
-                            SessionAutoNameRequested(
-                                session_id=self.id,
-                                llm_config=LlmConfig.from_json(settings.auto_name_session_llm_config),
-                                context=f"#USER\n{user_msg.content}\n\n#ASSISTANT\n{ai_msg.content}",
-                            )
-                        )
-        except Exception as e:  # pylint: disable=broad-except
+            self._maybe_trigger_auto_naming(is_aborted)
+        except Exception as e:  # noqa: BLE001
             self.log_it(f"Chat generation error ({type(e).__name__}): {e}")
             self.log_it("Error generating message", notify=True, severity="error")
             if msg is not None:
@@ -588,7 +644,13 @@ class ChatSession(ChatMessageContainer):
         return self.id != other.id
 
     def to_json(self) -> str:
-        """Convert the chat session to JSON"""
+        """Serialize the chat session to a JSON string.
+
+        Returns:
+            A JSON string containing session metadata, encrypted salt/key
+            fields (if a password is set), cost/usage tracking, and all
+            messages. Suitable for round-tripping through :meth:`from_json`.
+        """
         return json.dumps(
             {
                 "id": self.id,
@@ -608,7 +670,24 @@ class ChatSession(ChatMessageContainer):
 
     @staticmethod
     def from_json(json_data: str, load_messages: bool = False) -> ChatSession:
-        """Convert JSON to chat session"""
+        """Build a ChatSession from its JSON string representation.
+
+        Supports both the current session format and older formats (e.g.
+        sessions saved before ``llm_config`` was introduced).
+
+        Args:
+            json_data: The session data as a JSON string, as produced by
+                :meth:`to_json`.
+            load_messages: Whether to parse and attach the session's messages.
+                Pass False to load session metadata only (faster for listing).
+
+        Returns:
+            The reconstructed ChatSession instance.
+
+        Raises:
+            orjson.JSONDecodeError: If ``json_data`` is not valid JSON.
+            KeyError: If required fields (e.g. ``last_updated``) are missing.
+        """
         data: dict = json.loads(json_data)
         if load_messages:
             messages = data["messages"]
@@ -638,20 +717,29 @@ class ChatSession(ChatMessageContainer):
         session.name_generated = True
 
         if salt := data.get("__salt__"):
-            session._salt = base64.b64decode(salt)  # pylint: disable=protected-access
+            session._salt = base64.b64decode(salt)
         else:
-            session._salt = None  # pylint: disable=protected-access
+            session._salt = None
 
-        session._key_secure = data.get("__key__")  # pylint: disable=protected-access
+        session._key_secure = data.get("__key__")
 
-        session._total_cost = data.get("total_cost", 0.0)  # pylint: disable=protected-access
-        session._total_usage = data.get("total_usage", {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0})  # pylint: disable=protected-access
+        session._total_cost = data.get("total_cost", 0.0)
+        session._total_usage = data.get("total_usage", {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0})
 
         return session
 
     @staticmethod
     def load_from_file(filename: str) -> ChatSession | None:
-        """Load a chat session from a file"""
+        """Load a chat session from a JSON file in the configured chat directory.
+
+        Args:
+            filename: The session file's name (e.g. ``"<id>.json"``), relative
+                to ``settings.chat_dir``.
+
+        Returns:
+            The loaded ChatSession, or None if the file is missing, fails
+            security validation, or cannot be read.
+        """
         try:
             from parllama.settings_manager import settings
 
@@ -678,7 +766,17 @@ class ChatSession(ChatMessageContainer):
         )
 
     def save(self) -> bool:
-        """Save the chat session to a file"""
+        """Persist the chat session to disk, if there are unsaved changes to save.
+
+        Notifies listeners of what changed, then atomically writes the
+        session to its JSON file. Saving is skipped while batching, when
+        there are no pending changes, when ``settings.no_save_chat`` is set,
+        or when the session is not yet valid (missing name/model or empty).
+
+        Returns:
+            True if the session was written to disk; False if saving was
+            skipped or failed.
+        """
         if self._batching:
             # self.log_it(f"CS is batching, not notifying: {self.name}")
             return False
@@ -751,6 +849,14 @@ class ChatSession(ChatMessageContainer):
         Strips any trailing abort suffix from the message, removes
         any messages that follow it, and appends streamed content to
         the existing message.
+
+        Args:
+            message_id: The id of the assistant message to continue from.
+
+        Returns:
+            True if generation completed normally; False if a generation was
+            already in progress, ``message_id`` was not found or was not an
+            assistant message, or generation was aborted.
         """
         if self._generating:
             return False
@@ -801,21 +907,7 @@ class ChatSession(ChatMessageContainer):
                         if num_tokens == 0:
                             ttft = elapsed_time.total_seconds()
                         num_tokens += 1
-                        if isinstance(chunk.content, str):
-                            msg.content += chunk.content
-                        elif isinstance(chunk.content, list):
-                            if len(chunk.content) > 0:
-                                part: str | dict[str, Any] = chunk.content[0]
-                                if isinstance(part, str):
-                                    msg.content += part
-                                else:
-                                    part_type: str = "?"
-                                    if "type" in part:
-                                        part_type = part["type"]
-                                    if part_type == "text" and part_type in part:
-                                        msg.content += part[part_type]
-                                    if part_type.startswith("think") and part_type in part:
-                                        msg.thinking += part[part_type]
+                        self._append_chunk_content(msg, chunk.content)
 
                     if self._abort:
                         is_aborted = True
@@ -824,57 +916,17 @@ class ChatSession(ChatMessageContainer):
                             self._emit(ChatGenerationAborted(self.id))
                             self._emit(ChatMessage(parent_id=self.id, message_id=msg.id, is_final=True))
                             stream.close()  # type: ignore
-                        except (OSError, ValueError):  # pylint:disable=broad-exception-caught
+                        except (OSError, ValueError):
                             pass
                         finally:
                             self._abort = False
                         break
 
-                    if (
-                        hasattr(chunk, "usage_metadata") and chunk.usage_metadata  # pyright: ignore [reportAttributeAccessIssue]
-                    ):
-                        usage_metadata = chunk.usage_metadata  # pyright: ignore [reportAttributeAccessIssue]
-                        self._stream_stats = TokenStats(
-                            model=self._llm_config.model_name,
-                            created_at=datetime.now(),
-                            total_duration=int(elapsed_time.total_seconds()),
-                            load_duration=0,
-                            prompt_eval_count=usage_metadata["input_tokens"],
-                            prompt_eval_duration=0,
-                            eval_count=usage_metadata["output_tokens"],
-                            eval_duration=int(elapsed_time.total_seconds() - ttft),
-                            input_tokens=usage_metadata["input_tokens"],
-                            output_tokens=usage_metadata["output_tokens"],
-                            total_tokens=usage_metadata["total_tokens"],
-                            time_til_first_token=int(ttft),
-                        )
-                    if hasattr(chunk, "response_metadata"):
-                        if "model" in chunk.response_metadata:
-                            self._stream_stats = TokenStats(
-                                model=chunk.response_metadata.get("model") or "?",
-                                created_at=chunk.response_metadata.get("created_at") or datetime.now(),
-                                total_duration=chunk.response_metadata.get("total_duration") or 0,
-                                load_duration=chunk.response_metadata.get("load_duration") or 0,
-                                prompt_eval_count=chunk.response_metadata.get("prompt_eval_count") or 0,
-                                prompt_eval_duration=chunk.response_metadata.get("prompt_eval_duration") or 0,
-                                eval_count=chunk.response_metadata.get("eval_count") or 0,
-                                eval_duration=int(chunk.response_metadata.get("eval_duration", 0) / 1_000_000_000) or 0,
-                                input_tokens=0,
-                                output_tokens=0,
-                                total_tokens=0,
-                                time_til_first_token=int(ttft),
-                            )
+                    self._update_stream_stats_from_chunk(chunk, elapsed_time, ttft)
                     self._emit(ChatMessage(parent_id=self.id, message_id=msg.id, is_final=not chunk.content))
-            except Exception as e:
-                err_msg = str(e)
-                if self._llm_config.provider == LlmProvider.LLAMACPP and err_msg.startswith(
-                    "object of type 'NoneType' has no len()"
-                ):
-                    self._emit(ChatMessage(parent_id=self.id, message_id=msg.id, is_final=True))
-                else:
-                    self.log_it(f"Stream error ({type(e).__name__}): {e}")
-                    self.log_it("Error generating message", notify=True, severity="error")
-                    err_msg = self._parse_llm_error(err_msg)
+            except Exception as e:  # noqa: BLE001
+                err_msg = self._handle_stream_error(e, msg)
+                if err_msg is not None:
                     msg.content += f"\n\n{err_msg}"
                     msg.content = msg.content.strip()
                     self._emit(ChatMessage(parent_id=self.id, message_id=msg.id, is_final=True))
@@ -883,7 +935,7 @@ class ChatSession(ChatMessageContainer):
             self._changes.add("messages")
             self.save()
 
-        except Exception as e:  # pylint: disable=broad-exception-caught
+        except Exception as e:  # noqa: BLE001
             self.log_it(f"Continue generation error ({type(e).__name__}): {e}")
             self.log_it("Error generating message", notify=True, severity="error")
             err_msg = self._parse_llm_error(str(e))

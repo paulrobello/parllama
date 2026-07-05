@@ -1151,12 +1151,14 @@ stateDiagram-v2
 
 1. **API Key Protection**:
    - Environment variables
-   - Encrypted secrets vault
+   - Encrypted secrets vault (PBKDF2-HMAC-SHA256 key derivation + AES-GCM encryption, see `secrets_manager.py`; unlockable at startup via `PARLLAMA_VAULT_KEY`)
    - Separate storage from settings
 
 2. **Session Encryption**: Optional password protection
 3. **Input Validation**: URL and path validation
 4. **Secure Defaults**: Conservative security settings
+
+**Note:** The vault's manager/encryption logic is implemented and used programmatically, but the in-app "Secrets" tab UI (`SecretsView`) is currently disabled/in-progress — its `TabPane` is commented out in `src/parllama/screens/main_screen.py`. There is currently no interactive UI screen for managing vault secrets.
 
 ## Execution and Template System
 

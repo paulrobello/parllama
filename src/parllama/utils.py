@@ -46,7 +46,7 @@ valid_tabs: list[TabType] = [
 
 def mk_field_button(
     *,
-    id: str,  # pylint: disable=redefined-builtin
+    id: str,
     classes: str = "",
     emoji: str,
     tooltip: str = "",
@@ -61,7 +61,7 @@ def mk_field_button(
 
 def mk_trash_button(
     *,
-    id: str = "delete",  # pylint: disable=redefined-builtin
+    id: str = "delete",
     classes: str = "",
     tooltip: str = "Delete",
 ) -> Button:
@@ -77,7 +77,7 @@ def mk_trash_button(
 
 def mk_edit_button(
     *,
-    id: str = "edit",  # pylint: disable=redefined-builtin
+    id: str = "edit",
     classes: str = "",
     tooltip: str = "Edit",
 ) -> Button:
@@ -92,7 +92,7 @@ def mk_edit_button(
 
 def mk_add_button(
     *,
-    id: str = "add",  # pylint: disable=redefined-builtin
+    id: str = "add",
     classes: str = "",
     tooltip: str = "Add",
 ) -> Button:
@@ -120,8 +120,14 @@ def clamp_input_value(input_widget: Input, min_value: int | None = None, max_val
 eff_word_list_cache: list[str] = []
 
 
-def get_args() -> Namespace:
+def get_args(argv: list[str] | None = None) -> Namespace:
     """Parse and return the command line arguments.
+
+    Args:
+        argv: Explicit argument list to parse. When ``None``, argparse falls
+            back to the real process ``sys.argv[1:]``. Library/settings code
+            should always pass an explicit list (e.g. ``[]``) so it never
+            implicitly consumes the host process's argv.
 
     Returns:
             The result of parsing the arguments.
@@ -238,7 +244,7 @@ def get_args() -> Namespace:
     )
 
     # Finally, parse the command line.
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
 def escape_brackets(v: str) -> str:

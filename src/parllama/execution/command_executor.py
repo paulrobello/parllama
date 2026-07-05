@@ -40,6 +40,8 @@ class CommandExecutor:
         start_time = time.time()
         temp_files = []
 
+        background_cleanup_scheduled = False
+
         try:
             # Security validation
             validation_errors = self._validate_execution(template, content)
@@ -63,7 +65,7 @@ class CommandExecutor:
             argv = self._build_argv(template, temp_file_path)
 
             # Execute command
-            result = await self._execute_command(
+            result, background_cleanup_scheduled = await self._execute_command(
                 argv=argv,
                 template=template,
                 content=content,
@@ -84,7 +86,7 @@ class CommandExecutor:
                 execution_time=time.time() - start_time,
                 temp_files_created=temp_files,
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             return ExecutionResult(
                 template_id=template.id,
                 template_name=template.name,
@@ -97,8 +99,13 @@ class CommandExecutor:
             )
 
         finally:
-            # Cleanup temp files
-            await self._cleanup_temp_files(temp_files)
+            # Foreground executions have already awaited communicate(), so the temp
+            # file is safe to remove now. Background executions return as soon as the
+            # subprocess is launched, so cleanup is deferred to _wait_and_cleanup()
+            # (scheduled inside _execute_background) until the process actually exits,
+            # otherwise the temp file can be unlinked before the child opens it.
+            if not background_cleanup_scheduled:
+                await self._cleanup_temp_files(temp_files)
 
     def _validate_execution(self, template: ExecutionTemplate, content: str) -> list[str]:
         """Validate that execution is safe and allowed."""
@@ -189,8 +196,14 @@ class CommandExecutor:
         template: ExecutionTemplate,
         content: str,
         temp_files: list[str],
-    ) -> ExecutionResult:
-        """Execute the command safely using subprocess."""
+    ) -> tuple[ExecutionResult, bool]:
+        """Execute the command safely using subprocess.
+
+        Returns:
+            A tuple of the execution result and a flag indicating whether temp-file
+            cleanup was already scheduled for a background process (in which case the
+            caller must not clean up temp files itself).
+        """
         command_display = " ".join(argv)
         try:
             # Prepare execution environment
@@ -213,32 +226,37 @@ class CommandExecutor:
 
             # Execute command
             if template.background:
-                result = await self._execute_background(argv, env, working_dir, template, content, temp_files)
-            else:
-                result = await self._execute_foreground(argv, env, working_dir, template, content, temp_files)
+                return await self._execute_background(argv, env, working_dir, template, content, temp_files)
 
-            return result
+            result = await self._execute_foreground(argv, env, working_dir, template, content, temp_files)
+            return result, False
 
         except subprocess.TimeoutExpired:
-            return ExecutionResult(
-                template_id=template.id,
-                template_name=template.name,
-                command=command_display,
-                content=content,
-                exit_code=-1,
-                error_message=f"Command timed out after {template.timeout} seconds",
-                temp_files_created=temp_files,
+            return (
+                ExecutionResult(
+                    template_id=template.id,
+                    template_name=template.name,
+                    command=command_display,
+                    content=content,
+                    exit_code=-1,
+                    error_message=f"Command timed out after {template.timeout} seconds",
+                    temp_files_created=temp_files,
+                ),
+                False,
             )
 
-        except Exception as e:
-            return ExecutionResult(
-                template_id=template.id,
-                template_name=template.name,
-                command=command_display,
-                content=content,
-                exit_code=-1,
-                error_message=f"Execution error ({type(e).__name__}): {str(e)}",
-                temp_files_created=temp_files,
+        except Exception as e:  # noqa: BLE001
+            return (
+                ExecutionResult(
+                    template_id=template.id,
+                    template_name=template.name,
+                    command=command_display,
+                    content=content,
+                    exit_code=-1,
+                    error_message=f"Execution error ({type(e).__name__}): {str(e)}",
+                    temp_files_created=temp_files,
+                ),
+                False,
             )
 
     async def _execute_foreground(
@@ -294,7 +312,7 @@ class CommandExecutor:
         template: ExecutionTemplate,
         content: str,
         temp_files: list[str],
-    ) -> ExecutionResult:
+    ) -> tuple[ExecutionResult, bool]:
         """Execute command in background (non-blocking)."""
         process = await asyncio.create_subprocess_exec(
             *argv,
@@ -307,8 +325,12 @@ class CommandExecutor:
         # Track background process for cleanup
         self._active_processes.add(process)
 
+        # Defer temp-file cleanup until the process actually exits, since it may not
+        # have opened the temp file yet by the time this coroutine returns.
+        asyncio.create_task(self._wait_and_cleanup(process, temp_files))
+
         command_display = " ".join(argv)
-        return ExecutionResult(
+        result = ExecutionResult(
             template_id=template.id,
             template_name=template.name,
             command=command_display,
@@ -319,6 +341,20 @@ class CommandExecutor:
             working_directory=str(working_dir),
             temp_files_created=temp_files,
         )
+        return result, True
+
+    async def _wait_and_cleanup(self, process: asyncio.subprocess.Process, temp_files: list[str]) -> None:
+        """Wait for a background process to exit, then release its resources.
+
+        Removes the process from ``_active_processes`` and deletes its temp files
+        only after the process has actually exited, avoiding the race where the temp
+        file is unlinked before the subprocess has a chance to open it.
+        """
+        try:
+            await process.wait()
+        finally:
+            self._active_processes.discard(process)
+            await self._cleanup_temp_files(temp_files)
 
     async def _cleanup_temp_files(self, temp_files: list[str]) -> None:
         """Clean up temporary files."""

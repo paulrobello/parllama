@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import base64
+import hmac
 import os
 import stat
 import threading
 from pathlib import Path
+from types import TracebackType
 from typing import Any
 
 # Platform-specific imports
@@ -120,12 +122,16 @@ class SecretsManager(MessageSink):
         """Context manager for file locking across platforms."""
 
         class FileLock:
+            """Context manager that opens a file and applies a platform-specific advisory lock."""
+
             def __init__(self, file_path: Path, mode: str):
+                """Store the target file path and open mode for later use in __enter__."""
                 self.file_path = file_path
                 self.mode = mode
                 self.file = None
 
             def __enter__(self):
+                """Open the file and acquire an exclusive advisory lock, returning the file object."""
                 try:
                     self.file = open(self.file_path, self.mode, encoding="utf-8")
 
@@ -149,7 +155,13 @@ class SecretsManager(MessageSink):
                         self.file.close()
                     raise e
 
-            def __exit__(self, exc_type, exc_val, exc_tb):
+            def __exit__(
+                self,
+                exc_type: type[BaseException] | None,
+                exc_val: BaseException | None,
+                exc_tb: TracebackType | None,
+            ):
+                """Release the advisory lock (if any) and close the file."""
                 if self.file:
                     try:
                         # Platform-specific file unlocking
@@ -169,7 +181,15 @@ class SecretsManager(MessageSink):
         return FileLock(file_path, mode)
 
     def _secure_clear_bytes(self, data: bytes) -> None:
-        """Securely clear bytes from memory."""
+        """Best-effort overwrite of a bytearray copy of ``data``.
+
+        WARNING: This does NOT guarantee the original ``bytes``/``str`` object
+        is erased from the Python heap. Python strings and bytes are immutable
+        and may be interned or referenced elsewhere; the interpreter's memory
+        allocator, garbage collector, and any copies made along the way are
+        outside this method's control. Treat this as defense-in-depth only,
+        never as a substitute for proper secret lifetime management.
+        """
         if data is None:
             return
 
@@ -194,7 +214,15 @@ class SecretsManager(MessageSink):
             self.log_it(f"Warning: Could not securely clear bytes from memory: {e}")
 
     def _secure_clear_string(self, data: str) -> None:
-        """Securely clear string from memory."""
+        """Best-effort overwrite of a bytearray copy of ``data``.
+
+        WARNING: This does NOT guarantee the original string is erased from
+        the Python heap. Python strings are immutable and may be interned or
+        referenced elsewhere; the interpreter's memory allocator, garbage
+        collector, and any copies made along the way are outside this
+        method's control. Treat this as defense-in-depth only, never as a
+        substitute for proper secret lifetime management.
+        """
         if data is None:
             return
 
@@ -217,7 +245,12 @@ class SecretsManager(MessageSink):
             self.log_it(f"Warning: Could not securely clear string from memory: {e}")
 
     def _secure_clear_dict(self, data: dict) -> None:
-        """Securely clear dictionary values from memory."""
+        """Best-effort recursive overwrite of string/bytes values in ``data``.
+
+        WARNING: Like ``_secure_clear_string``/``_secure_clear_bytes``, this is
+        best-effort only and does NOT guarantee the original values are erased
+        from the Python heap.
+        """
         if data is None:
             return
 
@@ -441,7 +474,8 @@ class SecretsManager(MessageSink):
             if self._key_secure is None:
                 return False
             decrypted_password = self._decrypt(self._key_secure, self._derive_key(password))
-            is_valid = decrypted_password == password
+            # Use a constant-time comparison to avoid leaking password length/content via timing.
+            is_valid = hmac.compare_digest(decrypted_password.encode("utf-8"), password.encode("utf-8"))
 
             # Securely clear the decrypted password from memory
             self._secure_clear_string(decrypted_password)
@@ -738,12 +772,19 @@ class SecretsManager(MessageSink):
         return key in self._secrets
 
 
+GCM_IV_LEN = 12
+"""Length in bytes of the AES-GCM initialization vector (nonce)."""
+GCM_TAG_LEN = 16
+"""Length in bytes of the AES-GCM authentication tag."""
+
+
 def derive_key(password: str, salt: bytes) -> bytes:
     """Derives a key from the given password and salt."""
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
         salt=salt,
+        # 600,000 iterations is the OWASP-recommended minimum for PBKDF2-HMAC-SHA256.
         iterations=600000,
         backend=default_backend(),
     )
@@ -753,7 +794,7 @@ def derive_key(password: str, salt: bytes) -> bytes:
 def encrypt(plaintext: str, key: bytes) -> str:
     """Encrypts plaintext with the given key bytes."""
     try:
-        iv = os.urandom(12)
+        iv = os.urandom(GCM_IV_LEN)
         cipher = Cipher(algorithms.AES(key), modes.GCM(iv), backend=default_backend())
         encryptor = cipher.encryptor()
         encrypted = encryptor.update(plaintext.encode("utf-8")) + encryptor.finalize()
@@ -766,7 +807,11 @@ def decrypt(ciphertext: str, key: bytes) -> str:
     """Decrypts ciphertext with the given key bytes."""
     try:
         decoded = base64.b64decode(ciphertext)
-        iv, tag, encrypted = decoded[:12], decoded[12:28], decoded[28:]
+        iv, tag, encrypted = (
+            decoded[:GCM_IV_LEN],
+            decoded[GCM_IV_LEN : GCM_IV_LEN + GCM_TAG_LEN],
+            decoded[GCM_IV_LEN + GCM_TAG_LEN :],
+        )
         cipher = Cipher(
             algorithms.AES(key),
             modes.GCM(iv, tag),

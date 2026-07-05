@@ -11,8 +11,10 @@ itself is a pure data model with optional I/O methods.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import shutil
+import tempfile
 from argparse import Namespace
 from dataclasses import dataclass
 from datetime import datetime
@@ -47,6 +49,8 @@ from parllama.settings.config_groups import (
 )
 from parllama.utils import TabType, get_args, valid_tabs
 from parllama.validators.file_validator import FileValidationError
+
+logger = logging.getLogger(__name__)
 
 old_data_dir = Path("~/.parllama").expanduser()
 
@@ -141,13 +145,21 @@ class Settings(BaseModel):
         This is called lazily on first access to the module-level ``settings``
         singleton.  It is safe to call multiple times -- subsequent calls are
         no-ops.
+
+        When no ``Namespace`` is supplied, this never parses the real process
+        ``sys.argv`` -- doing so implicitly here would consume argv belonging
+        to whatever host process triggered the lazy singleton (e.g. pytest's
+        own flags during test collection). Instead it falls back to a
+        defaults ``Namespace`` built from an empty argument list. Real CLI
+        argv parsing must be performed explicitly by the caller (the actual
+        CLI entry point) and passed in via ``args``.
         """
         if self._initialized:
             return
         self._initialized = True
 
         if args is None:
-            args = get_args()
+            args = get_args([])
 
         self._setup_directories(args)
         self.load_from_file()
@@ -327,18 +339,39 @@ class Settings(BaseModel):
                 atomic=True,
                 create_dirs=False,  # Already created above
                 indent=4,
+                restrict_permissions=True,  # settings.json holds plaintext provider API keys
             )
         except SecureFileOpsError as e:
             # Log the error but don't crash the application
-            print(f"Warning: Failed to save settings securely: {e}")
-            # Fallback to basic save without validation for critical settings
+            logger.warning(f"Failed to save settings securely: {e}")
+            # Fallback to an atomic save without the secure-ops validation layer.
             try:
                 settings_data = self.model_dump()
                 _convert_paths_to_strings(settings_data)
-                with open(self.settings_file, "w", encoding="utf-8") as f:
-                    json.dump(settings_data, f, indent=4)
+                temp_path: Path | None = None
+                try:
+                    with tempfile.NamedTemporaryFile(
+                        mode="w",
+                        encoding="utf-8",
+                        dir=self.settings_file.parent,
+                        prefix=f".tmp_{self.settings_file.name}_",
+                        suffix=".tmp",
+                        delete=False,
+                    ) as tmp_file:
+                        temp_path = Path(tmp_file.name)
+                        json.dump(settings_data, tmp_file, indent=4)
+                        tmp_file.flush()
+                        os.fsync(tmp_file.fileno())
+                    temp_path.replace(self.settings_file)
+                    temp_path = None
+                    if os.name != "nt":
+                        self.settings_file.chmod(0o600)
+                except OSError:
+                    if temp_path and temp_path.exists():
+                        temp_path.unlink(missing_ok=True)
+                    raise
             except OSError as fallback_error:
-                print(f"Error: Failed to save settings: {fallback_error}")
+                logger.error(f"Failed to save settings: {fallback_error}")
 
     def ensure_cache_folder(self) -> None:
         """Ensure the cache folder exists."""
@@ -400,84 +433,144 @@ class Settings(BaseModel):
 
     @property
     def provider_api_keys(self) -> dict[LlmProvider, str | None]:
+        """Get the per-provider API key map.
+
+        Returns:
+            Mapping of ``LlmProvider`` to its configured API key (or ``None``).
+        """
         return self.provider.provider_api_keys
 
     @provider_api_keys.setter
     def provider_api_keys(self, value: dict[LlmProvider, str | None]) -> None:
+        """Set the per-provider API key map."""
         self.provider.provider_api_keys = value
 
     @property
     def provider_base_urls(self) -> dict[LlmProvider, str | None]:
+        """Get the per-provider base URL overrides.
+
+        Returns:
+            Mapping of ``LlmProvider`` to its configured base URL (or ``None``).
+        """
         return self.provider.provider_base_urls
 
     @provider_base_urls.setter
     def provider_base_urls(self, value: dict[LlmProvider, str | None]) -> None:
+        """Set the per-provider base URL overrides."""
         self.provider.provider_base_urls = value
 
     @property
     def provider_cache_hours(self) -> dict[LlmProvider, int]:
+        """Get the per-provider model-list cache duration.
+
+        Returns:
+            Mapping of ``LlmProvider`` to its cache duration in hours.
+        """
         return self.provider.provider_cache_hours
 
     @provider_cache_hours.setter
     def provider_cache_hours(self, value: dict[LlmProvider, int]) -> None:
+        """Set the per-provider model-list cache duration."""
         self.provider.provider_cache_hours = value
 
     @property
     def disabled_providers(self) -> dict[LlmProvider, bool]:
+        """Get the per-provider disabled flags.
+
+        Returns:
+            Mapping of ``LlmProvider`` to whether it is disabled.
+        """
         return self.provider.disabled_providers
 
     @disabled_providers.setter
     def disabled_providers(self, value: dict[LlmProvider, bool]) -> None:
+        """Set the per-provider disabled flags."""
         self.provider.disabled_providers = value
 
     # --- OllamaConfig delegation ----------------------------------------------
 
     @property
     def ollama_host(self) -> str:
+        """Get the configured Ollama server URL.
+
+        Returns:
+            The Ollama server URL.
+        """
         return self.ollama.ollama_host
 
     @ollama_host.setter
     def ollama_host(self, value: str) -> None:
+        """Set the configured Ollama server URL."""
         self.ollama.ollama_host = value
 
     @property
     def ollama_ps_poll_interval(self) -> int:
+        """Get the ``ollama ps`` poll interval in seconds.
+
+        Returns:
+            Poll interval in seconds (``0`` disables polling).
+        """
         return self.ollama.ollama_ps_poll_interval
 
     @ollama_ps_poll_interval.setter
     def ollama_ps_poll_interval(self, value: int) -> None:
+        """Set the ``ollama ps`` poll interval in seconds."""
         self.ollama.ollama_ps_poll_interval = value
 
     @property
     def load_local_models_on_startup(self) -> bool:
+        """Get whether local models are loaded on startup.
+
+        Returns:
+            True if local models should be loaded on startup.
+        """
         return self.ollama.load_local_models_on_startup
 
     @load_local_models_on_startup.setter
     def load_local_models_on_startup(self, value: bool) -> None:
+        """Set whether local models are loaded on startup."""
         self.ollama.load_local_models_on_startup = value
 
     @property
     def site_models_namespace(self) -> str:
+        """Get the Ollama site models namespace filter.
+
+        Returns:
+            The configured namespace filter.
+        """
         return self.ollama.site_models_namespace
 
     @site_models_namespace.setter
     def site_models_namespace(self, value: str) -> None:
+        """Set the Ollama site models namespace filter."""
         self.ollama.site_models_namespace = value
 
     @property
     def local_model_sort(self) -> str:
+        """Get the sort order for the local models list.
+
+        Returns:
+            The configured sort order.
+        """
         return self.ollama.local_model_sort
 
     @local_model_sort.setter
     def local_model_sort(self, value: str) -> None:
+        """Set the sort order for the local models list."""
         self.ollama.local_model_sort = value
 
     @property
     def site_model_sort(self) -> str:
+        """Get the sort order for the site models list.
+
+        Returns:
+            The configured sort order.
+        """
         return self.ollama.site_model_sort
 
     @site_model_sort.setter
     def site_model_sort(self, value: str) -> None:
+        """Set the sort order for the site models list."""
         self.ollama.site_model_sort = value
 
     # --- UIConfig delegation --------------------------------------------------
@@ -566,156 +659,270 @@ class Settings(BaseModel):
 
     @property
     def auto_name_session(self) -> bool:
+        """Get whether chat sessions are auto-named using an LLM.
+
+        Returns:
+            True if sessions should be auto-named.
+        """
         return self.chat.auto_name_session
 
     @auto_name_session.setter
     def auto_name_session(self, value: bool) -> None:
+        """Set whether chat sessions are auto-named using an LLM."""
         self.chat.auto_name_session = value
 
     @property
     def auto_name_session_llm_config(self) -> dict | None:
+        """Get the LLM config used for auto-naming chat sessions.
+
+        Returns:
+            The LLM config dict, or ``None`` if unset.
+        """
         return self.chat.auto_name_session_llm_config
 
     @auto_name_session_llm_config.setter
     def auto_name_session_llm_config(self, value: dict | None) -> None:
+        """Set the LLM config used for auto-naming chat sessions."""
         self.chat.auto_name_session_llm_config = value
 
     @property
     def chat_tab_max_length(self) -> int:
+        """Get the maximum length of a chat tab title.
+
+        Returns:
+            Maximum number of characters shown in a chat tab title.
+        """
         return self.chat.chat_tab_max_length
 
     @chat_tab_max_length.setter
     def chat_tab_max_length(self, value: int) -> None:
+        """Set the maximum length of a chat tab title."""
         self.chat.chat_tab_max_length = value
 
     @property
     def return_to_single_line_on_submit(self) -> bool:
+        """Get whether the chat input returns to a single line after submit.
+
+        Returns:
+            True if the input collapses to a single line after submit.
+        """
         return self.chat.return_to_single_line_on_submit
 
     @return_to_single_line_on_submit.setter
     def return_to_single_line_on_submit(self, value: bool) -> None:
+        """Set whether the chat input returns to a single line after submit."""
         self.chat.return_to_single_line_on_submit = value
 
     @property
     def always_show_session_config(self) -> bool:
+        """Get whether the session config panel is always shown.
+
+        Returns:
+            True if the session config panel should always be shown.
+        """
         return self.chat.always_show_session_config
 
     @always_show_session_config.setter
     def always_show_session_config(self, value: bool) -> None:
+        """Set whether the session config panel is always shown."""
         self.chat.always_show_session_config = value
 
     @property
     def close_session_config_on_submit(self) -> bool:
+        """Get whether the session config panel closes after submit.
+
+        Returns:
+            True if the session config panel should close on submit.
+        """
         return self.chat.close_session_config_on_submit
 
     @close_session_config_on_submit.setter
     def close_session_config_on_submit(self, value: bool) -> None:
+        """Set whether the session config panel closes after submit."""
         self.chat.close_session_config_on_submit = value
 
     @property
     def save_chat_input_history(self) -> bool:
+        """Get whether chat input history is persisted.
+
+        Returns:
+            True if chat input history should be saved.
+        """
         return self.chat.save_chat_input_history
 
     @save_chat_input_history.setter
     def save_chat_input_history(self, value: bool) -> None:
+        """Set whether chat input history is persisted."""
         self.chat.save_chat_input_history = value
 
     @property
     def chat_input_history_length(self) -> int:
+        """Get the maximum number of retained chat input history entries.
+
+        Returns:
+            Maximum number of chat input history entries.
+        """
         return self.chat.chat_input_history_length
 
     @chat_input_history_length.setter
     def chat_input_history_length(self, value: int) -> None:
+        """Set the maximum number of retained chat input history entries."""
         self.chat.chat_input_history_length = value
 
     # --- ExecutionConfig delegation -------------------------------------------
 
     @property
     def execution_enabled(self) -> bool:
+        """Get whether command template execution is enabled.
+
+        Returns:
+            True if execution is enabled.
+        """
         return self.execution.execution_enabled
 
     @execution_enabled.setter
     def execution_enabled(self, value: bool) -> None:
+        """Set whether command template execution is enabled."""
         self.execution.execution_enabled = value
 
     @property
     def execution_timeout_seconds(self) -> int:
+        """Get the execution timeout in seconds.
+
+        Returns:
+            Timeout in seconds for a single execution.
+        """
         return self.execution.execution_timeout_seconds
 
     @execution_timeout_seconds.setter
     def execution_timeout_seconds(self, value: int) -> None:
+        """Set the execution timeout in seconds."""
         self.execution.execution_timeout_seconds = value
 
     @property
     def execution_max_output_size(self) -> int:
+        """Get the maximum captured execution output size in bytes.
+
+        Returns:
+            Maximum output size in bytes.
+        """
         return self.execution.execution_max_output_size
 
     @execution_max_output_size.setter
     def execution_max_output_size(self, value: int) -> None:
+        """Set the maximum captured execution output size in bytes."""
         self.execution.execution_max_output_size = value
 
     @property
     def execution_temp_dir(self) -> Path:
+        """Get the directory used for execution temp files.
+
+        Returns:
+            Path to the execution temp directory.
+        """
         return self.execution.execution_temp_dir
 
     @execution_temp_dir.setter
     def execution_temp_dir(self, value: Path) -> None:
+        """Set the directory used for execution temp files."""
         self.execution.execution_temp_dir = value
 
     @property
     def execution_templates_file(self) -> Path:
+        """Get the path to the execution templates file.
+
+        Returns:
+            Path to the execution templates JSON file.
+        """
         return self.execution.execution_templates_file
 
     @execution_templates_file.setter
     def execution_templates_file(self, value: Path) -> None:
+        """Set the path to the execution templates file."""
         self.execution.execution_templates_file = value
 
     @property
     def execution_history_file(self) -> Path:
+        """Get the path to the execution history file.
+
+        Returns:
+            Path to the execution history JSON file.
+        """
         return self.execution.execution_history_file
 
     @execution_history_file.setter
     def execution_history_file(self, value: Path) -> None:
+        """Set the path to the execution history file."""
         self.execution.execution_history_file = value
 
     @property
     def execution_require_confirmation(self) -> bool:
+        """Get whether execution requires user confirmation.
+
+        Returns:
+            True if a confirmation step is required before executing.
+        """
         return self.execution.execution_require_confirmation
 
     @execution_require_confirmation.setter
     def execution_require_confirmation(self, value: bool) -> None:
+        """Set whether execution requires user confirmation."""
         self.execution.execution_require_confirmation = value
 
     @property
     def execution_allowed_commands(self) -> list[str]:
+        """Get the allowlist of commands permitted for execution.
+
+        Returns:
+            List of allowed command names/patterns.
+        """
         return self.execution.execution_allowed_commands
 
     @execution_allowed_commands.setter
     def execution_allowed_commands(self, value: list[str]) -> None:
+        """Set the allowlist of commands permitted for execution."""
         self.execution.execution_allowed_commands = value
 
     @property
     def execution_background_limit(self) -> int:
+        """Get the maximum number of concurrent background executions.
+
+        Returns:
+            Maximum number of concurrent background executions.
+        """
         return self.execution.execution_background_limit
 
     @execution_background_limit.setter
     def execution_background_limit(self, value: int) -> None:
+        """Set the maximum number of concurrent background executions."""
         self.execution.execution_background_limit = value
 
     @property
     def execution_history_max_entries(self) -> int:
+        """Get the maximum number of retained execution history entries.
+
+        Returns:
+            Maximum number of execution history entries.
+        """
         return self.execution.execution_history_max_entries
 
     @execution_history_max_entries.setter
     def execution_history_max_entries(self, value: int) -> None:
+        """Set the maximum number of retained execution history entries."""
         self.execution.execution_history_max_entries = value
 
     @property
     def execution_security_patterns(self) -> list[str]:
+        """Get the denylist of security-sensitive command patterns.
+
+        Returns:
+            List of security patterns blocked from execution.
+        """
         return self.execution.execution_security_patterns
 
     @execution_security_patterns.setter
     def execution_security_patterns(self, value: list[str]) -> None:
+        """Set the denylist of security-sensitive command patterns."""
         self.execution.execution_security_patterns = value
 
     # --- RetryConfig delegation -----------------------------------------------
@@ -1067,7 +1274,7 @@ def _apply_flat_data_to_settings(settings_obj: Settings, data: dict) -> None:
         if url.startswith("http://") or url.startswith("https://"):
             settings_obj.ollama_host = url
         else:
-            print("ollama_host must start with http:// or https://")
+            logger.warning("ollama_host must start with http:// or https://")
 
     # Provider API keys
     saved_provider_api_keys = data.get("provider_api_keys") or {}
@@ -1375,7 +1582,7 @@ def fetch_and_cache_image(image_path: str | Path) -> tuple[Path, bytes]:
 
             if not cache_file.exists():
                 headers = {
-                    "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"  # pylint: disable=line-too-long
+                    "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
                 }
                 try:
                     response = _fetch_image_with_retry(image_path, headers)

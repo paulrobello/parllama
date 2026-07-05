@@ -249,7 +249,14 @@ class TemplateMatcher:
         content: str,
         template: ExecutionTemplate,
     ) -> tuple[bool, list[str]]:
-        """Determine if execution should require user confirmation."""
+        """Determine if execution should require user confirmation.
+
+        The pattern matching below (and the returned ``warnings``) is a UI hint to
+        help the user decide, not a security boundary: it is a small substring/regex
+        blocklist that is trivially bypassed and must never be relied on to make
+        execution safe. Callers must gate real execution on an explicit user
+        confirmation, not on the absence of warnings.
+        """
         warnings = []
 
         # Always require confirmation by default
