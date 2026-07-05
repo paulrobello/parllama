@@ -7,6 +7,7 @@ import time
 from pathlib import Path
 from typing import Any
 
+import litellm
 import orjson as json
 import requests
 from dotenv import load_dotenv
@@ -25,6 +26,11 @@ from parllama.message_sink import MessageSink
 from parllama.messages.messages import ProviderModelsChanged, RefreshProviderModelsRequested
 from parllama.ollama_data_manager import ollama_dm
 from parllama.settings_manager import settings
+
+# Silence litellm's stdout banners (e.g. the "Provider List:" notice) that leak
+# through the TUI's alternate-screen buffer and clutter the terminal on exit.
+# litellm is already loaded transitively via the par_ai_core imports above.
+litellm.suppress_debug_info = True
 
 openai_model_context_windows = {
     "chatgpt-4o-latest": 128_000,
