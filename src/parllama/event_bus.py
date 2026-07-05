@@ -69,6 +69,12 @@ class EventBus:
         the original instance is shared (Textual messages that are plain
         classes should be dataclasses for correct fan-out behavior).
 
+        A message class may opt out of the per-recipient copy by setting the
+        class attribute ``broadcast_shared = True`` — appropriate for
+        high-frequency, read-only messages whose handlers never call ``stop()``
+        or mutate the message. The original instance is then shared with every
+        subscriber, avoiding an allocation per recipient.
+
         Args:
             event: The message to broadcast.
         """
@@ -76,7 +82,11 @@ class EventBus:
         subscribers = self._subs.get(event_type)
         if not subscribers:
             return
+        # Opt-out is a property of the event, not the recipient, so read it once.
+        shared = getattr(event, "broadcast_shared", False)
         # Iterate over a snapshot to guard against WeakSet shrinking mid-loop.
         for widget in list(subscribers):
-            message = replace(event) if is_dataclass(event) else event
+            message: Message = event
+            if not shared and is_dataclass(event):
+                message = replace(event)
             widget.post_message(message)

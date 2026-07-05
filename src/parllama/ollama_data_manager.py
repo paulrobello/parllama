@@ -198,7 +198,7 @@ class OllamaDataManager(MessageSink):
         except (ollama.ResponseError, ConnectionError, OSError) as e:
             self.log_it(f"Error loading Ollama Models: {e}")
             return []
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             self.log_it(f"Unexpected error loading Ollama Models: {type(e).__name__}: {e}")
             return []
 
@@ -246,7 +246,7 @@ class OllamaDataManager(MessageSink):
         except (ollama.ResponseError, ConnectionError, OSError) as e:
             self.log_it(f"Error deleting model {model_name}: {e}")
             return False
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             self.log_it(f"Unexpected error deleting model {model_name}: {type(e).__name__}: {e}")
             return False
 

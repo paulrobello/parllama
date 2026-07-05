@@ -166,7 +166,7 @@ class ExecutionCoordinator:
             self._app.post_message(
                 ExecutionFailed(message_id=event.message_id, template_id=event.template_id or "", error=error_details)
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             import traceback
 
             error_details = f"{str(e)} - {traceback.format_exc()}"
@@ -232,7 +232,7 @@ class ExecutionCoordinator:
             else:
                 self._app.notify(f"Execution failed: {result.error_message or 'Unknown error'}", severity="error")
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             import traceback
 
             error_details = f"{str(e)} - {traceback.format_exc()}"
@@ -277,7 +277,7 @@ class ExecutionCoordinator:
 
         except (ValueError, KeyError, AttributeError, OSError) as e:
             self._app.notify(f"Error adding execution result to chat: {str(e)}", severity="error")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             self._app.log_it(f"Unexpected error adding execution result to chat: {type(e).__name__}: {e}")
             self._app.notify(f"Error adding execution result to chat: {str(e)}", severity="error")
 

@@ -384,7 +384,7 @@ class ExecutionManager:
                 warnings=[],
                 success=False,
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             return ImportResult(
                 total_templates=0,
                 imported_count=0,

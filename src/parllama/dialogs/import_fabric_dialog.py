@@ -172,7 +172,7 @@ class ImportFabricDialog(ModalScreen[None]):
             self.post_message(ImportProgressUpdate(progress=0, status="Import failed", detail=detail_msg))
             # Also show a notification with the error
             self.notify(f"Import failed: {error_msg.split(chr(10))[0]}", severity="error")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             error_msg = f"Unexpected error ({type(e).__name__}): {str(e)}"
             self.post_message(ImportProgressUpdate(progress=0, status="Import failed", detail=error_msg))
             self.notify(f"Import failed: {error_msg}", severity="error")
@@ -241,7 +241,7 @@ class ImportFabricDialog(ModalScreen[None]):
             error_msg = str(e)
             self.update_progress(0, "Import failed", f"Error importing patterns: {error_msg}")
             self.notify(f"Import failed: {error_msg}", severity="error", timeout=settings.notification_timeout_error)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             error_msg = f"Unexpected error ({type(e).__name__}): {str(e)}"
             self.update_progress(0, "Import failed", f"Error importing patterns: {error_msg}")
             self.notify(f"Import failed: {error_msg}", severity="error", timeout=settings.notification_timeout_error)

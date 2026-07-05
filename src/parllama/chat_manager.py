@@ -196,7 +196,7 @@ class ChatManager(MessageSink):
                     session.set_app(self.app)
             except (json.JSONDecodeError, ValueError, OSError, KeyError) as e:
                 self.log_it(f"Error loading session {e}", notify=True, severity="error")
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 self.log_it(f"Unexpected error loading session: {type(e).__name__}: {e}", notify=True, severity="error")
 
     def maybe_notify_session_updated(self, changed: Collection[str]) -> None:
@@ -295,7 +295,7 @@ class ChatManager(MessageSink):
                     # self.log_it(prompt)
             except (json.JSONDecodeError, ValueError, OSError, KeyError) as e:  # pylint: disable=broad-exception-caught
                 self.log_it(f"Error loading prompt {e}", notify=True, severity="error")
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 self.log_it(f"Unexpected error loading prompt: {type(e).__name__}: {e}", notify=True, severity="error")
         if self.app:
             self.app.post_message(PromptListLoaded())

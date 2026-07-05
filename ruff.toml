@@ -39,7 +39,9 @@ target-version = "py311"
 # Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
 # Unlike Flake8, Ruff doesn't enable pycodestyle warnings (`W`) or
 # McCabe complexity (`C901`) by default.
-select = ["E4", "E5", "E7", "E9", "F", "W", "UP", "I"]
+# C901/PLR0915 guard function complexity; BLE001 flags blind `except Exception`
+# (deliberate resilience boundaries are marked with `# noqa: BLE001`).
+select = ["E4", "E5", "E7", "E9", "F", "W", "UP", "I", "C901", "PLR0915", "BLE001"]
 ignore = ["E501"]
 
 # Allow fix for all enabled rules (when `--fix`) is provided.
@@ -81,3 +83,12 @@ docstring-code-line-length = "dynamic"
 
 [lint.isort]
 combine-as-imports = true
+
+# Complexity ceilings are ratchets pinned just above the current worst offenders
+# so no existing code fails but any *new* regression is caught. Tighten these as
+# the deferred god-method refactors (ARC-103/104/105) land.
+[lint.mccabe]
+max-complexity = 25
+
+[lint.pylint]
+max-statements = 120

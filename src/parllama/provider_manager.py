@@ -10,9 +10,6 @@ from typing import Any
 import orjson as json
 import requests
 from dotenv import load_dotenv
-from google import genai  # type: ignore
-from groq import Groq
-from openai import OpenAI
 from par_ai_core.llm_providers import (
     LlmProvider,
     is_provider_api_key_set,
@@ -76,7 +73,6 @@ class ProviderManager(MessageSink):
         super().set_app(app)
         self.load_models()
 
-    # pylint: disable=too-many-branches
     def refresh_models(self):
         """Refresh model lists from all available configured providers.
 
@@ -88,87 +84,126 @@ class ProviderManager(MessageSink):
         """
         self.log_it("Refreshing provider models")
         for p in llm_provider_types:
-            try:
-                new_list = []
-                # Check if provider is explicitly disabled
-                if settings.disabled_providers.get(p, False):
-                    # self.log_it(f"Skipping {p} because it is disabled", notify=True)
-                    continue
-                if not is_provider_api_key_set(p):
-                    # self.log_it(f"Skipping {p} because it has no API key", notify=True)
-                    continue
-                if p == LlmProvider.OLLAMA:
-                    new_list = ollama_dm.get_model_names()
-                elif p == LlmProvider.LLAMACPP:
-                    models = OpenAI(base_url=settings.provider_base_urls[p] or provider_base_urls[p]).models.list()
-                    data = sorted(models.data, key=lambda m: m.created, reverse=True)
-                    for m in data:
-                        new_list.append(m.id or "default")
-                elif p in [LlmProvider.OPENAI, LlmProvider.OPENROUTER, LlmProvider.XAI, LlmProvider.DEEPSEEK]:
-                    models = list(
-                        OpenAI(
-                            base_url=settings.provider_base_urls[p] or provider_base_urls[p],
-                            api_key=settings.provider_api_keys[p] or os.environ.get(provider_env_key_names[p]),
-                        )
-                        .models.list()
-                        .data
-                    )
-                    if models:
-                        models = [m for m in models if get_model_mode(p, m.id) in ["chat", "unknown"]]
-                        if models[0].created is not None:
-                            data = sorted(models, key=lambda m: m.created, reverse=True)
-                        else:
-                            data = sorted(models, key=lambda m: m.id)
-                        for m in data:
-                            new_list.append(m.id)
-                elif p == LlmProvider.GROQ:
-                    models = Groq(base_url=settings.provider_base_urls[p] or provider_base_urls[p]).models.list().data
-                    if models:
-                        models = [m for m in models if get_model_mode(p, m.id) in ["chat", "unknown"]]
-                        data = sorted(models, key=lambda m: m.created, reverse=True)
-                        for m in data:
-                            new_list.append(m.id)
-                elif p == LlmProvider.ANTHROPIC:
-                    import anthropic
-
-                    models = list(anthropic.Anthropic().models.list(limit=50))
-                    if models:
-                        models = [m for m in models if get_model_mode(p, m.id) in ["chat", "unknown"]]
-                        data = sorted(models, key=lambda m: m.created_at, reverse=True)
-                        for m in data:
-                            new_list.append(m.id)
-                elif p == LlmProvider.LITELLM:
-                    models = requests.get(
-                        f"{settings.provider_base_urls[p] or provider_base_urls[p]}/models",
-                        timeout=settings.provider_model_request_timeout,
-                    ).json()["data"]
-                    if models:
-                        models = [m for m in models if get_model_mode(p, m["id"]) in ["chat", "unknown"]]
-                        data = sorted(models, key=lambda m: m["created"], reverse=True)
-                        for m in data:
-                            new_list.append(m["id"])
-                elif p == LlmProvider.GEMINI:
-                    client = genai.Client(  # type: ignore[attr-defined]
-                        api_key=settings.provider_api_keys[p] or os.environ.get(provider_env_key_names[p])
-                    )
-                    models = list(client.models.list())  # type: ignore
-                    if models:
-                        models = [m for m in models if m.name and get_model_mode(p, m.name) in ["chat", "unknown"]]
-                        data = sorted(models, key=lambda m: m.name or "")  # type: ignore
-                        for m in data:
-                            if m.name:
-                                new_list.append(m.name.split("/")[1])
-                else:
-                    raise ValueError(f"Unknown provider: {p}")
-
-                self.provider_models[p] = new_list
-                if self.app:
-                    self.app.post_message(ProviderModelsChanged(provider=p))
-
-            except Exception as e:
-                self.log_it(f"Error model refresh {p}: {type(e).__name__}: {e}", severity="error")
-                continue
+            self._refresh_one_provider(p)
         self.save_models()
+
+    def _refresh_one_provider(self, p: LlmProvider) -> None:
+        """Refresh and store the model list for a single provider.
+
+        Skips providers that are disabled or missing an API key. Errors are
+        logged and swallowed so a single provider failure never aborts a
+        multi-provider refresh. Does not persist the cache — callers call
+        ``save_models`` once after refreshing.
+
+        Args:
+            p: The provider to refresh.
+        """
+        try:
+            new_list = self._fetch_provider_model_list(p)
+            if new_list is None:
+                return
+            self.provider_models[p] = new_list
+            if self.app:
+                self.app.post_message(ProviderModelsChanged(provider=p))
+        except Exception as e:  # noqa: BLE001
+            self.log_it(f"Error model refresh {p}: {type(e).__name__}: {e}", severity="error")
+
+    def _fetch_provider_model_list(self, p: LlmProvider) -> list[str] | None:
+        """Query a single provider's current chat-model list from its API.
+
+        Heavy provider SDKs (``openai``, ``groq``, ``google-genai``,
+        ``anthropic``) are imported lazily inside their branches so importing
+        this module does not pull them in at startup.
+
+        Args:
+            p: The provider to query.
+
+        Returns:
+            The provider's model names, or ``None`` if the provider is disabled
+            or has no API key configured.
+
+        Raises:
+            ValueError: If ``p`` is an unknown provider.
+        """
+        if settings.disabled_providers.get(p, False):
+            return None
+        if not is_provider_api_key_set(p):
+            return None
+
+        new_list: list[str] = []
+        if p == LlmProvider.OLLAMA:
+            new_list = ollama_dm.get_model_names()
+        elif p == LlmProvider.LLAMACPP:
+            from openai import OpenAI
+
+            models = OpenAI(base_url=settings.provider_base_urls[p] or provider_base_urls[p]).models.list()
+            data = sorted(models.data, key=lambda m: m.created, reverse=True)
+            for m in data:
+                new_list.append(m.id or "default")
+        elif p in [LlmProvider.OPENAI, LlmProvider.OPENROUTER, LlmProvider.XAI, LlmProvider.DEEPSEEK]:
+            from openai import OpenAI
+
+            models = list(
+                OpenAI(
+                    base_url=settings.provider_base_urls[p] or provider_base_urls[p],
+                    api_key=settings.provider_api_keys[p] or os.environ.get(provider_env_key_names[p]),
+                )
+                .models.list()
+                .data
+            )
+            if models:
+                models = [m for m in models if get_model_mode(p, m.id) in ["chat", "unknown"]]
+                if models[0].created is not None:
+                    data = sorted(models, key=lambda m: m.created, reverse=True)
+                else:
+                    data = sorted(models, key=lambda m: m.id)
+                for m in data:
+                    new_list.append(m.id)
+        elif p == LlmProvider.GROQ:
+            from groq import Groq
+
+            models = Groq(base_url=settings.provider_base_urls[p] or provider_base_urls[p]).models.list().data
+            if models:
+                models = [m for m in models if get_model_mode(p, m.id) in ["chat", "unknown"]]
+                data = sorted(models, key=lambda m: m.created, reverse=True)
+                for m in data:
+                    new_list.append(m.id)
+        elif p == LlmProvider.ANTHROPIC:
+            import anthropic
+
+            models = list(anthropic.Anthropic().models.list(limit=50))
+            if models:
+                models = [m for m in models if get_model_mode(p, m.id) in ["chat", "unknown"]]
+                data = sorted(models, key=lambda m: m.created_at, reverse=True)
+                for m in data:
+                    new_list.append(m.id)
+        elif p == LlmProvider.LITELLM:
+            models = requests.get(
+                f"{settings.provider_base_urls[p] or provider_base_urls[p]}/models",
+                timeout=settings.provider_model_request_timeout,
+            ).json()["data"]
+            if models:
+                models = [m for m in models if get_model_mode(p, m["id"]) in ["chat", "unknown"]]
+                data = sorted(models, key=lambda m: m["created"], reverse=True)
+                for m in data:
+                    new_list.append(m["id"])
+        elif p == LlmProvider.GEMINI:
+            from google import genai  # type: ignore
+
+            client = genai.Client(  # type: ignore[attr-defined]
+                api_key=settings.provider_api_keys[p] or os.environ.get(provider_env_key_names[p])
+            )
+            models = list(client.models.list())  # type: ignore
+            if models:
+                models = [m for m in models if m.name and get_model_mode(p, m.name) in ["chat", "unknown"]]
+                data = sorted(models, key=lambda m: m.name or "")  # type: ignore
+                for m in data:
+                    if m.name:
+                        new_list.append(m.name.split("/")[1])
+        else:
+            raise ValueError(f"Unknown provider: {p}")
+
+        return new_list
 
     # pylint: disable=too-many-return-statements, too-many-branches
     def get_model_context_length(self, provider: LlmProvider, model_name: str) -> int:
@@ -192,7 +227,7 @@ class ProviderManager(MessageSink):
                 severity="error",
             )
             return 0
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             self.log_it(
                 f"Unexpected error getting model metadata {get_api_cost_model_name(provider_name=provider.value.lower(), model_name=model_name)}: {type(e).__name__}: {e}",
                 severity="error",
@@ -339,19 +374,17 @@ class ProviderManager(MessageSink):
         }
 
     def refresh_provider_models(self, provider: LlmProvider) -> None:
-        """Refresh models for a specific provider.
+        """Refresh models for a single provider and persist the cache.
+
+        Only the requested provider is queried, avoiding unnecessary API calls
+        to every other configured provider.
 
         Args:
-            provider: The provider that was requested to refresh. Currently
-                delegates to ``refresh_models``, which refreshes every configured
-                provider rather than just this one (see inline note below).
+            provider: The provider to refresh.
         """
         self.log_it(f"Refreshing models for provider: {provider.value}")
-
-        # Delegates to refresh_models(), which refreshes every provider instead of
-        # just `provider`. Making this selective would require splitting the
-        # per-provider fetch logic out of refresh_models() into a reusable helper.
-        self.refresh_models()
+        self._refresh_one_provider(provider)
+        self.save_models()
 
 
 _provider_manager: ProviderManager | None = None

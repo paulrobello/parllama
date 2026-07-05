@@ -86,7 +86,7 @@ class CommandExecutor:
                 execution_time=time.time() - start_time,
                 temp_files_created=temp_files,
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             return ExecutionResult(
                 template_id=template.id,
                 template_name=template.name,
@@ -245,7 +245,7 @@ class CommandExecutor:
                 False,
             )
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             return (
                 ExecutionResult(
                     template_id=template.id,

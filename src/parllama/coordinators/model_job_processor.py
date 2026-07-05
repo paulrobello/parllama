@@ -200,7 +200,7 @@ class ModelJobProcessor:
         except (ollama.ResponseError, ConnectError) as e:
             self.handle_ollama_error("Model pull", job.modelName, e)
             self._app.post_message_all(LocalModelPulled(model_name=job.modelName, success=False))
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             self._app.log_it(f"Model pull unexpected error for {job.modelName}: {type(e).__name__}: {e}")
             self.handle_ollama_error("Model pull", job.modelName, e)
             self._app.post_message_all(LocalModelPulled(model_name=job.modelName, success=False))
@@ -219,7 +219,7 @@ class ModelJobProcessor:
         except (ollama.ResponseError, ConnectError) as e:
             self.handle_ollama_error("Model push", job.modelName, e)
             self._app.post_message_all(LocalModelPushed(model_name=job.modelName, success=False))
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             self._app.log_it(f"Model push unexpected error for {job.modelName}: {type(e).__name__}: {e}")
             self.handle_ollama_error("Model push", job.modelName, e)
             self._app.post_message_all(LocalModelPushed(model_name=job.modelName, success=False))
@@ -248,7 +248,7 @@ class ModelJobProcessor:
                     success=False,
                 )
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             self._app.log_it(f"Model copy unexpected error for {event.modelName}: {type(e).__name__}: {e}")
             self.handle_ollama_error("Model copy", event.modelName, e)
             self._app.main_screen.local_view.post_message(
@@ -294,7 +294,7 @@ class ModelJobProcessor:
                 )
             else:
                 self._app.status_notify(f"Model creation failed: {error_msg}", severity="error")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             self._app.log_it(f"Model creation unexpected error for {job.modelName}: {type(e).__name__}: {e}")
             self.handle_ollama_error("Model creation", job.modelName, e)
 

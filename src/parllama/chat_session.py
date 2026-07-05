@@ -156,7 +156,7 @@ class ChatSession(ChatMessageContainer):
             for m in msgs:
                 self.add_message(ParllamaChatMessage(**m))
             self._loaded = True
-        except (Exception, SecureFileOpsError) as e:
+        except (Exception, SecureFileOpsError) as e:  # noqa: BLE001
             self.log_it(f"Error loading session {e}", notify=True, severity="error")
         finally:
             self._batching = False
@@ -590,7 +590,7 @@ class ChatSession(ChatMessageContainer):
 
                     self._update_stream_stats_from_chunk(chunk, elapsed_time, ttft)
                     self._emit(ChatMessage(parent_id=self.id, message_id=msg.id, is_final=not chunk.content))
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 err_msg = self._handle_stream_error(e, msg)
                 if err_msg is not None:
                     msg.content += f"\n\n{err_msg}"
@@ -601,7 +601,7 @@ class ChatSession(ChatMessageContainer):
             self.save()
 
             self._maybe_trigger_auto_naming(is_aborted)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             self.log_it(f"Chat generation error ({type(e).__name__}): {e}")
             self.log_it("Error generating message", notify=True, severity="error")
             if msg is not None:
@@ -924,7 +924,7 @@ class ChatSession(ChatMessageContainer):
 
                     self._update_stream_stats_from_chunk(chunk, elapsed_time, ttft)
                     self._emit(ChatMessage(parent_id=self.id, message_id=msg.id, is_final=not chunk.content))
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 err_msg = self._handle_stream_error(e, msg)
                 if err_msg is not None:
                     msg.content += f"\n\n{err_msg}"
@@ -935,7 +935,7 @@ class ChatSession(ChatMessageContainer):
             self._changes.add("messages")
             self.save()
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             self.log_it(f"Continue generation error ({type(e).__name__}): {e}")
             self.log_it("Error generating message", notify=True, severity="error")
             err_msg = self._parse_llm_error(str(e))
