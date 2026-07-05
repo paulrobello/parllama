@@ -101,7 +101,7 @@ class ProviderSettingsPanel(Vertical):
         self.spec = spec
 
     @property
-    def _name(self) -> str:
+    def _provider_name(self) -> str:
         """The provider's canonical lowercase name used to build widget ids."""
         return self.spec.provider.value.lower()
 
@@ -116,7 +116,7 @@ class ProviderSettingsPanel(Vertical):
                     value=settings.provider_base_urls[spec.provider] or spec.base_url_default,
                     valid_empty=True,
                     validators=HttpValidator(),
-                    id=f"{self._name}_base_url",
+                    id=f"{self._provider_name}_base_url",
                 )
             for extra in spec.extra_inputs:
                 yield Label(extra.label)
@@ -133,7 +133,7 @@ class ProviderSettingsPanel(Vertical):
                     value=settings.provider_api_keys[spec.provider] or "",
                     valid_empty=True,
                     password=True,
-                    id=spec.api_key_id or f"{self._name}_api_key",
+                    id=spec.api_key_id or f"{self._provider_name}_api_key",
                 )
             yield from self._compose_disable_checkbox()
             yield from self._compose_cache_controls()
@@ -143,7 +143,7 @@ class ProviderSettingsPanel(Vertical):
         yield Checkbox(
             label=f"Disable {self.spec.provider.value} Provider",
             value=settings.disabled_providers.get(self.spec.provider, False),
-            id=f"disable_{self._name}_provider",
+            id=f"disable_{self._provider_name}_provider",
         )
 
     def _compose_cache_controls(self) -> ComposeResult:
@@ -154,19 +154,19 @@ class ProviderSettingsPanel(Vertical):
             max_length=5,
             type="integer",
             validators=[Integer(minimum=1, maximum=8760)],
-            id=f"{self._name}_cache_hours",
+            id=f"{self._provider_name}_cache_hours",
         )
 
         yield Label("Cache Status")
         yield Static(
             provider_cache_status_text(self.spec.provider),
-            id=f"{self._name}_cache_status",
+            id=f"{self._provider_name}_cache_status",
         )
 
         with Horizontal():
             yield Button(
                 f"Refresh {self.spec.provider.value} Models",
-                id=f"refresh_{self._name}_models",
+                id=f"refresh_{self._provider_name}_models",
                 variant="primary",
             )
 
@@ -175,7 +175,9 @@ class ProviderSettingsPanel(Vertical):
         """Refresh this provider's model list and update its cache status."""
         event.stop()
         provider_manager.refresh_provider_models(self.spec.provider)
-        self.query_one(f"#{self._name}_cache_status", Static).update(provider_cache_status_text(self.spec.provider))
+        self.query_one(f"#{self._provider_name}_cache_status", Static).update(
+            provider_cache_status_text(self.spec.provider)
+        )
 
 
 # Ordered exactly as the provider subsections appeared in the original
