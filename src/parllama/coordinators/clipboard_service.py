@@ -61,7 +61,7 @@ class ClipboardService:
             if isinstance(f, TextArea):
                 clipboard.copy(f.selected_text or f.text)
                 f.text = ""
-        except (OSError, AttributeError):
+        except Exception:  # noqa: BLE001 -- clipboard is best-effort; never crash the app (e.g. clipman not initialized on a headless host)
             self._app.notify("Error with clipboard", severity="error")
 
     def send(self, message: str, notify: bool) -> None:
@@ -78,5 +78,5 @@ class ClipboardService:
             clipboard.copy(message)
             if notify:
                 self._app.notify("Copied to clipboard")
-        except (OSError, AttributeError):
+        except Exception:  # noqa: BLE001 -- clipboard is best-effort; never crash the app (e.g. clipman not initialized on a headless host)
             self._app.notify("Error with clipboard", severity="error")

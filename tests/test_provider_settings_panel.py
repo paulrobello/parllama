@@ -12,6 +12,7 @@ import pytest
 from textual.app import App, ComposeResult
 from textual.containers import Vertical
 
+from parllama.settings_manager import settings
 from parllama.theme_manager import theme_manager
 from parllama.widgets.provider_settings_panel import PROVIDER_PANELS, ProviderSettingsPanel
 from parllama.widgets.views.options_view import OptionsView
@@ -98,14 +99,22 @@ async def test_provider_panels_stack_without_overlap_in_options_view() -> None:
     ``height: 1fr``) instead of making the panel itself the ``.section`` caused
     every provider panel to collapse onto the same vertical position.
     """
-    app = _OptionsHostApp()
-    async with app.run_test(size=(120, 60)) as pilot:
-        await pilot.pause()
-        panels = list(app.query(ProviderSettingsPanel))
-        assert panels, "no provider panels mounted"
-        # Every panel must be a bordered section that sizes to its content.
-        assert all("section" in panel.classes for panel in panels)
-        assert all(panel.region.height > 3 for panel in panels), "a panel collapsed"
-        rects = sorted((panel.region for panel in panels), key=lambda r: r.y)
-        for upper, lower in zip(rects, rects[1:]):
-            assert upper.bottom <= lower.y, "provider panels overlap vertically"
+    # Use a built-in Textual theme: a bare host app (unlike ParLlamaApp) does not
+    # register parllama's custom "par" theme, so OptionsView's theme Select would
+    # reject the default value.
+    original_theme = settings.theme_name
+    settings.theme_name = "textual-dark"
+    try:
+        app = _OptionsHostApp()
+        async with app.run_test(size=(120, 60)) as pilot:
+            await pilot.pause()
+            panels = list(app.query(ProviderSettingsPanel))
+            assert panels, "no provider panels mounted"
+            # Every panel must be a bordered section that sizes to its content.
+            assert all("section" in panel.classes for panel in panels)
+            assert all(panel.region.height > 3 for panel in panels), "a panel collapsed"
+            rects = sorted((panel.region for panel in panels), key=lambda r: r.y)
+            for upper, lower in zip(rects, rects[1:]):
+                assert upper.bottom <= lower.y, "provider panels overlap vertically"
+    finally:
+        settings.theme_name = original_theme
