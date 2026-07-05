@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-07-05
+
+### Security
+
+- **Provider settings hardening**: `settings.json` is now written with `0o600` permissions so other local users can no longer read stored provider API keys.
+- **Real code-execution confirmation**: The "require confirmation" setting for running code from chat messages now shows an actual blocking confirmation dialog instead of a no-op toast that proceeded regardless. The security-pattern list is documented as a UI hint, not a sandbox.
+- **Docker & input hardening**: Windows connects to the Docker daemon via the named pipe instead of an unauthenticated TCP socket; the quantization level is validated against a known set before use; the file validator performs real base-directory containment for path-traversal checks; vault password verification is constant-time.
+
+### Added
+
+- **Continuous integration**: `make checkall` now runs the test suite, and a new CI workflow runs format, lint, type-check, and tests on every push and pull request to `main`.
+- **Expanded test coverage**: Added tests for the command executor, secure file operations, file validator, provider settings panel, and app coordinators, plus a config-reference drift guard (132 → 211 tests).
+- **Configuration reference**: New `docs/reference/configuration.md` documenting every `settings.json` key, its type, and default.
+
+### Changed
+
+- **Faster streaming**: Chat markdown rendering is throttled (~10 Hz) during streaming to avoid re-parsing the whole message on every token.
+- **Faster startup & refresh**: Provider SDKs (OpenAI, Groq, Google GenAI) are imported lazily; refreshing a single provider's models no longer refreshes every configured provider.
+- **Internal refactors**: The per-provider Options sections were extracted into a composable `ProviderSettingsPanel`; clipboard, PS-status polling, and session/prompt routing were extracted from the main application class into focused coordinators.
+
+### Fixed
+
+- **Test suite reliability**: The settings singleton no longer parses the process `sys.argv`, which crashed `pytest` when run with common flags (`-q`, `-k`, `--cov`).
+- **Background execution**: Fixed a race where a background command's temporary script could be deleted before the process read it, plus a leak of completed background processes.
+- **Visible errors**: Replaced `print()` error reporting (invisible in the TUI) with proper logging across the execution, settings, docker, ollama, and update managers.
+- **litellm banners**: Suppressed litellm's "Provider List" stdout banners that leaked through the TUI and cluttered the terminal on exit.
+
+### Removed
+
+- Dropped the unused `argparse` PyPI backport dependency (the standard library is used) and moved `build` to the dev dependency group.
+
 ## [0.8.8] - 2026-06-22
 
 ### Changed

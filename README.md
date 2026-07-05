@@ -38,11 +38,11 @@
     * [Where we are](#where-we-are)
     * [Where we're going](#where-were-going)
 * [What's new](#whats-new)
+  * [v0.9.0](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md#090---2026-07-05)
   * [v0.8.8](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md#088---2026-06-22)
   * [v0.8.7](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md#087---2026-05-05)
   * [v0.8.6](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md#086---2026-05-04)
   * [v0.8.5](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md#085---2026-05-03)
-  * [v0.8.4](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md#084---2026-05-01)
   * [older...](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md)
 
 [![PyPI](https://img.shields.io/pypi/v/parllama)](https://pypi.org/project/parllama/)
@@ -576,7 +576,15 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, code style, commit
 
 ## What's new
 
-### v0.8.8 (Latest)
+### v0.9.0 (Latest)
+
+* **Security hardening**: `settings.json` is written with `0o600` permissions; the code-execution "require confirmation" setting is now a real blocking dialog instead of a no-op; Docker uses the Windows named pipe, the quantization level is validated, path-traversal checks do real containment, and vault password checks are constant-time
+* **CI & tests**: `make checkall` now runs the test suite, a new push/PR CI workflow was added, and coverage grew from 132 to 211 tests
+* **Performance**: Streaming markdown render throttling, lazy provider SDK imports, and selective per-provider model refresh
+* **Refactors**: Extracted a composable `ProviderSettingsPanel` from the Options view, and clipboard / PS-status / session-event coordinators out of the main app class
+* **Fixes**: Settings no longer crashes `pytest` via `sys.argv`; fixed a background-execution temp-file race; replaced TUI-invisible `print()` errors with logging; suppressed litellm's stdout banners
+
+### v0.8.8
 
 * **Dependency Upgrade**: Upgraded all dependencies to latest, including Textual 8.2.5 → 8.2.7, Pydantic, LangChain, OpenAI, and Protobuf 6 → 7
 * **Textual 8.2.7 Fixes**: Fixed several startup regressions caused by Textual 8.2.7 emitting `Select.Changed` on mount — duplicate model refreshes, reasoning effort reset to Medium, spurious provider/model events, the Edit Prompt dialog opening dirty, and the Options tab re-applying the theme
