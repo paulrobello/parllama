@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from datetime import datetime
 from typing import TYPE_CHECKING
 
 from par_ai_core.llm_config import LlmConfig
-from par_ai_core.llm_providers import LlmProvider, provider_base_urls, provider_name_to_enum
+from par_ai_core.llm_providers import LlmProvider, provider_name_to_enum
 from textual import on
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
@@ -17,13 +16,13 @@ from textual.widgets import Button, Checkbox, Input, Label, Select, Static
 
 import parllama
 from parllama.messages.messages import ClearChatInputHistory, ProviderModelSelected
-from parllama.provider_manager import provider_manager
 from parllama.settings_manager import settings
 from parllama.theme_manager import theme_manager
 from parllama.utils import shorten_path, valid_tabs
 from parllama.validators.http_validator import HttpValidator
 from parllama.widgets.input_blur_submit import InputBlurSubmit
 from parllama.widgets.provider_model_select import ProviderModelSelect
+from parllama.widgets.provider_settings_panel import PROVIDER_PANELS, ProviderSettingsPanel
 
 if TYPE_CHECKING:
     from parllama.app import ParLlamaApp
@@ -100,50 +99,6 @@ class OptionsView(Horizontal):
         self._provider_changed = False
         self._execution_settings_changed = False
 
-    def _get_cache_status_text(self, provider: LlmProvider) -> str:
-        """Get cache status text for a provider."""
-        cache_info = provider_manager.get_cache_info(provider)
-        if cache_info["last_refresh"]:
-            last_refresh = datetime.fromtimestamp(cache_info["last_refresh"]).strftime("%m/%d %H:%M")
-            status = "Expired" if cache_info["cache_expired"] else "Fresh"
-            return f"{status} | Age: {cache_info['cache_age_hours']}h | Models: {cache_info['model_count']} | Last: {last_refresh}"
-        return "No cache"
-
-    def _create_disable_checkbox(self, provider: LlmProvider) -> ComposeResult:
-        """Create disable checkbox for a provider."""
-        provider_name = provider.value.lower()
-        yield Checkbox(
-            label=f"Disable {provider.value} Provider",
-            value=settings.disabled_providers.get(provider, False),
-            id=f"disable_{provider_name}_provider",
-        )
-
-    def _create_cache_controls(self, provider: LlmProvider) -> ComposeResult:
-        """Create cache controls for a provider."""
-        provider_name = provider.value.lower()
-
-        yield Label("Cache Duration (hours)")
-        yield InputBlurSubmit(
-            value=str(settings.provider_cache_hours[provider]),
-            max_length=5,
-            type="integer",
-            validators=[Integer(minimum=1, maximum=8760)],
-            id=f"{provider_name}_cache_hours",
-        )
-
-        yield Label("Cache Status")
-        yield Static(
-            self._get_cache_status_text(provider),
-            id=f"{provider_name}_cache_status",
-        )
-
-        with Horizontal():
-            yield Button(
-                f"Refresh {provider.value} Models",
-                id=f"refresh_{provider_name}_models",
-                variant="primary",
-            )
-
     # ------------------------------------------------------------------
     # Declarative mappings: widget_id -> (setter, optional side_effect)
     #
@@ -153,8 +108,8 @@ class OptionsView(Horizontal):
     #                the setter (e.g. flagging provider changes).
     #
     # These tables replace the former if/elif chains in on_input_submitted
-    # and on_checkbox_changed, and the provider-refresh dispatch in
-    # on_refresh_button_pressed.
+    # and on_checkbox_changed. Provider model-refresh is now handled by each
+    # ProviderSettingsPanel rather than dispatched here.
     # ------------------------------------------------------------------
 
     # --- Input fields ---------------------------------------------------
@@ -283,16 +238,6 @@ class OptionsView(Horizontal):
             lambda view, val: setattr(view, "_execution_settings_changed", True),
         ),
     }
-
-    # --- Refresh buttons ------------------------------------------------
-    # Built from _PROVIDER_BY_WIDGET_NAME so adding a new provider only
-    # requires one entry in that dict.
-
-    _REFRESH_BUTTON_MAP: dict[str, LlmProvider] = {
-        f"refresh_{name}_models": provider for name, provider in _PROVIDER_BY_WIDGET_NAME.items()
-    }
-
-    # ------------------------------------------------------------------
 
     def compose(self) -> ComposeResult:
         """Compose the content of the view."""
@@ -551,214 +496,9 @@ class OptionsView(Horizontal):
                 "Any changes in this section may require app restart",
                 classes="mb-1",
             )
-            yield from self._compose_ollama_provider_section()
-            yield from self._compose_openai_provider_section()
-            yield from self._compose_groq_provider_section()
-            yield from self._compose_anthropic_provider_section()
-            yield from self._compose_gemini_provider_section()
-            yield from self._compose_xai_provider_section()
-            yield from self._compose_openrouter_provider_section()
-            yield from self._compose_deepseek_provider_section()
-            yield from self._compose_litellm_provider_section()
-            yield from self._compose_llamacpp_provider_section()
+            for spec in PROVIDER_PANELS:
+                yield ProviderSettingsPanel(spec)
             yield from self._compose_langchain_provider_section()
-
-    def _compose_ollama_provider_section(self) -> ComposeResult:
-        """Compose the Ollama provider subsection."""
-        with Vertical(classes="section") as aips_ollama:
-            aips_ollama.border_title = "Ollama"
-            yield Label("Base URL")
-            yield InputBlurSubmit(
-                value=settings.provider_base_urls[LlmProvider.OLLAMA] or "",
-                valid_empty=True,
-                validators=HttpValidator(),
-                id="ollama_base_url",
-            )
-            yield Label("PS poll interval in seconds. 0 to disable.")
-            yield InputBlurSubmit(
-                value=str(settings.ollama_ps_poll_interval),
-                max_length=5,
-                type="integer",
-                validators=[Integer(minimum=0, maximum=300)],
-                id="ollama_ps_poll_interval",
-            )
-            yield from self._create_disable_checkbox(LlmProvider.OLLAMA)
-            yield from self._create_cache_controls(LlmProvider.OLLAMA)
-
-    def _compose_openai_provider_section(self) -> ComposeResult:
-        """Compose the OpenAI provider subsection."""
-        with Vertical(classes="section") as aips_openai:
-            aips_openai.border_title = "OpenAI"
-            yield Label("Base URL")
-            yield InputBlurSubmit(
-                value=settings.provider_base_urls[LlmProvider.OPENAI] or "",
-                valid_empty=True,
-                validators=HttpValidator(),
-                id="openai_base_url",
-            )
-            yield Label("API Key")
-            yield InputBlurSubmit(
-                value=settings.provider_api_keys[LlmProvider.OPENAI] or "",
-                valid_empty=True,
-                password=True,
-                id="openai_api_key",
-            )
-            yield from self._create_disable_checkbox(LlmProvider.OPENAI)
-            yield from self._create_cache_controls(LlmProvider.OPENAI)
-
-    def _compose_groq_provider_section(self) -> ComposeResult:
-        """Compose the Groq provider subsection."""
-        with Vertical(classes="section") as aips_groq:
-            aips_groq.border_title = "Groq"
-            yield Label("Base URL")
-            yield InputBlurSubmit(
-                value=settings.provider_base_urls[LlmProvider.GROQ] or "",
-                valid_empty=True,
-                validators=HttpValidator(),
-                id="groq_base_url",
-            )
-            yield Label("API Key")
-            yield InputBlurSubmit(
-                value=settings.provider_api_keys[LlmProvider.GROQ] or "",
-                valid_empty=True,
-                password=True,
-                id="groq_api_key",
-            )
-            yield from self._create_disable_checkbox(LlmProvider.GROQ)
-            yield from self._create_cache_controls(LlmProvider.GROQ)
-
-    def _compose_anthropic_provider_section(self) -> ComposeResult:
-        """Compose the Anthropic provider subsection."""
-        with Vertical(classes="section") as aips_anthropic:
-            aips_anthropic.border_title = "Anthropic"
-            yield Label("Base URL")
-            yield InputBlurSubmit(
-                value=settings.provider_base_urls[LlmProvider.ANTHROPIC] or "",
-                valid_empty=True,
-                validators=HttpValidator(),
-                id="anthropic_base_url",
-            )
-            yield Label("API Key")
-            yield InputBlurSubmit(
-                value=settings.provider_api_keys[LlmProvider.ANTHROPIC] or "",
-                valid_empty=True,
-                password=True,
-                id="anthropic_api_key",
-            )
-            yield from self._create_disable_checkbox(LlmProvider.ANTHROPIC)
-            yield from self._create_cache_controls(LlmProvider.ANTHROPIC)
-
-    def _compose_gemini_provider_section(self) -> ComposeResult:
-        """Compose the Gemini provider subsection."""
-        with Vertical(classes="section") as aips_gemini:
-            aips_gemini.border_title = "Gemini"
-            yield Label("API Key")
-            yield InputBlurSubmit(
-                value=settings.provider_api_keys[LlmProvider.GEMINI] or "",
-                valid_empty=True,
-                password=True,
-                id="google_api_key",
-            )
-            yield from self._create_disable_checkbox(LlmProvider.GEMINI)
-            yield from self._create_cache_controls(LlmProvider.GEMINI)
-
-    def _compose_xai_provider_section(self) -> ComposeResult:
-        """Compose the xAI provider subsection."""
-        with Vertical(classes="section") as aips_xai:
-            aips_xai.border_title = "xAI"
-            yield Label("Base URL")
-            yield InputBlurSubmit(
-                value=settings.provider_base_urls[LlmProvider.XAI] or "",
-                valid_empty=True,
-                validators=HttpValidator(),
-                id="xai_base_url",
-            )
-            yield Label("API Key")
-            yield InputBlurSubmit(
-                value=settings.provider_api_keys[LlmProvider.XAI] or "",
-                valid_empty=True,
-                password=True,
-                id="xai_api_key",
-            )
-            yield from self._create_disable_checkbox(LlmProvider.XAI)
-            yield from self._create_cache_controls(LlmProvider.XAI)
-
-    def _compose_openrouter_provider_section(self) -> ComposeResult:
-        """Compose the OpenRouter provider subsection."""
-        with Vertical(classes="section") as aips_openrouter:
-            aips_openrouter.border_title = "OpenRouter"
-            yield Label("Base URL")
-            yield InputBlurSubmit(
-                value=settings.provider_base_urls[LlmProvider.OPENROUTER] or "",
-                valid_empty=True,
-                validators=HttpValidator(),
-                id="openrouter_base_url",
-            )
-            yield Label("API Key")
-            yield InputBlurSubmit(
-                value=settings.provider_api_keys[LlmProvider.OPENROUTER] or "",
-                valid_empty=True,
-                password=True,
-                id="openrouter_api_key",
-            )
-            yield from self._create_disable_checkbox(LlmProvider.OPENROUTER)
-            yield from self._create_cache_controls(LlmProvider.OPENROUTER)
-
-    def _compose_deepseek_provider_section(self) -> ComposeResult:
-        """Compose the Deepseek provider subsection."""
-        with Vertical(classes="section") as aips_deepseek:
-            aips_deepseek.border_title = "Deepseek"
-            yield Label("Base URL")
-            yield InputBlurSubmit(
-                value=settings.provider_base_urls[LlmProvider.DEEPSEEK] or "",
-                valid_empty=True,
-                validators=HttpValidator(),
-                id="deepseek_base_url",
-            )
-            yield Label("API Key")
-            yield InputBlurSubmit(
-                value=settings.provider_api_keys[LlmProvider.DEEPSEEK] or "",
-                valid_empty=True,
-                password=True,
-                id="deepseek_api_key",
-            )
-            yield from self._create_disable_checkbox(LlmProvider.DEEPSEEK)
-            yield from self._create_cache_controls(LlmProvider.DEEPSEEK)
-
-    def _compose_litellm_provider_section(self) -> ComposeResult:
-        """Compose the LiteLLM provider subsection."""
-        with Vertical(classes="section") as aips_litellm:
-            aips_litellm.border_title = "LiteLLM"
-            yield Label("Base URL")
-            yield InputBlurSubmit(
-                value=settings.provider_base_urls[LlmProvider.LITELLM] or "",
-                valid_empty=True,
-                validators=HttpValidator(),
-                id="litellm_base_url",
-            )
-            yield Label("API Key")
-            yield InputBlurSubmit(
-                value=settings.provider_api_keys[LlmProvider.LITELLM] or "",
-                valid_empty=True,
-                password=True,
-                id="litellm_api_key",
-            )
-            yield from self._create_disable_checkbox(LlmProvider.LITELLM)
-            yield from self._create_cache_controls(LlmProvider.LITELLM)
-
-    def _compose_llamacpp_provider_section(self) -> ComposeResult:
-        """Compose the LlamaCPP provider subsection."""
-        with Vertical(classes="section") as aips_llamacpp:
-            aips_llamacpp.border_title = "LlamaCPP"
-            yield Label("Base URL")
-            yield InputBlurSubmit(
-                value=settings.provider_base_urls[LlmProvider.LLAMACPP] or provider_base_urls[LlmProvider.LLAMACPP],
-                valid_empty=True,
-                validators=HttpValidator(),
-                id="llamacpp_base_url",
-            )
-            yield from self._create_disable_checkbox(LlmProvider.LLAMACPP)
-            yield from self._create_cache_controls(LlmProvider.LLAMACPP)
 
     def _compose_langchain_provider_section(self) -> ComposeResult:
         """Compose the Langchain provider subsection."""
@@ -802,15 +542,6 @@ class OptionsView(Horizontal):
         """Handle delete chat history button pressed"""
         event.stop()
         self.app.post_message(ClearChatInputHistory())
-
-    @on(Button.Pressed)
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        """Handle button pressed events"""
-        event.stop()
-        button_id = event.control.id
-
-        if button_id and button_id.startswith("refresh_") and button_id.endswith("_models"):
-            self.on_refresh_button_pressed(event)
 
     @on(ProviderModelSelected)
     def on_provider_model_selected(self, event: ProviderModelSelected) -> None:
@@ -937,24 +668,3 @@ class OptionsView(Horizontal):
             if hasattr(app, "execution_coordinator") and app.execution_coordinator.template_matcher is not None:
                 app.execution_coordinator.template_matcher.update_settings(settings)
             self._execution_settings_changed = False
-
-    def on_refresh_button_pressed(self, event: Button.Pressed) -> None:
-        """Handle provider refresh button pressed via declarative mapping."""
-        event.stop()
-        button_id = event.control.id
-
-        if not button_id:
-            return
-
-        provider = self._REFRESH_BUTTON_MAP.get(button_id)
-        if provider is None:
-            return
-
-        provider_manager.refresh_provider_models(provider)
-        self._update_cache_status(provider)
-
-    def _update_cache_status(self, provider: LlmProvider) -> None:
-        """Update cache status display for a provider."""
-        provider_name = provider.value.lower()
-        status_widget = self.query_one(f"#{provider_name}_cache_status", Static)
-        status_widget.update(self._get_cache_status_text(provider))
