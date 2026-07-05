@@ -1,3 +1,5 @@
+"""Markdown widget with copy-to-clipboard support for fenced code blocks."""
+
 from __future__ import annotations
 
 import re
@@ -36,6 +38,8 @@ def sanitize_class_name(name: str) -> str:
 
 
 class FenceCopyButton(Static):
+    """Small button rendered in the corner of a code fence to copy its contents."""
+
     DEFAULT_CSS = """
     FenceCopyButton {
         width: 2;
@@ -145,6 +149,8 @@ class ParMarkdownFence(MarkdownFence):
 
 
 class ParMarkdown(Markdown):
+    """Markdown widget that renders fenced code blocks with a copy-to-clipboard button."""
+
     DEFAULT_CSS = """
     ParMarkdown {
         height: auto;

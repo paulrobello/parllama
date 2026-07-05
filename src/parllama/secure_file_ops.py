@@ -137,6 +137,7 @@ class SecureFileOperations:
         encoding: str = "utf-8",
         atomic: bool = True,
         create_dirs: bool = True,
+        restrict_permissions: bool = False,
     ) -> None:
         """Safely write a text file with atomic operations.
 
@@ -146,6 +147,8 @@ class SecureFileOperations:
             encoding: File encoding to use
             atomic: Whether to use atomic write operations
             create_dirs: Whether to create parent directories
+            restrict_permissions: Whether to restrict the file to owner-only
+                read/write (0o600) after writing, for files holding secrets
 
         Raises:
             SecureFileOpsError: If writing fails
@@ -169,6 +172,9 @@ class SecureFileOperations:
                 with file_path.open("w", encoding=encoding) as f:
                     f.write(content)
 
+            if restrict_permissions:
+                self._restrict_file_permissions(file_path)
+
             logger.debug(f"Successfully wrote text file: {file_path}")
 
         except FileValidationError as e:
@@ -186,6 +192,7 @@ class SecureFileOperations:
         atomic: bool = True,
         create_dirs: bool = True,
         indent: int = 2,
+        restrict_permissions: bool = False,
     ) -> None:
         """Safely write a JSON file with atomic operations.
 
@@ -196,6 +203,8 @@ class SecureFileOperations:
             atomic: Whether to use atomic write operations
             create_dirs: Whether to create parent directories
             indent: JSON indentation level
+            restrict_permissions: Whether to restrict the file to owner-only
+                read/write (0o600) after writing, for files holding secrets
 
         Raises:
             SecureFileOpsError: If writing fails
@@ -211,6 +220,7 @@ class SecureFileOperations:
                 encoding=encoding,
                 atomic=atomic,
                 create_dirs=create_dirs,
+                restrict_permissions=restrict_permissions,
             )
 
             logger.debug(f"Successfully wrote JSON file: {file_path}")
@@ -375,6 +385,23 @@ class SecureFileOperations:
                 except OSError:
                     pass  # Best effort cleanup
             raise
+
+    def _restrict_file_permissions(self, file_path: Path) -> None:
+        """Restrict a file to owner-only read/write (0o600) after writing.
+
+        Mirrors ``SecretsManager._set_secure_file_permissions``. Best-effort:
+        failures are logged, not raised, so this never blocks a successful
+        write.
+
+        Args:
+            file_path: Path to the file whose permissions should be restricted
+        """
+        try:
+            if os.name != "nt":  # Not Windows; rely on default NTFS ACLs there
+                file_path.chmod(0o600)
+                logger.debug(f"Set secure permissions (600) for {file_path}")
+        except OSError as e:
+            logger.warning(f"Could not set secure permissions for {file_path}: {e}")
 
     def _ensure_directory_exists(self, dir_path: Path) -> None:
         """Ensure a directory exists, creating it if necessary.

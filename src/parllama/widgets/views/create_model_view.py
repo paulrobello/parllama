@@ -11,6 +11,7 @@ from textual.widgets import Button, Input, Label, TextArea
 
 from parllama.dialogs.error_dialog import ErrorDialog
 from parllama.messages.messages import ChangeTab, LocalModelCreateRequested
+from parllama.ollama_data_manager import VALID_QUANTIZE_LEVELS
 
 
 class ModelCreateView(Container):
@@ -121,32 +122,15 @@ class ModelCreateView(Container):
             return
 
         # Validate quantization level if provided
-        if quantization_level:
-            valid_quantization_levels = [
-                "q4_0",
-                "q4_1",
-                "q4_K",
-                "q4_K_S",
-                "q4_K_M",
-                "q5_0",
-                "q5_1",
-                "q5_K",
-                "q5_K_S",
-                "q5_K_M",
-                "q6_K",
-                "q8_0",
-                "f16",
-                "f32",
-            ]
-            if quantization_level not in valid_quantization_levels:
-                self.app.push_screen(
-                    ErrorDialog(
-                        title="Invalid Quantization Level",
-                        message=f"'{quantization_level}' is not a valid quantization level.\n\n"
-                        f"Valid options are: {', '.join(valid_quantization_levels)}",
-                    )
+        if quantization_level and quantization_level not in VALID_QUANTIZE_LEVELS:
+            self.app.push_screen(
+                ErrorDialog(
+                    title="Invalid Quantization Level",
+                    message=f"'{quantization_level}' is not a valid quantization level.\n\n"
+                    f"Valid options are: {', '.join(sorted(VALID_QUANTIZE_LEVELS))}",
                 )
-                return
+            )
+            return
         # if not model_template:
         #     self.app.push_screen(ErrorDialog(title="Input Error", message="Please enter a model template"))
         #     return

@@ -71,10 +71,10 @@ class ParllamaChatMessage(MessageSink):
     tool_calls: Sequence[ToolCall] | None = None
     """Tools calls to be made by the model."""
 
-    def __init__(  # pylint: disable=too-many-arguments
+    def __init__(
         self,
         *,
-        id: str | None = None,  # pylint: disable=redefined-builtin
+        id: str | None = None,
         role: MessageRoles,
         content: str = "",
         thinking: str = "",
@@ -130,12 +130,17 @@ class ParllamaChatMessage(MessageSink):
                     {"type": "text", "text": self.content},
                     image_to_chat_message(image),
                 ]
-            except (ValueError, OSError, KeyError) as e:  # pylint: disable=broad-except
+            except (ValueError, OSError, KeyError) as e:
                 content = str(e)
+        # Note: self.thinking is intentionally not included here. Langchain's native
+        # message tuple format is (role, content) with no dedicated slot for a
+        # separate thinking/reasoning segment, so reasoning content is only ever
+        # sent to the model as part of `content` (see the streaming chunk handling
+        # in ChatSession, which appends thinking-typed parts to msg.thinking rather
+        # than msg.content).
         return (
             self.role,
             content,
-            # TODO: Thinking tokens?
         )
 
     def clone(self, new_id: bool = False) -> ParllamaChatMessage:

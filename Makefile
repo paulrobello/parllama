@@ -125,7 +125,7 @@ typecheck-stats:			# Perform static type checks with pyright and print stats
 	$(pyright) --stats
 
 .PHONY: checkall
-checkall: format lint typecheck 	        # Check all the things
+checkall: format lint typecheck test	        # Check all the things
 
 .PHONY: pre-commit	        # run pre-commit checks on all files
 pre-commit:

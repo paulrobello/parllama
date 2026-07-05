@@ -102,9 +102,12 @@ This is equivalent to running each step individually:
 make format    # Reformat with ruff
 make lint      # Lint with ruff (--fix)
 make typecheck # Static type check with pyright
+make test      # Run the test suite with pytest
 ```
 
 If `make checkall` passes locally, the pre-commit hooks and CI pipeline will pass.
+
+The `.github/workflows/ci.yml` workflow runs `make checkall` on every push and pull request targeting `main`, so a failing format, lint, typecheck, or test step blocks the PR.
 
 ### Common make targets
 
@@ -113,7 +116,7 @@ If `make checkall` passes locally, the pre-commit hooks and CI pipeline will pas
 | `make setup` | `uv lock && uv sync` | First-time setup |
 | `make dev` | `textual run --dev` | Run with hot reload |
 | `make test` | `pytest` | Run the test suite |
-| `make checkall` | format + lint + typecheck | Full quality gate |
+| `make checkall` | format + lint + typecheck + test | Full quality gate |
 | `make package` | `uv build` | Build distributable package |
 
 ## Commit Conventions

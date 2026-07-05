@@ -433,7 +433,7 @@ Some functions are only available via slash / commands on that chat tab. You can
         self.refresh_models()
 
     @work(group="refresh_models", thread=True)
-    async def refresh_models(self):
+    async def refresh_models(self) -> None:
         """Refresh the models."""
         self.state_manager.set_refreshing(True, "local models")
         try:
@@ -474,7 +474,7 @@ Some functions are only available via slash / commands on that chat tab. You can
         self.status_notify("Site models refreshed")
 
     @work(group="refresh_site_model", thread=True)
-    async def refresh_site_models(self, msg: SiteModelsRefreshRequested):
+    async def refresh_site_models(self, msg: SiteModelsRefreshRequested) -> None:
         """Refresh the site model."""
         operation = f"site models: {msg.ollama_namespace or 'models'}"
         self.state_manager.set_refreshing(True, operation)

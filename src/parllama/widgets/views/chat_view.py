@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import cast
 
@@ -324,15 +325,39 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
 
         self.active_tab.do_send_message(user_msg)
 
-    # pylint: disable=too-many-statements,too-many-branches,too-many-return-statements
     async def handle_command(self, cmd_raw: str) -> None:
         """Handle a command"""
         cmd = cmd_raw.lower()
         if cmd in ("?", "help"):
-            await self.app.push_screen(
-                InformationDialog(
-                    title="Chat Commands",
-                    message="""
+            await self._show_command_help()
+            return
+
+        tab_number_re = re.compile(r"^t(?:ab)?\.(\d+)$")
+        if match := tab_number_re.match(cmd):
+            self._handle_tab_number_command(match)
+            return
+
+        zero_arg_handler = self._ZERO_ARG_COMMANDS.get(cmd)
+        if zero_arg_handler is not None:
+            await zero_arg_handler(self)
+            return
+
+        cmd_word, sep, cmd_arg = cmd.partition(" ")
+        if sep:
+            prefix_handler = self._PREFIX_COMMANDS.get(cmd_word)
+            if prefix_handler is not None:
+                _, _, raw_arg = cmd_raw.partition(" ")
+                await prefix_handler(self, raw_arg, cmd_arg)
+                return
+
+        self.notify(f"Unknown command: {cmd}", severity="error")
+
+    async def _show_command_help(self) -> None:
+        """Show the chat commands help dialog."""
+        await self.app.push_screen(
+            InformationDialog(
+                title="Chat Commands",
+                message="""
 Chat Commands:
 /tab.# - Switch to the tab with the given number
 /tab.new - Create new tab and switch to it
@@ -358,200 +383,254 @@ Chat Commands:
 /memory.clear - Clear all memory content
 /memory.status - Show current memory status and content
                         """,
-                )
             )
-            return
+        )
 
-        tab_number_re = re.compile(r"^t(?:ab)?\.(\d+)$")
-        if match := tab_number_re.match(cmd):
-            (tab_number,) = match.groups()
-            tab_number = int(tab_number) - 1
-            if 0 <= tab_number <= len(self.chat_tabs.children):
-                self.focus_tab(tab_number)
-            else:
-                self.notify(f"Tab {tab_number + 1} does not exist", severity="error")
-            return
-        if cmd == "tab.new":
-            await self.action_new_tab()
-        elif cmd == "tab.remove":
-            await self.remove_active_tab()
-        elif cmd == "tabs.clear":
-            await self.remove_all_tabs()
-        elif cmd == "session.new":
-            await self.active_tab.action_new_session()
-        elif cmd.startswith("session.new "):
-            (_, v) = cmd.split(" ", 1)
-            v = v.strip()
-            await self.active_tab.action_new_session(v)
-        elif cmd == "session.delete":
-            self.app.post_message(DeleteSession(session_id=self.session.id))
-        elif cmd == "session.provider":
-            self.active_tab.session_config.display = True
-            self.set_timer(
-                0.1,
-                self.active_tab.session_config.provider_model_select.provider_select.focus,
-            )
-            return
-        elif cmd.startswith("session.provider "):
-            (_, v) = cmd.split(" ", 1)
-            v_org = v.strip()
-            v = get_provider_name_fuzzy(v_org)
-            if not v:
-                self.notify(
-                    f"Provider {v_org} not found in [{','.join(llm_provider_names)}]",
-                    severity="error",
-                )
-                return
-            self.active_tab.session_config.provider_model_select.provider_select.value = provider_name_to_enum(v)
-            self.set_timer(0.1, self.user_input.focus)
-        elif cmd == "session.model":
-            self.active_tab.session_config.display = True
-            self.set_timer(
-                0.1,
-                self.active_tab.session_config.provider_model_select.model_select.focus,
-            )
-            return
-        elif cmd.startswith("session.model "):
-            (_, v) = cmd_raw.split(" ", 1)
-            v = provider_manager.get_model_name_fuzzy(
-                self.active_tab.session_config.provider_model_select.provider_select.value,  # type: ignore
-                v.strip(),
-            )
-            if not v:
-                self.notify(f"Model {v} not found", severity="error")
-                return
-            self.active_tab.session_config.provider_model_select.model_select.value = v
-            self.set_timer(0.1, self.user_input.focus)
-        elif cmd == "session.temp":
-            self.set_timer(0.1, self.active_tab.session_config.temperature_input.focus)
-            self.active_tab.session_config.display = True
-        elif cmd.startswith("session.temp "):
-            (_, v) = cmd.split(" ", 1)
-            v = v.strip()
-            self.active_tab.session_config.temperature_input.value = v
-            self.set_timer(0.1, self.user_input.focus)
-        elif cmd == "session.name":
-            self.set_timer(0.1, self.active_tab.session_config.session_name_input.focus)
-            self.active_tab.session_config.display = True
-        elif cmd.startswith("session.name "):
-            (_, v) = cmd.split(" ", 1)
-            v = v.strip()
-            self.active_tab.session_config.session_name_input.value = v
-            await self.active_tab.session_config.session_name_input.action_submit()
-        elif cmd.startswith("session.to_prompt "):
-            vs: list[str] = cmd.split(" ", 2)
-            if len(vs) == 2:
-                (_, submit_on_load) = vs
-                v = ""
-            else:
-                (_, submit_on_load, v) = vs
-            v = v.strip()
-            self.app.post_message(
-                SessionToPrompt(
-                    session_id=self.session.id,
-                    submit_on_load=submit_on_load == "1",
-                    prompt_name=v,
-                )
-            )
-        elif cmd.startswith("session.export"):
-            self.active_tab.save_conversation_text()
-        elif cmd.startswith("session.summarize"):
-            self.active_tab.summarize_conversation_text()
-        elif cmd.startswith("session.import"):
-            self.active_tab.import_conversation_text()
-        elif cmd.startswith("session.clear_system_prompt"):
-            self.session.system_prompt = None
-        elif cmd.startswith("session.system_prompt "):
-            (_, v) = cmd.split(" ", 1)
-            v = v.strip()
-            if not v:
-                self.notify("System prompt cannot be empty", severity="error")
-                return
-            self.session.system_prompt = ParllamaChatMessage(role="system", content=v)
-            self.active_tab.post_message(
-                ChatMessage(
-                    parent_id=self.session.id,
-                    message_id=self.session.system_prompt.id,  # pyright: ignore [reportOptionalMemberAccess]
-                    is_final=True,
-                )
-            )
-        elif cmd.startswith("prompt.load "):
-            (_, v) = cmd.split(" ", 1)
-            v = v.strip()
-            prompt = chat_manager.get_prompt_by_name(v)
-            if prompt is None:
-                self.notify(f"Prompt {v} not found", severity="error")
-                return
-            await self.active_tab.load_prompt(
-                PromptSelected(
-                    prompt_id=prompt.id,
-                    model_name=None,
-                    temperature=None,
-                )
-            )
-        elif cmd.startswith("add.image "):
-            arg_str = cmd[len("add.image ") :].strip()
-            if not arg_str:
-                self.notify("Usage: /add.image FILE_NAME_OR_URL PROMPT", severity="error")
-                return
-            # Handle quoted filenames (single or double quotes)
-            if arg_str.startswith('"'):
-                end = arg_str.find('"', 1)
-                if end == -1:
-                    self.notify("Unclosed double quote in filename", severity="error")
-                    return
-                v = arg_str[1:end]
-                p = arg_str[end + 1 :].strip()
-            elif arg_str.startswith("'"):
-                end = arg_str.find("'", 1)
-                if end == -1:
-                    self.notify("Unclosed single quote in filename", severity="error")
-                    return
-                v = arg_str[1:end]
-                p = arg_str[end + 1 :].strip()
-            else:
-                parts = arg_str.split(" ", 1)
-                v = parts[0]
-                p = parts[1] if len(parts) > 1 else ""
-            if not p:
-                self.notify("Prompt is required. Usage: /add.image FILE_NAME_OR_URL PROMPT", severity="error")
-                return
-            if v.startswith("http://") or v.startswith("https://"):
-                msg = ParllamaChatMessage(role="user", content=p, images=[v])
-            else:
-                path = Path(v)
-                if not path.exists():
-                    self.notify(f"Image {v} not found", severity="error")
-                    return
-                msg = ParllamaChatMessage(role="user", content=p, images=[str(path.absolute())])
-
-            self.session.add_message(msg)
-            self.post_message(ChatMessage(parent_id=self.session.id, message_id=msg.id))
-            self.active_tab.do_send_message("")
-        elif cmd == "history.clear":
-            self.app.post_message(ClearChatInputHistory())
-        elif cmd.startswith("remember "):
-            # Extract the information to remember
-            (_, info_to_remember) = cmd_raw.split(" ", 1)
-            info_to_remember = info_to_remember.strip()
-            if not info_to_remember:
-                self.notify("Usage: /remember [information to remember]", severity="error")
-                return
-            await self._handle_remember_command(info_to_remember)
-        elif cmd.startswith("forget "):
-            # Extract the information to forget
-            (_, info_to_forget) = cmd_raw.split(" ", 1)
-            info_to_forget = info_to_forget.strip()
-            if not info_to_forget:
-                self.notify("Usage: /forget [information to forget]", severity="error")
-                return
-            await self._handle_forget_command(info_to_forget)
-        elif cmd == "memory.clear":
-            await self._handle_memory_clear_command()
-        elif cmd == "memory.status":
-            self._handle_memory_status_command()
+    def _handle_tab_number_command(self, match: re.Match[str]) -> None:
+        """Focus the tab referenced by a /tab.N command."""
+        (tab_number,) = match.groups()
+        tab_number = int(tab_number) - 1
+        if 0 <= tab_number <= len(self.chat_tabs.children):
+            self.focus_tab(tab_number)
         else:
-            self.notify(f"Unknown command: {cmd}", severity="error")
+            self.notify(f"Tab {tab_number + 1} does not exist", severity="error")
+
+    # ------------------------------------------------------------------
+    # Zero-argument command handlers (exact command-name match).
+    # ------------------------------------------------------------------
+
+    async def _cmd_tab_new(self) -> None:
+        await self.action_new_tab()
+
+    async def _cmd_tab_remove(self) -> None:
+        await self.remove_active_tab()
+
+    async def _cmd_tabs_clear(self) -> None:
+        await self.remove_all_tabs()
+
+    async def _cmd_session_new(self) -> None:
+        await self.active_tab.action_new_session()
+
+    async def _cmd_session_delete(self) -> None:
+        self.app.post_message(DeleteSession(session_id=self.session.id))
+
+    async def _cmd_session_provider(self) -> None:
+        self.active_tab.session_config.display = True
+        self.set_timer(
+            0.1,
+            self.active_tab.session_config.provider_model_select.provider_select.focus,
+        )
+
+    async def _cmd_session_model(self) -> None:
+        self.active_tab.session_config.display = True
+        self.set_timer(
+            0.1,
+            self.active_tab.session_config.provider_model_select.model_select.focus,
+        )
+
+    async def _cmd_session_temp(self) -> None:
+        self.set_timer(0.1, self.active_tab.session_config.temperature_input.focus)
+        self.active_tab.session_config.display = True
+
+    async def _cmd_session_name(self) -> None:
+        self.set_timer(0.1, self.active_tab.session_config.session_name_input.focus)
+        self.active_tab.session_config.display = True
+
+    async def _cmd_session_export(self) -> None:
+        self.active_tab.save_conversation_text()
+
+    async def _cmd_session_summarize(self) -> None:
+        self.active_tab.summarize_conversation_text()
+
+    async def _cmd_session_import(self) -> None:
+        self.active_tab.import_conversation_text()
+
+    async def _cmd_session_clear_system_prompt(self) -> None:
+        self.session.system_prompt = None
+
+    async def _cmd_history_clear(self) -> None:
+        self.app.post_message(ClearChatInputHistory())
+
+    async def _cmd_memory_clear(self) -> None:
+        await self._handle_memory_clear_command()
+
+    async def _cmd_memory_status(self) -> None:
+        self._handle_memory_status_command()
+
+    _ZERO_ARG_COMMANDS: dict[str, Callable[[ChatView], Awaitable[None]]] = {
+        "tab.new": _cmd_tab_new,
+        "tab.remove": _cmd_tab_remove,
+        "tabs.clear": _cmd_tabs_clear,
+        "session.new": _cmd_session_new,
+        "session.delete": _cmd_session_delete,
+        "session.provider": _cmd_session_provider,
+        "session.model": _cmd_session_model,
+        "session.temp": _cmd_session_temp,
+        "session.name": _cmd_session_name,
+        "session.export": _cmd_session_export,
+        "session.summarize": _cmd_session_summarize,
+        "session.import": _cmd_session_import,
+        "session.clear_system_prompt": _cmd_session_clear_system_prompt,
+        "history.clear": _cmd_history_clear,
+        "memory.clear": _cmd_memory_clear,
+        "memory.status": _cmd_memory_status,
+    }
+
+    # ------------------------------------------------------------------
+    # Argument-taking command handlers (command-name prefix match).
+    # Each handler receives (raw_arg, cmd_arg): raw_arg preserves the
+    # original casing of the text following the command name, cmd_arg is
+    # the lower-cased equivalent. Which one is used mirrors the historical
+    # per-branch behavior of the if/elif chain this replaces.
+    # ------------------------------------------------------------------
+
+    async def _cmd_session_new_arg(self, raw_arg: str, cmd_arg: str) -> None:
+        await self.active_tab.action_new_session(cmd_arg.strip())
+
+    async def _cmd_session_provider_arg(self, raw_arg: str, cmd_arg: str) -> None:
+        v_org = cmd_arg.strip()
+        v = get_provider_name_fuzzy(v_org)
+        if not v:
+            self.notify(
+                f"Provider {v_org} not found in [{','.join(llm_provider_names)}]",
+                severity="error",
+            )
+            return
+        self.active_tab.session_config.provider_model_select.provider_select.value = provider_name_to_enum(v)
+        self.set_timer(0.1, self.user_input.focus)
+
+    async def _cmd_session_model_arg(self, raw_arg: str, cmd_arg: str) -> None:
+        v = provider_manager.get_model_name_fuzzy(
+            self.active_tab.session_config.provider_model_select.provider_select.value,  # type: ignore
+            raw_arg.strip(),
+        )
+        if not v:
+            self.notify(f"Model {v} not found", severity="error")
+            return
+        self.active_tab.session_config.provider_model_select.model_select.value = v
+        self.set_timer(0.1, self.user_input.focus)
+
+    async def _cmd_session_temp_arg(self, raw_arg: str, cmd_arg: str) -> None:
+        v = cmd_arg.strip()
+        self.active_tab.session_config.temperature_input.value = v
+        self.set_timer(0.1, self.user_input.focus)
+
+    async def _cmd_session_name_arg(self, raw_arg: str, cmd_arg: str) -> None:
+        v = cmd_arg.strip()
+        self.active_tab.session_config.session_name_input.value = v
+        await self.active_tab.session_config.session_name_input.action_submit()
+
+    async def _cmd_session_to_prompt_arg(self, raw_arg: str, cmd_arg: str) -> None:
+        vs: list[str] = cmd_arg.split(" ", 1)
+        if len(vs) == 1:
+            (submit_on_load,) = vs
+            v = ""
+        else:
+            (submit_on_load, v) = vs
+        v = v.strip()
+        self.app.post_message(
+            SessionToPrompt(
+                session_id=self.session.id,
+                submit_on_load=submit_on_load == "1",
+                prompt_name=v,
+            )
+        )
+
+    async def _cmd_session_system_prompt_arg(self, raw_arg: str, cmd_arg: str) -> None:
+        v = cmd_arg.strip()
+        if not v:
+            self.notify("System prompt cannot be empty", severity="error")
+            return
+        self.session.system_prompt = ParllamaChatMessage(role="system", content=v)
+        self.active_tab.post_message(
+            ChatMessage(
+                parent_id=self.session.id,
+                message_id=self.session.system_prompt.id,  # pyright: ignore [reportOptionalMemberAccess]
+                is_final=True,
+            )
+        )
+
+    async def _cmd_prompt_load_arg(self, raw_arg: str, cmd_arg: str) -> None:
+        v = cmd_arg.strip()
+        prompt = chat_manager.get_prompt_by_name(v)
+        if prompt is None:
+            self.notify(f"Prompt {v} not found", severity="error")
+            return
+        await self.active_tab.load_prompt(
+            PromptSelected(
+                prompt_id=prompt.id,
+                model_name=None,
+                temperature=None,
+            )
+        )
+
+    async def _cmd_add_image_arg(self, raw_arg: str, cmd_arg: str) -> None:
+        arg_str = cmd_arg.strip()
+        if not arg_str:
+            self.notify("Usage: /add.image FILE_NAME_OR_URL PROMPT", severity="error")
+            return
+        # Handle quoted filenames (single or double quotes)
+        if arg_str.startswith('"'):
+            end = arg_str.find('"', 1)
+            if end == -1:
+                self.notify("Unclosed double quote in filename", severity="error")
+                return
+            v = arg_str[1:end]
+            p = arg_str[end + 1 :].strip()
+        elif arg_str.startswith("'"):
+            end = arg_str.find("'", 1)
+            if end == -1:
+                self.notify("Unclosed single quote in filename", severity="error")
+                return
+            v = arg_str[1:end]
+            p = arg_str[end + 1 :].strip()
+        else:
+            parts = arg_str.split(" ", 1)
+            v = parts[0]
+            p = parts[1] if len(parts) > 1 else ""
+        if not p:
+            self.notify("Prompt is required. Usage: /add.image FILE_NAME_OR_URL PROMPT", severity="error")
+            return
+        if v.startswith("http://") or v.startswith("https://"):
+            msg = ParllamaChatMessage(role="user", content=p, images=[v])
+        else:
+            path = Path(v)
+            if not path.exists():
+                self.notify(f"Image {v} not found", severity="error")
+                return
+            msg = ParllamaChatMessage(role="user", content=p, images=[str(path.absolute())])
+
+        self.session.add_message(msg)
+        self.post_message(ChatMessage(parent_id=self.session.id, message_id=msg.id))
+        self.active_tab.do_send_message("")
+
+    async def _cmd_remember_arg(self, raw_arg: str, cmd_arg: str) -> None:
+        info_to_remember = raw_arg.strip()
+        if not info_to_remember:
+            self.notify("Usage: /remember [information to remember]", severity="error")
+            return
+        await self._handle_remember_command(info_to_remember)
+
+    async def _cmd_forget_arg(self, raw_arg: str, cmd_arg: str) -> None:
+        info_to_forget = raw_arg.strip()
+        if not info_to_forget:
+            self.notify("Usage: /forget [information to forget]", severity="error")
+            return
+        await self._handle_forget_command(info_to_forget)
+
+    _PREFIX_COMMANDS: dict[str, Callable[[ChatView, str, str], Awaitable[None]]] = {
+        "session.new": _cmd_session_new_arg,
+        "session.provider": _cmd_session_provider_arg,
+        "session.model": _cmd_session_model_arg,
+        "session.temp": _cmd_session_temp_arg,
+        "session.name": _cmd_session_name_arg,
+        "session.to_prompt": _cmd_session_to_prompt_arg,
+        "session.system_prompt": _cmd_session_system_prompt_arg,
+        "prompt.load": _cmd_prompt_load_arg,
+        "add.image": _cmd_add_image_arg,
+        "remember": _cmd_remember_arg,
+        "forget": _cmd_forget_arg,
+    }
 
     async def _handle_remember_command(self, info_to_remember: str) -> None:
         """Handle the /remember command."""

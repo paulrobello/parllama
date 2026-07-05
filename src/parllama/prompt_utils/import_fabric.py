@@ -525,23 +525,5 @@ class ImportFabricManager(MessageSink):
 
         return extract_to
 
-    def test_import(self) -> None:
-        """Test importing fabric prompts."""
-        with open(
-            "d:/repos/parllama/fabric_samples/extract_wisdom/system.md",
-            encoding="utf-8",
-        ) as f:
-            prompt_content = ""
-            for line in f.readlines():
-                if line.upper().startswith("# INPUT") or line.upper().startswith("INPUT:"):
-                    break
-                prompt_content += line + "\n"
-            prompt_content = prompt_content.strip()
-            prompt: ChatPrompt = self.markdown_to_prompt("extract_wisdom", prompt_content)
-        chat_manager.add_prompt(prompt)
-        prompt.is_dirty = True
-        prompt.save()
-        self.log_it("Prompt imported: extract_wisdom", notify=True)
-
 
 import_fabric_manager = ImportFabricManager()

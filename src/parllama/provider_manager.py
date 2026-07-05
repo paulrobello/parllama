@@ -68,13 +68,24 @@ class ProviderManager(MessageSink):
         self.cache_file = Path(settings.provider_models_file)
 
     def set_app(self, app: App[Any] | None) -> None:
-        """Set the app."""
+        """Set the app and trigger the initial model load.
+
+        Args:
+            app: The Textual app instance used for message emission, or None to detach.
+        """
         super().set_app(app)
         self.load_models()
 
     # pylint: disable=too-many-branches
     def refresh_models(self):
-        """Refresh model lists from all available configured providers."""
+        """Refresh model lists from all available configured providers.
+
+        Iterates every known provider, skipping ones that are disabled or have no
+        API key configured, queries each provider's API for its current model list,
+        and updates ``self.provider_models`` in place. Errors for an individual
+        provider are logged and do not stop the refresh of the remaining providers.
+        Persists the refreshed lists to the cache file when finished.
+        """
         self.log_it("Refreshing provider models")
         for p in llm_provider_types:
             try:
@@ -149,7 +160,6 @@ class ProviderManager(MessageSink):
                                 new_list.append(m.name.split("/")[1])
                 else:
                     raise ValueError(f"Unknown provider: {p}")
-                # print(new_list)
 
                 self.provider_models[p] = new_list
                 if self.app:
@@ -162,7 +172,15 @@ class ProviderManager(MessageSink):
 
     # pylint: disable=too-many-return-statements, too-many-branches
     def get_model_context_length(self, provider: LlmProvider, model_name: str) -> int:
-        """Get model cntext length. Return 0 if unknown."""
+        """Get a model's context length.
+
+        Args:
+            provider: The provider that hosts the model.
+            model_name: The name of the model to look up.
+
+        Returns:
+            The model's maximum context length in tokens, or 0 if unknown or on error.
+        """
         try:
             if provider == LlmProvider.OLLAMA:
                 return ollama_dm.get_model_context_length(model_name)
@@ -182,7 +200,10 @@ class ProviderManager(MessageSink):
             return 0
 
     def save_models(self):
-        """Save the models to json cache file."""
+        """Save the current provider model lists to the JSON cache file.
+
+        Overwrites ``self.cache_file`` with the contents of ``self.provider_models``.
+        """
         self.cache_file.write_bytes(
             json.dumps(
                 {k.value: v for k, v in self.provider_models.items()},
@@ -192,7 +213,17 @@ class ProviderManager(MessageSink):
         )
 
     def load_models(self, refresh: bool = False) -> None:
-        """Load provider models from cache and request background refresh if needed."""
+        """Load provider models from cache and request a background refresh if needed.
+
+        Reads the cached provider model lists from disk when available and posts
+        a ``ProviderModelsChanged`` message. If the cache file is missing, any
+        provider's cache has expired, or ``refresh`` is True, a
+        ``RefreshProviderModelsRequested`` message is posted so the app can refresh
+        models in a worker without blocking startup.
+
+        Args:
+            refresh: Force a background refresh request even if the cache is fresh.
+        """
         if not self.cache_file.exists():
             self.log_it("Models file does not exist, requesting refresh")
             if self.app:
@@ -224,19 +255,42 @@ class ProviderManager(MessageSink):
                 self.app.post_message(RefreshProviderModelsRequested(None))
 
     def get_model_select_options(self, provider: LlmProvider) -> list[tuple[str, str]]:
-        """Get select options."""
+        """Get (label, value) select options for a provider's known models.
+
+        Args:
+            provider: The provider to get model select options for.
+
+        Returns:
+            A list of (model_name, model_name) tuples suitable for a Select widget.
+        """
         if provider == LlmProvider.OLLAMA:
             return ollama_dm.get_model_select_options()
         return [(m, m) for m in self.provider_models[provider]]
 
     def get_model_names(self, provider: LlmProvider) -> list[str]:
-        """Get select options."""
+        """Get the known model names for a provider.
+
+        Args:
+            provider: The provider to get model names for.
+
+        Returns:
+            A list of model names cached for the provider.
+        """
         if provider == LlmProvider.OLLAMA:
             return ollama_dm.get_model_names()
         return self.provider_models[provider]
 
     def get_model_name_fuzzy(self, provider: LlmProvider, model_name: str) -> str:
-        """Get model name fuzzy."""
+        """Resolve a possibly partial or differently-cased model name.
+
+        Args:
+            provider: The provider whose known models to search.
+            model_name: The candidate model name to resolve (case-insensitive).
+
+        Returns:
+            The matching known model name, preferring an exact match then a
+            prefix match, or an empty string if no match is found.
+        """
         models = self.get_model_names(provider)
         model_name = model_name.lower()
         for m in models:
@@ -249,7 +303,16 @@ class ProviderManager(MessageSink):
         return ""
 
     def get_cache_info(self, provider: LlmProvider) -> dict[str, Any]:
-        """Get cache information for a specific provider."""
+        """Get cache information for a specific provider.
+
+        Args:
+            provider: The provider to report cache status for.
+
+        Returns:
+            A dict with ``cache_age_hours``, ``cache_expired``, ``cache_size_kb``,
+            ``last_refresh`` (epoch seconds, or None if no cache file), and
+            ``model_count`` for the provider.
+        """
         if not self.cache_file.exists():
             return {
                 "cache_age_hours": 0,
@@ -276,11 +339,18 @@ class ProviderManager(MessageSink):
         }
 
     def refresh_provider_models(self, provider: LlmProvider) -> None:
-        """Refresh models for a specific provider."""
+        """Refresh models for a specific provider.
+
+        Args:
+            provider: The provider that was requested to refresh. Currently
+                delegates to ``refresh_models``, which refreshes every configured
+                provider rather than just this one (see inline note below).
+        """
         self.log_it(f"Refreshing models for provider: {provider.value}")
 
-        # Currently refreshes all models (the existing refresh_models method)
-        # TODO: Make this more selective to refresh only the specified provider
+        # Delegates to refresh_models(), which refreshes every provider instead of
+        # just `provider`. Making this selective would require splitting the
+        # per-provider fetch logic out of refresh_models() into a reusable helper.
         self.refresh_models()
 
 

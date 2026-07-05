@@ -33,6 +33,7 @@ class FileValidator(Validator):
         max_size_mb: float = 10.0,
         allowed_extensions: list[str] | None = None,
         check_content: bool = True,
+        base_dir: str | Path | None = None,
     ) -> None:
         """Initialize the FileValidator.
 
@@ -40,11 +41,14 @@ class FileValidator(Validator):
             max_size_mb: Maximum file size in MB
             allowed_extensions: List of allowed file extensions (e.g., ['.txt', '.json'])
             check_content: Whether to perform content validation
+            base_dir: Optional directory the validated path must resolve inside of.
+                When provided, paths that escape this directory are rejected.
         """
         super().__init__()
         self.max_size_bytes = int(max_size_mb * 1024 * 1024)
         self.allowed_extensions = allowed_extensions or []
         self.check_content = check_content
+        self.base_dir = Path(base_dir).resolve() if base_dir is not None else None
 
     def validate(self, value: str) -> ValidationResult:
         """Validate a file path.
@@ -93,11 +97,13 @@ class FileValidator(Validator):
         if self.check_content:
             self._validate_file_content(path)
 
-    def _validate_path_security(self, path: Path) -> None:
+    def _validate_path_security(self, path: Path, base_dir: str | Path | None = None) -> None:
         """Validate path security to prevent directory traversal attacks.
 
         Args:
             path: The file path to validate
+            base_dir: Optional directory the resolved path must be contained within.
+                Falls back to ``self.base_dir`` (set at construction) when not provided.
 
         Raises:
             FileValidationError: If path is unsafe
@@ -105,10 +111,14 @@ class FileValidator(Validator):
         # Convert to absolute path for security checks
         abs_path = path.resolve()
 
-        # Check for directory traversal attempts
-        path_str = str(abs_path)
-        if ".." in path_str:
-            raise FileValidationError(f"Path contains directory traversal: {path}")
+        # Check containment within an allowed base directory, when one is known.
+        # (path.resolve() already collapses ".." segments, so a raw substring
+        # check for ".." on the resolved path can never catch a traversal attempt.)
+        containment_dir = base_dir if base_dir is not None else self.base_dir
+        if containment_dir is not None:
+            containment_dir = Path(containment_dir).resolve()
+            if not abs_path.is_relative_to(containment_dir):
+                raise FileValidationError(f"Path escapes allowed directory {containment_dir}: {path}")
 
         # Check for suspicious characters
         suspicious_chars = ["<", ">", ":", '"', "|", "?", "*"]

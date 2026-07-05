@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 
 import docker.errors
@@ -10,13 +11,17 @@ from docker import DockerClient
 from docker.models.containers import Container
 from par_ai_core.utils import read_env_file
 
+from parllama.settings_manager import settings
+
+logger = logging.getLogger(__name__)
+
 
 # pylint: disable=too-many-arguments,too-many-return-statements,too-many-branches
 def start_docker_container(
     image: str,
     *,
     container_name: str,
-    command: str | None = None,
+    command: str | list[str] | None = None,
     env: dict | None = None,
     ports: dict | None = None,
     network_name: str | None = None,
@@ -31,7 +36,8 @@ def start_docker_container(
     Args:
         image (str): The base image to use
         container_name (str): The name of the container
-        command (str | None): The command line to run. Defaults to None
+        command (str | list[str] | None): The command line to run, as a raw string or an
+            argv-style list (preferred, avoids shell interpolation). Defaults to None
         env (dict | None): The environment variables to use. Defaults to None
         ports (dict | None): The ports to expose. Defaults to None
         network_name (str | None): The network to use. Defaults to None
@@ -48,10 +54,18 @@ def start_docker_container(
     try:
         if not env:
             env = {}
-        env = read_env_file(".env") | env
+        env = read_env_file(str(settings.data_dir / ".env")) | env
         client: DockerClient
         if os.name == "nt":
-            client = docker.DockerClient(base_url="tcp://127.0.0.1:2375", tls=False)
+            try:
+                client = docker.DockerClient(base_url="npipe:////./pipe/docker_engine")
+                client.ping()
+            except (docker.errors.DockerException, OSError):
+                logger.warning(
+                    "Docker named pipe unavailable; falling back to insecure unauthenticated "
+                    "tcp://127.0.0.1:2375. Prefer enabling the Docker Desktop named pipe endpoint."
+                )
+                client = docker.DockerClient(base_url="tcp://127.0.0.1:2375", tls=False)
         else:
             client = docker.DockerClient(base_url="unix://var/run/docker.sock")
         if network_name:
@@ -59,10 +73,10 @@ def start_docker_container(
                 networks = client.networks.list(names=[network_name])
                 if len(networks) > 0:
                     # network = networks[0]
-                    print(f"Network {network_name} exists.")
+                    logger.debug(f"Network {network_name} exists.")
                 else:
                     client.networks.create(network_name, driver="bridge")
-                    print(f"Network {network_name} created")
+                    logger.info(f"Network {network_name} created")
             except docker.errors.APIError as e:
                 return e
 
@@ -86,7 +100,7 @@ def start_docker_container(
         except docker.errors.APIError as e:
             return e
 
-        print(f"Container {container_name} does not exist. Creating...")
+        logger.info(f"Container {container_name} does not exist. Creating...")
         if background:
             container = client.containers.run(
                 image,

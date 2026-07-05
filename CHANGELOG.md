@@ -21,20 +21,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Options tab** no longer re-applies the current theme and spuriously saves settings when opened.
 - **Deferred Select test**: Corrected a test assertion that compared against `Select.BLANK` (now an unrelated inherited value) instead of the documented `Select.NULL` sentinel.
 
-## [0.8.7] - 2025-05-05
+## [0.8.7] - 2026-05-05
 
 ### Added
 
 - **Chat Cost Tracking**: Session status bar now shows cumulative cost (e.g. `Cost: $0.0123`) for paid providers. Token usage and cost are accumulated across all messages and persisted with the session file. Free providers (Ollama, LlamaCpp, Groq, GitHub) show no cost line.
 - **Markdown Export Frontmatter**: Exported markdown files now include YAML frontmatter with provider, model, date, token usage, and cost.
 
-## [0.8.6] - 2025-05-04
+## [0.8.6] - 2026-05-04
 
 ### Added
 
 - **Edit & Continue**: Press `c` on any completed assistant message to continue generation from that point. Works with all providers. After stopping generation, edit the partial response with `e`, then press `c` to continue. Strips abort text automatically and appends continuation to the existing message (#45).
 
-## [0.8.5] - 2025-05-03
+## [0.8.5] - 2026-05-03
 
 ### Added
 
@@ -75,7 +75,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **DOC-002**: Regenerated `help.md` with all 9 missing slash commands, removed spurious entries
 - **DOC-003**: Created `CONTRIBUTING.md` with development setup, code style, PR process, and conventions
 
-## [0.8.4] - 2025-05-01
+## [0.8.4] - 2026-05-01
 
 ### Fixed
 
@@ -86,13 +86,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Parenthesized multi-exception `except` clauses for Python 3.11 compatibility
   - Set ruff target version to `py311` to match `requires-python` and prevent future regressions
 
-## [0.8.3] - 2025-04-28
+## [0.8.3] - 2026-04-28
 
 ### Fixed
 
 - **Textual Revert**: Reverted to prior version of textual package due to bug in newer version
 
-## [0.8.2] - 2025-04-25
+## [0.8.2] - 2026-04-25
 
 ### Changed
 
@@ -104,7 +104,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Multiple security and infrastructure library updates
 - **Dependency Cleanup**: Optimized `uv.lock` file for better performance
 
-## [0.8.1] - 2025-04-20
+## [0.8.1] - 2026-04-20
 
 ### Added
 

@@ -128,10 +128,13 @@ class ExecutionCoordinator:
             )
 
             if requires_confirmation and settings.execution_require_confirmation:
-                # For now, just show warnings and proceed - full confirmation dialog would be added later
-                if warnings:
-                    warning_text = "; ".join(warnings)
-                    self._app.notify(f"Executing with warnings: {warning_text}", severity="warning")
+                # The warnings/pattern list from should_require_confirmation() is a UI
+                # hint to help the user decide, not a security boundary -- it's a small
+                # substring blocklist that is trivially bypassed and must never be
+                # relied on to make execution safe. Block on an explicit user decision.
+                if not await self._confirm_execution(template, warnings):
+                    self._app.notify("Execution cancelled by user", severity="information")
+                    return
 
             # Execute the template with the extracted code content
             result = await self.command_executor.execute_template(
@@ -205,9 +208,11 @@ class ExecutionCoordinator:
             )
 
             if requires_confirmation and settings.execution_require_confirmation:
-                if warnings:
-                    warning_text = "; ".join(warnings)
-                    self._app.notify(f"Executing with warnings: {warning_text}", severity="warning")
+                # See the comment in handle_execute_message_requested(): this warning
+                # list is a UI hint only, never a sandbox or security boundary.
+                if not await self._confirm_execution(template, warnings):
+                    self._app.notify("Execution cancelled by user", severity="information")
+                    return
 
             result = await self.command_executor.execute_template(
                 template=template,
@@ -279,6 +284,30 @@ class ExecutionCoordinator:
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+
+    async def _confirm_execution(self, template: ExecutionTemplate, warnings: list[str]) -> bool:
+        """Show a blocking confirmation dialog before executing a template.
+
+        Args:
+            template: The execution template about to run.
+            warnings: UI-hint warnings from ``TemplateMatcher.should_require_confirmation``.
+                These are informational only and are not a security guarantee.
+
+        Returns:
+            True if the user accepted execution, False if they cancelled.
+        """
+        from parllama.dialogs.yes_no_dialog import YesNoDialog
+
+        warning_text = "\n".join(f"- {w}" for w in warnings) if warnings else "No specific patterns detected."
+        return bool(
+            await self._app.push_screen_wait(
+                YesNoDialog(
+                    "Confirm Code Execution",
+                    f"Execute using template '{template.name}'?\n{warning_text}",
+                    yes_first=False,
+                )
+            )
+        )
 
     def _get_execution_manager(self) -> ExecutionManager | None:
         """Return the global execution manager, or None if not initialized."""

@@ -44,6 +44,26 @@ MODEL_SORT_OPTIONS: list[tuple[str, str]] = [
     ("Name (Z-A)", "name_desc"),
 ]
 
+# Quantization levels supported by the ollama/quantize docker image (llama.cpp quantize tool).
+VALID_QUANTIZE_LEVELS: frozenset[str] = frozenset(
+    {
+        "q4_0",
+        "q4_1",
+        "q4_K",
+        "q4_K_S",
+        "q4_K_M",
+        "q5_0",
+        "q5_1",
+        "q5_K",
+        "q5_K_S",
+        "q5_K_M",
+        "q6_K",
+        "q8_0",
+        "f16",
+        "f32",
+    }
+)
+
 
 def _local_model_sort_key(option: str):
     """Return a sort key function for LocalModelListItem based on the sort option."""
@@ -77,7 +97,7 @@ def api_model_ps() -> OllamaPsResponse:
 
         ret = OllamaPsResponse(**res.json())
         return ret
-    except (httpx.HTTPError, ValueError, ConnectionError, OSError):  # pylint: disable=broad-exception-caught
+    except (httpx.HTTPError, ValueError, ConnectionError, OSError):
         # Network / parsing errors from the Ollama API are non-fatal; return empty response
         return OllamaPsResponse()
 
@@ -278,8 +298,8 @@ class OllamaDataManager(MessageSink):
                 if ret.last_update and ret.last_update.timestamp() > (ret.last_update.timestamp() - 60 * 60 * 24):
                     self.site_models = [SiteModelListItem(m) for m in ret.models]
                     return self.site_models
-            except (json.JSONDecodeError, ValueError, KeyError, OSError) as e:  # pylint: disable=broad-exception-caught
-                print(f"Error loading site models cache: {e}")
+            except (json.JSONDecodeError, ValueError, KeyError, OSError) as e:
+                self.log_it(f"Error loading site models cache: {e}", severity="error")
 
         url_base: str = f"https://ollama.com/{namespace}"
         models: list[SiteModel] = []
@@ -382,7 +402,16 @@ class OllamaDataManager(MessageSink):
 
         Returns:
             bool: True if successful, False otherwise
+
+        Raises:
+            ValueError: If quantize_level is not a supported quantization level.
+            FileNotFoundError: If the model or quantized output folder/file cannot be found.
         """
+        if quantize_level not in VALID_QUANTIZE_LEVELS:
+            raise ValueError(
+                f"Unsupported quantize level '{quantize_level}'. "
+                f"Valid options are: {', '.join(sorted(VALID_QUANTIZE_LEVELS))}"
+            )
         model_name = os.path.basename(model_name)
         model_folder = os.path.join(settings.data_dir, "quantize_workspace", model_name)
         if not os.path.exists(model_folder):
@@ -395,7 +424,7 @@ class OllamaDataManager(MessageSink):
         ret = start_docker_container(
             image="ollama/quantize",
             container_name="parllamaQtz",
-            command=f"-q {quantize_level} /model",
+            command=["-q", quantize_level, "/model"],
             network_name="parllama-network",
             mounts=[
                 docker.types.Mount(

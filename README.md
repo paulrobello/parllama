@@ -16,6 +16,8 @@
 * [Installing for dev mode](#installing-for-dev-mode)
 * [Command line arguments](#command-line-arguments)
 * [Environment Variables](#environment-variables)
+    * [Secrets Vault](#secrets-vault)
+* [Configuration Reference](docs/reference/configuration.md)
 * [Running PAR_LLAMA](#running-par_llama)
     * [with pipx installation](#with-pipx-installation)
     * [with pip installation](#with-pip-installation)
@@ -33,7 +35,7 @@
 * [Contributing](#contributing)
 * [FAQ](#faq)
 * [Roadmap](#roadmap)
-    * [Where we are](#where-we-are)Ï
+    * [Where we are](#where-we-are)
     * [Where we're going](#where-were-going)
 * [What's new](#whats-new)
   * [v0.8.8](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md#088---2026-06-22)
@@ -263,6 +265,18 @@ Unless you specify "--no-save" most flags such as -u, -t, -m, -s are sticky and 
 * PARLLAMA_THEME_MODE - Used to set --theme-mode
 * OLLAMA_URL - Used to set --ollama-url
 * PARLLAMA_AUTO_NAME_SESSION - Set to 0 or 1 to disable / enable session auto naming using LLM
+* PARLLAMA_VAULT_KEY - When set, unlocks the encrypted secrets vault automatically at startup (see [Secrets Vault](#secrets-vault) below)
+
+For the full list of adjustable `settings.json` keys, their types, and defaults, see the [Configuration Reference](docs/reference/configuration.md).
+
+### Secrets Vault
+
+PAR LLAMA includes an encrypted secrets vault (`src/parllama/secrets_manager.py`) for storing sensitive values (such as provider API keys) separately from plaintext `settings.json`. It derives an encryption key from a password using PBKDF2-HMAC-SHA256, then encrypts/decrypts stored secrets with AES-GCM. The vault stays locked until unlocked with the correct password.
+
+* Set `PARLLAMA_VAULT_KEY` in your environment to have the vault unlock automatically on startup.
+* The vault file uses restrictive `0600` permissions on POSIX systems.
+
+**Note:** The in-app "Secrets" tab UI (`SecretsView`) is currently disabled/in-progress — its `TabPane` is commented out in `src/parllama/screens/main_screen.py`. The vault's manager and encryption logic exist and are used programmatically, but there is currently no UI screen for managing secrets interactively.
 
 ## Running PAR_LLAMA
 
