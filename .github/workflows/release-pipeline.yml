@@ -259,7 +259,12 @@ jobs:
     name: Publish to PyPI 🎉
     runs-on: ubuntu-latest
     needs: [build-and-tag, github-release]
-    if: needs.github-release.result == 'success'
+    # `always()` is required: github-release depends on publish-testpypi, so when
+    # skip-testpypi=true (publish-testpypi skipped) the default success() check
+    # would skip this job too -- defeating the "go straight to release" path.
+    # The explicit gate below still restricts PyPI to runs where the signed
+    # release artifacts were actually created.
+    if: always() && needs.github-release.result == 'success'
     environment:
       name: pypi
       url: https://pypi.org/p/parllama
