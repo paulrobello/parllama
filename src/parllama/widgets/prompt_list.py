@@ -53,7 +53,12 @@ class PromptList(Vertical, can_focus=False, can_focus_children=True):
 
     def on_mount(self) -> None:
         """Register for updates"""
-        self.app.post_message(RegisterForUpdates(widget=self, event_names=[PromptListChanged, PromptSelected]))
+        # PromptList posts PromptSelected (via action_load_item) but must NOT
+        # subscribe to it: the EventBus re-delivers a fresh copy to every
+        # subscriber, and with no handler here that copy bubbles back up to
+        # ParLlamaApp.on_prompt_selected, which re-broadcasts it — an infinite
+        # loop that spawns a chat tab on every cycle (issue #77).
+        self.app.post_message(RegisterForUpdates(widget=self, event_names=[PromptListChanged]))
 
     def compose(self) -> ComposeResult:
         """Compose the content of the view."""
