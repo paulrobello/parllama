@@ -38,11 +38,11 @@
     * [Where we are](#where-we-are)
     * [Where we're going](#where-were-going)
 * [What's new](#whats-new)
+  * [v0.9.1](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md#091---2026-07-05)
   * [v0.9.0](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md#090---2026-07-05)
   * [v0.8.8](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md#088---2026-06-22)
   * [v0.8.7](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md#087---2026-05-05)
   * [v0.8.6](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md#086---2026-05-04)
-  * [v0.8.5](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md#085---2026-05-03)
   * [older...](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md)
 
 [![PyPI](https://img.shields.io/pypi/v/parllama)](https://pypi.org/project/parllama/)
@@ -576,7 +576,11 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, code style, commit
 
 ## What's new
 
-### v0.9.0 (Latest)
+### v0.9.1 (Latest)
+
+* **Fixes**: Pressing `Enter` or double-clicking a prompt in the Prompts tab no longer triggers an infinite loop that spawned chat sessions until the app was force-quit. `PromptList` was subscribed to the same `PromptSelected` message it posts, so each EventBus broadcast bounced back through the app handler and re-broadcast forever (#77)
+
+### v0.9.0
 
 * **Security hardening**: `settings.json` is written with `0o600` permissions; the code-execution "require confirmation" setting is now a real blocking dialog instead of a no-op; Docker uses the Windows named pipe, the quantization level is validated, path-traversal checks do real containment, and vault password checks are constant-time
 * **CI & tests**: `make checkall` now runs the test suite, a new push/PR CI workflow was added, and coverage grew from 132 to 211 tests
@@ -597,10 +601,5 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, code style, commit
 ### v0.8.6
 
 * **Edit & Continue**: Press `c` on any completed assistant message to continue generation from that point. Works with all providers. After stopping generation, edit the partial response with `e`, then press `c` to continue (#45)
-
-### v0.8.4
-
-* **First Run Fix**: Fixed error message appearing on first run when `settings.json` doesn't exist yet (#69)
-* **Python 3.11 Compatibility Fix**: Fixed syntax errors when running on Python 3.11
 
 For the full version history, see [CHANGELOG.md](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md).

@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.1] - 2026-07-05
+
+### Fixed
+
+- **Prompts tab infinite loop (#77)**: Pressing `Enter` or double-clicking a prompt in the Prompts tab no longer spawns chat sessions in an infinite loop that required `Ctrl+C` to stop. `PromptList` was subscribed to the same `PromptSelected` message it posts, so each EventBus broadcast bounced back through the app handler and re-broadcast indefinitely, with `ChatView` creating a new chat tab on every cycle. `PromptList` now subscribes only to the list-refresh signal.
+
 ## [0.9.0] - 2026-07-05
 
 ### Security
