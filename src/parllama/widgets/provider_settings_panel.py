@@ -99,6 +99,11 @@ class ProviderSettingsPanel(Vertical):
         """
         super().__init__(**kwargs)
         self.spec = spec
+        # The panel IS the bordered section (matching the original inline
+        # ``Vertical(classes="section")``); OptionsView's ``.section`` rule gives
+        # it ``height: auto`` so panels stack instead of overlapping.
+        self.add_class("section")
+        self.border_title = spec.title
 
     @property
     def _provider_name(self) -> str:
@@ -108,35 +113,33 @@ class ProviderSettingsPanel(Vertical):
     def compose(self) -> ComposeResult:
         """Compose the provider's settings subsection."""
         spec = self.spec
-        with Vertical(classes="section") as section:
-            section.border_title = spec.title
-            if spec.has_base_url:
-                yield Label("Base URL")
-                yield InputBlurSubmit(
-                    value=settings.provider_base_urls[spec.provider] or spec.base_url_default,
-                    valid_empty=True,
-                    validators=HttpValidator(),
-                    id=f"{self._provider_name}_base_url",
-                )
-            for extra in spec.extra_inputs:
-                yield Label(extra.label)
-                yield InputBlurSubmit(
-                    value=extra.value(),
-                    max_length=extra.max_length,
-                    type="integer",
-                    validators=[Integer(minimum=extra.minimum, maximum=extra.maximum)],
-                    id=extra.widget_id,
-                )
-            if spec.has_api_key:
-                yield Label("API Key")
-                yield InputBlurSubmit(
-                    value=settings.provider_api_keys[spec.provider] or "",
-                    valid_empty=True,
-                    password=True,
-                    id=spec.api_key_id or f"{self._provider_name}_api_key",
-                )
-            yield from self._compose_disable_checkbox()
-            yield from self._compose_cache_controls()
+        if spec.has_base_url:
+            yield Label("Base URL")
+            yield InputBlurSubmit(
+                value=settings.provider_base_urls[spec.provider] or spec.base_url_default,
+                valid_empty=True,
+                validators=HttpValidator(),
+                id=f"{self._provider_name}_base_url",
+            )
+        for extra in spec.extra_inputs:
+            yield Label(extra.label)
+            yield InputBlurSubmit(
+                value=extra.value(),
+                max_length=extra.max_length,
+                type="integer",
+                validators=[Integer(minimum=extra.minimum, maximum=extra.maximum)],
+                id=extra.widget_id,
+            )
+        if spec.has_api_key:
+            yield Label("API Key")
+            yield InputBlurSubmit(
+                value=settings.provider_api_keys[spec.provider] or "",
+                valid_empty=True,
+                password=True,
+                id=spec.api_key_id or f"{self._provider_name}_api_key",
+            )
+        yield from self._compose_disable_checkbox()
+        yield from self._compose_cache_controls()
 
     def _compose_disable_checkbox(self) -> ComposeResult:
         """Compose the provider disable checkbox."""

@@ -12,7 +12,9 @@ import pytest
 from textual.app import App, ComposeResult
 from textual.containers import Vertical
 
+from parllama.theme_manager import theme_manager
 from parllama.widgets.provider_settings_panel import PROVIDER_PANELS, ProviderSettingsPanel
+from parllama.widgets.views.options_view import OptionsView
 
 
 @pytest.fixture
@@ -73,3 +75,37 @@ async def test_special_case_provider_ids_present() -> None:
             assert special in mounted_ids, f"expected special-case id {special} not mounted"
         # Gemini has no base URL field.
         assert "gemini_base_url" not in mounted_ids
+
+
+class _OptionsHostApp(App[None]):
+    """Mounts the real OptionsView, wiring the theme manager as ParLlamaApp does."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        # OptionsView._compose_theme_section queries theme_manager, which needs
+        # its app reference set before composing (mirrors ParLlamaApp.__init__).
+        theme_manager.set_app(self)
+
+    def compose(self) -> ComposeResult:
+        yield OptionsView()
+
+
+@pytest.mark.anyio
+async def test_provider_panels_stack_without_overlap_in_options_view() -> None:
+    """Each provider panel is its own bordered .section so they stack, not overlap.
+
+    Regression guard: wrapping each panel in an extra plain ``Vertical`` (default
+    ``height: 1fr``) instead of making the panel itself the ``.section`` caused
+    every provider panel to collapse onto the same vertical position.
+    """
+    app = _OptionsHostApp()
+    async with app.run_test(size=(120, 60)) as pilot:
+        await pilot.pause()
+        panels = list(app.query(ProviderSettingsPanel))
+        assert panels, "no provider panels mounted"
+        # Every panel must be a bordered section that sizes to its content.
+        assert all("section" in panel.classes for panel in panels)
+        assert all(panel.region.height > 3 for panel in panels), "a panel collapsed"
+        rects = sorted((panel.region for panel in panels), key=lambda r: r.y)
+        for upper, lower in zip(rects, rects[1:]):
+            assert upper.bottom <= lower.y, "provider panels overlap vertically"
