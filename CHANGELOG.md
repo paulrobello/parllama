@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.2] - 2026-07-10
+
+### Fixed
+
+- **Startup and chat broken after `par-ai-core` 0.5.9 upgrade**: `par-ai-core` 0.5.9 moved its provider integrations (OpenAI, Anthropic, Groq, Google GenAI, xAI, OpenRouter, Deepseek, Ollama, LiteLLM) from hard dependencies to optional extras. The bare `par-ai-core` pin no longer pulled them, which broke app startup (`No module named 'litellm'`) and the first chat message (`No module named 'langchain_openai'`). parllama now consumes `par-ai-core` with the exact extras it exposes.
+- **Direct dependency declarations**: `litellm` and `pillow` are now declared as direct dependencies. Both were imported directly but relied on being pulled in transitively, so they disappeared when upstream packages reorganized their dependency trees.
+
 ## [0.9.1] - 2026-07-05
 
 ### Fixed

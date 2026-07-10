@@ -38,11 +38,11 @@
     * [Where we are](#where-we-are)
     * [Where we're going](#where-were-going)
 * [What's new](#whats-new)
+  * [v0.9.2](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md#092---2026-07-10)
   * [v0.9.1](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md#091---2026-07-05)
   * [v0.9.0](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md#090---2026-07-05)
   * [v0.8.8](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md#088---2026-06-22)
   * [v0.8.7](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md#087---2026-05-05)
-  * [v0.8.6](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md#086---2026-05-04)
   * [older...](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md)
 
 [![PyPI](https://img.shields.io/pypi/v/parllama)](https://pypi.org/project/parllama/)
@@ -576,7 +576,11 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, code style, commit
 
 ## What's new
 
-### v0.9.1 (Latest)
+### v0.9.2 (Latest)
+
+* **Fixes**: Restored startup and chat after the `par-ai-core` 0.5.9 upgrade moved its provider integrations to optional extras (broke `litellm` at startup and `langchain_openai` on chat). parllama now consumes `par-ai-core` with the exact provider extras it exposes, and declares `litellm` and `pillow` as direct dependencies instead of relying on them transitively
+
+### v0.9.1
 
 * **Fixes**: Pressing `Enter` or double-clicking a prompt in the Prompts tab no longer triggers an infinite loop that spawned chat sessions until the app was force-quit. `PromptList` was subscribed to the same `PromptSelected` message it posts, so each EventBus broadcast bounced back through the app handler and re-broadcast forever (#77)
 
