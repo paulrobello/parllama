@@ -27,6 +27,7 @@
 * [Quick start Ollama chat workflow](#Quick-start-Ollama-chat-workflow)
 * [Quick start image chat workflow](#Quick-start-image-chat-workflow)
 * [Quick start OpenAI provider chat workflow](#Quick-start-OpenAI-provider-chat-workflow)
+* [llmman support](#llmman-support)
 * [Custom Prompts](#custom-prompts)
 * [Memory System](#memory-system)
 * [Template Execution](#template-execution)
@@ -384,6 +385,21 @@ or
 ```bash
 llama-server -mu URL_TO_MODEL
 ```
+
+## llmman support
+[llmman](https://github.com/llmmanorg/llmman) is a local model runner that serves the Ollama API (alongside OpenAI- and Anthropic-compatible ones) on port 17434.
+Because it speaks the Ollama API, Parllama's Ollama provider works against it unchanged; only the URL differs.  
+To start an llmman server run the following commands in a separate terminal:  
+```bash
+llmman serve
+llmman pull gemma4
+```
+Then point Parllama at it with the `-u` flag (or the `OLLAMA_URL` environment variable):  
+```bash
+parllama -u "http://localhost:17434"
+```
+Parllama will remember the URL so subsequent runs will not require the `-u` flag.  
+Pulling a model from within Parllama uses `/api/pull`; use llmman model names (`gemma4`, `qwen3.8`) or Hugging Face references (`hf.co/unsloth/Qwen3.5-0.8B-GGUF`).
 
 ## Custom Prompts
 You can create a library of custom prompts for easy starting of new chats.
