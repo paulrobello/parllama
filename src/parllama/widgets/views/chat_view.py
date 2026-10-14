@@ -444,13 +444,15 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
             await zero_arg_handler(self)
             return
 
-        cmd_word, sep, cmd_arg = cmd.partition(" ")
-        if sep:
-            prefix_handler = self._PREFIX_COMMANDS.get(cmd_word)
-            if prefix_handler is not None:
-                _, _, raw_arg = cmd_raw.partition(" ")
-                await prefix_handler(self, raw_arg, cmd_arg)
-                return
+        cmd_word, _, cmd_arg = cmd.partition(" ")
+        prefix_handler = self._PREFIX_COMMANDS.get(cmd_word)
+        if prefix_handler is not None:
+            # Dispatch with an empty argument when the command was typed
+            # bare (no trailing space) so handlers show their usage message
+            # (or open a picker, for /attach) instead of "Unknown command".
+            _, _, raw_arg = cmd_raw.partition(" ")
+            await prefix_handler(self, raw_arg, cmd_arg)
+            return
 
         self.notify(f"Unknown command: {cmd}", severity="error")
 
