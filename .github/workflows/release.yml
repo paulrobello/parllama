@@ -16,7 +16,7 @@ jobs:
     outputs:
       version: ${{ steps.get_version.outputs.version }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Setup Python with uv
         uses: ./.github/actions/setup-python-uv
@@ -50,7 +50,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Download all the dists
         uses: actions/download-artifact@v8
@@ -59,7 +59,7 @@ jobs:
           path: dist/
 
       - name: Sign the dists with Sigstore
-        uses: sigstore/gh-action-sigstore-python@v3.3.0
+        uses: sigstore/gh-action-sigstore-python@v3.5.0
         with:
           inputs: >-
             ./dist/*.tar.gz
