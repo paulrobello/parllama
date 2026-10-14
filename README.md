@@ -370,7 +370,7 @@ make dev
 * Alternatively attach and send in one step: "/add.doc PATH_TO_DOCUMENT summarize this document".
 * On Anthropic, OpenAI, and Gemini the PDF is sent natively to the model; on Ollama and other providers the document's text is extracted and included in the prompt.
 * Attachments persist with the session: reload a past session later and keep asking questions about the same document.
-* Password-protected PDFs are not supported; size, page-count, and extracted-text limits are configurable in Options under file validation settings.
+* Password-protected PDFs are not supported; size, page-count, and extracted-text limits are configurable in the settings file (`file_validation` group, see `docs/reference/configuration.md`).
 
 ## Quick start OpenAI provider chat workflow
 * Start parllama.
