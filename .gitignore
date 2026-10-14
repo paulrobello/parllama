@@ -33,5 +33,4 @@
 /rag_docs/
 /.vscode/
 /.ruff_cache/
-graphify-out/
 statusline-*.json
