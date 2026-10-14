@@ -13,7 +13,7 @@ from par_ai_core.llm_providers import (
     llm_provider_names,
     provider_name_to_enum,
 )
-from textual import on
+from textual import on, work
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
@@ -365,8 +365,17 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         self._refresh_pending_attachments()
         self.active_tab.do_send_message(user_msg, images=pending_images or None, documents=pending_documents or None)
 
-    async def action_attach_file(self) -> None:
+    def action_attach_file(self) -> None:
         """Open the file picker to attach an image or document (ctrl+o)."""
+        self.attach_file_worker()
+
+    @work(exclusive=True)
+    async def attach_file_worker(self) -> None:
+        """Open the attach dialog from a worker.
+
+        push_screen_wait requires a worker context (same pattern as
+        ChatTab.import_conversation_text / ExecutionView.import_templates_worker).
+        """
         path = await AttachFileDialog.get_filename(self.app)
         if path is None:
             return
@@ -751,7 +760,7 @@ Chat Commands:
         """Handle /attach [FILE_OR_URL] — attach without sending."""
         arg = cmd_arg.strip()
         if not arg:
-            await self.action_attach_file()
+            self.attach_file_worker()
             return
         self._attach_pending(arg)
 
