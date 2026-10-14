@@ -139,6 +139,8 @@ class ChatMessageWidget(Vertical, can_focus=True):
         yield self.markdown
         if self.msg.images:
             yield Static(id="image", expand=True)
+        if self.msg.documents:
+            yield Static("\n".join(str(d) for d in self.msg.documents), id="documents", expand=True)
 
     @property
     def raw_text(self) -> str:

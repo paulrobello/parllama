@@ -144,6 +144,8 @@ Prompt Commands:
 
 Image Commands:
 * /add.image image_path_or_url prompt - Add an image via path or url to the active chat session. Everything after the image path or url will be used as the prompt
+* /add.doc file_or_url prompt - Attach a PDF/text/markdown document via path or url to the active chat session. Everything after the file path or url will be used as the prompt
+* /attach [file_or_url] - Attach an image or document for the next message; with no argument opens the file picker (also ctrl+o). Click a pending attachment chip to remove it
 
 History Commands:
 * /history.clear - Clear chat input history

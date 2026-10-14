@@ -22,9 +22,17 @@ from textual.events import Show
 from textual.suggester import SuggestFromList
 from textual.widgets import Button, ContentSwitcher, Select, TabbedContent
 
+from parllama.attachment_utils import (
+    MAX_DOCUMENTS_PER_MESSAGE,
+    MAX_IMAGES_PER_MESSAGE,
+    AttachmentError,
+    attach_document,
+)
 from parllama.chat_manager import ChatSession, chat_manager
 from parllama.chat_message import ParllamaChatMessage
+from parllama.dialogs.attach_file_dialog import AttachFileDialog
 from parllama.dialogs.information import InformationDialog
+from parllama.document_attachment import DocumentAttachment
 from parllama.messages.messages import (
     ChangeTab,
     ChatContinueRequested,
@@ -48,6 +56,7 @@ from parllama.messages.messages import (
 )
 from parllama.provider_manager import provider_manager
 from parllama.settings_manager import settings
+from parllama.widgets.clickable_label import ClickableLabel
 from parllama.widgets.session_config import SessionConfig
 from parllama.widgets.session_list import SessionList
 from parllama.widgets.user_input import UserInput
@@ -74,6 +83,8 @@ valid_commands: list[str] = [
     "/session.to_prompt",
     "/history.clear",
     "/add.image",
+    "/add.doc",
+    "/attach",
     "/prompt.load ",
     "/remember ",
     "/forget ",
@@ -111,6 +122,19 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
             #stop_button {
                 min-width: 6;
                 width: 6;
+            }
+        }
+        #pending_attachments {
+            height: auto;
+            max-height: 6;
+            background: $surface-darken-1;
+            width: 0.99fr;
+            padding: 0 1;
+            Label {
+                margin: 0 1 0 0;
+                padding: 0 1;
+                background: $panel;
+                color: $text;
             }
         }
     }
@@ -165,6 +189,13 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
             show=True,
             priority=True,
         ),
+        Binding(
+            key="ctrl+o",
+            action="attach_file",
+            description="Attach",
+            show=True,
+            priority=True,
+        ),
     ]
     chat_tabs: TabbedContent
     provider_list_auto_complete_list: list[str]
@@ -191,6 +222,8 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         self.send_button: Button = Button("Send", id="send_button", disabled=True, variant="success")
         self.stop_button: Button = Button("Stop", id="stop_button", disabled=True, variant="error")
         self.last_command = ""
+        self.pending_images: list[str] = []
+        self.pending_documents: list[DocumentAttachment] = []
         self.provider_list_auto_complete_list = [f"/session.provider {p}" for p in llm_provider_names]
         self.model_list_auto_complete_list = []
         self.prompt_list_auto_complete_list = []
@@ -201,6 +234,8 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         yield self.session_list
         with self.chat_tabs:
             yield ChatTab(user_input=self.user_input, session_list=self.session_list)
+        with Horizontal(id="pending_attachments"):
+            yield from []
         with Horizontal(id="send_bar"):
             yield self.user_input
             yield self.send_button
@@ -323,7 +358,74 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         if user_msg.startswith("/"):
             return await self.handle_command(user_msg[1:].strip())
 
-        self.active_tab.do_send_message(user_msg)
+        pending_images = self.pending_images
+        pending_documents = self.pending_documents
+        self.pending_images = []
+        self.pending_documents = []
+        self._refresh_pending_attachments()
+        self.active_tab.do_send_message(user_msg, images=pending_images or None, documents=pending_documents or None)
+
+    async def action_attach_file(self) -> None:
+        """Open the file picker to attach an image or document (ctrl+o)."""
+        path = await AttachFileDialog.get_filename(self.app)
+        if path is None:
+            return
+        self._attach_pending(str(path))
+
+    def _attach_pending(self, path_or_url: str) -> None:
+        """Add a file or URL to the pending attachments for the next message."""
+        src = path_or_url.strip()
+        name = Path(src.split("?")[0]).name or src
+        if Path(src.split("?")[0]).suffix.lower() in settings.allowed_document_extensions:
+            if len(self.pending_documents) >= MAX_DOCUMENTS_PER_MESSAGE:
+                self.notify(f"Maximum {MAX_DOCUMENTS_PER_MESSAGE} documents per message", severity="error")
+                return
+            try:
+                self.pending_documents.append(attach_document(src))
+            except AttachmentError as e:
+                self.notify(str(e), severity="error")
+                return
+        else:
+            if len(self.pending_images) >= MAX_IMAGES_PER_MESSAGE:
+                self.notify(f"Maximum {MAX_IMAGES_PER_MESSAGE} images per message", severity="error")
+                return
+            self.pending_images.append(src)
+        self._refresh_pending_attachments()
+        self.notify(f"Attached: {name}")
+
+    def _refresh_pending_attachments(self) -> None:
+        """Re-render the pending attachment chip bar."""
+        self.call_after_refresh(self._remount_pending_attachments)
+
+    async def _remount_pending_attachments(self) -> None:
+        bar = self.query_one("#pending_attachments", Horizontal)
+        await bar.remove_children()
+        chips = [
+            ClickableLabel(f"[x] 📄 {d.name}" + (f" ({d.num_pages}p)" if d.num_pages else ""), classes="pending_chip")
+            for d in self.pending_documents
+        ]
+        chips += [
+            ClickableLabel(f"[x] 🖼 {Path(u.split('?')[0]).name}", classes="pending_chip") for u in self.pending_images
+        ]
+        bar.display = bool(chips)
+        if chips:
+            await bar.mount(*chips)
+
+    @on(ClickableLabel.Click)
+    def on_pending_chip_click(self, event: ClickableLabel.Click) -> None:
+        """Remove a pending attachment when its chip is clicked."""
+        event.stop()
+        label = event.label.plain_text
+        for i, d in enumerate(self.pending_documents):
+            if label == f"[x] 📄 {d.name}" + (f" ({d.num_pages}p)" if d.num_pages else ""):
+                del self.pending_documents[i]
+                self._refresh_pending_attachments()
+                return
+        for i, u in enumerate(self.pending_images):
+            if label == f"[x] 🖼 {Path(u.split('?')[0]).name}":
+                del self.pending_images[i]
+                self._refresh_pending_attachments()
+                return
 
     async def handle_command(self, cmd_raw: str) -> None:
         """Handle a command"""
@@ -377,6 +479,8 @@ Chat Commands:
 /session.to_prompt submit_on_load [prompt_name] - Copy current session to new custom prompt. submit_on_load = {0|1}
 /prompt.load prompt_name - Load a custom prompt using current tabs model and temperature
 /add.image image_path_or_url prompt (required) - Add an image via path or url to the active chat session
+/add.doc file_or_url prompt (required) - Attach a PDF/text/markdown document via path or url to the active chat session
+/attach [file_or_url] - Attach an image or document for the next message; with no argument opens the file picker (ctrl+o)
 /history.clear - Clear chat input history
 /remember [information] - Add information to memory using AI assistance
 /forget [information] - Remove information from memory using AI assistance
@@ -604,6 +708,51 @@ Chat Commands:
         self.post_message(ChatMessage(parent_id=self.session.id, message_id=msg.id))
         self.active_tab.do_send_message("")
 
+    async def _cmd_add_doc_arg(self, raw_arg: str, cmd_arg: str) -> None:
+        """Handle /add.doc FILE_OR_URL PROMPT — attach a document and send."""
+        arg_str = cmd_arg.strip()
+        if not arg_str:
+            self.notify("Usage: /add.doc FILE_NAME_OR_URL PROMPT", severity="error")
+            return
+        if arg_str.startswith('"'):
+            end = arg_str.find('"', 1)
+            if end == -1:
+                self.notify("Unclosed double quote in filename", severity="error")
+                return
+            v = arg_str[1:end]
+            p = arg_str[end + 1 :].strip()
+        elif arg_str.startswith("'"):
+            end = arg_str.find("'", 1)
+            if end == -1:
+                self.notify("Unclosed single quote in filename", severity="error")
+                return
+            v = arg_str[1:end]
+            p = arg_str[end + 1 :].strip()
+        else:
+            parts = arg_str.split(" ", 1)
+            v = parts[0]
+            p = parts[1] if len(parts) > 1 else ""
+        if not p:
+            self.notify("Prompt is required. Usage: /add.doc FILE_NAME_OR_URL PROMPT", severity="error")
+            return
+        try:
+            doc = attach_document(v)
+        except AttachmentError as e:
+            self.notify(str(e), severity="error")
+            return
+        msg = ParllamaChatMessage(role="user", content=p, documents=[doc])
+        self.active_tab.session.add_message(msg)
+        self.post_message(ChatMessage(parent_id=self.active_tab.session.id, message_id=msg.id))
+        self.active_tab.do_send_message("")
+
+    async def _cmd_attach_arg(self, raw_arg: str, cmd_arg: str) -> None:
+        """Handle /attach [FILE_OR_URL] — attach without sending."""
+        arg = cmd_arg.strip()
+        if not arg:
+            await self.action_attach_file()
+            return
+        self._attach_pending(arg)
+
     async def _cmd_remember_arg(self, raw_arg: str, cmd_arg: str) -> None:
         info_to_remember = raw_arg.strip()
         if not info_to_remember:
@@ -628,6 +777,8 @@ Chat Commands:
         "session.system_prompt": _cmd_session_system_prompt_arg,
         "prompt.load": _cmd_prompt_load_arg,
         "add.image": _cmd_add_image_arg,
+        "add.doc": _cmd_add_doc_arg,
+        "attach": _cmd_attach_arg,
         "remember": _cmd_remember_arg,
         "forget": _cmd_forget_arg,
     }

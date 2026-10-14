@@ -20,6 +20,7 @@ from textual.widgets import Static, TabbedContent, TabPane
 
 from parllama.chat_manager import ChatSession, chat_manager
 from parllama.chat_message import ParllamaChatMessage
+from parllama.document_attachment import DocumentAttachment
 from parllama.llm_session_helpers import llm_summarize_session
 from parllama.messages.messages import (
     ChatContinueRequested,
@@ -443,10 +444,15 @@ class ChatTab(TabPane):
             self.user_input.focus()
 
     @work(thread=True, name="msg_send_worker")
-    async def do_send_message(self, msg: str) -> None:
+    async def do_send_message(
+        self,
+        msg: str,
+        images: list[str] | None = None,
+        documents: list[DocumentAttachment] | None = None,
+    ) -> None:
         """Send the message."""
         self.busy = True
-        await self.session.send_chat(msg)
+        await self.session.send_chat(msg, images=images, documents=documents)
         self.post_message(ChatMessageSent(self.session.id))
 
     @on(ChatMessageSent)
