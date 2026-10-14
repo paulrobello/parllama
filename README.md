@@ -26,6 +26,7 @@
     * [Dev mode](#dev-mode)
 * [Quick start Ollama chat workflow](#Quick-start-Ollama-chat-workflow)
 * [Quick start image chat workflow](#Quick-start-image-chat-workflow)
+* [Quick start document chat workflow](#Quick-start-document-chat-workflow)
 * [Quick start OpenAI provider chat workflow](#Quick-start-OpenAI-provider-chat-workflow)
 * [llmman support](#llmman-support)
 * [Custom Prompts](#custom-prompts)
@@ -73,6 +74,7 @@ It runs on all major OS's including but not limited to Windows, Windows WSL, Mac
 - **Model Management**: Pull, delete, copy, create, and quantize models with native Ollama support
 
 ### Advanced Features
+- **Document Attachments**: Attach PDF, text, and Markdown files via file picker (`ctrl+o`) or `/add.doc` / `/attach`; native document support on Anthropic, OpenAI, and Gemini with text extraction fallback for all other providers
 - **Memory System**: Persistent user context that remembers information across all conversations with AI-powered updates
 - **Template Execution**: Secure code execution system with configurable command allowlists and customizable security patterns
 - **Smart Model Caching**: Intelligent per-provider model caching with configurable durations
@@ -361,6 +363,15 @@ make dev
 * Towards the very top of the app you will see what model is loaded and what percent of it is loaded into the GPU / CPU. If a model can't be loaded 100% on the GPU it will run slower.
 * Type "/help" or "/?" to see what other slash commands are available.
 
+## Quick start document chat workflow
+* Start parllama and select any provider/model (documents work everywhere — providers without native PDF support send the extracted text instead).
+* Press ^O in the chat input to open the attach dialog and pick a PDF, text, or Markdown file. The file appears as a chip above the input; click the chip to remove it.
+* Type a question about the document and press Enter. The attachment rides along with your message.
+* Alternatively attach and send in one step: "/add.doc PATH_TO_DOCUMENT summarize this document".
+* On Anthropic, OpenAI, and Gemini the PDF is sent natively to the model; on Ollama and other providers the document's text is extracted and included in the prompt.
+* Attachments persist with the session: reload a past session later and keep asking questions about the same document.
+* Password-protected PDFs are not supported; size, page-count, and extracted-text limits are configurable in Options under file validation settings.
+
 ## Quick start OpenAI provider chat workflow
 * Start parllama.
 * Select the "Options" tab.
@@ -564,6 +575,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, code style, commit
   * A: No. ParLlama can be used with most online AI providers
 * Q: Does ParLlama support vision LLMs?
   * A: Yes. If the selected provider / model supports vision you can add images to the chat via /slash commands
+* Q: Can ParLlama answer questions about my PDFs?
+  * A: Yes. Attach a PDF via ^O or /add.doc. Anthropic, OpenAI, and Gemini receive the PDF natively; other providers receive its extracted text.
 
 ## Roadmap
 
@@ -571,7 +584,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, code style, commit
 * **Core Model Management** - Find, maintain, pull, delete, copy, and create new models with full Ollama integration
 * **Multi-Provider Support** - Seamless integration with Ollama, OpenAI, Anthropic, Groq, Google, xAI, OpenRouter, Deepseek, and LiteLLM
 * **Advanced Chat System** - Multi-tab conversations with full history management and session persistence
-* **Vision Model Support** - Chat with images using vision-capable LLMs like LLaVA and GPT-4 Vision
+* **Vision Model Support** - Chat with images using vision-capable LLMs like LLaVA and GPT-4 Vision, added via file picker (^O) or /add.image
+* **Document Attachments** - Attach PDF, text, and Markdown files to chat via file picker (^O) or /add.doc, with native support on Anthropic, OpenAI, and Gemini and text-extraction fallback everywhere else
 * **Memory System** - Persistent user context across all conversations with AI-powered memory management
 * **Template Execution** - Secure code execution system with configurable command allowlists and safety controls
 * **Custom Prompt Library** - Create, manage, and import prompts from Fabric and other sources
@@ -584,8 +598,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, code style, commit
 
 ### Where we're going
 
-* Better image support via file pickers
 * RAG for local documents and web pages
+* OCR for scanned (image-only) PDFs
 * Expand ability to import custom prompts of other tools
 * LLM tool use
 

@@ -88,23 +88,30 @@ PAR LLAMA implements a comprehensive file validation and security system to prot
 - **Atomic Operations**: All file writes use atomic operations with automatic backup/restore
 - **Filename Sanitization**: Removes unsafe characters and validates against reserved names
 
-#### Configuration Settings (v0.3.26)
-All file validation features are configurable via `settings_manager.py`:
+#### Configuration Settings
+All file validation features are configurable via `settings_manager.py` (defined in `src/parllama/settings/config_groups.py` — `FileValidationConfig`):
 ```python
 file_validation_enabled: bool = True
-max_file_size_mb: float = 10.0
-max_image_size_mb: float = 5.0
+max_file_size_mb: float = 50.0
+max_image_size_mb: float = 50.0
 max_json_size_mb: float = 20.0
-max_zip_size_mb: float = 50.0
-max_zip_compression_ratio: float = 100.0
-validate_file_content: bool = True
-sanitize_filenames: bool = True
+max_zip_size_mb: float = 250.0
+max_total_attachment_size_mb: float = 250.0
 allowed_json_extensions: list[str] = [".json"]
 allowed_image_extensions: list[str] = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"]
 allowed_markdown_extensions: list[str] = [".md", ".markdown", ".txt"]
 allowed_zip_extensions: list[str] = [".zip"]
-atomic_file_operations: bool = True
-create_backup_on_write: bool = True
+allowed_document_extensions: list[str] = [".pdf", ".txt", ".md"]
+max_document_size_mb: float = 32.0
+max_pdf_pages: int = 500
+max_extracted_text_chars: int = 500_000
+inline_document_threshold_mb: float = 2.0
+enable_ocr: bool = False
+ocr_language: str = "eng"
+max_zip_compression_ratio: float = 100.0
+validate_file_content: bool = True
+allow_zip_extraction: bool = True
+sanitize_filenames: bool = True
 ```
 
 #### Protected Operations
@@ -115,7 +122,12 @@ create_backup_on_write: bool = True
 - Conversation import/export (Markdown)
 - Fabric prompt downloads (ZIP files)
 - Image caching and validation
+- Document attachments (PDF/text/Markdown; local files and remote URLs)
 - Settings persistence
+
+## Attachments
+
+Chat messages carry images (`ParllamaChatMessage.images`) and documents (`ParllamaChatMessage.documents`, `DocumentAttachment`). The attach pipeline lives in `src/parllama/attachment_utils.py`: validation → pypdf text extraction (behind the OCR-ready `ExtractionStrategy` seam — OCR ships disabled via `settings.enable_ocr`) → hybrid persistence (inline up to `inline_document_threshold_mb`, content-hash cache reference in `~/.cache/parllama/documents/` above it, re-derived at send via `ensure_sendable`). Provider routing in `to_langchain_native(provider)`: native file content parts for Anthropic/OpenAI/Gemini, fenced extracted text for everything else. Entry points: `ctrl+o` file picker, `/attach`, `/add.doc FILE_OR_URL PROMPT`. Spec: `docs/specs/issue-56-25-attachments.md`.
 
 ## Development Guidelines
 

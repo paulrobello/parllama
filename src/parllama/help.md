@@ -87,6 +87,7 @@ Chat with local LLMs and manage saved sessions
 | `ctrl+n`      | New chat tab                    |
 | `ctrl+delete` | Remove current chat tab         |
 | `ctrl+e`      | Export selected tab as Markdown |
+| `ctrl+o`      | Attach an image or document to the next message (click a chip to remove it) |
 
 ### Message Input keys
 | Key           | Command                                         |
