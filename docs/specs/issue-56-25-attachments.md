@@ -45,7 +45,7 @@ These pair naturally: one attachment pipeline covering images and documents, wit
 
 **Non-goals (v1)**
 
-- OCR of scanned/image-only PDFs (would add a tesseract dependency; surfaced as open question Q4).
+- OCR of scanned/image-only PDFs **in v1** (decision 2026-10-14: OCR ships off by default but the design must make adding it a drop-in — see §4.8).
 - RAG/embedding of documents (the RAG tab is a separate effort).
 - Document formats beyond PDF in v1 for *native* routing; `.txt`/`.md` ride the trivial extraction path (they are plain text — near-zero cost to include).
 - Modifying `par_ai_core` (keep everything parllama-side; upstreaming helpers is a follow-up, Q6).
@@ -115,12 +115,15 @@ Native-vs-fallback is decided per message at send time, not persisted — a sess
 
 `attach_file(path_or_url, role_message)` in `attachment_utils.py`:
 
-1. **Validate** via `FileValidator` with new settings (§4.5): extension whitelist, size cap, `%PDF-` magic-header check, encrypted-PDF detection (fail with actionable error: "password-protected PDFs are not supported"), page-count cap.
-2. **Extract** (pypdf) text + page count immediately for all providers (needed for token estimates and fallback); store `data_b64` only when file is within the size cap for native send.
-3. **Cache** extracted text in `~/.cache/parllama/documents/` keyed by content hash, mirroring `fetch_and_cache_image` in `settings_manager.py`.
-4. Return the `DocumentAttachment` for the caller to put on the message.
+1. **Resolve source (decision 2026-10-14: local files AND remote URLs).** Local paths read through `SecureFileOperations`. Remote `http(s)://` URLs validate via `HttpValidator`, download with the same retry/UA pattern as `fetch_and_cache_image` (`settings_manager.py:1565`), and enforce `max_document_size_mb` on the streamed response *before* parsing — aborting mid-stream once the cap is exceeded.
+2. **Validate** via `FileValidator` with new settings (§4.5): extension whitelist, size cap, `%PDF-` magic-header check, encrypted-PDF detection (fail with actionable error: "password-protected PDFs are not supported"), page-count cap.
+3. **Extract** (pypdf) text + page count immediately for all providers (needed for token estimates and fallback); store `data_b64` only when file is within the size cap for native send.
+4. **Cache** extracted text in `~/.cache/parllama/documents/` keyed by content hash, mirroring `fetch_and_cache_image` in `settings_manager.py`.
+5. Return the `DocumentAttachment` for the caller to put on the message.
 
 New dependency: `pypdf>=5` (pure Python, MIT). No other new deps.
+
+Extraction runs behind a narrow seam (§4.8) so the fallback path is a strategy, not a hard-coded pypdf call.
 
 ### 4.5 Settings (Options → File Security section)
 
@@ -145,7 +148,28 @@ All surfaced in the Options view next to the existing file-validation controls.
 3. **Rendering:** `ChatMessageWidget` shows attachments as a header row: `[📄 report.pdf · 12 pages · ~9k tokens]`. Images render as today. Markdown export includes document markers (§4.1).
 4. **help.md + README:** document keybinding and both commands; README "What's New" entry on release (per repo version policy — only when version is bumped).
 
-### 4.7 Persistence & compatibility
+### 4.7 Extraction strategies (OCR-ready seam)
+
+Decision 2026-10-14: OCR ships off in v1, but the pipeline is built so enabling it later is configuration + one new strategy class, not a redesign.
+
+```python
+class ExtractionStrategy(Protocol):
+    name: str
+    def can_handle(self, doc: DocumentAttachment) -> bool: ...
+    def extract(self, doc: DocumentAttachment) -> ExtractionResult: ...
+
+# v1 registry (settings-selectable, ordered — first strategy that
+# can_handle() a document wins):
+#   "text_layer":  pypdf text extraction (PDFs with a text layer + txt/md)
+#   "none":        no extraction (native-only providers would fail loudly)
+# v2 additions, no interface change:
+#   "ocr":         text_layer absent → pypdfium2 page render → tesseract OCR
+#   "vision":      page render → images attached for vision models (Q5)
+```
+
+`DocumentAttachment` already carries `num_pages` and both `text` and `data_b64`, so a later OCR strategy populates the same `text` field the fallback path consumes — routing, persistence, token estimation, and UI need zero changes. `settings.enable_ocr: bool = False` and `settings.ocr_language: str = "eng"` land in v1 as inert settings (surfaced grayed-out in Options) so the config surface is stable before the dependency exists. What v1 deliberately does NOT do: add tesseract/pypdfium2 dependencies, render pages, or auto-detect scanned PDFs (a scanned doc in v1 extracts empty text and the UI shows a hint that OCR is coming).
+
+### 4.8 Persistence & compatibility
 
 - Session JSON gains `documents` per message; `ChatSession.load`/`from_json` need no structural change (`ParllamaChatMessage(**m)` tolerates the new key; old files lack it → `None`).
 - Document bytes/text live in the session JSON (bounded by `max_document_size_mb` / `max_extracted_text_chars` — at defaults that's up to ~32 MB JSON per attachment worst case; acceptable per-message, and the page/text caps bound the common case. Open question Q2 proposes a cache-reference optimization if session size becomes a complaint).
@@ -154,7 +178,7 @@ All surfaced in the Options view next to the existing file-validation controls.
 
 - All reads through `FileValidator` + `SecureFileOperations` (no raw `open()` of user paths).
 - PDF parsing (pypdf) runs on validated, size-capped files only; pypdf decompression bombs are bounded by `max_pdf_pages` + `max_extracted_text_chars` (analog of the zip-ratio check).
-- No new network fetches beyond the existing image-URL path (`http_validator.py` applies if document URLs are allowed in v1 — default: **local files only** for documents, URL support is Q5).
+- No new network fetches beyond the existing image-URL pattern: document URLs (decided 2026-10-14, local + remote both supported) go through `HttpValidator` + size-capped streaming download before parsing, mirroring the `fetch_and_cache_image` guards.
 - Filename sanitization already applies via validator settings.
 
 ## 6. Token/cost guardrails
@@ -166,6 +190,8 @@ All surfaced in the Options view next to the existing file-validation controls.
 ## 7. Implementation phases
 
 Each phase ends with `make checkall` green and an atomic commit. Tests use pytest (`make test`); provider tests mock chat models (no network).
+
+> **Status:** Phase 1 (F1–F3) plus adjacent message-layer defects landed 2026-10-14 ahead of the rest of the pipeline: multi-image conversion/send, webp/bmp support, image-failure degradation (drop image, keep text — no clobber), `to_ollama_native` now carries images/thinking, legacy `message_id` ids preserved on session load (was: every message stamped with the literal string `"message_id"`), consecutive-message merge keeps id/thinking, `unload()` clears the id map. Phases 2–7 remain.
 
 | Phase | Scope | Verify |
 |---|---|---|
@@ -187,11 +213,24 @@ Each phase ends with `make checkall` green and an atomic commit. Tests use pytes
 6. Old sessions (pre-feature JSON) load and behave as before.
 7. `make checkall` and `make test` green.
 
-## 9. Open questions
+## 9. Decisions & open questions
 
-- Q1: Should document **URLs** work in v1 (like `/add.image` URLs) or local files only? Spec default: local only.
-- Q2: Store full `data_b64` in session JSON vs. content-hash reference into the documents cache (smaller sessions, but cache eviction breaks resend). Spec default: inline, revisit if session size complaints.
+Decided 2026-10-14 (Paul):
+
+- ~~Q1: document URLs~~ → **both local and remote**. `/add.doc URL PROMPT` and the file picker both accepted; remote fetches validated and size-capped (§4.4).
+- ~~Q4: OCR~~ → **off by default**, architecture keeps it a drop-in (§4.7: strategy seam + inert `enable_ocr` setting).
+
+Still open:
+
+- Q2: **Inline vs cache-reference document storage in session JSON** — the one substantive trade left. Analysis:
+  - *Inline (bytes/text in the session file).*
+    - Pro: a session file is fully self-contained — copy/sync/move it anywhere and it still works; deleting the documents cache never breaks an old session; resend after provider switch always works; no cache-eviction policy to design.
+    - Pro: matches how images already work today (base64-inlined in session JSON), so one mental model.
+    - Con: session files balloon (a 20 MB PDF ≈ 27 MB of base64 in the JSON; `max_json_size_mb` must rise or documents need exempt accounting); every save rewrites the whole file (atomic write cost grows with attachments); chat listing/backup copies grow.
+  - *Cache-reference (store `sha256 + name + meta`; bytes/text live in `~/.cache/parllama/documents/`).*
+    - Pro: session JSON stays small and fast to save/load; the cache is content-addressed so ten sessions sharing one PDF store it once; extraction cache and payload cache unify.
+    - Con: the session silently degrades when the cache is evicted/cleared ( resend fails or falls back to re-fetch by URL — only possible for URL-attached docs, impossible for local files whose path may be gone); cache eviction policy becomes a correctness question, not just a disk-space one; two sources of truth for one attachment.
+  - Spec recommendation (pending Paul's call): **hybrid** — store inline by default while `size_bytes <= inline_threshold` (default 2 MB, a setting), cache-reference above it, and on send, re-derive bytes from cache/URL when the reference is missing, erroring with a clear "re-attach this document" message if impossible. Caps the worst case, keeps ordinary sessions self-contained, and makes eviction a recoverable annoyance rather than corruption.
 - Q3: OpenRouter native document routing per-upstream-model (it can pass through file parts for some models) — v1 extraction, follow-up?
-- Q4: OCR fallback for image-only PDFs (tesseract dep)? Default: no.
-- Q5: OCR/document chat for vision models via page→PNG rendering (pypdfium2) instead of text extraction — useful for scanned PDFs against vision models. Default: out of v1.
+- Q5: OCR/document chat for vision models via page→PNG rendering (pypdfium2) instead of text extraction — useful for scanned PDFs against vision models. Default: out of v1; the §4.7 seam is where it plugs in.
 - Q6: Upstream document helpers to `par_ai_core` after parllama proves the shape?
