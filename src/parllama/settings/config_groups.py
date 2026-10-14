@@ -173,6 +173,13 @@ class FileValidationConfig(BaseModel):
     allowed_json_extensions: list[str] = [".json"]
     allowed_markdown_extensions: list[str] = [".md", ".markdown", ".txt"]
     allowed_zip_extensions: list[str] = [".zip"]
+    allowed_document_extensions: list[str] = [".pdf", ".txt", ".md"]
+    max_document_size_mb: float = 32.0
+    max_pdf_pages: int = 500
+    max_extracted_text_chars: int = 500_000
+    inline_document_threshold_mb: float = 2.0
+    enable_ocr: bool = False
+    ocr_language: str = "eng"
     validate_file_content: bool = True
     allow_zip_extraction: bool = True
     max_zip_compression_ratio: float = 100.0

@@ -155,6 +155,13 @@ Source group: `FileValidationConfig` -- see also the File Security System sectio
 | `allowed_json_extensions` | `list[str]` | `[".json"]` |
 | `allowed_markdown_extensions` | `list[str]` | `[".md", ".markdown", ".txt"]` |
 | `allowed_zip_extensions` | `list[str]` | `[".zip"]` |
+| `allowed_document_extensions` | `list[str]` | `[".pdf", ".txt", ".md"]` |
+| `max_document_size_mb` | `float` | `32.0` |
+| `max_pdf_pages` | `int` | `500` |
+| `max_extracted_text_chars` | `int` | `500000` |
+| `inline_document_threshold_mb` | `float` | `2.0` |
+| `enable_ocr` | `bool` | `false` |
+| `ocr_language` | `str` | `"eng"` |
 | `validate_file_content` | `bool` | `true` |
 | `allow_zip_extraction` | `bool` | `true` |
 | `max_zip_compression_ratio` | `float` | `100.0` |

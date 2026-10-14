@@ -1150,6 +1150,62 @@ class Settings(BaseModel):
         self.file_validation.allowed_zip_extensions = value
 
     @property
+    def allowed_document_extensions(self) -> list[str]:
+        return self.file_validation.allowed_document_extensions
+
+    @allowed_document_extensions.setter
+    def allowed_document_extensions(self, value: list[str]) -> None:
+        self.file_validation.allowed_document_extensions = value
+
+    @property
+    def max_document_size_mb(self) -> float:
+        return self.file_validation.max_document_size_mb
+
+    @max_document_size_mb.setter
+    def max_document_size_mb(self, value: float) -> None:
+        self.file_validation.max_document_size_mb = value
+
+    @property
+    def max_pdf_pages(self) -> int:
+        return self.file_validation.max_pdf_pages
+
+    @max_pdf_pages.setter
+    def max_pdf_pages(self, value: int) -> None:
+        self.file_validation.max_pdf_pages = value
+
+    @property
+    def max_extracted_text_chars(self) -> int:
+        return self.file_validation.max_extracted_text_chars
+
+    @max_extracted_text_chars.setter
+    def max_extracted_text_chars(self, value: int) -> None:
+        self.file_validation.max_extracted_text_chars = value
+
+    @property
+    def inline_document_threshold_mb(self) -> float:
+        return self.file_validation.inline_document_threshold_mb
+
+    @inline_document_threshold_mb.setter
+    def inline_document_threshold_mb(self, value: float) -> None:
+        self.file_validation.inline_document_threshold_mb = value
+
+    @property
+    def enable_ocr(self) -> bool:
+        return self.file_validation.enable_ocr
+
+    @enable_ocr.setter
+    def enable_ocr(self, value: bool) -> None:
+        self.file_validation.enable_ocr = value
+
+    @property
+    def ocr_language(self) -> str:
+        return self.file_validation.ocr_language
+
+    @ocr_language.setter
+    def ocr_language(self, value: str) -> None:
+        self.file_validation.ocr_language = value
+
+    @property
     def validate_file_content(self) -> bool:
         return self.file_validation.validate_file_content
 

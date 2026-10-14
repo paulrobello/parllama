@@ -202,6 +202,8 @@ class FileValidator(Validator):
             self._validate_json_content(path)
         elif extension in [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"]:
             self._validate_image_content(path)
+        elif extension == ".pdf":
+            self._validate_pdf_content(path)
         elif extension == ".zip":
             self._validate_zip_content(path)
 
@@ -253,6 +255,27 @@ class FileValidator(Validator):
 
         except OSError as e:
             raise FileValidationError(f"Cannot read image file: {e}") from e
+
+    def _validate_pdf_content(self, path: Path) -> None:
+        """Validate PDF file content by magic header.
+
+        Structural checks (page count, encryption) require parsing and live
+        in the attach pipeline where pypdf is loaded; this branch only
+        confirms the file starts with a PDF signature.
+
+        Args:
+            path: The PDF file path to validate
+
+        Raises:
+            FileValidationError: If content is not a PDF
+        """
+        try:
+            with path.open("rb") as f:
+                header = f.read(5)
+            if header != b"%PDF-":
+                raise FileValidationError("Invalid PDF file: missing %PDF- header")
+        except OSError as e:
+            raise FileValidationError(f"Cannot read PDF file: {e}") from e
 
     def _validate_zip_content(self, path: Path) -> None:
         """Validate ZIP file content and check for zip bombs.

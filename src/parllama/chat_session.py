@@ -20,6 +20,7 @@ from textual.message import Message
 
 from parllama.chat_message import ParllamaChatMessage
 from parllama.chat_message_container import ChatMessageContainer
+from parllama.document_attachment import DocumentAttachment
 from parllama.messages.messages import (
     ChatGenerationAborted,
     ChatMessage,
@@ -515,7 +516,34 @@ class ChatSession(ChatMessageContainer):
                     )
                 )
 
-    async def send_chat(self, from_user: str) -> bool:
+    def _warn_on_document_token_load(self) -> None:
+        """Notify when attached documents push the prompt near or past the
+        context budget (spec §6). Warns and proceeds — an interactive
+        confirm inside the streaming send path would stall the UI loop.
+
+        For providers with an explicit ``num_ctx`` the document load is
+        compared against it; otherwise against a fixed warn threshold.
+        """
+        docs = [d for m in self.messages if m.documents for d in m.documents]
+        if not docs:
+            return
+        from parllama.attachment_utils import TOKEN_WARN_THRESHOLD, estimate_document_tokens
+
+        doc_tokens = sum(estimate_document_tokens(d) for d in docs)
+        budget = self._llm_config.num_ctx or TOKEN_WARN_THRESHOLD
+        if doc_tokens > budget:
+            self.log_it(
+                f"Documents add ~{doc_tokens:,} tokens (budget ~{budget:,}); the prompt may be truncated or rejected",
+                notify=True,
+                severity="warning",
+            )
+
+    async def send_chat(
+        self,
+        from_user: str,
+        images: list[str] | None = None,
+        documents: list[DocumentAttachment] | None = None,
+    ) -> bool:
         """Send a chat message to the configured LLM and stream the response.
 
         Appends the user's message (if any) to the session, then streams the
@@ -527,6 +555,8 @@ class ChatSession(ChatMessageContainer):
             from_user: The user's message content to send. Pass an empty
                 string to continue generation without adding a new user
                 message (e.g. when regenerating a response).
+            images: Optional image paths/URLs to attach to the user message.
+            documents: Optional documents to attach to the user message.
 
         Returns:
             True if generation completed normally; False if it was aborted
@@ -541,7 +571,7 @@ class ChatSession(ChatMessageContainer):
 
             if from_user:
                 # self.log_it("CM adding user message")
-                msg = ParllamaChatMessage(role="user", content=from_user)
+                msg = ParllamaChatMessage(role="user", content=from_user, images=images, documents=documents)
                 self.add_message(msg)
                 self._emit(ChatMessage(parent_id=self.id, message_id=msg.id, is_final=True))
                 self.save()
@@ -551,7 +581,8 @@ class ChatSession(ChatMessageContainer):
             ttft: float = 0.0  # time to first token
 
             # self.log_it(self._llm_config)
-            chat_history = [m.to_langchain_native() for m in self.messages]
+            chat_history = [m.to_langchain_native(self._llm_config.provider) for m in self.messages]
+            self._warn_on_document_token_load()
             # self.log_it(chat_history)
             chat_model = self._llm_config.build_chat_model()
 
@@ -892,7 +923,8 @@ class ChatSession(ChatMessageContainer):
             start_time = datetime.now(UTC)
             ttft: float = 0.0
 
-            chat_history = [m.to_langchain_native() for m in self.messages]
+            chat_history = [m.to_langchain_native(self._llm_config.provider) for m in self.messages]
+            self._warn_on_document_token_load()
             chat_model = self._llm_config.build_chat_model()
 
             stream: Iterator[BaseMessageChunk] = chat_model.stream(
@@ -980,6 +1012,10 @@ class ChatSession(ChatMessageContainer):
                         if not current_message.images:
                             current_message.images = []
                         current_message.images.extend(message.images)
+                    if message.documents:
+                        if not current_message.documents:
+                            current_message.documents = []
+                        current_message.documents.extend(message.documents)
                     if message.tool_calls:
                         if not current_message.tool_calls:
                             current_message.tool_calls = []
@@ -996,6 +1032,7 @@ class ChatSession(ChatMessageContainer):
                     thinking=message.thinking,
                     images=message.images,
                     tool_calls=message.tool_calls,
+                    documents=message.documents,
                 )
                 previous_role = message.role
 
