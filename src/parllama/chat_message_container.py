@@ -86,6 +86,7 @@ class ChatMessageContainer(MessageSink):
         """Unload the messages"""
         self._loaded = False
         self.messages = []
+        self._id_to_msg.clear()
 
     @property
     def is_loaded(self):

@@ -2,20 +2,24 @@
 
 from __future__ import annotations
 
+import base64
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, Literal
 
 from ollama import Message as OMessage
+from ollama._types import Image as OllamaImage
 from par_ai_core.llm_image_utils import b64_encode_image
 
 from parllama.message_sink import MessageSink
 from parllama.models.ollama_data import MessageRoles, ToolCall
 from parllama.settings_manager import fetch_and_cache_image
 
+ImageType = Literal["jpeg", "png", "gif", "webp", "bmp"]
 
-def try_get_image_type(image_path: str) -> Literal["jpeg", "png", "gif"]:
+
+def try_get_image_type(image_path: str) -> ImageType:
     """Get image type from image path."""
     if image_path.startswith("data:"):
         ext = image_path.split(";")[0].split("/")[-1].lower()
@@ -27,10 +31,14 @@ def try_get_image_type(image_path: str) -> Literal["jpeg", "png", "gif"]:
         return "png"
     if ext in ["gif"]:
         return "gif"
+    if ext in ["webp"]:
+        return "webp"
+    if ext in ["bmp"]:
+        return "bmp"
     raise ValueError(f"Unsupported image type: {ext}")
 
 
-def image_to_base64(image_bytes: bytes, image_type: Literal["jpeg", "png", "gif"] = "jpeg") -> str:
+def image_to_base64(image_bytes: bytes, image_type: ImageType = "jpeg") -> str:
     """Convert an image to base64 url."""
     return f"data:image/{image_type};base64,{b64_encode_image(image_bytes)}"
 
@@ -91,11 +99,20 @@ class ParllamaChatMessage(MessageSink):
         self.tool_calls = tool_calls
 
         if self.images:
-            image = self.images[0]
-            if not image.startswith("data:"):
-                image_type = try_get_image_type(image)
-                image = image_to_base64(fetch_and_cache_image(image)[1], image_type)
-                self.images[0] = image
+            converted: list[str] = []
+            for image in self.images:
+                if not image.startswith("data:"):
+                    try:
+                        image_type = try_get_image_type(image)
+                        image = image_to_base64(fetch_and_cache_image(image)[1], image_type)
+                    except (ValueError, OSError) as e:
+                        # Degrade to a text-only message rather than failing the
+                        # whole session load when an image path has gone stale
+                        # or the type is unsupported.
+                        self.log_it(f"Dropping image from message {self.id}: {e}", severity="warning")
+                        continue
+                converted.append(image)
+            self.images = converted or None
 
     def __str__(self) -> str:
         """Ollama message representation"""
@@ -118,20 +135,25 @@ class ParllamaChatMessage(MessageSink):
 
     def to_ollama_native(self) -> OMessage:
         """Convert a message to Ollama native format"""
-        return OMessage(role=self.role, content=self.content)
+        images: list[OllamaImage] | None = None
+        if self.images:
+            # Post-__init__ every surviving image is a data: URL (paths/URLs
+            # were resolved or dropped there), so anything else is skipped.
+            images = [
+                OllamaImage(value=base64.b64decode(image.split(",", 1)[1]))
+                for image in self.images
+                if image.startswith("data:")
+            ]
+        return OMessage(role=self.role, content=self.content, thinking=self.thinking or None, images=images)
 
     def to_langchain_native(self) -> tuple[str, str | list[dict[str, Any]]]:
         """Convert a message to Langchain native format"""
-        content = self.content
+        content: str | list[dict[str, Any]] = self.content
         if self.images:
-            image = self.images[0]
-            try:
-                content = [
-                    {"type": "text", "text": self.content},
-                    image_to_chat_message(image),
-                ]
-            except (ValueError, OSError, KeyError) as e:
-                content = str(e)
+            parts: list[dict[str, Any]] = [{"type": "text", "text": self.content}]
+            for image in self.images:
+                parts.append(image_to_chat_message(image))
+            content = parts
         # Note: self.thinking is intentionally not included here. Langchain's native
         # message tuple format is (role, content) with no dedicated slot for a
         # separate thinking/reasoning segment, so reasoning content is only ever

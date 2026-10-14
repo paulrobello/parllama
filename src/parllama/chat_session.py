@@ -151,7 +151,7 @@ class ChatSession(ChatMessageContainer):
             msgs = data["messages"] or []
             for m in msgs:
                 if "message_id" in m:
-                    m["id"] = "message_id"
+                    m["id"] = m["message_id"]
                     del m["message_id"]
             for m in msgs:
                 self.add_message(ParllamaChatMessage(**m))
@@ -694,7 +694,7 @@ class ChatSession(ChatMessageContainer):
             for m in messages:
                 # convert old format
                 if "message_id" in m:
-                    m["id"] = "message_id"
+                    m["id"] = m["message_id"]
                     del m["message_id"]
         else:
             messages = []
@@ -974,6 +974,8 @@ class ChatSession(ChatMessageContainer):
             if message.role == previous_role:
                 if current_message:
                     current_message.content += "\n" + message.content
+                    if message.thinking:
+                        current_message.thinking += ("\n" if current_message.thinking else "") + message.thinking
                     if message.images:
                         if not current_message.images:
                             current_message.images = []
@@ -985,8 +987,15 @@ class ChatSession(ChatMessageContainer):
             else:
                 if current_message:
                     new_messages.append(current_message)
+                # Keep the first message's id of each run so existing widget
+                # references and id-keyed lookups survive the merge.
                 current_message = ParllamaChatMessage(
-                    role=message.role, content=message.content, images=message.images, tool_calls=message.tool_calls
+                    id=message.id,
+                    role=message.role,
+                    content=message.content,
+                    thinking=message.thinking,
+                    images=message.images,
+                    tool_calls=message.tool_calls,
                 )
                 previous_role = message.role
 
