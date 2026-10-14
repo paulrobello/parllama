@@ -191,7 +191,7 @@ class ExtractionStrategy(Protocol):
 
 Each phase ends with `make checkall` green and an atomic commit. Tests use pytest (`make test`); provider tests mock chat models (no network).
 
-> **Status:** Phase 1 (F1–F3) plus adjacent message-layer defects landed 2026-10-14 ahead of the rest of the pipeline: multi-image conversion/send, webp/bmp support, image-failure degradation (drop image, keep text — no clobber), `to_ollama_native` now carries images/thinking, legacy `message_id` ids preserved on session load (was: every message stamped with the literal string `"message_id"`), consecutive-message merge keeps id/thinking, `unload()` clears the id map. Phases 2–7 remain.
+> **Status:** Phase 1 (F1–F3) plus adjacent message-layer defects landed 2026-10-14 ahead of the rest of the pipeline: multi-image conversion/send, webp/bmp support, image-failure degradation (drop image, keep text — no clobber), `to_ollama_native` now carries images/thinking, legacy `message_id` ids preserved on session load (was: every message stamped with the literal string `"message_id"`), consecutive-message merge keeps id/thinking, `unload()` clears the id map. Phases 2–6 landed the same day (settings + validator, `DocumentAttachment` + hybrid persistence, `attachment_utils` pipeline, send-path wiring with token guardrail, UI with ctrl+o picker + pending chips + `/add.doc` + `/attach`, help docs); see §9 implementation notes for the two small deviations. Remaining: Paul's manual TUI pass, OpenRouter native routing (Q3), OCR strategies (Q4 follow-up), `par_ai_core` upstreaming (Q6).
 
 | Phase | Scope | Verify |
 |---|---|---|
@@ -218,19 +218,17 @@ Each phase ends with `make checkall` green and an atomic commit. Tests use pytes
 Decided 2026-10-14 (Paul):
 
 - ~~Q1: document URLs~~ → **both local and remote**. `/add.doc URL PROMPT` and the file picker both accepted; remote fetches validated and size-capped (§4.4).
+- ~~Q2: document storage~~ → **hybrid**: inline up to `inline_document_threshold_mb` (default 2 MB, a setting), cache-referenced above it, with cache/URL re-derivation on send and a clear degradation path when unrecoverable (extracted text still sends). Landed as `DocumentAttachment.inline` + `attachment_utils.ensure_sendable`.
 - ~~Q4: OCR~~ → **off by default**, architecture keeps it a drop-in (§4.7: strategy seam + inert `enable_ocr` setting).
+
+Implementation notes (2026-10-14, phases 2–6 landed):
+
+- The attach keybinding is **ctrl+o** (`ctrl+p` was already bound to session config, spec §4.6 said ctrl+p — superseded).
+- The token guardrail (§6) **warns and proceeds** rather than requiring interactive confirmation — a modal confirm inside the streaming send path would stall the UI loop. Deviation noted here; revisit if providers reject oversized prompts often.
+- FileValidator gained only the `%PDF-` magic-header check; page-count/encryption checks live in the attach pipeline where pypdf is loaded (spec §4.4 said validator — superseded, same effect).
 
 Still open:
 
-- Q2: **Inline vs cache-reference document storage in session JSON** — the one substantive trade left. Analysis:
-  - *Inline (bytes/text in the session file).*
-    - Pro: a session file is fully self-contained — copy/sync/move it anywhere and it still works; deleting the documents cache never breaks an old session; resend after provider switch always works; no cache-eviction policy to design.
-    - Pro: matches how images already work today (base64-inlined in session JSON), so one mental model.
-    - Con: session files balloon (a 20 MB PDF ≈ 27 MB of base64 in the JSON; `max_json_size_mb` must rise or documents need exempt accounting); every save rewrites the whole file (atomic write cost grows with attachments); chat listing/backup copies grow.
-  - *Cache-reference (store `sha256 + name + meta`; bytes/text live in `~/.cache/parllama/documents/`).*
-    - Pro: session JSON stays small and fast to save/load; the cache is content-addressed so ten sessions sharing one PDF store it once; extraction cache and payload cache unify.
-    - Con: the session silently degrades when the cache is evicted/cleared ( resend fails or falls back to re-fetch by URL — only possible for URL-attached docs, impossible for local files whose path may be gone); cache eviction policy becomes a correctness question, not just a disk-space one; two sources of truth for one attachment.
-  - Spec recommendation (pending Paul's call): **hybrid** — store inline by default while `size_bytes <= inline_threshold` (default 2 MB, a setting), cache-reference above it, and on send, re-derive bytes from cache/URL when the reference is missing, erroring with a clear "re-attach this document" message if impossible. Caps the worst case, keeps ordinary sessions self-contained, and makes eviction a recoverable annoyance rather than corruption.
 - Q3: OpenRouter native document routing per-upstream-model (it can pass through file parts for some models) — v1 extraction, follow-up?
 - Q5: OCR/document chat for vision models via page→PNG rendering (pypdfium2) instead of text extraction — useful for scanned PDFs against vision models. Default: out of v1; the §4.7 seam is where it plugs in.
 - Q6: Upstream document helpers to `par_ai_core` after parllama proves the shape?
