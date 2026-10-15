@@ -1,4 +1,25 @@
-"""Secure command executor for running user code safely."""
+"""Command executor for running user- or LLM-supplied code from chat messages.
+
+This module is NOT a sandbox. Its safeguards reduce accidents; they do not
+contain hostile code:
+
+* The command allowlist (``execution_allowed_commands``) gates only the base
+  binary, and by default it includes full interpreters and runners (``python``,
+  ``python3``, ``uv``, ``node``, ``bash``, ``sh``, ``zsh``, ``fish``). Any allowed
+  interpreter can do anything the user can do.
+* The content blocklist (``execution_security_patterns`` plus the critical
+  patterns in ``_validate_execution``) is plain substring matching. It is a
+  speed bump, trivially bypassed (``sudo\\t``, ``getattr``/``__import__``
+  string concatenation, encoding). A content check that reports no warnings
+  never means the code is safe.
+* ``scrub_credential_env`` removes credential-bearing environment VARIABLES,
+  but the child still runs as the current user with the user's filesystem
+  access, so it can read credential FILES directly (``~/.aws/credentials``,
+  ``~/.ssh``, ``.env`` files, the parllama data directory).
+
+Content is always passed through a temp file and never interpolated into the
+command line, which prevents shell injection through the command string only.
+"""
 
 from __future__ import annotations
 
@@ -45,7 +66,7 @@ def scrub_credential_env(env: Mapping[str, str]) -> dict[str, str]:
 
 
 class CommandExecutor:
-    """Secure command executor with sandboxing and safety features."""
+    """Command executor with allowlist, content blocklist and env scrubbing; not a sandbox (see module docstring)."""
 
     def __init__(self, settings: Settings) -> None:
         """Initialize the command executor."""
@@ -134,7 +155,15 @@ class CommandExecutor:
                 await self._cleanup_temp_files(temp_files)
 
     def _validate_execution(self, template: ExecutionTemplate, content: str) -> list[str]:
-        """Validate that execution is safe and allowed."""
+        """Check execution against the configured policy (enabled flag, allowlist, content blocklist).
+
+        Passing these checks means the request is allowed by policy, not that it
+        is safe. The allowlist admits full interpreters, and the blocklist is
+        substring matching that hostile content can evade. Callers and UI must
+        never present "no errors" as "safe to run". The only real gate is the
+        user's review in the confirmation prompt, and that prompt is skipped when
+        ``execution_require_confirmation`` is disabled.
+        """
         errors = []
 
         # Check if execution is enabled
@@ -145,7 +174,9 @@ class CommandExecutor:
         template_errors = template.validate(self.settings.execution.execution_security_patterns)
         errors.extend(template_errors)
 
-        # Check command allowlist using the base binary from the template
+        # Check command allowlist using the base binary from the template.
+        # This gates the binary only: an allowed interpreter (python/bash/sh/zsh/fish)
+        # runs arbitrary code with the user's full privileges.
         command_parts = shlex.split(
             template.command_template.replace("{content}", " ")
             .replace("{{I}}", " ")
@@ -160,7 +191,9 @@ class CommandExecutor:
         # Content safety checks - use configurable security patterns
         dangerous_patterns = self.settings.execution.execution_security_patterns.copy()
 
-        # Always include these critical security patterns regardless of user config
+        # Always include these critical security patterns regardless of user config.
+        # Substring matching is a speed bump, not a boundary: "sudo\t", getattr() or
+        # string-built __import__ calls slip past it.
         critical_patterns = [
             "sudo ",
             "su ",
@@ -233,6 +266,7 @@ class CommandExecutor:
         command_display = " ".join(argv)
         try:
             # Inherit the user's environment minus credentials (provider keys, vault key).
+            # Only variables are scrubbed: the child runs as the user and can still read credential files.
             env = scrub_credential_env(os.environ)
 
             # Template variables are explicit user configuration, so they are applied after the scrub.
