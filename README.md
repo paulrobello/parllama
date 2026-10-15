@@ -46,11 +46,11 @@
     * [Where we're going](#where-were-going)
 * [License](#license)
 * [What's new](#whats-new)
+  * [v0.10.1](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md#0101---2026-10-15)
   * [v0.10.0](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md#0100---2026-10-15)
   * [v0.9.2](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md#092---2026-07-10)
   * [v0.9.1](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md#091---2026-07-05)
   * [v0.9.0](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md#090---2026-07-05)
-  * [v0.8.8](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md#088---2026-06-22)
   * [older...](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md)
 
 [![CI](https://github.com/paulrobello/parllama/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/paulrobello/parllama/actions/workflows/ci.yml)
@@ -622,7 +622,11 @@ PAR LLAMA is released under the MIT License. See [LICENSE](LICENSE) for the full
 
 ## What's new
 
-### v0.10.0 (Latest)
+### v0.10.1 (Latest)
+
+* **Fix**: Deleting a chat message now removes its widget from the chat view; previously the message vanished from the session but the widget stayed on screen and a second delete crashed the app
+
+### v0.10.0
 
 * **Opt-in OS keychain storage**: new "Store API keys in OS keychain" toggle in Options > AI Providers moves provider keys into the macOS Keychain, Windows Credential Manager, or Linux Secret Service (`keyring`). Off by default; platforms without a backend keep keys in `settings.json` with a warning, and turning the toggle off pulls keys back
 * **Security & architecture hardening**: credential scrubbing for executed commands, provider keys routed to the encrypted vault with automatic migration, SSRF-guarded remote attachments with integrity checks, ZIP extraction caps, settings storage v2 with one-time migration, and `ChatSession` split into `StreamController` + `SessionStore`

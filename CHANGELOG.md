@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.1] - 2026-10-15
+
+### Fixed
+
+- **Deleting a chat message now removes its widget**: the EventBus migration left `ChatMessageDeleted` posting straight to the App, which no longer forwards it, so the widget stayed on screen after its message was deleted and a second delete crashed the app with a `KeyError`. The event now broadcasts on the EventBus; a regression test pins the routing.
+
 ## [0.10.0] - 2026-10-15
 
 ### Security
