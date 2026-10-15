@@ -57,11 +57,11 @@ class MessageSink:
 
         if timeout is None:
             if severity == "error":
-                calc_timeout = int(settings.notification_timeout_error)
+                calc_timeout = int(settings.ui.notification_timeout_error)
             elif severity == "warning":
-                calc_timeout = int(settings.notification_timeout_warning)
+                calc_timeout = int(settings.ui.notification_timeout_warning)
             else:
-                calc_timeout = int(settings.notification_timeout_info)
+                calc_timeout = int(settings.ui.notification_timeout_info)
         else:
             calc_timeout = timeout
 

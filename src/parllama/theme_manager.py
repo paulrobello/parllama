@@ -48,10 +48,10 @@ class ThemeManager(MessageSink):
 
         # Initialize secure file operations for themes
         self._secure_ops = SecureFileOperations(
-            max_file_size_mb=settings.max_json_size_mb,
-            allowed_extensions=settings.allowed_json_extensions,
-            validate_content=settings.validate_file_content,
-            sanitize_filenames=settings.sanitize_filenames,
+            max_file_size_mb=settings.file_validation.max_json_size_mb,
+            allowed_extensions=settings.file_validation.allowed_json_extensions,
+            validate_content=settings.file_validation.validate_file_content,
+            sanitize_filenames=settings.file_validation.sanitize_filenames,
         )
 
     def set_app(self, app: App[Any] | None) -> None:
@@ -96,13 +96,15 @@ class ThemeManager(MessageSink):
         except (SecureFileOpsError, OSError) as e:
             self.log_it(f"Error loading theme {theme_name}: {e}", notify=True, severity="error")
             # Try to load fallback theme if this isn't already the fallback
-            if theme_name != settings.theme_fallback_name:
+            if theme_name != settings.ui.theme_fallback_name:
                 try:
-                    self.load_theme(settings.theme_fallback_name)
+                    self.load_theme(settings.ui.theme_fallback_name)
                 except (SecureFileOpsError, OSError, ValueError):
                     # If fallback also fails, log but don't crash
                     self.log_it(
-                        f"Failed to load fallback theme {settings.theme_fallback_name}", notify=True, severity="error"
+                        f"Failed to load fallback theme {settings.ui.theme_fallback_name}",
+                        notify=True,
+                        severity="error",
                     )
 
     def load_themes(self) -> None:

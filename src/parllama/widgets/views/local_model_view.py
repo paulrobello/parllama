@@ -119,7 +119,7 @@ class LocalModelView(Container):
         self.search_input = FilterInput(id="search", placeholder="Filter local models")
         self.sort_select = Select[str](
             options=MODEL_SORT_OPTIONS,
-            value=settings.local_model_sort,
+            value=settings.ollama.local_model_sort,
             id="sort_select",
         )
         self.grid = LocalModelGridList(id="grid_view")
@@ -156,7 +156,7 @@ class LocalModelView(Container):
                 ],
             )
         )
-        if settings.load_local_models_on_startup:
+        if settings.ollama.load_local_models_on_startup:
             self.action_refresh_models()
 
     def action_refresh_models(self):
@@ -217,9 +217,9 @@ class LocalModelView(Container):
             return
         # Ignore the spurious Changed Select emits on mount (textual >= 8.2.7);
         # event.value then equals the current sort, so there is nothing to do.
-        if str(event.value) == settings.local_model_sort:
+        if str(event.value) == settings.ollama.local_model_sort:
             return
-        settings.local_model_sort = str(event.value)
+        settings.ollama.local_model_sort = str(event.value)
         settings.save()
         self.action_refresh_models()
 

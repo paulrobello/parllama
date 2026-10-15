@@ -161,12 +161,12 @@ class ParLlamaApp(App[None]):
         self.title = __application_title__
 
         self.last_status = ""
-        if settings.theme_name not in theme_manager.list_themes():
-            settings.theme_name = f"{settings.theme_name}_{settings.theme_mode}"
-            if settings.theme_name not in theme_manager.list_themes():
-                settings.theme_name = settings.theme_fallback_name
+        if settings.ui.theme_name not in theme_manager.list_themes():
+            settings.ui.theme_name = f"{settings.ui.theme_name}_{settings.ui.theme_mode}"
+            if settings.ui.theme_name not in theme_manager.list_themes():
+                settings.ui.theme_name = settings.ui.theme_fallback_name
 
-        theme_manager.change_theme(settings.theme_name)
+        theme_manager.change_theme(settings.ui.theme_name)
 
     def add_job_to_queue(self, job: QueueJob) -> bool:
         """Add a job to the queue with error handling.
@@ -184,7 +184,7 @@ class ParLlamaApp(App[None]):
         await self.execution_coordinator.initialize()
 
         await self.push_screen(self.main_screen)
-        if settings.check_for_updates:
+        if settings.ui.check_for_updates:
             await update_manager.check_for_updates()
 
         self.app.post_message(
@@ -199,14 +199,14 @@ class ParLlamaApp(App[None]):
                 ],
             )
         )
-        self.job_timer = self.set_timer(settings.job_timer_interval, self.do_jobs)
-        if settings.ollama_ps_poll_interval > 0:
-            self.ps_timer = self.set_timer(settings.ps_timer_interval, self.update_ps)
+        self.job_timer = self.set_timer(settings.timer.job_timer_interval, self.do_jobs)
+        if settings.ollama.ollama_ps_poll_interval > 0:
+            self.ps_timer = self.set_timer(settings.timer.ps_timer_interval, self.update_ps)
 
-        if settings.show_first_run:
-            settings.show_first_run = False
+        if settings.ui.show_first_run:
+            settings.ui.show_first_run = False
             settings.save()
-            self.set_timer(settings.notification_timeout_info, self.show_first_run)
+            self.set_timer(settings.ui.notification_timeout_info, self.show_first_run)
 
     async def show_first_run(self) -> None:
         """Show first run screen"""
@@ -344,7 +344,7 @@ Some functions are only available via slash / commands on that chat tab. You can
         while True:
             try:
                 job: QueueJob = self.model_job_processor.job_queue.get(
-                    block=True, timeout=settings.job_queue_get_timeout
+                    block=True, timeout=settings.timer.job_queue_get_timeout
                 )
                 if settings.shutting_down:
                     return
@@ -363,7 +363,7 @@ Some functions are only available via slash / commands on that chat tab. You can
             self.status_notify(
                 f"Model {event.model_name} pulled.",
             )
-            self.set_timer(settings.model_refresh_timer_interval, self.action_refresh_models)
+            self.set_timer(settings.timer.model_refresh_timer_interval, self.action_refresh_models)
         else:
             self.status_notify(
                 f"Model {event.model_name} failed to pull.",
@@ -377,7 +377,7 @@ Some functions are only available via slash / commands on that chat tab. You can
             self.status_notify(
                 f"Model {event.model_name} created.",
             )
-            self.set_timer(settings.model_refresh_timer_interval, self.action_refresh_models)
+            self.set_timer(settings.timer.model_refresh_timer_interval, self.action_refresh_models)
         else:
             self.status_notify(
                 f"Model {event.model_name} failed to create.",
@@ -476,10 +476,12 @@ Some functions are only available via slash / commands on that chat tab. You can
     def status_notify(self, msg: str, severity: SeverityLevel = "information") -> None:
         """Show notification and update status bar"""
         timeout = (
-            settings.notification_timeout_error if severity != "information" else settings.notification_timeout_info
+            settings.ui.notification_timeout_error
+            if severity != "information"
+            else settings.ui.notification_timeout_info
         )
         if severity == "warning":
-            timeout = settings.notification_timeout_warning
+            timeout = settings.ui.notification_timeout_warning
         self.notify(msg, severity=severity, timeout=timeout)
         self.main_screen.post_message(StatusMessage(msg))
 
@@ -628,7 +630,7 @@ Some functions are only available via slash / commands on that chat tab. You can
             self.notify(
                 event.msg,
                 severity=event.severity,
-                timeout=event.timeout or int(settings.notification_timeout_info),
+                timeout=event.timeout or int(settings.ui.notification_timeout_info),
             )
 
     @on(ExecuteMessageRequested)
@@ -686,4 +688,4 @@ Some functions are only available via slash / commands on that chat tab. You can
     async def action_change_theme(self) -> None:
         """An action to change the theme."""
         theme = await self.push_screen_wait(ThemeDialog())
-        settings.theme_name = theme
+        settings.ui.theme_name = theme

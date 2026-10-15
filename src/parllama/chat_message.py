@@ -14,9 +14,9 @@ from par_ai_core.llm_image_utils import b64_encode_image
 from par_ai_core.llm_providers import LlmProvider
 
 from parllama.document_attachment import DocumentAttachment
+from parllama.image_cache import fetch_and_cache_image
 from parllama.message_sink import MessageSink
 from parllama.models.ollama_data import MessageRoles, ToolCall
-from parllama.settings_manager import fetch_and_cache_image
 
 ImageType = Literal["jpeg", "png", "gif", "webp", "bmp"]
 

@@ -39,16 +39,17 @@ class ImportFabricManager(MessageSink):
 
         # Initialize secure file operations for Fabric imports
         self._secure_ops = SecureFileOperations(
-            max_file_size_mb=settings.max_zip_size_mb,
-            allowed_extensions=settings.allowed_zip_extensions + settings.allowed_markdown_extensions,
-            validate_content=settings.validate_file_content,
-            sanitize_filenames=settings.sanitize_filenames,
+            max_file_size_mb=settings.file_validation.max_zip_size_mb,
+            allowed_extensions=settings.file_validation.allowed_zip_extensions
+            + settings.file_validation.allowed_markdown_extensions,
+            validate_content=settings.file_validation.validate_file_content,
+            sanitize_filenames=settings.file_validation.sanitize_filenames,
         )
 
         # Create ZIP file validator with stricter settings for external downloads
         self._zip_validator = FileValidator(
-            max_size_mb=settings.max_zip_size_mb,
-            allowed_extensions=settings.allowed_zip_extensions,
+            max_size_mb=settings.file_validation.max_zip_size_mb,
+            allowed_extensions=settings.file_validation.allowed_zip_extensions,
             check_content=True,
         )
 
@@ -194,11 +195,11 @@ class ImportFabricManager(MessageSink):
                 src_path = Path(src_prompt_path)
 
                 # Validate file before reading
-                if settings.validate_file_content:
+                if settings.file_validation.validate_file_content:
                     # Create markdown validator for prompt files
                     md_validator = FileValidator(
-                        max_size_mb=settings.max_file_size_mb,
-                        allowed_extensions=settings.allowed_markdown_extensions,
+                        max_size_mb=settings.file_validation.max_file_size_mb,
+                        allowed_extensions=settings.file_validation.allowed_markdown_extensions,
                         check_content=False,  # Skip content validation for markdown
                     )
                     md_validator.validate_file_path(src_path)
@@ -282,7 +283,7 @@ class ImportFabricManager(MessageSink):
     def _get_network_recovery_suggestion(self, error_msg: str) -> str:
         """Get network-specific recovery suggestion."""
         if "timeout" in error_msg.lower() or "timed out" in error_msg.lower():
-            return f"Connection timed out after {settings.http_request_timeout}s. Check your internet speed, try again, or increase the timeout in Options."
+            return f"Connection timed out after {settings.http.http_request_timeout}s. Check your internet speed, try again, or increase the timeout in Options."
         elif "connection refused" in error_msg.lower():
             return "GitHub may be temporarily unavailable. Try again in a few minutes."
         elif "ssl" in error_msg.lower() or "certificate" in error_msg.lower():
@@ -329,10 +330,10 @@ class ImportFabricManager(MessageSink):
                 progress_callback(
                     15,
                     "Connecting...",
-                    f"Establishing connection to GitHub (timeout: {settings.http_request_timeout}s)",
+                    f"Establishing connection to GitHub (timeout: {settings.http.http_request_timeout}s)",
                 )
 
-            response = requests.get(url, timeout=settings.http_request_timeout, stream=True)
+            response = requests.get(url, timeout=settings.http.http_request_timeout, stream=True)
             response.raise_for_status()
 
             if progress_callback:
@@ -344,23 +345,25 @@ class ImportFabricManager(MessageSink):
             if content_length:
                 total_size = int(content_length)
                 size_mb = total_size / (1024 * 1024)
-                if size_mb > settings.max_zip_size_mb:
+                if size_mb > settings.file_validation.max_zip_size_mb:
                     raise ValueError(
-                        f"ZIP file too large: {size_mb:.2f}MB exceeds limit of {settings.max_zip_size_mb}MB"
+                        f"ZIP file too large: {size_mb:.2f}MB exceeds limit of {settings.file_validation.max_zip_size_mb}MB"
                     )
                 if progress_callback:
                     progress_callback(18, "Download starting...", f"File size: {size_mb:.2f}MB")
 
             # Download with size checking and progress updates
             downloaded_size = 0
-            max_size_bytes = settings.max_zip_size_mb * 1024 * 1024
+            max_size_bytes = settings.file_validation.max_zip_size_mb * 1024 * 1024
 
             with open(save_path, "wb") as f:
                 for chunk in response.iter_content(chunk_size=8192):
                     if chunk:
                         downloaded_size += len(chunk)
                         if downloaded_size > max_size_bytes:
-                            raise ValueError(f"Download exceeded size limit of {settings.max_zip_size_mb}MB")
+                            raise ValueError(
+                                f"Download exceeded size limit of {settings.file_validation.max_zip_size_mb}MB"
+                            )
                         f.write(chunk)
 
                         # Update progress based on download progress
@@ -383,7 +386,7 @@ class ImportFabricManager(MessageSink):
                 progress_callback(30, "Download complete", f"Downloaded {final_size_mb:.2f}MB successfully")
 
         except requests.Timeout as e:
-            error_msg = f"Connection timed out after {settings.http_request_timeout} seconds"
+            error_msg = f"Connection timed out after {settings.http.http_request_timeout} seconds"
             recovery_suggestion = "Try increasing the HTTP timeout in Options or check your internet connection speed"
             if progress_callback:
                 progress_callback(0, "Connection timeout", f"{error_msg}\n\nSuggestion: {recovery_suggestion}")
@@ -453,7 +456,7 @@ class ImportFabricManager(MessageSink):
                     compressed_size += info.compress_size
 
                     # Check individual file size
-                    if info.file_size > settings.max_file_size_mb * 1024 * 1024:
+                    if info.file_size > settings.file_validation.max_file_size_mb * 1024 * 1024:
                         raise ValueError(
                             f"File too large in ZIP: {info.filename} ({info.file_size / (1024 * 1024):.2f}MB)"
                         )
@@ -461,13 +464,13 @@ class ImportFabricManager(MessageSink):
                 # Check compression ratio (zip bomb detection)
                 if compressed_size > 0:
                     ratio = total_size / compressed_size
-                    if ratio > settings.max_zip_compression_ratio:
+                    if ratio > settings.file_validation.max_zip_compression_ratio:
                         raise ValueError(
-                            f"Suspicious compression ratio: {ratio:.1f}:1 exceeds limit of {settings.max_zip_compression_ratio}:1"
+                            f"Suspicious compression ratio: {ratio:.1f}:1 exceeds limit of {settings.file_validation.max_zip_compression_ratio}:1"
                         )
 
                 # Check total uncompressed size
-                max_uncompressed = settings.max_zip_size_mb * 10  # Allow 10x expansion
+                max_uncompressed = settings.file_validation.max_zip_size_mb * 10  # Allow 10x expansion
                 if total_size > max_uncompressed * 1024 * 1024:
                     raise ValueError(f"ZIP uncompressed size too large: {total_size / (1024 * 1024):.2f}MB")
 

@@ -8,13 +8,11 @@ from __future__ import annotations
 
 import base64
 import hashlib
-import ipaddress
-import socket
 import tempfile
 from io import BytesIO
 from pathlib import Path
 from typing import Any, Protocol
-from urllib.parse import urljoin, urlsplit
+from urllib.parse import urljoin
 
 import requests
 from par_ai_core.llm_providers import LlmProvider
@@ -22,6 +20,7 @@ from pypdf import PdfReader
 from pypdf.errors import PdfReadError
 
 from parllama.document_attachment import DocumentAttachment
+from parllama.net_guard import UnsafeUrlError, check_public_url
 from parllama.settings_manager import settings
 from parllama.validators.file_validator import FileValidationError, FileValidator
 
@@ -93,14 +92,14 @@ class TextLayerStrategy:
         if reader.is_encrypted:
             raise AttachmentError("Password-protected PDFs are not supported")
         num_pages = len(reader.pages)
-        if num_pages > settings.max_pdf_pages:
-            raise AttachmentError(f"PDF has {num_pages} pages; limit is {settings.max_pdf_pages}")
+        if num_pages > settings.file_validation.max_pdf_pages:
+            raise AttachmentError(f"PDF has {num_pages} pages; limit is {settings.file_validation.max_pdf_pages}")
         parts: list[str] = []
         total = 0
         for page in reader.pages:
             page_text = page.extract_text() or ""
             total += len(page_text)
-            if total > settings.max_extracted_text_chars:
+            if total > settings.file_validation.max_extracted_text_chars:
                 parts.append("\n[...truncated at max_extracted_text_chars...]")
                 break
             parts.append(page_text)
@@ -117,9 +116,9 @@ def _documents_cache_dir() -> Path:
 
 def _validator() -> FileValidator:
     return FileValidator(
-        max_size_mb=settings.max_document_size_mb,
-        allowed_extensions=settings.allowed_document_extensions,
-        check_content=settings.validate_file_content,
+        max_size_mb=settings.file_validation.max_document_size_mb,
+        allowed_extensions=settings.file_validation.allowed_document_extensions,
+        check_content=settings.file_validation.validate_file_content,
     )
 
 
@@ -127,32 +126,15 @@ MAX_REMOTE_REDIRECTS = 5
 
 
 def _check_remote_url(url: str) -> None:
-    """Reject URLs that are not http(s) or whose host resolves to a non-public address.
-
-    Blocks loopback, RFC1918/ULA private, link-local (including cloud metadata at
-    169.254.169.254), multicast, and reserved ranges. Every resolved address must be
-    public. A DNS answer that changes between this check and the connect is not covered.
+    """Apply the shared SSRF guard to a document URL.
 
     Raises:
         AttachmentError: If the URL may not be fetched.
     """
-    parts = urlsplit(url)
-    if parts.scheme not in ("http", "https") or not parts.hostname:
-        raise AttachmentError(f"Only http(s) document URLs are allowed: {url}")
     try:
-        port = parts.port
-    except ValueError as e:
-        raise AttachmentError(f"Invalid document URL: {url}") from e
-    try:
-        infos = socket.getaddrinfo(parts.hostname, port or None, proto=socket.IPPROTO_TCP)
-    except (socket.gaierror, UnicodeError) as e:
-        raise AttachmentError(f"Cannot resolve document host '{parts.hostname}': {e}") from e
-    for info in infos:
-        ip = ipaddress.ip_address(str(info[4][0]).split("%", 1)[0])
-        if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
-            ip = ip.ipv4_mapped
-        if not ip.is_global or ip.is_multicast:
-            raise AttachmentError(f"Refusing to fetch document from non-public address {ip} ({parts.hostname})")
+        check_public_url(url, "document")
+    except UnsafeUrlError as e:
+        raise AttachmentError(str(e)) from e
 
 
 def _fetch_remote(url: str) -> tuple[bytes, str]:
@@ -162,7 +144,7 @@ def _fetch_remote(url: str) -> tuple[bytes, str]:
         for _ in range(MAX_REMOTE_REDIRECTS + 1):
             _check_remote_url(current)
             with requests.get(
-                current, timeout=settings.image_fetch_timeout, stream=True, allow_redirects=False
+                current, timeout=settings.http.image_fetch_timeout, stream=True, allow_redirects=False
             ) as response:
                 if response.is_redirect:
                     location = response.headers.get("Location")
@@ -171,13 +153,15 @@ def _fetch_remote(url: str) -> tuple[bytes, str]:
                     current = urljoin(current, location)
                     continue
                 response.raise_for_status()
-                cap = settings.max_document_size_mb * 1024 * 1024
+                cap = settings.file_validation.max_document_size_mb * 1024 * 1024
                 chunks: list[bytes] = []
                 received = 0
                 for chunk in response.iter_content(chunk_size=64 * 1024):
                     received += len(chunk)
                     if received > cap:
-                        raise AttachmentError(f"Document exceeds {settings.max_document_size_mb}MB download limit")
+                        raise AttachmentError(
+                            f"Document exceeds {settings.file_validation.max_document_size_mb}MB download limit"
+                        )
                     chunks.append(chunk)
                 return b"".join(chunks), url
         raise AttachmentError(f"Too many redirects fetching document (limit {MAX_REMOTE_REDIRECTS})")
@@ -220,7 +204,7 @@ def attach_document(path_or_url: str) -> DocumentAttachment:
     ext = Path(src.split("?")[0]).suffix.lower()
     if ext not in DOCUMENT_MIME_TYPES:
         raise AttachmentError(
-            f"Unsupported document type '{ext}'. Allowed: {', '.join(settings.allowed_document_extensions)}"
+            f"Unsupported document type '{ext}'. Allowed: {', '.join(settings.file_validation.allowed_document_extensions)}"
         )
 
     if is_remote:
@@ -248,7 +232,7 @@ def attach_document(path_or_url: str) -> DocumentAttachment:
     if result is None:
         raise AttachmentError(f"No extraction strategy handles {DOCUMENT_MIME_TYPES[ext]}")
 
-    inline = len(payload) <= settings.inline_document_threshold_mb * 1024 * 1024
+    inline = len(payload) <= settings.file_validation.inline_document_threshold_mb * 1024 * 1024
     doc = DocumentAttachment(
         name=name,
         mime_type=DOCUMENT_MIME_TYPES[ext],

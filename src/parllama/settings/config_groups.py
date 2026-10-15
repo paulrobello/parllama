@@ -1,8 +1,8 @@
 """Pydantic config group models for Settings decomposition.
 
 Each group encapsulates a logical cluster of configuration fields.
-The Settings class composes these groups and delegates field access
-via properties for backward compatibility.
+The Settings class composes these groups; consumers read and write fields
+through the group attribute (e.g. ``settings.ollama.ollama_host``).
 """
 
 from __future__ import annotations

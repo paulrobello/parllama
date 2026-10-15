@@ -95,7 +95,7 @@ class TestAttachDocument:
         monkey_threshold = 0.0001  # MB -> everything is "oversized"
         f = tmp_path / "big.txt"
         f.write_text("x" * 1024, encoding="utf-8")
-        with patch.object(type(settings), "inline_document_threshold_mb", monkey_threshold):
+        with patch.object(settings.file_validation, "inline_document_threshold_mb", monkey_threshold):
             doc = attach_document(str(f))
         assert doc.inline is False
         assert doc.data_b64 is None
@@ -107,7 +107,7 @@ class TestAttachDocument:
     def test_ensure_sendable_resolves_from_cache(self, isolated_settings: Path, tmp_path: Path) -> None:
         f = tmp_path / "big.txt"
         f.write_text("y" * 2048, encoding="utf-8")
-        with patch.object(type(settings), "inline_document_threshold_mb", 0.0001):
+        with patch.object(settings.file_validation, "inline_document_threshold_mb", 0.0001):
             doc = attach_document(str(f))
         assert ensure_sendable(doc) is True
         assert doc.data_b64 is not None
@@ -179,7 +179,7 @@ class TestRemoteDocumentSecurity:
     )
     def test_non_public_targets_rejected(self, isolated_settings: Path, address: str) -> None:
         with (
-            patch("parllama.attachment_utils.socket.getaddrinfo", _resolve_to(address)),
+            patch("parllama.net_guard.socket.getaddrinfo", _resolve_to(address)),
             patch("parllama.attachment_utils.requests.get") as mock_get,
         ):
             with pytest.raises(AttachmentError, match="non-public address"):
@@ -201,7 +201,7 @@ class TestRemoteDocumentSecurity:
 
         redirect = _FakeResponse(status=302, location="http://metadata.internal/latest/meta-data")
         with (
-            patch("parllama.attachment_utils.socket.getaddrinfo", fake_getaddrinfo),
+            patch("parllama.net_guard.socket.getaddrinfo", fake_getaddrinfo),
             patch("parllama.attachment_utils.requests.get", return_value=redirect) as mock_get,
         ):
             with pytest.raises(AttachmentError, match="non-public address"):
@@ -211,7 +211,7 @@ class TestRemoteDocumentSecurity:
 
     def test_public_remote_text_attaches(self, isolated_settings: Path) -> None:
         with (
-            patch("parllama.attachment_utils.socket.getaddrinfo", _resolve_to("93.184.216.34")),
+            patch("parllama.net_guard.socket.getaddrinfo", _resolve_to("93.184.216.34")),
             patch("parllama.attachment_utils.requests.get", return_value=_FakeResponse(b"remote text")),
         ):
             doc = attach_document("https://public.example/notes.txt")
@@ -220,7 +220,7 @@ class TestRemoteDocumentSecurity:
 
     def test_remote_pdf_without_pdf_header_rejected(self, isolated_settings: Path) -> None:
         with (
-            patch("parllama.attachment_utils.socket.getaddrinfo", _resolve_to("93.184.216.34")),
+            patch("parllama.net_guard.socket.getaddrinfo", _resolve_to("93.184.216.34")),
             patch("parllama.attachment_utils.requests.get", return_value=_FakeResponse(b"<html>not a pdf</html>")),
         ):
             with pytest.raises(AttachmentError, match="missing %PDF- header"):
@@ -249,7 +249,7 @@ class TestRemoteDocumentSecurity:
     def test_refetch_with_changed_content_is_rejected(self, isolated_settings: Path) -> None:
         doc = self._cache_referenced_doc(b"original bytes", source_url="https://public.example/big.txt")
         with (
-            patch("parllama.attachment_utils.socket.getaddrinfo", _resolve_to("93.184.216.34")),
+            patch("parllama.net_guard.socket.getaddrinfo", _resolve_to("93.184.216.34")),
             patch("parllama.attachment_utils.requests.get", return_value=_FakeResponse(b"swapped bytes")),
         ):
             assert resolve_payload(doc) is None
@@ -257,7 +257,7 @@ class TestRemoteDocumentSecurity:
     def test_refetch_with_matching_content_is_accepted(self, isolated_settings: Path) -> None:
         doc = self._cache_referenced_doc(b"original bytes", source_url="https://public.example/big.txt")
         with (
-            patch("parllama.attachment_utils.socket.getaddrinfo", _resolve_to("93.184.216.34")),
+            patch("parllama.net_guard.socket.getaddrinfo", _resolve_to("93.184.216.34")),
             patch("parllama.attachment_utils.requests.get", return_value=_FakeResponse(b"original bytes")),
         ):
             assert resolve_payload(doc) == b"original bytes"

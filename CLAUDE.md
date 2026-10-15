@@ -89,7 +89,7 @@ PAR LLAMA implements a comprehensive file validation and security system to prot
 - **Filename Sanitization**: Removes unsafe characters and validates against reserved names
 
 #### Configuration Settings
-All file validation features are configurable via `settings_manager.py` (defined in `src/parllama/settings/config_groups.py` — `FileValidationConfig`):
+All file validation features are configurable via `settings.file_validation` (defined in `src/parllama/settings/config_groups.py` — `FileValidationConfig`):
 ```python
 file_validation_enabled: bool = True
 max_file_size_mb: float = 50.0
@@ -149,7 +149,7 @@ Chat messages carry images (`ParllamaChatMessage.images`) and documents (`Parlla
 1. Implement provider in `par_ai_core` if needed
 2. Add configuration to Options view with cache controls
 3. Update session config to include new provider
-4. Add provider to `provider_cache_hours` in `settings_manager.py` with appropriate default
+4. Add provider to `provider_cache_hours` in `ProviderConfig` (`src/parllama/settings/config_groups.py`) with appropriate default
 5. Add cache control handlers in `options_view.py` for the new provider
 
 **Adding UI Components:**
@@ -172,7 +172,7 @@ Chat messages carry images (`ParllamaChatMessage.images`) and documents (`Parlla
 
 **Working with Provider Caching:**
 - Provider model lists cached per-provider in `~/.cache/parllama/provider_models.json`
-- Cache durations configured in `settings.provider_cache_hours` (hours per provider)
+- Cache durations configured in `settings.provider.provider_cache_hours` (hours per provider)
 - Use `provider_manager.get_cache_info(provider)` for cache status information
 - Use `provider_manager.refresh_provider_models(provider)` for manual refresh
 - Cache logic checks expiration in `provider_manager.load_models()` method

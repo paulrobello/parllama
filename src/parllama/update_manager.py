@@ -32,7 +32,7 @@ class UpdateManager(MessageSink):
 
         try:
             async with httpx.AsyncClient() as client:
-                response = await client.get(self.url, follow_redirects=True, timeout=settings.update_check_timeout)
+                response = await client.get(self.url, follow_redirects=True, timeout=settings.http.update_check_timeout)
                 data = response.json()
             return Version.parse(data["info"]["version"])
         except requests.exceptions.RequestException as e:
@@ -55,7 +55,7 @@ class UpdateManager(MessageSink):
                     self.log_it(
                         f"New version available: {latest_version}",
                         notify=True,
-                        timeout=int(settings.notification_timeout_extended),
+                        timeout=int(settings.ui.notification_timeout_extended),
                     )
                 else:
                     logger.info("New version available: %s", latest_version)

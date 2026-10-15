@@ -23,9 +23,9 @@ from parllama.chat_message import (
     image_to_base64,
     try_get_image_type,
 )
+from parllama.image_cache import fetch_and_cache_image
 from parllama.messages.messages import ChatContinueRequested, ExecuteMessageRequested, SendToClipboard
 from parllama.models.ollama_data import MessageRoles
-from parllama.settings_manager import fetch_and_cache_image
 from parllama.widgets.par_markdown import ParMarkdown, ParMarkdownFence
 
 
@@ -282,7 +282,7 @@ class ChatMessageWidget(Vertical, can_focus=True):
         # Check if execution is enabled
         from parllama.settings_manager import settings
 
-        if not settings.execution_enabled:
+        if not settings.execution.execution_enabled:
             self.notify("Code execution is disabled", severity="warning")
             return
 

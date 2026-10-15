@@ -52,7 +52,7 @@ class ModelJobProcessor:
                  notifications, and logging.
         """
         self._app = app
-        self.job_queue: Queue[QueueJob] = Queue[QueueJob](maxsize=settings.job_queue_max_size)
+        self.job_queue: Queue[QueueJob] = Queue[QueueJob](maxsize=settings.timer.job_queue_max_size)
         self._state_manager: AppStateManager = app.state_manager
 
     # ------------------------------------------------------------------
@@ -66,7 +66,7 @@ class ModelJobProcessor:
             True if the job was added successfully, False if the queue is full.
         """
         try:
-            self.job_queue.put(job, timeout=settings.job_queue_put_timeout)
+            self.job_queue.put(job, timeout=settings.timer.job_queue_put_timeout)
             return True
         except Full:
             self._app.status_notify(
@@ -79,14 +79,14 @@ class ModelJobProcessor:
 
         Args:
             timeout: Seconds to wait for a job.  Defaults to
-                ``settings.job_queue_get_timeout``.
+                ``settings.timer.job_queue_get_timeout``.
 
         Returns:
             The next ``QueueJob``, or ``None`` if the queue is empty after
             the timeout.
         """
         if timeout is None:
-            timeout = settings.job_queue_get_timeout
+            timeout = settings.timer.job_queue_get_timeout
         try:
             return self.job_queue.get(block=True, timeout=timeout)
         except Empty:

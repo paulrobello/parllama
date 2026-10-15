@@ -54,8 +54,8 @@ def _keys_on_disk(tmp_path: Path) -> dict:
 
 def _write_legacy_settings(tmp_path: Path) -> None:
     legacy = _settings(tmp_path)
-    legacy.provider_api_keys[LlmProvider.OPENAI] = "sk-openai"
-    legacy.provider_api_keys[LlmProvider.ANTHROPIC] = "sk-anthropic"
+    legacy.provider.provider_api_keys[LlmProvider.OPENAI] = "sk-openai"
+    legacy.provider.provider_api_keys[LlmProvider.ANTHROPIC] = "sk-anthropic"
     legacy.save()
     assert _keys_on_disk(tmp_path)["OpenAI"] == "sk-openai"
 
@@ -71,16 +71,16 @@ def test_migration_moves_keys_out_of_settings_and_survives_restart(tmp_path: Pat
     assert on_disk["OpenAI"] is None
     assert on_disk["Anthropic"] is None
     assert "sk-openai" not in (tmp_path / "settings.json").read_text()
-    assert first.provider_api_keys[LlmProvider.OPENAI] == "sk-openai"
+    assert first.provider.provider_api_keys[LlmProvider.OPENAI] == "sk-openai"
 
     # Second start: settings.json is key-free, the vault unlocks from PARLLAMA_VAULT_KEY.
     os.environ.pop("OPENAI_API_KEY", None)
     second = _load_settings(tmp_path)
-    assert second.provider_api_keys[LlmProvider.OPENAI] is None
+    assert second.provider.provider_api_keys[LlmProvider.OPENAI] is None
     second.sync_provider_keys_with_vault(_vault(tmp_path))
 
-    assert second.provider_api_keys[LlmProvider.OPENAI] == "sk-openai"
-    assert second.provider_api_keys[LlmProvider.ANTHROPIC] == "sk-anthropic"
+    assert second.provider.provider_api_keys[LlmProvider.OPENAI] == "sk-openai"
+    assert second.provider.provider_api_keys[LlmProvider.ANTHROPIC] == "sk-anthropic"
     assert os.environ["OPENAI_API_KEY"] == "sk-openai"
     assert _keys_on_disk(tmp_path)["OpenAI"] is None
 
@@ -157,13 +157,13 @@ def test_options_set_and_clear_route_through_vault(tmp_path: Path) -> None:
 
     assert vault.get_secret("OPENAI_API_KEY") == "sk-new"
     assert _keys_on_disk(tmp_path)["OpenAI"] is None
-    assert s.provider_api_keys[LlmProvider.OPENAI] == "sk-new"
+    assert s.provider.provider_api_keys[LlmProvider.OPENAI] == "sk-new"
 
     s.set_provider_api_key(LlmProvider.OPENAI, "", vault)
     s.save()
 
     assert "OPENAI_API_KEY" not in vault
-    assert s.provider_api_keys[LlmProvider.OPENAI] is None
+    assert s.provider.provider_api_keys[LlmProvider.OPENAI] is None
     assert _keys_on_disk(tmp_path)["OpenAI"] is None
 
 

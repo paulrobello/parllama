@@ -263,11 +263,11 @@ class TemplateMatcher:
         requires_confirmation = True
 
         # Check for potentially dangerous patterns - use configurable patterns if available
-        if self.settings and self.settings.execution_security_patterns:
+        if self.settings and self.settings.execution.execution_security_patterns:
             # Convert string patterns to regex patterns with descriptions
             user_patterns = [
                 (re.escape(pattern), f"Security pattern: {pattern}")
-                for pattern in self.settings.execution_security_patterns
+                for pattern in self.settings.execution.execution_security_patterns
             ]
         else:
             # Fallback to filesystem-focused patterns

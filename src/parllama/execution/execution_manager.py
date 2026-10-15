@@ -41,13 +41,13 @@ class ExecutionManager:
         """Initialize file paths and secure operations from settings."""
         from parllama.settings_manager import settings as app_settings
 
-        self.templates_file = app_settings.execution_templates_file
-        self.history_file = app_settings.execution_history_file
+        self.templates_file = app_settings.execution.execution_templates_file
+        self.history_file = app_settings.execution.execution_history_file
         self.secure_ops = SecureFileOperations(
-            max_file_size_mb=app_settings.max_json_size_mb,
-            allowed_extensions=app_settings.allowed_json_extensions,
-            validate_content=app_settings.validate_file_content,
-            sanitize_filenames=app_settings.sanitize_filenames,
+            max_file_size_mb=app_settings.file_validation.max_json_size_mb,
+            allowed_extensions=app_settings.file_validation.allowed_json_extensions,
+            validate_content=app_settings.file_validation.validate_file_content,
+            sanitize_filenames=app_settings.file_validation.sanitize_filenames,
         )
 
     def _log_error(self, msg: str) -> None:

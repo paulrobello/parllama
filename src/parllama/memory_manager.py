@@ -21,12 +21,12 @@ class MemoryManager:
     @property
     def memory_content(self) -> str:
         """Get current memory content."""
-        return settings.user_memory
+        return settings.memory.user_memory
 
     @memory_content.setter
     def memory_content(self, value: str) -> None:
         """Set memory content and save to settings."""
-        settings.user_memory = value
+        settings.memory.user_memory = value
         settings.save()
 
         # Notify the UI that memory has been updated
@@ -40,13 +40,13 @@ class MemoryManager:
     @property
     def is_memory_enabled(self) -> bool:
         """Check if memory injection is enabled."""
-        return settings.memory_enabled and bool(settings.user_memory.strip())
+        return settings.memory.memory_enabled and bool(settings.memory.user_memory.strip())
 
     def get_memory_for_injection(self) -> str | None:
         """Get memory content for injection into new conversations."""
         if not self.is_memory_enabled:
             return None
-        return settings.user_memory.strip()
+        return settings.memory.user_memory.strip()
 
     async def update_memory_with_llm(self, current_memory: str, instruction: str, llm_config: LlmConfig) -> str:
         """Update memory using LLM assistance.
@@ -129,8 +129,8 @@ Please update the memory according to the instruction above. Return only the upd
 
     def get_default_llm_config(self) -> LlmConfig | None:
         """Get default LLM configuration for memory operations."""
-        if settings.memory_llm_config:
-            return LlmConfig.from_json(settings.memory_llm_config)
+        if settings.memory.memory_llm_config:
+            return LlmConfig.from_json(settings.memory.memory_llm_config)
 
         # Fallback to last used LLM config if no memory-specific config is set
         if hasattr(settings, "last_llm_config") and settings.last_llm_config:
@@ -146,7 +146,7 @@ Please update the memory according to the instruction above. Return only the upd
 
     def set_memory_llm_config(self, llm_config: LlmConfig) -> None:
         """Set the LLM configuration for memory operations."""
-        settings.memory_llm_config = llm_config.to_json()
+        settings.memory.memory_llm_config = llm_config.to_json()
         settings.save()
 
     def clear_memory(self) -> None:
@@ -155,7 +155,7 @@ Please update the memory according to the instruction above. Return only the upd
 
     def enable_memory(self, enabled: bool = True) -> None:
         """Enable or disable memory injection."""
-        settings.memory_enabled = enabled
+        settings.memory.memory_enabled = enabled
         settings.save()
 
 

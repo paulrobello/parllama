@@ -117,7 +117,7 @@ SessionConfig {
             llm_config=LlmConfig(
                 provider=self.provider_model_select.provider_name,
                 model_name=self.provider_model_select.model_name,
-                base_url=settings.provider_base_urls[self.provider_model_select.provider_name],
+                base_url=settings.provider.provider_base_urls[self.provider_model_select.provider_name],
                 temperature=self.get_temperature(),
                 reasoning_effort=self.get_reasoning_effort(),
                 reasoning_budget=self.get_reasoning_budget(),
@@ -136,7 +136,7 @@ SessionConfig {
                 ],
             )
         )
-        self.display = settings.always_show_session_config or not self.is_valid()
+        self.display = settings.chat.always_show_session_config or not self.is_valid()
 
     async def on_unmount(self) -> None:
         """Remove dialog from updates when unmounted."""
@@ -286,7 +286,7 @@ SessionConfig {
     def on_provider_model_selected(self, event: ProviderModelSelected) -> None:
         """Handle provider model selected event."""
         event.stop()
-        self.session.llm_config.base_url = settings.provider_base_urls[event.provider]
+        self.session.llm_config.base_url = settings.provider.provider_base_urls[event.provider]
         self.session.llm_provider_name = event.provider
         self.session.llm_model_name = event.model_name
         self.post_message(UpdateChatStatus())

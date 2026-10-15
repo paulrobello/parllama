@@ -73,7 +73,7 @@ class ChatTab(TabPane):
         session_name = self.session_config.session.name
         super().__init__(
             id=f"tp_{uuid.uuid4().hex}",
-            title=str_ellipsis(session_name, settings.chat_tab_max_length),
+            title=str_ellipsis(session_name, settings.chat.chat_tab_max_length),
             **kwargs,
         )
         self.session_list = session_list
@@ -84,10 +84,10 @@ class ChatTab(TabPane):
 
         # Initialize secure file operations for import/export
         self._secure_ops = SecureFileOperations(
-            max_file_size_mb=settings.max_file_size_mb,
-            allowed_extensions=settings.allowed_markdown_extensions,
-            validate_content=settings.validate_file_content,
-            sanitize_filenames=settings.sanitize_filenames,
+            max_file_size_mb=settings.file_validation.max_file_size_mb,
+            allowed_extensions=settings.file_validation.allowed_markdown_extensions,
+            validate_content=settings.file_validation.validate_file_content,
+            sanitize_filenames=settings.file_validation.sanitize_filenames,
         )
 
         self.session_status_bar = Static("", id="SessionStatusBar")
@@ -160,7 +160,7 @@ class ChatTab(TabPane):
         self.post_message(
             UpdateTabLabel(
                 str(self.id),
-                str_ellipsis(self.session.name, settings.chat_tab_max_length),
+                str_ellipsis(self.session.name, settings.chat.chat_tab_max_length),
             )
         )
 

@@ -53,10 +53,10 @@ class ChatPrompt(ChatMessageContainer):
 
         # Initialize secure file operations for chat prompts
         self._secure_ops = SecureFileOperations(
-            max_file_size_mb=settings.max_json_size_mb,
-            allowed_extensions=settings.allowed_json_extensions,
-            validate_content=settings.validate_file_content,
-            sanitize_filenames=settings.sanitize_filenames,
+            max_file_size_mb=settings.file_validation.max_json_size_mb,
+            allowed_extensions=settings.file_validation.allowed_json_extensions,
+            validate_content=settings.file_validation.validate_file_content,
+            sanitize_filenames=settings.file_validation.sanitize_filenames,
         )
 
     def load(self) -> None:

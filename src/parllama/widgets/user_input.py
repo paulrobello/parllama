@@ -121,10 +121,10 @@ class UserInput(Widget, can_focus=False, can_focus_children=True):
 
         # Initialize secure file operations for history file
         self._secure_ops = SecureFileOperations(
-            max_file_size_mb=settings.max_json_size_mb,
-            allowed_extensions=settings.allowed_json_extensions,
-            validate_content=settings.validate_file_content,
-            sanitize_filenames=settings.sanitize_filenames,
+            max_file_size_mb=settings.file_validation.max_json_size_mb,
+            allowed_extensions=settings.file_validation.allowed_json_extensions,
+            validate_content=settings.file_validation.validate_file_content,
+            sanitize_filenames=settings.file_validation.sanitize_filenames,
         )
 
         self._input = InputWithHistory(
@@ -200,7 +200,7 @@ class UserInput(Widget, can_focus=False, can_focus_children=True):
 
     def save(self) -> None:
         """Save the input history if enabled."""
-        if not settings.save_chat_input_history or not self._history_file:
+        if not settings.chat.save_chat_input_history or not self._history_file:
             return
 
         try:
@@ -285,7 +285,7 @@ class UserInput(Widget, can_focus=False, can_focus_children=True):
                 self.save()
 
         self.post_message(self.Submitted(input=self.control, value=v))
-        if settings.return_to_single_line_on_submit:
+        if settings.chat.return_to_single_line_on_submit:
             self._input_mode = "single_line"
         self.focus()
 
@@ -362,6 +362,6 @@ class UserInput(Widget, can_focus=False, can_focus_children=True):
         self.input_history.clear()
         self._input_position = 0
         self.save()
-        if not settings.save_chat_input_history and self._history_file:
+        if not settings.chat.save_chat_input_history and self._history_file:
             self._history_file.unlink(missing_ok=True)
         self.notify("Chat history cleared")

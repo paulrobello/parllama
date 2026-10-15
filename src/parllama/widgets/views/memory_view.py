@@ -58,13 +58,13 @@ class MemoryView(Vertical):
 
             with Horizontal(classes="memory-controls"):
                 yield Checkbox(
-                    label="Enable memory injection", value=settings.memory_enabled, id="memory_enabled_checkbox"
+                    label="Enable memory injection", value=settings.memory.memory_enabled, id="memory_enabled_checkbox"
                 )
                 yield Button("Clear Memory", id="clear_memory_button", variant="error")
                 yield Button("Save Memory", id="save_memory_button", variant="success")
 
             yield TextArea(
-                text=settings.user_memory,
+                text=settings.memory.user_memory,
                 placeholder="Enter information about yourself that you want the AI to remember across all conversations...",
                 classes="memory-textarea",
                 id="memory_textarea",
@@ -80,15 +80,15 @@ class MemoryView(Vertical):
     @on(Checkbox.Changed, "#memory_enabled_checkbox")
     def on_memory_enabled_changed(self, event: Checkbox.Changed) -> None:
         """Handle memory enabled checkbox change."""
-        settings.memory_enabled = event.checkbox.value
+        settings.memory.memory_enabled = event.checkbox.value
         settings.save()
-        status_text = "enabled" if settings.memory_enabled else "disabled"
+        status_text = "enabled" if settings.memory.memory_enabled else "disabled"
         self.notify(f"Memory injection {status_text}")
 
     @on(TextArea.Changed, "#memory_textarea")
     def on_memory_text_changed(self, event: TextArea.Changed) -> None:
         """Handle memory text area change."""
-        settings.user_memory = event.text_area.text
+        settings.memory.user_memory = event.text_area.text
         # Don't save on every keystroke, only when user stops typing
         # We'll save when they click save button or leave the field
 
@@ -96,7 +96,7 @@ class MemoryView(Vertical):
     def on_save_memory_button_pressed(self) -> None:
         """Handle save memory button press."""
         memory_textarea = self.query_one("#memory_textarea", TextArea)
-        settings.user_memory = memory_textarea.text
+        settings.memory.user_memory = memory_textarea.text
         settings.save()
         self.notify("Memory saved successfully")
 
@@ -117,7 +117,7 @@ class MemoryView(Vertical):
         if result:
             memory_textarea = self.query_one("#memory_textarea", TextArea)
             memory_textarea.text = ""
-            settings.user_memory = ""
+            settings.memory.user_memory = ""
             settings.save()
             self.notify("Memory cleared")
 
@@ -138,4 +138,4 @@ class MemoryView(Vertical):
 
         # Update the textarea with current memory content
         memory_textarea = self.query_one("#memory_textarea", TextArea)
-        memory_textarea.text = settings.user_memory
+        memory_textarea.text = settings.memory.user_memory

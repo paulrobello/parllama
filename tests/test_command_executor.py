@@ -25,8 +25,8 @@ def anyio_backend() -> str:
     return "asyncio"
 
 
-class _FakeSettings:
-    """Minimal duck-typed settings stub exposing only what CommandExecutor reads."""
+class _FakeExecutionConfig:
+    """Minimal duck-typed ``settings.execution`` group exposing only what CommandExecutor reads."""
 
     def __init__(self, tmp_path: Path, *, execution_enabled: bool = True) -> None:
         self.execution_enabled = execution_enabled
@@ -34,6 +34,13 @@ class _FakeSettings:
         self.execution_allowed_commands: list[str] = [sys.executable]
         self.execution_temp_dir = tmp_path
         self.execution_background_limit = 3
+
+
+class _FakeSettings:
+    """Minimal duck-typed settings stub exposing only what CommandExecutor reads."""
+
+    def __init__(self, tmp_path: Path, *, execution_enabled: bool = True) -> None:
+        self.execution = _FakeExecutionConfig(tmp_path, execution_enabled=execution_enabled)
 
 
 def _make_executor(tmp_path: Path, *, execution_enabled: bool = True) -> CommandExecutor:
@@ -80,7 +87,7 @@ class TestValidationAndAllowlist:
     async def test_command_not_in_allowlist_is_rejected(self, tmp_path: Path) -> None:
         """A base command outside execution_allowed_commands must be rejected."""
         settings = _FakeSettings(tmp_path)
-        settings.execution_allowed_commands = []  # nothing allowed
+        settings.execution.execution_allowed_commands = []  # nothing allowed
         executor = CommandExecutor(cast("Settings", settings))
 
         result = await executor.execute_template(_python_template(), "print('hi')\n")

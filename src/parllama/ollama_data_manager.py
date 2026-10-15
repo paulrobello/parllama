@@ -91,7 +91,7 @@ def api_model_ps() -> OllamaPsResponse:
     # fetch data from self.ollama_host as json
 
     try:
-        res: Response = httpx.get(f"{settings.ollama_host}/api/ps", timeout=settings.http_request_timeout)
+        res: Response = httpx.get(f"{settings.ollama.ollama_host}/api/ps", timeout=settings.http.http_request_timeout)
         if res.status_code != 200:
             return OllamaPsResponse()
 
@@ -188,7 +188,7 @@ class OllamaDataManager(MessageSink):
     @retry_with_backoff(config=create_retry_config(max_attempts=2, base_delay=1.0))
     def _fetch_site_models_page(self, url: str):
         """Fetch site models page with retry logic."""
-        return requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=settings.http_request_timeout)
+        return requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=settings.http.http_request_timeout)
 
     def _get_all_model_data(self) -> list[LocalModelListItem]:
         """Get all model data."""
@@ -208,7 +208,7 @@ class OllamaDataManager(MessageSink):
             res3 = FullModel(**model.model_dump(), name=model.model)
             all_models.append(LocalModelListItem(res3))
             # break
-        all_models.sort(key=_local_model_sort_key(settings.local_model_sort))
+        all_models.sort(key=_local_model_sort_key(settings.ollama.local_model_sort))
         return all_models
 
     def refresh_models(self) -> list[LocalModelListItem]:
@@ -227,12 +227,12 @@ class OllamaDataManager(MessageSink):
     @staticmethod
     def pull_model(model_name: str) -> Iterator[ProgressResponse]:
         """Pull a model."""
-        return ollama.Client(host=settings.ollama_host).pull(model_name, stream=True)  # type: ignore
+        return ollama.Client(host=settings.ollama.ollama_host).pull(model_name, stream=True)  # type: ignore
 
     @staticmethod
     def push_model(model_name: str) -> Iterator[ProgressResponse]:
         """Push a model."""
-        return ollama.Client(host=settings.ollama_host).push(model_name, stream=True)  # type: ignore
+        return ollama.Client(host=settings.ollama.ollama_host).push(model_name, stream=True)  # type: ignore
 
     @retry_with_backoff()
     def _ollama_delete_model(self, model_name: str):
@@ -375,7 +375,7 @@ class OllamaDataManager(MessageSink):
         quantize_level: str | None = None,
     ) -> Iterator[ProgressResponse]:
         """Create a new model."""
-        return ollama.Client(host=settings.ollama_host).create(
+        return ollama.Client(host=settings.ollama.ollama_host).create(
             model=model_name,
             from_=model_from,
             system=system_prompt,
@@ -389,7 +389,7 @@ class OllamaDataManager(MessageSink):
     @retry_with_backoff()
     def copy_model(src_name: str, dst_name: str) -> StatusResponse:
         """Copy local model to new name"""
-        return ollama.Client(host=settings.ollama_host).copy(source=src_name, destination=dst_name)
+        return ollama.Client(host=settings.ollama.ollama_host).copy(source=src_name, destination=dst_name)
 
     @staticmethod
     def quantize_model(model_name: str, quantize_level: str = "q4_0") -> str | Container | CancellableStream:
@@ -448,13 +448,13 @@ class OllamaDataManager(MessageSink):
     @functools.cached_property
     def ollama_client(self) -> ollama.Client:
         """Get the ollama client."""
-        clean_host_url, auth = extract_url_auth(settings.ollama_host)
+        clean_host_url, auth = extract_url_auth(settings.ollama.ollama_host)
         return ollama.Client(host=clean_host_url, auth=auth)
 
     @functools.cached_property
     def ollama_aclient(self) -> ollama.AsyncClient:
         """Get the async ollama client."""
-        clean_host_url, auth = extract_url_auth(settings.ollama_host)
+        clean_host_url, auth = extract_url_auth(settings.ollama.ollama_host)
         return ollama.AsyncClient(host=clean_host_url, auth=auth)
 
     def get_model_context_length(self, model_name: str) -> int:

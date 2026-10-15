@@ -138,11 +138,11 @@ class CommandExecutor:
         errors = []
 
         # Check if execution is enabled
-        if not self.settings.execution_enabled:
+        if not self.settings.execution.execution_enabled:
             errors.append("Code execution is disabled")
 
         # Validate template with security patterns
-        template_errors = template.validate(self.settings.execution_security_patterns)
+        template_errors = template.validate(self.settings.execution.execution_security_patterns)
         errors.extend(template_errors)
 
         # Check command allowlist using the base binary from the template
@@ -154,11 +154,11 @@ class CommandExecutor:
         )
         if command_parts:
             base_command = command_parts[0]
-            if base_command not in self.settings.execution_allowed_commands:
+            if base_command not in self.settings.execution.execution_allowed_commands:
                 errors.append(f"Command '{base_command}' is not in allowed commands list")
 
         # Content safety checks - use configurable security patterns
-        dangerous_patterns = self.settings.execution_security_patterns.copy()
+        dangerous_patterns = self.settings.execution.execution_security_patterns.copy()
 
         # Always include these critical security patterns regardless of user config
         critical_patterns = [
@@ -185,7 +185,7 @@ class CommandExecutor:
             suffix = template.file_extensions[0]
 
         # Create temp file in our secure temp directory
-        temp_dir = self.settings.execution_temp_dir
+        temp_dir = self.settings.execution.execution_temp_dir
         temp_file = tempfile.NamedTemporaryFile(mode="w", suffix=suffix, dir=temp_dir, delete=False, encoding="utf-8")
 
         try:
@@ -247,7 +247,9 @@ class CommandExecutor:
 
             # Set working directory
             working_dir = (
-                Path(template.working_directory) if template.working_directory else self.settings.execution_temp_dir
+                Path(template.working_directory)
+                if template.working_directory
+                else self.settings.execution.execution_temp_dir
             )
 
             # Execute command
@@ -408,4 +410,4 @@ class CommandExecutor:
 
     def can_start_background_process(self) -> bool:
         """Check if we can start another background process."""
-        return len(self._active_processes) < self.settings.execution_background_limit
+        return len(self._active_processes) < self.settings.execution.execution_background_limit

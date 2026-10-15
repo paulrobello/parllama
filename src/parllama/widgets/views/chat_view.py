@@ -337,7 +337,7 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
     async def action_send_message(self, event: UserInput.Submitted) -> None:
         """Send the message."""
         event.stop()
-        if settings.close_session_config_on_submit:
+        if settings.chat.close_session_config_on_submit:
             self.active_tab.session_config.display = False
 
         self.user_input.focus()
@@ -386,7 +386,7 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
         """Add a file or URL to the pending attachments for the next message."""
         src = strip_wrapping_quotes(path_or_url)
         name = Path(src.split("?")[0]).name or src
-        if Path(src.split("?")[0]).suffix.lower() in settings.allowed_document_extensions:
+        if Path(src.split("?")[0]).suffix.lower() in settings.file_validation.allowed_document_extensions:
             if len(self.pending_documents) >= MAX_DOCUMENTS_PER_MESSAGE:
                 self.notify(f"Maximum {MAX_DOCUMENTS_PER_MESSAGE} documents per message", severity="error")
                 return
@@ -876,7 +876,7 @@ Chat Commands:
         from parllama.memory_manager import memory_manager
 
         if not memory_manager.is_memory_enabled:
-            if settings.memory_enabled:
+            if settings.memory.memory_enabled:
                 status_msg = "Memory injection is enabled but no memory content is set"
             else:
                 status_msg = "Memory injection is disabled"

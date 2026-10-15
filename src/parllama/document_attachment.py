@@ -1,7 +1,7 @@
 """Document attachment model for chat messages.
 
 Hybrid storage (spec docs/specs/issue-56-25-attachments.md §4.8, §9 Q2):
-attachments at or below ``settings.inline_document_threshold_mb`` are fully
+attachments at or below ``settings.file_validation.inline_document_threshold_mb`` are fully
 inline in the session JSON (``data_b64`` + extracted ``text``); larger ones
 store only their content hash and metadata, and the payload is re-derived
 from the documents cache at send time.

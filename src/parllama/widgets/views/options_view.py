@@ -151,7 +151,7 @@ class OptionsView(Horizontal):
     def _set_provider_base_url(self, value: str) -> None:
         """Set a provider base URL by extracting the provider from the widget ID."""
         provider = _PROVIDER_BY_WIDGET_NAME[self._current_widget_id.rsplit("_base_url", 1)[0]]
-        settings.provider_base_urls[provider] = value or None
+        settings.provider.provider_base_urls[provider] = value or None
 
     def _set_provider_api_key(self, value: str) -> None:
         """Set a provider API key by extracting the provider from the widget ID."""
@@ -163,12 +163,12 @@ class OptionsView(Horizontal):
     def _set_provider_cache_hours(self, value: str) -> None:
         """Set a provider cache duration by extracting the provider from the widget ID."""
         provider = _PROVIDER_BY_WIDGET_NAME[self._current_widget_id.replace("_cache_hours", "")]
-        settings.provider_cache_hours[provider] = int(value)
+        settings.provider.provider_cache_hours[provider] = int(value)
 
     @staticmethod
     def _set_ollama_base_url(view: OptionsView, value: str) -> None:
-        settings.provider_base_urls[LlmProvider.OLLAMA] = value
-        settings.ollama_host = value
+        settings.provider.provider_base_urls[LlmProvider.OLLAMA] = value
+        settings.ollama.ollama_host = value
 
     @staticmethod
     def _flag_provider_changed(view: OptionsView, value: str) -> None:
@@ -180,12 +180,12 @@ class OptionsView(Horizontal):
 
     @staticmethod
     def _set_execution_allowed_commands(view: OptionsView, value: str) -> None:
-        settings.execution_allowed_commands = _parse_comma_list(value)
+        settings.execution.execution_allowed_commands = _parse_comma_list(value)
         view._execution_settings_changed = True
 
     @staticmethod
     def _set_execution_security_patterns(view: OptionsView, value: str) -> None:
-        settings.execution_security_patterns = _parse_comma_list(value)
+        settings.execution.execution_security_patterns = _parse_comma_list(value)
         view._execution_settings_changed = True
 
     @staticmethod
@@ -193,7 +193,7 @@ class OptionsView(Horizontal):
         """Set a numeric file-validation setting named by the current widget ID."""
         widget_id = view._current_widget_id
         is_integer = _FILE_VALIDATION_NUMBER_FIELDS[widget_id][3]
-        setattr(settings, widget_id, int(value) if is_integer else float(value))
+        setattr(settings.file_validation, widget_id, int(value) if is_integer else float(value))
 
     @staticmethod
     def _set_file_validation_extensions(view: OptionsView, value: str) -> None:
@@ -204,15 +204,15 @@ class OptionsView(Horizontal):
             view.notify(
                 f"{widget_id} must contain at least one extension; keeping the previous value",
                 severity="error",
-                timeout=settings.notification_timeout_extended,
+                timeout=settings.ui.notification_timeout_extended,
             )
-            view.query_one(f"#{widget_id}", Input).value = ", ".join(getattr(settings, widget_id))
+            view.query_one(f"#{widget_id}", Input).value = ", ".join(getattr(settings.file_validation, widget_id))
             return
-        setattr(settings, widget_id, extensions)
+        setattr(settings.file_validation, widget_id, extensions)
 
     @staticmethod
     def _set_ocr_language(view: OptionsView, value: str) -> None:
-        settings.ocr_language = value.strip() or "eng"
+        settings.file_validation.ocr_language = value.strip() or "eng"
 
     @staticmethod
     def _set_langchain_base_url(view: OptionsView, value: str) -> None:
@@ -264,14 +264,17 @@ class OptionsView(Horizontal):
         "litellm_cache_hours": (_set_provider_cache_hours, None),
         "llamacpp_cache_hours": (_set_provider_cache_hours, None),
         # Simple int settings
-        "ollama_ps_poll_interval": (lambda v, val: setattr(settings, "ollama_ps_poll_interval", int(val)), None),
-        "chat_tab_max_length": (lambda v, val: setattr(settings, "chat_tab_max_length", int(val)), None),
-        "chat_input_history_length": (lambda v, val: setattr(settings, "chat_input_history_length", int(val)), None),
-        "max_retry_attempts": (lambda v, val: setattr(settings, "max_retry_attempts", int(val)), None),
+        "ollama_ps_poll_interval": (lambda v, val: setattr(settings.ollama, "ollama_ps_poll_interval", int(val)), None),
+        "chat_tab_max_length": (lambda v, val: setattr(settings.chat, "chat_tab_max_length", int(val)), None),
+        "chat_input_history_length": (
+            lambda v, val: setattr(settings.chat, "chat_input_history_length", int(val)),
+            None,
+        ),
+        "max_retry_attempts": (lambda v, val: setattr(settings.retry, "max_retry_attempts", int(val)), None),
         # Simple float settings
-        "retry_base_delay": (lambda v, val: setattr(settings, "retry_base_delay", float(val)), None),
-        "retry_backoff_factor": (lambda v, val: setattr(settings, "retry_backoff_factor", float(val)), None),
-        "retry_max_delay": (lambda v, val: setattr(settings, "retry_max_delay", float(val)), None),
+        "retry_base_delay": (lambda v, val: setattr(settings.retry, "retry_base_delay", float(val)), None),
+        "retry_backoff_factor": (lambda v, val: setattr(settings.retry, "retry_backoff_factor", float(val)), None),
+        "retry_max_delay": (lambda v, val: setattr(settings.retry, "retry_max_delay", float(val)), None),
         # Langchain
         "langchain_base_url": (_set_langchain_base_url, None),
         "langchain_api_key": (_set_langchain_api_key, None),
@@ -288,26 +291,26 @@ class OptionsView(Horizontal):
     # --- Checkboxes -----------------------------------------------------
 
     _CHECKBOX_MAP: dict[str, tuple[str, Callable[[OptionsView, bool], None] | None]] = {
-        "check_for_updates": ("check_for_updates", None),
+        "check_for_updates": ("ui.check_for_updates", None),
         "use_last_tab_on_startup": ("use_last_tab_on_startup", None),
-        "auto_name_session": ("auto_name_session", None),
-        "show_first_run": ("show_first_run", None),
-        "return_to_single_line_on_submit": ("return_to_single_line_on_submit", None),
-        "save_chat_input_history": ("save_chat_input_history", None),
-        "always_show_session_config": ("always_show_session_config", None),
-        "close_session_config_on_submit": ("close_session_config_on_submit", None),
-        "load_local_models_on_startup": ("load_local_models_on_startup", None),
-        "enable_network_retries": ("enable_network_retries", None),
+        "auto_name_session": ("chat.auto_name_session", None),
+        "show_first_run": ("ui.show_first_run", None),
+        "return_to_single_line_on_submit": ("chat.return_to_single_line_on_submit", None),
+        "save_chat_input_history": ("chat.save_chat_input_history", None),
+        "always_show_session_config": ("chat.always_show_session_config", None),
+        "close_session_config_on_submit": ("chat.close_session_config_on_submit", None),
+        "load_local_models_on_startup": ("ollama.load_local_models_on_startup", None),
+        "enable_network_retries": ("retry.enable_network_retries", None),
         "langchain_tracing": ("langchain_config.tracing", None),
         "execution_enabled": (
-            "execution_enabled",
+            "execution.execution_enabled",
             lambda view, val: setattr(view, "_execution_settings_changed", True),
         ),
-        "file_validation_enabled": ("file_validation_enabled", None),
-        "validate_file_content": ("validate_file_content", None),
-        "allow_zip_extraction": ("allow_zip_extraction", None),
-        "sanitize_filenames": ("sanitize_filenames", None),
-        "enable_ocr": ("enable_ocr", None),
+        "file_validation_enabled": ("file_validation.file_validation_enabled", None),
+        "validate_file_content": ("file_validation.validate_file_content", None),
+        "allow_zip_extraction": ("file_validation.allow_zip_extraction", None),
+        "sanitize_filenames": ("file_validation.sanitize_filenames", None),
+        "enable_ocr": ("file_validation.enable_ocr", None),
     }
 
     def compose(self) -> ComposeResult:
@@ -373,7 +376,7 @@ class OptionsView(Horizontal):
             vs.border_title = "Startup"
             yield Checkbox(
                 label="Show first run",
-                value=settings.show_first_run,
+                value=settings.ui.show_first_run,
                 id="show_first_run",
             )
 
@@ -386,7 +389,7 @@ class OptionsView(Horizontal):
             with Horizontal():
                 yield Checkbox(
                     label="Check for updates on startup",
-                    value=settings.check_for_updates,
+                    value=settings.ui.check_for_updates,
                     id="check_for_updates",
                 )
                 if settings.last_version_check:
@@ -402,7 +405,7 @@ class OptionsView(Horizontal):
             with Horizontal():
                 yield Checkbox(
                     label="Load local models on startup",
-                    value=settings.load_local_models_on_startup,
+                    value=settings.ollama.load_local_models_on_startup,
                     id="load_local_models_on_startup",
                 )
 
@@ -413,7 +416,7 @@ class OptionsView(Horizontal):
             yield Static("Themes are stored in $DataDir/themes", classes="mb-1")
             yield Label("Theme")
             yield Select[str](
-                value=settings.theme_name,
+                value=settings.ui.theme_name,
                 options=theme_manager.theme_select_options(),
                 allow_blank=False,
                 id="theme_name",
@@ -425,12 +428,12 @@ class OptionsView(Horizontal):
             vsn.border_title = "Network"
             yield Checkbox(
                 label="Enable network retries",
-                value=settings.enable_network_retries,
+                value=settings.retry.enable_network_retries,
                 id="enable_network_retries",
             )
             yield Label("Max retry attempts")
             yield InputBlurSubmit(
-                value=str(settings.max_retry_attempts),
+                value=str(settings.retry.max_retry_attempts),
                 max_length=2,
                 type="integer",
                 validators=[Integer(minimum=1, maximum=10)],
@@ -438,7 +441,7 @@ class OptionsView(Horizontal):
             )
             yield Label("Base delay (seconds)")
             yield InputBlurSubmit(
-                value=str(settings.retry_base_delay),
+                value=str(settings.retry.retry_base_delay),
                 max_length=5,
                 type="number",
                 validators=[Number(minimum=0.1, maximum=30.0)],
@@ -446,7 +449,7 @@ class OptionsView(Horizontal):
             )
             yield Label("Backoff factor")
             yield InputBlurSubmit(
-                value=str(settings.retry_backoff_factor),
+                value=str(settings.retry.retry_backoff_factor),
                 max_length=5,
                 type="number",
                 validators=[Number(minimum=1.0, maximum=5.0)],
@@ -454,7 +457,7 @@ class OptionsView(Horizontal):
             )
             yield Label("Max delay (seconds)")
             yield InputBlurSubmit(
-                value=str(settings.retry_max_delay),
+                value=str(settings.retry.retry_max_delay),
                 max_length=5,
                 type="number",
                 validators=[Number(minimum=1.0, maximum=300.0)],
@@ -468,7 +471,7 @@ class OptionsView(Horizontal):
             vsc.border_title = "Chat"
             yield Label("Chat Tab Max Length")
             yield InputBlurSubmit(
-                value=str(settings.chat_tab_max_length),
+                value=str(settings.chat.chat_tab_max_length),
                 max_length=5,
                 type="integer",
                 validators=[Integer(minimum=3, maximum=50)],
@@ -485,7 +488,7 @@ class OptionsView(Horizontal):
             vsu.border_title = "User Input"
             yield Label("Chat input history length")
             yield InputBlurSubmit(
-                value=str(settings.chat_input_history_length),
+                value=str(settings.chat.chat_input_history_length),
                 max_length=5,
                 type="integer",
                 validators=[Integer(minimum=0, maximum=1000)],
@@ -494,7 +497,7 @@ class OptionsView(Horizontal):
             with Horizontal():
                 yield Checkbox(
                     label="Save user input history",
-                    value=settings.save_chat_input_history,
+                    value=settings.chat.save_chat_input_history,
                     id="save_chat_input_history",
                 )
                 yield Button(
@@ -504,17 +507,17 @@ class OptionsView(Horizontal):
                 )
             yield Checkbox(
                 label="Return to single line after multi line submit",
-                value=settings.return_to_single_line_on_submit,
+                value=settings.chat.return_to_single_line_on_submit,
                 id="return_to_single_line_on_submit",
             )
             yield Checkbox(
                 label="Always show session config panel",
-                value=settings.always_show_session_config,
+                value=settings.chat.always_show_session_config,
                 id="always_show_session_config",
             )
             yield Checkbox(
                 label="Close session config on submit",
-                value=settings.close_session_config_on_submit,
+                value=settings.chat.close_session_config_on_submit,
                 id="close_session_config_on_submit",
             )
 
@@ -524,18 +527,18 @@ class OptionsView(Horizontal):
             vse.border_title = "Template Execution"
             yield Checkbox(
                 label="Execution enabled (Ctrl+R on chat messages)",
-                value=settings.execution_enabled,
+                value=settings.execution.execution_enabled,
                 id="execution_enabled",
             )
             yield Label("Allowed commands (comma separated)")
             yield InputBlurSubmit(
-                value=", ".join(settings.execution_allowed_commands),
+                value=", ".join(settings.execution.execution_allowed_commands),
                 max_length=200,
                 id="execution_allowed_commands",
             )
             yield Label("Security patterns (comma separated, filesystem-focused)")
             yield InputBlurSubmit(
-                value=", ".join(settings.execution_security_patterns),
+                value=", ".join(settings.execution.execution_security_patterns),
                 max_length=300,
                 id="execution_security_patterns",
             )
@@ -546,12 +549,12 @@ class OptionsView(Horizontal):
             vscs.border_title = "Session Naming"
             yield Checkbox(
                 label="Auto LLM Name Session",
-                value=settings.auto_name_session,
+                value=settings.chat.auto_name_session,
                 id="auto_name_session",
             )
             yield Label("LLM used for auto name")
-            if settings.auto_name_session_llm_config:
-                llmc = LlmConfig.from_json(settings.auto_name_session_llm_config)
+            if settings.chat.auto_name_session_llm_config:
+                llmc = LlmConfig.from_json(settings.chat.auto_name_session_llm_config)
             else:
                 llmc = None
             yield ProviderModelSelect(
@@ -565,29 +568,29 @@ class OptionsView(Horizontal):
             vsfv.border_title = "File Validation"
             yield Checkbox(
                 label="File validation enabled",
-                value=settings.file_validation_enabled,
+                value=settings.file_validation.file_validation_enabled,
                 id="file_validation_enabled",
             )
             yield Checkbox(
                 label="Validate file content",
-                value=settings.validate_file_content,
+                value=settings.file_validation.validate_file_content,
                 id="validate_file_content",
             )
             yield Checkbox(
                 label="Allow ZIP extraction",
-                value=settings.allow_zip_extraction,
+                value=settings.file_validation.allow_zip_extraction,
                 id="allow_zip_extraction",
             )
             yield Checkbox(
                 label="Sanitize filenames",
-                value=settings.sanitize_filenames,
+                value=settings.file_validation.sanitize_filenames,
                 id="sanitize_filenames",
             )
             for widget_id, (label, minimum, maximum, is_integer) in _FILE_VALIDATION_NUMBER_FIELDS.items():
                 yield Label(label)
                 if is_integer:
                     yield InputBlurSubmit(
-                        value=str(getattr(settings, widget_id)),
+                        value=str(getattr(settings.file_validation, widget_id)),
                         max_length=len(str(int(maximum))),
                         type="integer",
                         validators=[Integer(minimum=int(minimum), maximum=int(maximum))],
@@ -595,7 +598,7 @@ class OptionsView(Horizontal):
                     )
                 else:
                     yield InputBlurSubmit(
-                        value=str(getattr(settings, widget_id)),
+                        value=str(getattr(settings.file_validation, widget_id)),
                         max_length=len(str(int(maximum))) + 3,
                         type="number",
                         validators=[Number(minimum=minimum, maximum=maximum)],
@@ -604,18 +607,18 @@ class OptionsView(Horizontal):
             for widget_id, label in _FILE_VALIDATION_EXTENSION_FIELDS.items():
                 yield Label(label)
                 yield InputBlurSubmit(
-                    value=", ".join(getattr(settings, widget_id)),
+                    value=", ".join(getattr(settings.file_validation, widget_id)),
                     max_length=200,
                     id=widget_id,
                 )
             yield Checkbox(
                 label="Enable OCR for scanned PDFs",
-                value=settings.enable_ocr,
+                value=settings.file_validation.enable_ocr,
                 id="enable_ocr",
             )
             yield Label("OCR language")
             yield InputBlurSubmit(
-                value=settings.ocr_language,
+                value=settings.file_validation.ocr_language,
                 max_length=20,
                 id="ocr_language",
             )
@@ -680,7 +683,7 @@ class OptionsView(Horizontal):
     def on_provider_model_selected(self, event: ProviderModelSelected) -> None:
         """Handle provider model selected"""
         event.stop()
-        settings.auto_name_session_llm_config = LlmConfig(
+        settings.chat.auto_name_session_llm_config = LlmConfig(
             provider=event.provider, model_name=event.model_name, temperature=0.5
         ).to_json()
         settings.save()
@@ -697,7 +700,7 @@ class OptionsView(Horizontal):
             if effective == settings.starting_tab:
                 return
         elif ctrl.id == "theme_name":
-            if ctrl.value == settings.theme_name:
+            if ctrl.value == settings.ui.theme_name:
                 return
         if ctrl.id == "starting_tab":
             if ctrl.value == Select.NULL:
@@ -706,14 +709,16 @@ class OptionsView(Horizontal):
                 settings.starting_tab = ctrl.value  # type: ignore
         elif ctrl.id == "theme_name":
             if ctrl.value != Select.NULL:
-                settings.theme_name = ctrl.value  # type: ignore
-                theme_manager.change_theme(settings.theme_name)  # type: ignore[arg-type]
+                settings.ui.theme_name = ctrl.value  # type: ignore
+                theme_manager.change_theme(settings.ui.theme_name)  # type: ignore[arg-type]
         elif ctrl.id == "provider_name":
             pass
         elif ctrl.id == "model_name":
             pass
         else:
-            self.notify(f"Unhandled input: {ctrl.id}", severity="error", timeout=settings.notification_timeout_extended)
+            self.notify(
+                f"Unhandled input: {ctrl.id}", severity="error", timeout=settings.ui.notification_timeout_extended
+            )
             return
         settings.save()
 
@@ -741,17 +746,17 @@ class OptionsView(Horizontal):
             provider_name = ctrl.id[len("disable_") : -len("_provider")].capitalize()
             try:
                 provider = provider_name_to_enum(provider_name)
-                settings.disabled_providers[provider] = ctrl.value
+                settings.provider.disabled_providers[provider] = ctrl.value
                 settings.save()
             except (ValueError, KeyError):
                 self.notify(
                     f"Unknown provider: {provider_name}",
                     severity="error",
-                    timeout=settings.notification_timeout_extended,
+                    timeout=settings.ui.notification_timeout_extended,
                 )
             return
 
-        self.notify(f"Unhandled input: {ctrl.id}", severity="error", timeout=settings.notification_timeout_extended)
+        self.notify(f"Unhandled input: {ctrl.id}", severity="error", timeout=settings.ui.notification_timeout_extended)
 
     @staticmethod
     def _set_nested_attr(attr_path: str, value: object) -> None:
@@ -769,7 +774,7 @@ class OptionsView(Horizontal):
         ctrl: Input = event.control
         if event.validation_result is not None and not event.validation_result.is_valid:
             errors = ",".join([f.description or "Bad Value" for f in event.validation_result.failures])
-            self.notify(f"{ctrl.id} [{errors}]", severity="error", timeout=settings.notification_timeout_extended)
+            self.notify(f"{ctrl.id} [{errors}]", severity="error", timeout=settings.ui.notification_timeout_extended)
             return
 
         widget_id = ctrl.id
@@ -779,7 +784,7 @@ class OptionsView(Horizontal):
         mapping = self._INPUT_FIELD_MAP.get(widget_id)
         if mapping is None:
             self.notify(
-                f"Unhandled input: {widget_id}", severity="error", timeout=settings.notification_timeout_extended
+                f"Unhandled input: {widget_id}", severity="error", timeout=settings.ui.notification_timeout_extended
             )
             return
 

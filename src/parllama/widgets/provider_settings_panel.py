@@ -116,7 +116,7 @@ class ProviderSettingsPanel(Vertical):
         if spec.has_base_url:
             yield Label("Base URL")
             yield InputBlurSubmit(
-                value=settings.provider_base_urls[spec.provider] or spec.base_url_default,
+                value=settings.provider.provider_base_urls[spec.provider] or spec.base_url_default,
                 valid_empty=True,
                 validators=HttpValidator(),
                 id=f"{self._provider_name}_base_url",
@@ -133,7 +133,7 @@ class ProviderSettingsPanel(Vertical):
         if spec.has_api_key:
             yield Label("API Key")
             yield InputBlurSubmit(
-                value=settings.provider_api_keys[spec.provider] or "",
+                value=settings.provider.provider_api_keys[spec.provider] or "",
                 valid_empty=True,
                 password=True,
                 id=spec.api_key_id or f"{self._provider_name}_api_key",
@@ -145,7 +145,7 @@ class ProviderSettingsPanel(Vertical):
         """Compose the provider disable checkbox."""
         yield Checkbox(
             label=f"Disable {self.spec.provider.value} Provider",
-            value=settings.disabled_providers.get(self.spec.provider, False),
+            value=settings.provider.disabled_providers.get(self.spec.provider, False),
             id=f"disable_{self._provider_name}_provider",
         )
 
@@ -153,7 +153,7 @@ class ProviderSettingsPanel(Vertical):
         """Compose the model-cache duration, status, and refresh controls."""
         yield Label("Cache Duration (hours)")
         yield InputBlurSubmit(
-            value=str(settings.provider_cache_hours[self.spec.provider]),
+            value=str(settings.provider.provider_cache_hours[self.spec.provider]),
             max_length=5,
             type="integer",
             validators=[Integer(minimum=1, maximum=8760)],
@@ -194,7 +194,7 @@ PROVIDER_PANELS: tuple[ProviderPanelSpec, ...] = (
             ExtraInputSpec(
                 label="PS poll interval in seconds. 0 to disable.",
                 widget_id="ollama_ps_poll_interval",
-                value=lambda: str(settings.ollama_ps_poll_interval),
+                value=lambda: str(settings.ollama.ollama_ps_poll_interval),
                 minimum=0,
                 maximum=300,
             ),

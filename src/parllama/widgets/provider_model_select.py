@@ -30,7 +30,9 @@ def get_filtered_provider_select_options() -> list[tuple[str, LlmProvider]]:
     """Get provider select options with disabled providers filtered out."""
     opts = get_provider_select_options()
     # Filter out any disabled providers
-    opts = [(name, provider) for name, provider in opts if not settings.disabled_providers.get(provider, False)]
+    opts = [
+        (name, provider) for name, provider in opts if not settings.provider.disabled_providers.get(provider, False)
+    ]
     return opts
 
 

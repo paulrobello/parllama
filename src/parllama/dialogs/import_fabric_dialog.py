@@ -215,7 +215,9 @@ class ImportFabricDialog(ModalScreen[None]):
         """Import selected patterns."""
         event.stop()
         if len(import_fabric_manager.import_ids) == 0:
-            self.notify("No prompts selected for import", severity="error", timeout=settings.notification_timeout_error)
+            self.notify(
+                "No prompts selected for import", severity="error", timeout=settings.ui.notification_timeout_error
+            )
             return
 
         try:
@@ -231,7 +233,7 @@ class ImportFabricDialog(ModalScreen[None]):
             self.notify(
                 f"Successfully imported {len(import_fabric_manager.import_ids)} patterns",
                 severity="information",
-                timeout=settings.notification_timeout_info,
+                timeout=settings.ui.notification_timeout_info,
             )
 
             with self.prevent(Focus):
@@ -240,11 +242,11 @@ class ImportFabricDialog(ModalScreen[None]):
         except (ValueError, OSError, RuntimeError) as e:
             error_msg = str(e)
             self.update_progress(0, "Import failed", f"Error importing patterns: {error_msg}")
-            self.notify(f"Import failed: {error_msg}", severity="error", timeout=settings.notification_timeout_error)
+            self.notify(f"Import failed: {error_msg}", severity="error", timeout=settings.ui.notification_timeout_error)
         except Exception as e:  # noqa: BLE001
             error_msg = f"Unexpected error ({type(e).__name__}): {str(e)}"
             self.update_progress(0, "Import failed", f"Error importing patterns: {error_msg}")
-            self.notify(f"Import failed: {error_msg}", severity="error", timeout=settings.notification_timeout_error)
+            self.notify(f"Import failed: {error_msg}", severity="error", timeout=settings.ui.notification_timeout_error)
 
     @on(Button.Pressed, "#refresh")
     def on_refresh_pressed(self, event: Button.Pressed) -> None:

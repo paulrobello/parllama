@@ -86,7 +86,7 @@ class ExecutionCoordinator:
         Args:
             event: The execution request event containing content and metadata.
         """
-        if not settings.execution_enabled:
+        if not settings.execution.execution_enabled:
             self._app.notify("Code execution is disabled", severity="warning")
             return
 
@@ -127,7 +127,7 @@ class ExecutionCoordinator:
                 content_to_execute, template
             )
 
-            if requires_confirmation and settings.execution_require_confirmation:
+            if requires_confirmation and settings.execution.execution_require_confirmation:
                 # The warnings/pattern list from should_require_confirmation() is a UI
                 # hint to help the user decide, not a security boundary -- it's a small
                 # substring blocklist that is trivially bypassed and must never be
@@ -207,7 +207,7 @@ class ExecutionCoordinator:
                 content_to_execute, template
             )
 
-            if requires_confirmation and settings.execution_require_confirmation:
+            if requires_confirmation and settings.execution.execution_require_confirmation:
                 # See the comment in handle_execute_message_requested(): this warning
                 # list is a UI hint only, never a sandbox or security boundary.
                 if not await self._confirm_execution(template, warnings):

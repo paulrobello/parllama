@@ -131,7 +131,7 @@ class ProviderManager(MessageSink):
         Raises:
             ValueError: If ``p`` is an unknown provider.
         """
-        if settings.disabled_providers.get(p, False):
+        if settings.provider.disabled_providers.get(p, False):
             return None
         if not is_provider_api_key_set(p):
             return None
@@ -142,7 +142,7 @@ class ProviderManager(MessageSink):
         elif p == LlmProvider.LLAMACPP:
             from openai import OpenAI
 
-            models = OpenAI(base_url=settings.provider_base_urls[p] or provider_base_urls[p]).models.list()
+            models = OpenAI(base_url=settings.provider.provider_base_urls[p] or provider_base_urls[p]).models.list()
             data = sorted(models.data, key=lambda m: m.created, reverse=True)
             for m in data:
                 new_list.append(m.id or "default")
@@ -151,8 +151,8 @@ class ProviderManager(MessageSink):
 
             models = list(
                 OpenAI(
-                    base_url=settings.provider_base_urls[p] or provider_base_urls[p],
-                    api_key=settings.provider_api_keys[p] or os.environ.get(provider_env_key_names[p]),
+                    base_url=settings.provider.provider_base_urls[p] or provider_base_urls[p],
+                    api_key=settings.provider.provider_api_keys[p] or os.environ.get(provider_env_key_names[p]),
                 )
                 .models.list()
                 .data
@@ -168,7 +168,7 @@ class ProviderManager(MessageSink):
         elif p == LlmProvider.GROQ:
             from groq import Groq
 
-            models = Groq(base_url=settings.provider_base_urls[p] or provider_base_urls[p]).models.list().data
+            models = Groq(base_url=settings.provider.provider_base_urls[p] or provider_base_urls[p]).models.list().data
             if models:
                 models = [m for m in models if get_model_mode(p, m.id) in ["chat", "unknown"]]
                 data = sorted(models, key=lambda m: m.created, reverse=True)
@@ -185,8 +185,8 @@ class ProviderManager(MessageSink):
                     new_list.append(m.id)
         elif p == LlmProvider.LITELLM:
             models = requests.get(
-                f"{settings.provider_base_urls[p] or provider_base_urls[p]}/models",
-                timeout=settings.provider_model_request_timeout,
+                f"{settings.provider.provider_base_urls[p] or provider_base_urls[p]}/models",
+                timeout=settings.http.provider_model_request_timeout,
             ).json()["data"]
             if models:
                 models = [m for m in models if get_model_mode(p, m["id"]) in ["chat", "unknown"]]
@@ -197,7 +197,7 @@ class ProviderManager(MessageSink):
             from google import genai  # type: ignore
 
             client = genai.Client(  # type: ignore[attr-defined]
-                api_key=settings.provider_api_keys[p] or os.environ.get(provider_env_key_names[p])
+                api_key=settings.provider.provider_api_keys[p] or os.environ.get(provider_env_key_names[p])
             )
             models = list(client.models.list())  # type: ignore
             if models:
@@ -277,11 +277,11 @@ class ProviderManager(MessageSink):
         cache_expired = False
         cache_age_seconds = time.time() - self.cache_file.stat().st_mtime
 
-        for provider in settings.provider_cache_hours:
-            provider_cache_seconds = settings.provider_cache_hours[provider] * 60 * 60
+        for provider in settings.provider.provider_cache_hours:
+            provider_cache_seconds = settings.provider.provider_cache_hours[provider] * 60 * 60
             if cache_age_seconds > provider_cache_seconds:
                 self.log_it(
-                    f"Models file is older than {settings.provider_cache_hours[provider]} hours for {provider.value}, requesting refresh"
+                    f"Models file is older than {settings.provider.provider_cache_hours[provider]} hours for {provider.value}, requesting refresh"
                 )
                 cache_expired = True
                 break
@@ -365,7 +365,7 @@ class ProviderManager(MessageSink):
 
         cache_age_seconds = time.time() - self.cache_file.stat().st_mtime
         cache_age_hours = cache_age_seconds / 3600
-        provider_cache_hours = settings.provider_cache_hours.get(provider, 168)
+        provider_cache_hours = settings.provider.provider_cache_hours.get(provider, 168)
         cache_expired = cache_age_seconds > (provider_cache_hours * 3600)
         cache_size_kb = self.cache_file.stat().st_size / 1024
         last_refresh = self.cache_file.stat().st_mtime

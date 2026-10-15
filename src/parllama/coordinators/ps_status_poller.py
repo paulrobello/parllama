@@ -40,10 +40,10 @@ class PsStatusPoller:
         """Loop until shutdown, broadcasting the first running model's status."""
         was_blank = False
         while not settings.shutting_down:
-            if settings.ollama_ps_poll_interval < 1:
+            if settings.ollama.ollama_ps_poll_interval < 1:
                 self._app.post_message_all(PsMessage(msg=""))
                 break
-            await asyncio.sleep(settings.ollama_ps_poll_interval)
+            await asyncio.sleep(settings.ollama.ollama_ps_poll_interval)
             ret = ollama_dm.model_ps()
             if len(ret.models) < 1:
                 if not was_blank:

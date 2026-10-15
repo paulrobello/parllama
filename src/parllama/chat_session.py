@@ -99,10 +99,10 @@ class ChatSession(ChatMessageContainer):
         from parllama.settings_manager import settings
 
         self._secure_ops = SecureFileOperations(
-            max_file_size_mb=settings.max_json_size_mb,
-            allowed_extensions=settings.allowed_json_extensions,
-            validate_content=settings.validate_file_content,
-            sanitize_filenames=settings.sanitize_filenames,
+            max_file_size_mb=settings.file_validation.max_json_size_mb,
+            allowed_extensions=settings.file_validation.allowed_json_extensions,
+            validate_content=settings.file_validation.validate_file_content,
+            sanitize_filenames=settings.file_validation.sanitize_filenames,
         )
 
     @property
@@ -513,7 +513,7 @@ class ChatSession(ChatMessageContainer):
             is_aborted: Whether the generation that just completed was aborted;
                 auto-naming is skipped in that case.
         """
-        if is_aborted or not settings.auto_name_session or not settings.auto_name_session_llm_config:
+        if is_aborted or not settings.chat.auto_name_session or not settings.chat.auto_name_session_llm_config:
             return
         if self.name_generated:
             return
@@ -528,7 +528,7 @@ class ChatSession(ChatMessageContainer):
                 app.post_message(
                     SessionAutoNameRequested(
                         session_id=self.id,
-                        llm_config=LlmConfig.from_json(settings.auto_name_session_llm_config),
+                        llm_config=LlmConfig.from_json(settings.chat.auto_name_session_llm_config),
                         context=f"#USER\n{user_msg.content}\n\n#ASSISTANT\n{ai_msg.content}",
                     )
                 )
@@ -881,10 +881,10 @@ class ChatSession(ChatMessageContainer):
 
             # Create secure file operations for loading
             secure_ops = SecureFileOperations(
-                max_file_size_mb=settings.max_json_size_mb,
-                allowed_extensions=settings.allowed_json_extensions,
-                validate_content=settings.validate_file_content,
-                sanitize_filenames=settings.sanitize_filenames,
+                max_file_size_mb=settings.file_validation.max_json_size_mb,
+                allowed_extensions=settings.file_validation.allowed_json_extensions,
+                validate_content=settings.file_validation.validate_file_content,
+                sanitize_filenames=settings.file_validation.sanitize_filenames,
             )
 
             file_path = Path(settings.chat_dir) / filename

@@ -102,8 +102,8 @@ async def test_provider_panels_stack_without_overlap_in_options_view() -> None:
     # Use a built-in Textual theme: a bare host app (unlike ParLlamaApp) does not
     # register parllama's custom "par" theme, so OptionsView's theme Select would
     # reject the default value.
-    original_theme = settings.theme_name
-    settings.theme_name = "textual-dark"
+    original_theme = settings.ui.theme_name
+    settings.ui.theme_name = "textual-dark"
     try:
         app = _OptionsHostApp()
         async with app.run_test(size=(120, 60)) as pilot:
@@ -117,4 +117,4 @@ async def test_provider_panels_stack_without_overlap_in_options_view() -> None:
             for upper, lower in zip(rects, rects[1:]):
                 assert upper.bottom <= lower.y, "provider panels overlap vertically"
     finally:
-        settings.theme_name = original_theme
+        settings.ui.theme_name = original_theme

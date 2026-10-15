@@ -97,7 +97,7 @@ class SiteModelView(Container):
         self.namespace_input = InputTabComplete(
             id="namespace",
             placeholder="Namespace",
-            value=settings.site_models_namespace or "",
+            value=settings.ollama.site_models_namespace or "",
             suggester=SuggestFromList(ollama_dm.list_site_cache_files(), case_sensitive=False),
         )
         self.namespace_input.BINDINGS.append(
@@ -111,7 +111,7 @@ class SiteModelView(Container):
         self.lv = SiteModelListView(id="site-model-list", initial_index=None)
         self.sort_select = Select[str](
             options=MODEL_SORT_OPTIONS,
-            value=settings.site_model_sort,
+            value=settings.ollama.site_model_sort,
             id="sort_select",
         )
         self._loaded_once = False
@@ -218,7 +218,7 @@ class SiteModelView(Container):
         event.stop()
         self.search_input.focus()
         self.action_refresh_models()
-        settings.site_models_namespace = self.namespace_input.value
+        settings.ollama.site_models_namespace = self.namespace_input.value
         settings.save()
 
     @on(SiteModelsLoaded)
@@ -240,6 +240,6 @@ class SiteModelView(Container):
         # the Site tab has not been shown yet, so there is nothing to refresh.
         if not self._loaded_once:
             return
-        settings.site_model_sort = str(event.value)
+        settings.ollama.site_model_sort = str(event.value)
         settings.save()
         self.action_refresh_models()

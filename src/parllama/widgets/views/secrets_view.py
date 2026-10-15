@@ -250,16 +250,18 @@ class SecretsView(Vertical):
         p1: str = self.password_input.value.strip()
         p2: str = self.new_password_input.value.strip()
         if not p1 or not p2:
-            self.notify("Passwords cannot be blank", severity="error", timeout=settings.notification_timeout_extended)
+            self.notify(
+                "Passwords cannot be blank", severity="error", timeout=settings.ui.notification_timeout_extended
+            )
             return
         if p1 != p2:
-            self.notify("Passwords do not match", severity="error", timeout=settings.notification_timeout_extended)
+            self.notify("Passwords do not match", severity="error", timeout=settings.ui.notification_timeout_extended)
             return
 
         # Validate password meets security requirements
         is_valid, error_msg = secrets_manager.validate_password(p1)
         if not is_valid:
-            self.notify(error_msg, severity="error", timeout=settings.notification_timeout_extended)
+            self.notify(error_msg, severity="error", timeout=settings.ui.notification_timeout_extended)
             return
 
         secrets_manager.unlock(p1)
@@ -302,24 +304,24 @@ class SecretsView(Vertical):
         ctrl: Input = event.control
         if event.validation_result is not None and not event.validation_result.is_valid:
             errors = ",".join([f.description or "Bad Value" for f in event.validation_result.failures])
-            self.notify(f"{ctrl.id} [{errors}]", severity="error", timeout=settings.notification_timeout_extended)
+            self.notify(f"{ctrl.id} [{errors}]", severity="error", timeout=settings.ui.notification_timeout_extended)
             return
         if ctrl.id == "password":
             try:
                 v: str = ctrl.value.strip()
                 if not v:
                     self.notify(
-                        "Password cannot be empty", severity="error", timeout=settings.notification_timeout_extended
+                        "Password cannot be empty", severity="error", timeout=settings.ui.notification_timeout_extended
                     )
                     return
                 else:
                     secrets_manager.unlock(v)
                 if secrets_manager.locked:
-                    self.notify("Invalid password", severity="error", timeout=settings.notification_timeout_extended)
+                    self.notify("Invalid password", severity="error", timeout=settings.ui.notification_timeout_extended)
                 else:
                     self.notify("Vault unlocked")
             except ValueError as e:
-                self.notify(str(e), severity="error", timeout=settings.notification_timeout_extended)
+                self.notify(str(e), severity="error", timeout=settings.ui.notification_timeout_extended)
             finally:
                 with self.prevent(Input.Changed):
                     self.password_input.value = ""
@@ -330,14 +332,14 @@ class SecretsView(Vertical):
                 return
             if self.password_input.value == self.new_password_input.value:
                 self.notify(
-                    "New password same as old", severity="error", timeout=settings.notification_timeout_extended
+                    "New password same as old", severity="error", timeout=settings.ui.notification_timeout_extended
                 )
                 return
             try:
                 secrets_manager.change_password(self.password_input.value, self.new_password_input.value)
                 self.notify("Password Changed")
             except ValueError as e:
-                self.notify(str(e), severity="error", timeout=settings.notification_timeout_extended)
+                self.notify(str(e), severity="error", timeout=settings.ui.notification_timeout_extended)
             finally:
                 with self.prevent(Input.Changed):
                     self.password_input.value = ""
