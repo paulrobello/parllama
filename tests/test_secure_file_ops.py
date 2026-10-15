@@ -261,3 +261,30 @@ class TestDeleteAndCopy:
 
         with pytest.raises(SecureFileOpsError):
             ops.copy_file(src, dest)
+
+
+def _refuse_directory(*args, **kwargs):
+    from parllama.validators.file_validator import FileValidationError
+
+    raise FileValidationError("Directory is not writable")
+
+
+class TestStrictMode:
+    """ARC-009: strict=False skips sanitization and directory validation but keeps atomic write + perms."""
+
+    def test_strict_write_rejects_directory_failing_validation(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("parllama.secure_file_ops.validate_directory_path", _refuse_directory)
+        ops = SecureFileOperations()
+        with pytest.raises(SecureFileOpsError, match="Directory validation failed"):
+            ops.write_json_file(tmp_path / "settings.json", {"a": 1})
+
+    def test_relaxed_write_skips_validation_and_keeps_name(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("parllama.secure_file_ops.validate_directory_path", _refuse_directory)
+        ops = SecureFileOperations(sanitize_filenames=True)
+        target = tmp_path / "odd:name.json"
+        ops.write_json_file(target, {"a": 1}, strict=False, restrict_permissions=True)
+
+        assert json.loads(target.read_text(encoding="utf-8")) == {"a": 1}
+        if os.name != "nt":
+            assert stat.S_IMODE(target.stat().st_mode) == 0o600
+        assert not list(tmp_path.glob(".tmp_*"))

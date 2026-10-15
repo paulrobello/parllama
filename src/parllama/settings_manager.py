@@ -12,10 +12,8 @@ itself is a pure data model with optional I/O methods.
 from __future__ import annotations
 
 import dataclasses
-import json
 import logging
 import os
-import tempfile
 from argparse import Namespace
 from dataclasses import dataclass
 from datetime import datetime
@@ -341,46 +339,25 @@ class Settings(BaseModel):
         # Create data directory securely
         self._secure_ops.create_directory(self.data_dir, parents=True, exist_ok=True)
 
-        try:
-            settings_data = self.to_file_data()
-            self._secure_ops.write_json_file(
-                self.settings_file,
-                settings_data,
-                atomic=True,
-                create_dirs=False,  # Already created above
-                indent=4,
-                restrict_permissions=True,  # settings.json holds plaintext provider API keys
-            )
-        except SecureFileOpsError as e:
-            # Log the error but don't crash the application
-            logger.warning(f"Failed to save settings securely: {e}")
-            # Fallback to an atomic save without the secure-ops validation layer.
+        settings_data = self.to_file_data()
+        for strict in (True, False):
             try:
-                settings_data = self.to_file_data()
-                temp_path: Path | None = None
-                try:
-                    with tempfile.NamedTemporaryFile(
-                        mode="w",
-                        encoding="utf-8",
-                        dir=self.settings_file.parent,
-                        prefix=f".tmp_{self.settings_file.name}_",
-                        suffix=".tmp",
-                        delete=False,
-                    ) as tmp_file:
-                        temp_path = Path(tmp_file.name)
-                        json.dump(settings_data, tmp_file, indent=4)
-                        tmp_file.flush()
-                        os.fsync(tmp_file.fileno())
-                    temp_path.replace(self.settings_file)
-                    temp_path = None
-                    if os.name != "nt":
-                        self.settings_file.chmod(0o600)
-                except OSError:
-                    if temp_path and temp_path.exists():
-                        temp_path.unlink(missing_ok=True)
-                    raise
-            except OSError as fallback_error:
-                logger.error(f"Failed to save settings: {fallback_error}")
+                self._secure_ops.write_json_file(
+                    self.settings_file,
+                    settings_data,
+                    atomic=True,
+                    create_dirs=False,  # Already created above
+                    indent=4,
+                    restrict_permissions=True,  # settings.json holds plaintext provider API keys
+                    strict=strict,
+                )
+                return
+            except SecureFileOpsError as e:
+                # Log the error but don't crash the application
+                if strict:
+                    logger.warning(f"Failed to save settings securely, retrying without validation: {e}")
+                else:
+                    logger.error(f"Failed to save settings: {e}")
 
     def ensure_cache_folder(self) -> None:
         """Ensure the cache folder exists."""
