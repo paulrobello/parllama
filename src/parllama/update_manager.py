@@ -6,7 +6,6 @@ import logging
 from datetime import UTC, datetime
 
 import httpx
-import requests
 from semver import Version
 
 from parllama import __version__
@@ -27,15 +26,21 @@ class UpdateManager(MessageSink):
         self.url = "https://pypi.org/pypi/parllama/json"
 
     async def get_latest_version(self) -> Version:
-        """Get project version"""
+        """Get the latest published version from PyPI.
+
+        Raises:
+            ValueError: If the request fails, PyPI returns an error status, or the
+                response does not contain a parseable version.
+        """
         self.log_it("Checking for updates...")
 
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.get(self.url, follow_redirects=True, timeout=settings.http.update_check_timeout)
+                response.raise_for_status()
                 data = response.json()
             return Version.parse(data["info"]["version"])
-        except requests.exceptions.RequestException as e:
+        except (httpx.HTTPError, KeyError, TypeError) as e:
             raise ValueError("Could not fetch version info") from e
 
     async def check_for_updates(self, force: bool = False) -> None:
