@@ -253,6 +253,8 @@ class ImportFabricManager(MessageSink):
         """Convert markdown to ChatPrompt."""
         description = self.get_description(prompt_content)
         prompt = ChatPrompt(
+            # md5 as a stable content identifier for fabric patterns — collision
+            # resistance beyond ~2^32 items is not required here (SEC-006)
             id=hashlib.md5(prompt_content.encode()).hexdigest(),
             name=pattern_name,
             description=description,

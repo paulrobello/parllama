@@ -86,6 +86,7 @@ def fetch_and_cache_image(image_path: str | Path) -> tuple[Path, bytes]:
         image_path = image_path.strip()
         if image_path.startswith("http://") or image_path.startswith("https://"):
             ext = image_path.split(".")[-1].lower()
+            # md5 is a cache-key/filename hash only — not security-sensitive (SEC-006)
             cache_file = Path(settings.image_cache_dir) / f"{md5_hash(image_path)}.{ext}"
 
             if not cache_file.exists():
