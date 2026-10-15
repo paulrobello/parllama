@@ -8,6 +8,7 @@ import shlex
 import subprocess
 import tempfile
 import time
+from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -16,6 +17,31 @@ from parllama.execution.execution_template import ExecutionTemplate
 
 if TYPE_CHECKING:
     from parllama.settings_manager import Settings
+
+# Substrings (matched case-insensitively against variable names) that mark an
+# inherited environment variable as credential-bearing. Executed output is fed
+# back into LLM context, so these must never reach the child process.
+CREDENTIAL_ENV_MARKERS: tuple[str, ...] = ("KEY", "TOKEN", "SECRET", "PASSWORD", "PASSWD", "CREDENTIAL")
+
+
+def scrub_credential_env(env: Mapping[str, str]) -> dict[str, str]:
+    """Return a copy of ``env`` without credential-bearing variables.
+
+    Covers provider API keys (``*_API_KEY``), ``PARLLAMA_VAULT_KEY``,
+    ``LANGCHAIN_API_KEY``, access tokens, secrets and passwords.
+
+    Args:
+        env: Source environment mapping (typically ``os.environ``).
+
+    Returns:
+        A new dict containing only variables whose names match none of
+        ``CREDENTIAL_ENV_MARKERS``.
+    """
+    return {
+        name: value
+        for name, value in env.items()
+        if not any(marker in name.upper() for marker in CREDENTIAL_ENV_MARKERS)
+    }
 
 
 class CommandExecutor:
@@ -206,10 +232,10 @@ class CommandExecutor:
         """
         command_display = " ".join(argv)
         try:
-            # Prepare execution environment
-            env = os.environ.copy()
+            # Inherit the user's environment minus credentials (provider keys, vault key).
+            env = scrub_credential_env(os.environ)
 
-            # Add template environment variables if specified
+            # Template variables are explicit user configuration, so they are applied after the scrub.
             if template.environment_vars:
                 env.update(template.environment_vars)
 

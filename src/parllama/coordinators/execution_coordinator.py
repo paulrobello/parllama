@@ -303,7 +303,8 @@ class ExecutionCoordinator:
             await self._app.push_screen_wait(
                 YesNoDialog(
                     "Confirm Code Execution",
-                    f"Execute using template '{template.name}'?\n{warning_text}",
+                    f"Execute using template '{template.name}'?\n{warning_text}\n"
+                    "The command runs with your environment, minus API keys, tokens, secrets and passwords.",
                     yes_first=False,
                 )
             )

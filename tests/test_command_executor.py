@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, cast
 
 import pytest
 
-from parllama.execution.command_executor import CommandExecutor
+from parllama.execution.command_executor import CommandExecutor, scrub_credential_env
 from parllama.execution.execution_template import ExecutionTemplate
 
 if TYPE_CHECKING:
@@ -219,3 +219,43 @@ class TestBackgroundExecutionTempFileLifecycle:
         # Let the deferred _wait_and_cleanup() task observe the terminated process
         # exit so it doesn't linger past the end of the test.
         await asyncio.sleep(0.2)
+
+
+class TestCredentialEnvScrub:
+    """SEC-001: executed code must not inherit provider keys or vault secrets."""
+
+    def test_scrub_removes_credential_variables(self) -> None:
+        env = {
+            "PATH": "/usr/bin",
+            "HOME": "/home/u",
+            "LANG": "en_US.UTF-8",
+            "OPENAI_API_KEY": "sk-1",
+            "ANTHROPIC_API_KEY": "sk-2",
+            "LANGCHAIN_API_KEY": "ls-1",
+            "PARLLAMA_VAULT_KEY": "vault",
+            "HF_TOKEN": "hf",
+            "AWS_SECRET_ACCESS_KEY": "aws",
+            "DB_PASSWORD": "pw",
+            "my_secret_value": "lower",
+        }
+
+        scrubbed = scrub_credential_env(env)
+
+        assert scrubbed == {"PATH": "/usr/bin", "HOME": "/home/u", "LANG": "en_US.UTF-8"}
+
+    @pytest.mark.anyio
+    async def test_child_process_does_not_see_api_keys(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-should-not-leak")
+        monkeypatch.setenv("PARLLAMA_VAULT_KEY", "vault-should-not-leak")
+        executor = _make_executor(tmp_path)
+        script = (
+            "import os\n"
+            "print(os.environ.get('OPENAI_API_KEY', 'absent'))\n"
+            "print(os.environ.get('PARLLAMA_VAULT_KEY', 'absent'))\n"
+            "print('PATH' in os.environ)\n"
+        )
+
+        result = await executor.execute_template(_python_template(), script)
+
+        assert result.success, result.error_message
+        assert result.stdout.split() == ["absent", "absent", "True"]
