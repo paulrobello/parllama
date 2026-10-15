@@ -36,6 +36,8 @@ ps_pattern = re.compile(
     r"(?P<NAME>\S+)\s+(?P<ID>\S+)\s+(?P<SIZE>\d+\.\d+\s+\S+)\s+(?P<PROCESSOR>\d+%(?:/\d+%)?\s+\S+)\s+(?P<UNTIL>.+)"
 )
 
+SITE_MODEL_CACHE_TTL_SECONDS = 60 * 60 * 24
+
 MODEL_SORT_OPTIONS: list[tuple[str, str]] = [
     ("Size (largest first)", "size_desc"),
     ("Size (smallest first)", "size_asc"),
@@ -299,7 +301,10 @@ class OllamaDataManager(MessageSink):
         if not force and file_name.exists():
             try:
                 ret: SiteModelData = SiteModelData(**json.loads(file_name.read_bytes()))
-                if ret.last_update and ret.last_update.timestamp() > (ret.last_update.timestamp() - 60 * 60 * 24):
+                if (
+                    ret.last_update
+                    and ret.last_update.timestamp() > datetime.now(UTC).timestamp() - SITE_MODEL_CACHE_TTL_SECONDS
+                ):
                     self.site_models = [SiteModelListItem(m) for m in ret.models]
                     return self.site_models
             except (json.JSONDecodeError, ValueError, KeyError, OSError) as e:

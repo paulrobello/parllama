@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import httpx
@@ -199,6 +199,17 @@ def test_fresh_cache_is_served_without_fetching(
 
     assert [item.model.name for item in items] == ["cached"]
     assert fetch.urls == []
+
+
+def test_stale_cache_is_refetched(cache_dir: Path, manager: OllamaDataManager, monkeypatch: pytest.MonkeyPatch) -> None:
+    stale = datetime.now(UTC) - timedelta(days=2)
+    _write_cache(cache_dir, "library", SiteModelData(models=[_site_model("cached")], last_update=stale))
+    fetch = _install(manager, monkeypatch, _FakeFetch(default=_page(_card("live"))))
+
+    items = manager.refresh_site_models("library", force=False)
+
+    assert [item.model.name for item in items] == ["live"]
+    assert fetch.urls == ["https://ollama.com/library"]
 
 
 def test_force_refetches_even_with_fresh_cache(
