@@ -10,7 +10,8 @@ from textual.message import Message
 
 from parllama.chat_manager import ChatManager
 from parllama.chat_prompt import ChatPrompt
-from parllama.messages.messages import DeletePrompt, LogIt, PromptListChanged, PromptUpdated
+from parllama.messages.prompt_messages import DeletePrompt, PromptListChanged, PromptUpdated
+from parllama.messages.ui_messages import LogIt
 from parllama.settings_manager import settings
 
 

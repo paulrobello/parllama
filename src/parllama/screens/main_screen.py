@@ -10,7 +10,8 @@ from textual.app import ComposeResult
 from textual.screen import Screen
 from textual.widgets import Footer, Header, Static, TabbedContent, TabPane
 
-from parllama.messages.messages import ModelInteractRequested, PsMessage, StatusMessage
+from parllama.messages.model_messages import ModelInteractRequested
+from parllama.messages.ui_messages import PsMessage, StatusMessage
 from parllama.settings_manager import TabType, settings
 from parllama.widgets.views.chat_view import ChatView
 from parllama.widgets.views.create_model_view import ModelCreateView

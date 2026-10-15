@@ -16,7 +16,6 @@ import docker.types
 import httpx
 import ollama
 import orjson as json
-import requests
 from bs4 import BeautifulSoup
 from docker.models.containers import Container
 from docker.types import CancellableStream
@@ -188,7 +187,12 @@ class OllamaDataManager(MessageSink):
     @retry_with_backoff(config=create_retry_config(max_attempts=2, base_delay=1.0))
     def _fetch_site_models_page(self, url: str):
         """Fetch site models page with retry logic."""
-        return requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=settings.http.http_request_timeout)
+        return httpx.get(
+            url,
+            headers={"User-Agent": "Mozilla/5.0"},
+            timeout=settings.http.http_request_timeout,
+            follow_redirects=True,
+        )
 
     def _get_all_model_data(self) -> list[LocalModelListItem]:
         """Get all model data."""

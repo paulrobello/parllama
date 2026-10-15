@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from par_ai_core.llm_providers import LlmProvider
 from textual.message import Message
 from textual.widgets import Input, TextArea
 
@@ -94,3 +95,11 @@ class ToggleInputMode(Message):
 @dataclass
 class ClearChatInputHistory(Message):
     """Clear chat history."""
+
+
+@dataclass
+class StartModelChat(Message):
+    """Intent posted to the chat view: open a new tab preset to a provider/model and focus the input."""
+
+    provider: LlmProvider
+    model_name: str

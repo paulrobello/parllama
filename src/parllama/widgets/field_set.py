@@ -10,7 +10,7 @@ from textual.widget import Widget
 from textual.widgets import Button, Input, Label, Select, TextArea
 
 from parllama.icons import COPY_EMOJI
-from parllama.messages.messages import SendToClipboard
+from parllama.messages.ui_messages import SendToClipboard
 from parllama.widgets.hidden_input import HiddenInputField
 
 

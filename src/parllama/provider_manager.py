@@ -8,9 +8,9 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+import httpx
 import litellm
 import orjson as json
-import requests
 from dotenv import load_dotenv
 from par_ai_core.llm_providers import (
     LlmProvider,
@@ -24,7 +24,7 @@ from par_ai_core.pricing_lookup import get_api_cost_model_name, get_model_metada
 from textual.app import App
 
 from parllama.message_sink import MessageSink
-from parllama.messages.messages import ProviderModelsChanged, RefreshProviderModelsRequested
+from parllama.messages.provider_messages import ProviderModelsChanged, RefreshProviderModelsRequested
 from parllama.ollama_data_manager import ollama_dm
 from parllama.settings_manager import settings
 
@@ -394,7 +394,7 @@ def _fetch_anthropic(p: LlmProvider) -> list[ModelEntry]:
 
 
 def _fetch_litellm(p: LlmProvider) -> list[ModelEntry]:
-    response = requests.get(f"{_base_url(p)}/models", timeout=_timeout())
+    response = httpx.get(f"{_base_url(p)}/models", timeout=_timeout(), follow_redirects=True)
     response.raise_for_status()
     payload = response.json()
     models = payload.get("data") if isinstance(payload, dict) else None

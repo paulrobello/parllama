@@ -397,7 +397,7 @@ class TestThinkingAndFinishReason:
         """Thinking chunks stream with empty content; they must not mark the
         message final (which flips the render between fenced and plain
         'Thinking:' formats mid-stream). Only the terminal done-chunk does."""
-        from parllama.messages.messages import ChatMessage
+        from parllama.messages.chat_messages import ChatMessage
 
         session = ChatSession(
             name="T3",

@@ -8,7 +8,7 @@ from importlib import import_module
 from textual.message import Message
 
 from parllama.chat_manager import ChatManager
-from parllama.messages.messages import LogIt
+from parllama.messages.ui_messages import LogIt
 
 
 @dataclass

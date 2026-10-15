@@ -35,8 +35,11 @@ class _FakeResponse:
     def raise_for_status(self) -> None:
         return None
 
-    def iter_content(self, chunk_size: int = 1):
+    def iter_bytes(self, chunk_size: int = 1):
         yield self._body
+
+    def close(self) -> None:
+        return None
 
 
 @pytest.fixture
@@ -49,7 +52,7 @@ def image_cache_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
 def test_non_public_image_host_is_refused(image_cache_dir: Path, address: str) -> None:
     with (
         patch("parllama.net_guard.socket.getaddrinfo", _resolve_to(address)),
-        patch("parllama.image_cache.requests.get") as mock_get,
+        patch("parllama.image_cache.open_guarded_stream") as mock_get,
     ):
         with pytest.raises(FileNotFoundError, match="non-public address"):
             fetch_and_cache_image("http://internal.example/pic.png")
@@ -65,19 +68,18 @@ def test_redirect_to_private_image_host_is_refused(image_cache_dir: Path) -> Non
     redirect = _FakeResponse(location="http://localhost/admin.png")
     with (
         patch("parllama.net_guard.socket.getaddrinfo", fake_getaddrinfo),
-        patch("parllama.image_cache.requests.get", return_value=redirect) as mock_get,
+        patch("parllama.image_cache.open_guarded_stream", return_value=redirect) as mock_get,
     ):
         with pytest.raises(FileNotFoundError, match="non-public address"):
             fetch_and_cache_image("http://public.example/pic.png")
     assert mock_get.call_count == 1
-    assert mock_get.call_args.kwargs["allow_redirects"] is False
 
 
 def test_oversized_image_download_is_refused(image_cache_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(settings.file_validation, "max_image_size_mb", 0.001)
     with (
         patch("parllama.net_guard.socket.getaddrinfo", _resolve_to("93.184.216.34")),
-        patch("parllama.image_cache.requests.get", return_value=_FakeResponse(b"x" * 4096)),
+        patch("parllama.image_cache.open_guarded_stream", return_value=_FakeResponse(b"x" * 4096)),
     ):
         with pytest.raises(FileNotFoundError, match="too large"):
             fetch_and_cache_image("http://public.example/big.png")

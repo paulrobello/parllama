@@ -12,13 +12,13 @@ from textual.events import Show
 from textual.suggester import SuggestFromList
 from textual.widgets import Input, ListView, Select, Static, TabbedContent
 
-from parllama.messages.messages import (
+from parllama.messages.model_messages import (
     LocalModelPullRequested,
-    RegisterForUpdates,
     SetModelNameLoading,
     SiteModelsLoaded,
     SiteModelsRefreshRequested,
 )
+from parllama.messages.ui_messages import RegisterForUpdates
 from parllama.ollama_data_manager import MODEL_SORT_OPTIONS, ollama_dm
 from parllama.settings_manager import settings
 from parllama.widgets.input_tab_complete import InputTabComplete

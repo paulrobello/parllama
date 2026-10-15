@@ -15,13 +15,13 @@ from textual.widgets import Button, Label, ListItem, ListView
 from parllama.dialogs.yes_no_dialog import YesNoDialog
 from parllama.execution.execution_manager import get_execution_manager
 from parllama.execution.execution_template import ExecutionTemplate
-from parllama.messages.messages import (
+from parllama.messages.execution_messages import (
     ExecutionCompleted,
     ExecutionTemplateAdded,
     ExecutionTemplateDeleted,
     ExecutionTemplateUpdated,
-    RegisterForUpdates,
 )
+from parllama.messages.ui_messages import RegisterForUpdates
 
 
 class ExecutionTemplateListItem(ListItem):
@@ -348,7 +348,7 @@ class ExecutionView(Container):
                 execution_manager.secure_ops.write_json_file(export_path, export_data, atomic=True)
 
                 # Log the export location to the Logs tab
-                from parllama.messages.messages import LogIt
+                from parllama.messages.ui_messages import LogIt
 
                 template_count = len(export_data.get("templates", []))
                 self.notify(f"Exported {template_count} templates", severity="information")

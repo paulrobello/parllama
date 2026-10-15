@@ -8,7 +8,7 @@ from textual.containers import Container, Horizontal, Vertical
 from textual.events import Show
 from textual.widgets import Button, Checkbox, Input, Label, RichLog
 
-from parllama.messages.messages import SendToClipboard
+from parllama.messages.ui_messages import SendToClipboard
 from parllama.settings_manager import settings
 
 

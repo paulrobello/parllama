@@ -158,7 +158,7 @@ Chat messages carry images (`ParllamaChatMessage.images`) and documents (`Parlla
 3. Wire up in appropriate view or screen
 
 **Modifying Chat Behavior:**
-- Chat logic primarily in `src/parllama/chat_session.py`
+- Chat logic primarily in `src/parllama/chat_session.py`; the shared streaming chunk loop (stats, abort, stream errors) lives in `src/parllama/stream_controller.py` and session file serialization/persistence in `src/parllama/session_store.py`
 - Slash commands handled in `src/parllama/widgets/views/chat_view.py` (`_PREFIX_COMMANDS`)
 - Message rendering in `src/parllama/widgets/chat_message_widget.py`
 

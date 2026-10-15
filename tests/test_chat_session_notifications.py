@@ -13,14 +13,14 @@ from textual.message import Message
 from parllama.chat_manager import ChatManager
 from parllama.chat_message import ParllamaChatMessage
 from parllama.chat_session import ChatSession
-from parllama.messages.messages import (
-    ChatMessageDeleted,
+from parllama.messages.chat_messages import ChatMessageDeleted
+from parllama.messages.session_messages import (
     DeleteSession,
-    LogIt,
     SessionAutoNameRequested,
     SessionListChanged,
     SessionUpdated,
 )
+from parllama.messages.ui_messages import LogIt
 from parllama.settings_manager import settings
 
 

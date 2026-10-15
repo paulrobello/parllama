@@ -13,7 +13,7 @@ from textual.events import Focus
 from textual.screen import ModalScreen
 from textual.widgets import Button, Checkbox, Label, ProgressBar, Static
 
-from parllama.messages.messages import ImportProgressUpdate, ImportReady
+from parllama.messages.ui_messages import ImportProgressUpdate, ImportReady
 from parllama.models.ollama_data import FullModel
 from parllama.prompt_utils.import_fabric import import_fabric_manager
 from parllama.settings_manager import settings

@@ -34,27 +34,20 @@ from parllama.chat_message import ParllamaChatMessage
 from parllama.dialogs.attach_file_dialog import AttachFileDialog
 from parllama.dialogs.information import InformationDialog
 from parllama.document_attachment import DocumentAttachment
-from parllama.messages.messages import (
-    ChangeTab,
+from parllama.messages.chat_messages import (
     ChatContinueRequested,
     ChatGenerationAborted,
     ChatMessage,
     ChatMessageDeleted,
     ChatMessageSent,
     ClearChatInputHistory,
-    DeleteSession,
-    LogIt,
-    PromptListChanged,
-    PromptListLoaded,
-    PromptSelected,
-    ProviderModelsChanged,
-    RegisterForUpdates,
-    SessionSelected,
-    SessionToPrompt,
-    SessionUpdated,
+    StartModelChat,
     UpdateChatControlStates,
-    UpdateTabLabel,
 )
+from parllama.messages.prompt_messages import PromptListChanged, PromptListLoaded, PromptSelected
+from parllama.messages.provider_messages import ProviderModelsChanged
+from parllama.messages.session_messages import DeleteSession, SessionSelected, SessionToPrompt, SessionUpdated
+from parllama.messages.ui_messages import ChangeTab, LogIt, RegisterForUpdates, UpdateTabLabel
 from parllama.provider_manager import provider_manager
 from parllama.settings_manager import settings
 from parllama.widgets.clickable_label import ClickableLabel
@@ -1047,6 +1040,25 @@ Chat Commands:
         tab = ChatTab(user_input=self.user_input, session_list=self.session_list)
         await self.chat_tabs.add_pane(tab)
         self.chat_tabs.active = str(tab.id)
+
+    async def start_model_chat(self, provider: LlmProvider, model_name: str) -> None:
+        """Open a new chat tab preset to ``provider``/``model_name``.
+
+        Args:
+            provider: The LLM provider to select in the new tab.
+            model_name: The model to select once the provider's model list loads.
+        """
+        await self.action_new_tab()
+        provider_model_select = self.active_tab.session_config.provider_model_select
+        provider_model_select.provider_select.value = provider
+        provider_model_select.model_select.deferred_value = model_name
+
+    @on(StartModelChat)
+    async def on_start_model_chat(self, event: StartModelChat) -> None:
+        """Handle the App's intent to chat with a specific model."""
+        event.stop()
+        await self.start_model_chat(event.provider, event.model_name)
+        self.user_input.focus()
 
     async def remove_active_tab(self) -> None:
         """Remove the active tab"""

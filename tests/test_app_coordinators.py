@@ -13,7 +13,10 @@ from parllama.chat_manager import ChatManager
 from parllama.coordinators.clipboard_service import ClipboardService
 from parllama.coordinators.session_event_router import SessionEventRouter
 from parllama.event_bus import EventBus
-from parllama.messages.messages import ChatMessage, PromptListChanged, SessionListChanged, StatusMessage
+from parllama.messages.chat_messages import ChatMessage
+from parllama.messages.prompt_messages import PromptListChanged
+from parllama.messages.session_messages import SessionListChanged
+from parllama.messages.ui_messages import StatusMessage
 
 
 def test_clipboard_send_copies_via_app_and_clipboard() -> None:

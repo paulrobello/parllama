@@ -149,7 +149,7 @@ def _resolve_to(address: str):
 
 
 class _FakeResponse:
-    """Minimal streaming requests.Response stand-in."""
+    """Minimal streaming httpx.Response stand-in."""
 
     def __init__(self, body: bytes = b"", status: int = 200, location: str | None = None) -> None:
         self._body = body
@@ -166,8 +166,11 @@ class _FakeResponse:
     def raise_for_status(self) -> None:
         return None
 
-    def iter_content(self, chunk_size: int = 1):
+    def iter_bytes(self, chunk_size: int = 1):
         yield self._body
+
+    def close(self) -> None:
+        return None
 
 
 class TestRemoteDocumentSecurity:
@@ -180,7 +183,7 @@ class TestRemoteDocumentSecurity:
     def test_non_public_targets_rejected(self, isolated_settings: Path, address: str) -> None:
         with (
             patch("parllama.net_guard.socket.getaddrinfo", _resolve_to(address)),
-            patch("parllama.attachment_utils.requests.get") as mock_get,
+            patch("parllama.attachment_utils.open_guarded_stream") as mock_get,
         ):
             with pytest.raises(AttachmentError, match="non-public address"):
                 attach_document("http://internal.example/doc.txt")
@@ -202,17 +205,16 @@ class TestRemoteDocumentSecurity:
         redirect = _FakeResponse(status=302, location="http://metadata.internal/latest/meta-data")
         with (
             patch("parllama.net_guard.socket.getaddrinfo", fake_getaddrinfo),
-            patch("parllama.attachment_utils.requests.get", return_value=redirect) as mock_get,
+            patch("parllama.attachment_utils.open_guarded_stream", return_value=redirect) as mock_get,
         ):
             with pytest.raises(AttachmentError, match="non-public address"):
                 attach_document("http://public.example/doc.txt")
         assert mock_get.call_count == 1
-        assert mock_get.call_args.kwargs["allow_redirects"] is False
 
     def test_public_remote_text_attaches(self, isolated_settings: Path) -> None:
         with (
             patch("parllama.net_guard.socket.getaddrinfo", _resolve_to("93.184.216.34")),
-            patch("parllama.attachment_utils.requests.get", return_value=_FakeResponse(b"remote text")),
+            patch("parllama.attachment_utils.open_guarded_stream", return_value=_FakeResponse(b"remote text")),
         ):
             doc = attach_document("https://public.example/notes.txt")
         assert doc.text == "remote text"
@@ -221,7 +223,9 @@ class TestRemoteDocumentSecurity:
     def test_remote_pdf_without_pdf_header_rejected(self, isolated_settings: Path) -> None:
         with (
             patch("parllama.net_guard.socket.getaddrinfo", _resolve_to("93.184.216.34")),
-            patch("parllama.attachment_utils.requests.get", return_value=_FakeResponse(b"<html>not a pdf</html>")),
+            patch(
+                "parllama.attachment_utils.open_guarded_stream", return_value=_FakeResponse(b"<html>not a pdf</html>")
+            ),
         ):
             with pytest.raises(AttachmentError, match="missing %PDF- header"):
                 attach_document("https://public.example/doc.pdf")
@@ -250,7 +254,7 @@ class TestRemoteDocumentSecurity:
         doc = self._cache_referenced_doc(b"original bytes", source_url="https://public.example/big.txt")
         with (
             patch("parllama.net_guard.socket.getaddrinfo", _resolve_to("93.184.216.34")),
-            patch("parllama.attachment_utils.requests.get", return_value=_FakeResponse(b"swapped bytes")),
+            patch("parllama.attachment_utils.open_guarded_stream", return_value=_FakeResponse(b"swapped bytes")),
         ):
             assert resolve_payload(doc) is None
 
@@ -258,14 +262,14 @@ class TestRemoteDocumentSecurity:
         doc = self._cache_referenced_doc(b"original bytes", source_url="https://public.example/big.txt")
         with (
             patch("parllama.net_guard.socket.getaddrinfo", _resolve_to("93.184.216.34")),
-            patch("parllama.attachment_utils.requests.get", return_value=_FakeResponse(b"original bytes")),
+            patch("parllama.attachment_utils.open_guarded_stream", return_value=_FakeResponse(b"original bytes")),
         ):
             assert resolve_payload(doc) == b"original bytes"
 
     def test_refetch_of_private_source_url_is_blocked(self, isolated_settings: Path) -> None:
         """A crafted session file must not turn send into an internal-network fetch."""
         doc = self._cache_referenced_doc(b"x", source_url="http://169.254.169.254/latest/meta-data")
-        with patch("parllama.attachment_utils.requests.get") as mock_get:
+        with patch("parllama.attachment_utils.open_guarded_stream") as mock_get:
             assert resolve_payload(doc) is None
         mock_get.assert_not_called()
 

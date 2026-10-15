@@ -7,16 +7,16 @@ from threading import Thread
 
 from textual.message import Message
 
-from parllama.messages.messages import (
+from parllama.message_sink import MessageSink
+from parllama.messages.execution_messages import (
     ExecutionTemplateAdded,
     ExecutionTemplateDeleted,
     ExecutionTemplateUpdated,
-    LogIt,
-    PromptUpdated,
-    SessionAutoNameRequested,
 )
+from parllama.messages.prompt_messages import PromptUpdated
+from parllama.messages.session_messages import SessionAutoNameRequested
 from parllama.messages.shared import PromptChanges
-from parllama.message_sink import MessageSink
+from parllama.messages.ui_messages import LogIt
 
 
 @dataclass

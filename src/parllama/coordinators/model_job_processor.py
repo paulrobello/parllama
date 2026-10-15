@@ -19,13 +19,8 @@ from rich.style import Style
 from rich.text import Text
 from textual.color import Color
 
-from parllama.messages.messages import (
-    LocalModelCopied,
-    LocalModelCreated,
-    LocalModelPulled,
-    LocalModelPushed,
-    StatusMessage,
-)
+from parllama.messages.model_messages import LocalModelCopied, LocalModelCreated, LocalModelPulled, LocalModelPushed
+from parllama.messages.ui_messages import StatusMessage
 from parllama.models.jobs import CopyModelJob, CreateModelJob, PullModelJob, PushModelJob, QueueJob
 from parllama.ollama_data_manager import ollama_dm
 from parllama.settings_manager import settings

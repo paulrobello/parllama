@@ -13,16 +13,11 @@ from textual.widgets._select import NoSelection
 
 from parllama.chat_manager import chat_manager
 from parllama.chat_session import ChatSession
-from parllama.messages.messages import (
-    PromptSelected,
-    ProviderModelsChanged,
-    ProviderModelSelected,
-    RegisterForUpdates,
-    SessionSelected,
-    SessionUpdated,
-    UnRegisterForUpdates,
-    UpdateChatStatus,
-)
+from parllama.messages.chat_messages import UpdateChatStatus
+from parllama.messages.prompt_messages import PromptSelected
+from parllama.messages.provider_messages import ProviderModelsChanged, ProviderModelSelected
+from parllama.messages.session_messages import SessionSelected, SessionUpdated
+from parllama.messages.ui_messages import RegisterForUpdates, UnRegisterForUpdates
 from parllama.settings_manager import settings
 from parllama.widgets.input_blur_submit import InputBlurSubmit
 from parllama.widgets.provider_model_select import ProviderModelSelect

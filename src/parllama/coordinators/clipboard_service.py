@@ -13,7 +13,7 @@ import clipman as clipboard
 from textual.widget import Widget
 from textual.widgets import Input, Select, TextArea
 
-from parllama.messages.messages import SendToClipboard
+from parllama.messages.ui_messages import SendToClipboard
 
 if TYPE_CHECKING:
     from parllama.app import ParLlamaApp

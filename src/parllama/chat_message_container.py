@@ -16,7 +16,7 @@ from textual.app import App
 
 from parllama.chat_message import ParllamaChatMessage
 from parllama.message_sink import MessageSink
-from parllama.messages.messages import ChatMessageDeleted
+from parllama.messages.chat_messages import ChatMessageDeleted
 from parllama.settings_manager import settings
 
 

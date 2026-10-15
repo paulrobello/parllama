@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 import humanize
 from rich.text import Text
 
-from parllama.messages.messages import PsMessage
+from parllama.messages.ui_messages import PsMessage
 from parllama.ollama_data_manager import ollama_dm
 from parllama.settings_manager import settings
 

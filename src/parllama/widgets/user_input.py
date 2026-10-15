@@ -14,14 +14,8 @@ from textual.suggester import Suggester
 from textual.widget import Widget
 from textual.widgets import Input, TextArea
 
-from parllama.messages.messages import (
-    ClearChatInputHistory,
-    HistoryNext,
-    HistoryPrev,
-    RegisterForUpdates,
-    ToggleInputMode,
-    UnRegisterForUpdates,
-)
+from parllama.messages.chat_messages import ClearChatInputHistory, HistoryNext, HistoryPrev, ToggleInputMode
+from parllama.messages.ui_messages import RegisterForUpdates, UnRegisterForUpdates
 from parllama.secure_file_ops import SecureFileOperations, SecureFileOpsError
 from parllama.settings_manager import settings
 from parllama.widgets.input_with_history import InputWithHistory

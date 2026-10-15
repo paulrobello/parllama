@@ -24,7 +24,9 @@ from parllama.chat_message import (
     try_get_image_type,
 )
 from parllama.image_cache import fetch_and_cache_image
-from parllama.messages.messages import ChatContinueRequested, ExecuteMessageRequested, SendToClipboard
+from parllama.messages.chat_messages import ChatContinueRequested
+from parllama.messages.execution_messages import ExecuteMessageRequested
+from parllama.messages.ui_messages import SendToClipboard
 from parllama.models.ollama_data import MessageRoles
 from parllama.widgets.par_markdown import ParMarkdown, ParMarkdownFence
 

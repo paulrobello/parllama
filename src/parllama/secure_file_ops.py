@@ -138,6 +138,7 @@ class SecureFileOperations:
         atomic: bool = True,
         create_dirs: bool = True,
         restrict_permissions: bool = False,
+        strict: bool = True,
     ) -> None:
         """Safely write a text file with atomic operations.
 
@@ -149,13 +150,16 @@ class SecureFileOperations:
             create_dirs: Whether to create parent directories
             restrict_permissions: Whether to restrict the file to owner-only
                 read/write (0o600) after writing, for files holding secrets
+            strict: When False, skip filename sanitization and parent-directory
+                validation; the atomic write and permission restriction still apply.
+                For callers whose path is app-controlled and must not be renamed.
 
         Raises:
             SecureFileOpsError: If writing fails
         """
         try:
             # Sanitize filename if requested
-            if self.sanitize_filenames:
+            if strict and self.sanitize_filenames:
                 safe_name = sanitize_filename(file_path.name)
                 file_path = file_path.parent / safe_name
 
@@ -163,8 +167,8 @@ class SecureFileOperations:
             if create_dirs:
                 self._ensure_directory_exists(file_path.parent)
 
-            # Validate parent directory
-            validate_directory_path(file_path.parent, must_exist=True, must_be_writable=True)
+            if strict:
+                validate_directory_path(file_path.parent, must_exist=True, must_be_writable=True)
 
             if atomic:
                 self._atomic_write_text(file_path, content, encoding)
@@ -193,6 +197,7 @@ class SecureFileOperations:
         create_dirs: bool = True,
         indent: int = 2,
         restrict_permissions: bool = False,
+        strict: bool = True,
     ) -> None:
         """Safely write a JSON file with atomic operations.
 
@@ -205,6 +210,8 @@ class SecureFileOperations:
             indent: JSON indentation level
             restrict_permissions: Whether to restrict the file to owner-only
                 read/write (0o600) after writing, for files holding secrets
+            strict: When False, skip filename sanitization and parent-directory
+                validation (see :meth:`write_text_file`)
 
         Raises:
             SecureFileOpsError: If writing fails
@@ -221,6 +228,7 @@ class SecureFileOperations:
                 atomic=atomic,
                 create_dirs=create_dirs,
                 restrict_permissions=restrict_permissions,
+                strict=strict,
             )
 
             logger.debug(f"Successfully wrote JSON file: {file_path}")

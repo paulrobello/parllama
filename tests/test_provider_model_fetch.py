@@ -102,7 +102,7 @@ def test_litellm_payload_without_data_raises_value_error() -> None:
     """The old branch indexed ['data'] unguarded and surfaced a bare KeyError."""
     response = MagicMock()
     response.json.return_value = {"error": "unauthorized"}
-    with patch.object(pm.requests, "get", return_value=response):
+    with patch.object(pm.httpx, "get", return_value=response):
         with pytest.raises(ValueError, match="no 'data' list"):
             pm._fetch_litellm(LlmProvider.LITELLM)
 
@@ -110,7 +110,7 @@ def test_litellm_payload_without_data_raises_value_error() -> None:
 def test_litellm_adapter_tolerates_missing_created() -> None:
     response = MagicMock()
     response.json.return_value = {"data": [{"id": "m1"}, {"id": "m2", "created": 3}]}
-    with patch.object(pm.requests, "get", return_value=response) as get:
+    with patch.object(pm.httpx, "get", return_value=response) as get:
         assert pm._fetch_litellm(LlmProvider.LITELLM) == [("m1", None), ("m2", 3)]
     assert get.call_args.kwargs["timeout"] == settings.http.provider_model_request_timeout
 

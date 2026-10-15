@@ -10,7 +10,7 @@ from textual.containers import Container, Vertical, VerticalScroll
 from textual.events import Show
 from textual.widgets import Button, ContentSwitcher, Static
 
-from parllama.messages.messages import ChangeTab
+from parllama.messages.ui_messages import ChangeTab
 from parllama.widgets.clickable_label import CopyToClipboardLabel
 
 

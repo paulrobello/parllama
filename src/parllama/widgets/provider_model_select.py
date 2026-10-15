@@ -14,13 +14,8 @@ from textual.app import ComposeResult
 from textual.containers import Container
 from textual.widgets import Select
 
-from parllama.messages.messages import (
-    LogIt,
-    ProviderModelsChanged,
-    ProviderModelSelected,
-    RegisterForUpdates,
-    UnRegisterForUpdates,
-)
+from parllama.messages.provider_messages import ProviderModelsChanged, ProviderModelSelected
+from parllama.messages.ui_messages import LogIt, RegisterForUpdates, UnRegisterForUpdates
 from parllama.provider_manager import provider_manager
 from parllama.settings_manager import settings
 from parllama.widgets.deferred_select import NULL, DeferredSelect

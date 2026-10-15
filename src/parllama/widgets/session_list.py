@@ -12,13 +12,8 @@ from textual.containers import Vertical
 from textual.widgets import ListView, Rule, Static
 
 from parllama.chat_manager import chat_manager
-from parllama.messages.messages import (
-    DeleteSession,
-    RegisterForUpdates,
-    SessionListChanged,
-    SessionSelected,
-    UnRegisterForUpdates,
-)
+from parllama.messages.session_messages import DeleteSession, SessionListChanged, SessionSelected
+from parllama.messages.ui_messages import RegisterForUpdates, UnRegisterForUpdates
 from parllama.widgets.dbl_click_list_item import DblClickListItem
 from parllama.widgets.session_list_item import SessionListItem
 
