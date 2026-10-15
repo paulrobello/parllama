@@ -31,24 +31,33 @@ DOCUMENT_MIME_TYPES: dict[str, str] = {
     ".md": "text/markdown",
     ".markdown": "text/markdown",
 }
+"""Lowercase file extension -> MIME type for every document type the pipeline can attach."""
 
-# Anthropic's published approximation for PDF token cost.
 PDF_TOKENS_PER_PAGE = 1_600
+"""Estimated tokens per PDF page for native routing (Anthropic's published approximation)."""
 
-# Providers whose chat models accept native PDF file content parts
-# (spec §4.2). Everything else falls back to extracted text.
 PROVIDER_NATIVE_DOCUMENTS: dict[LlmProvider, bool] = {
     LlmProvider.ANTHROPIC: True,
     LlmProvider.OPENAI: True,
     LlmProvider.GEMINI: True,
 }
+"""Providers whose chat models accept native PDF file content parts (spec §4.2).
 
-# Per-message attachment caps (spec §6).
+Providers absent from this map receive the extracted text instead.
+"""
+
 MAX_IMAGES_PER_MESSAGE = 5
-MAX_DOCUMENTS_PER_MESSAGE = 3
+"""Maximum images attached to a single chat message (spec §6)."""
 
-# Warn (but proceed) above this estimated prompt size for cloud providers.
+MAX_DOCUMENTS_PER_MESSAGE = 3
+"""Maximum documents attached to a single chat message (spec §6)."""
+
 TOKEN_WARN_THRESHOLD = 100_000
+"""Context budget in tokens assumed when a model's context window is unknown.
+
+``ChatSession`` uses it when sizing the per-document text cap. Documents that do
+not fit are truncated with a warning rather than blocking the send.
+"""
 
 
 class AttachmentError(ValueError):
@@ -59,6 +68,12 @@ class ExtractionResult:
     """Outcome of running extraction strategies over a document payload."""
 
     def __init__(self, text: str, num_pages: int | None) -> None:
+        """Store the extraction output.
+
+        Args:
+            text: Extracted text, possibly truncated at ``max_extracted_text_chars``.
+            num_pages: Page count for paginated formats such as PDF, otherwise None.
+        """
         self.text = text
         self.num_pages = num_pages
 
@@ -69,10 +84,31 @@ class ExtractionStrategy(Protocol):
     ``text`` field, with no changes to routing, persistence, or UI."""
 
     name: str
+    """Short identifier for the strategy (e.g. ``"text_layer"``)."""
 
-    def can_handle(self, mime_type: str, payload: bytes) -> bool: ...
+    def can_handle(self, mime_type: str, payload: bytes) -> bool:
+        """Return True if this strategy can extract text from the document.
 
-    def extract(self, mime_type: str, payload: bytes) -> ExtractionResult: ...
+        Args:
+            mime_type: The document's MIME type.
+            payload: The raw document bytes.
+        """
+        ...
+
+    def extract(self, mime_type: str, payload: bytes) -> ExtractionResult:
+        """Extract text and page count from the document.
+
+        Args:
+            mime_type: The document's MIME type.
+            payload: The raw document bytes.
+
+        Returns:
+            The extracted text and page count.
+
+        Raises:
+            AttachmentError: If the document cannot be parsed or exceeds a limit.
+        """
+        ...
 
 
 class TextLayerStrategy:
@@ -81,9 +117,25 @@ class TextLayerStrategy:
     name = "text_layer"
 
     def can_handle(self, mime_type: str, payload: bytes) -> bool:
+        """Return True for PDF, plain text, and Markdown documents."""
         return mime_type in ("application/pdf", "text/plain", "text/markdown")
 
     def extract(self, mime_type: str, payload: bytes) -> ExtractionResult:
+        """Extract the PDF text layer with pypdf, or decode text documents as UTF-8.
+
+        PDF text stops at ``max_extracted_text_chars`` with a visible truncation marker.
+
+        Args:
+            mime_type: The document's MIME type.
+            payload: The raw document bytes.
+
+        Returns:
+            The extracted text, with the page count for PDFs.
+
+        Raises:
+            AttachmentError: If the PDF cannot be parsed, is password-protected, or has
+                more than ``max_pdf_pages`` pages.
+        """
         if mime_type != "application/pdf":
             return ExtractionResult(payload.decode("utf-8", errors="replace"), None)
         try:
@@ -196,7 +248,21 @@ def strip_wrapping_quotes(path_or_url: str) -> str:
 
 
 def attach_document(path_or_url: str) -> DocumentAttachment:
-    """Validate, extract, and build a DocumentAttachment from a local path or URL."""
+    """Validate, extract, and build a DocumentAttachment from a local path or URL.
+
+    Documents at or below ``inline_document_threshold_mb`` carry their bytes inline;
+    larger ones are written to the documents cache and referenced by SHA-256.
+
+    Args:
+        path_or_url: Local file path or http(s) URL, optionally wrapped in quotes.
+
+    Returns:
+        The attachment, ready to put on a chat message.
+
+    Raises:
+        AttachmentError: If the type is unsupported, the file is missing, the URL is
+            refused or fails to download, or validation or extraction fails.
+    """
     src = strip_wrapping_quotes(path_or_url)
     is_remote = src.startswith("http://") or src.startswith("https://")
 

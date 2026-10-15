@@ -256,20 +256,24 @@ class ChatSession(ChatMessageContainer):
 
     @property
     def reasoning_effort(self) -> ReasoningEffort | None:
+        """Get the reasoning effort level, or None when not set."""
         return self._llm_config.reasoning_effort
 
     @reasoning_effort.setter
     def reasoning_effort(self, value: ReasoningEffort | None) -> None:
+        """Set the reasoning effort level and save the session."""
         self._llm_config.reasoning_effort = value
         self._changes.add("reasoning_effort")
         self.save()
 
     @property
     def reasoning_budget(self) -> int | None:
+        """Get the reasoning token budget, or None when not set."""
         return self._llm_config.reasoning_budget
 
     @reasoning_budget.setter
     def reasoning_budget(self, value: int | None) -> None:
+        """Set the reasoning token budget and save the session."""
         self._llm_config.reasoning_budget = value
         self._changes.add("reasoning_budget")
         self.save()
