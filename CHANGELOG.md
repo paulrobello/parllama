@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Security
+
+- **Credential scrub for executed commands**: commands run through execution templates no longer inherit provider API keys, tokens, secrets, or `PARLLAMA_VAULT_KEY` in their environment, and the confirmation dialog states what the child environment contains. The allowlist/blocklist is documented as a policy speed bump, not a sandbox.
+- **Provider API keys routed to the encrypted vault**: when `PARLLAMA_VAULT_KEY` is set, existing plaintext keys migrate into the vault at startup and `settings.json` keeps blanks; setups without a vault key keep plaintext keys (file written `0600`).
+- **SSRF guard and integrity checks for remote attachments**: fetched URLs must resolve to public addresses (every redirect hop re-checked), downloads pass the file validator, and cached or re-fetched bytes are verified against a SHA-256 recorded at attach time.
+- **ZIP extraction hardening**: fabric pattern imports enforce streaming decompressed-byte caps (total and per-entry, with partial-file cleanup) and reject Windows drive-letter/UNC entry names.
+
+### Fixed
+
+- **`continue_generation` no longer deletes messages or wedges the session busy flag** when no model is selected; a regression test pins the behavior.
+- **Site-model cache now expires**: the freshness check compared a timestamp with itself, so caches never went stale.
+- **Site-model refresh failures no longer close the app**: network and parse errors notify the user and clear the loading state instead of crashing the worker.
+- **Update check failures** raise the documented `ValueError` and surface a notification instead of an unhandled worker exception.
+- **Input history widgets** no longer triple-submit on Tab, and the retry helper now honors its `exceptions=` argument.
+
+### Changed
+
+- **Settings architecture**: the flat `settings.json` format is replaced by nested per-group storage (`schema_version: 2`) with a one-time automatic migration; the `settings_manager` god module is decomposed (directory layout to `paths.py`, image fetching to `image_cache.py`, SSRF checks to `net_guard.py`); manager singletons are side-effect-free until explicit `bootstrap()` runs.
+- **Chat engine split**: `StreamController` and `SessionStore` extracted from `ChatSession`, collapsing the duplicated streaming loops between `send_chat` and `continue_generation`.
+- **Single HTTP client**: internal network calls unified on httpx; `requests` and duplicate transitive pins removed.
+- **Provider model fetching** now runs through a per-provider adapter registry with uniform timeouts and `None`-safe sorting.
+- Test suite grew from 260 to 397 tests; bugbear lint rules enabled; verified-dead code removed.
+
+### Added
+
+- File-validation settings exposed in the Options view (File Validation section).
+- Release runbook at `docs/guides/release.md`.
+
 ## [0.9.2] - 2026-07-10
 
 ### Fixed
