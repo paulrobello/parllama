@@ -194,7 +194,7 @@ For step-by-step instructions:
 
 | Element | Format | Example |
 | --- | --- | --- |
-| File paths | Backticks | `src/config.ts` |
+| File paths | Backticks | `src/parllama/settings_manager.py` |
 | Commands | Backticks or fenced blocks | `example-cli init` |
 | Function/class names | Backticks | `createClient()` |
 | Environment variables | Backticks | `API_KEY` |
@@ -207,11 +207,13 @@ Avoid line numbers in durable documentation because they become stale after edit
 
 Good:
 
-- “See `src/client.ts` for the client implementation.”
-- “The `createClient()` function validates the options object.”
-- “The deployment workflow lives in `.github/workflows/deploy.yml`.”
+- “See `src/parllama/net_guard.py` for the URL guard implementation.”
+- “The `check_public_url()` function rejects non-public addresses.”
+- “The release workflow lives in `.github/workflows/release-pipeline.yml`.”
 
 Avoid:
+
+<!-- doc-path: example -->
 
 - “See `src/client.ts:184`.”
 - “Update lines 20-45 in `config.ts`.”

@@ -8,37 +8,43 @@
    * [Advanced Features](#advanced-features)
    * [Technical Excellence](#technical-excellence)
 * [Screenshots](#screenshots)
+* [Videos](#videos)
 * [Prerequisites for running](#prerequisites-for-running)
 * [Prerequisites for dev](#prerequisites-for-dev)
-* [Prerequisites for huggingface model quantization](#prerequisites-for-huggingface-model-quantization)
-* [Installing using pipx](#pipx)
+* [Model Quantization](#model-quantization)
+    * [Native Ollama Quantization](#native-ollama-quantization)
+    * [Prerequisites for huggingface model quantization](#prerequisites-for-huggingface-model-quantization)
 * [Installing using uv](#using-uv)
+* [Installing using pipx](#pipx)
 * [Installing for dev mode](#installing-for-dev-mode)
 * [Command line arguments](#command-line-arguments)
 * [Environment Variables](#environment-variables)
     * [Secrets Vault](#secrets-vault)
 * [Configuration Reference](docs/reference/configuration.md)
 * [Running PAR_LLAMA](#running-par_llama)
-    * [with pipx installation](#with-pipx-installation)
+    * [with pipx or uv tool installation](#with-pipx-or-uv-tool-installation)
     * [with pip installation](#with-pip-installation)
-* [Running against a remote instance](#running-against-a-remote-instance)
+* [Running against a remote Ollama instance](#running-against-a-remote-ollama-instance)
 * [Running under Windows WSL](#running-under-windows-wsl)
     * [Dev mode](#dev-mode)
-* [Quick start Ollama chat workflow](#Quick-start-Ollama-chat-workflow)
-* [Quick start image chat workflow](#Quick-start-image-chat-workflow)
-* [Quick start document chat workflow](#Quick-start-document-chat-workflow)
-* [Quick start OpenAI provider chat workflow](#Quick-start-OpenAI-provider-chat-workflow)
+* [Quick start Ollama chat workflow](#quick-start-ollama-chat-workflow)
+* [Quick start image chat workflow](#quick-start-image-chat-workflow)
+* [Quick start document chat workflow](#quick-start-document-chat-workflow)
+* [Quick start OpenAI provider chat workflow](#quick-start-openai-provider-chat-workflow)
+* [LlamaCPP support](#llamacpp-support)
 * [llmman support](#llmman-support)
 * [Custom Prompts](#custom-prompts)
 * [Memory System](#memory-system)
 * [Template Execution](#template-execution)
 * [Themes](#themes)
 * [Screen Help](https://github.com/paulrobello/parllama/blob/main/src/parllama/help.md)
+* [Architecture](project_design.md)
 * [Contributing](#contributing)
 * [FAQ](#faq)
 * [Roadmap](#roadmap)
     * [Where we are](#where-we-are)
     * [Where we're going](#where-were-going)
+* [License](#license)
 * [What's new](#whats-new)
   * [v0.9.2](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md#092---2026-07-10)
   * [v0.9.1](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md#091---2026-07-05)
@@ -47,6 +53,7 @@
   * [v0.8.7](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md#087---2026-05-05)
   * [older...](https://github.com/paulrobello/parllama/blob/main/CHANGELOG.md)
 
+[![CI](https://github.com/paulrobello/parllama/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/paulrobello/parllama/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/parllama)](https://pypi.org/project/parllama/)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/parllama.svg)](https://pypi.org/project/parllama/)  
 ![Runs on Linux | MacOS | Windows](https://img.shields.io/badge/runs%20on-Linux%20%7C%20MacOS%20%7C%20Windows-blue)
@@ -125,7 +132,7 @@ Supports Dark and Light mode as well as custom themes.
 
 ## Prerequisites for dev
 * Install uv
-  * See the [Using uv](#Using-uv) section
+  * See the [Using uv](#using-uv) section
 * Install GNU Compatible Make command
   * On windows if you have scoop installed you can install make with `scoop install make`
 
@@ -217,10 +224,10 @@ make setup
 
 
 ## Command line arguments
-```
+```text
 usage: parllama [-h] [-v] [-d DATA_DIR] [-u OLLAMA_URL] [-t THEME_NAME] [-m {dark,light}]
-                [-s {local,site,chat,prompts,tools,create,options,logs}] [--use-last-tab-on-startup {0,1}]
-                [--load-local-models-on-startup {0,1}] [-p PS_POLL] [-a {0,1}]
+                [-s {local,site,chat,prompts,tools,create,execution,options,memory,logs}]
+                [--use-last-tab-on-startup {0,1}] [--load-local-models-on-startup {0,1}] [-p PS_POLL] [-a {0,1}]
                 [--restore-defaults] [--purge-cache] [--purge-chats] [--purge-prompts] [--no-save] [--no-chat-save]
 
 PAR LLAMA -- Ollama TUI.
@@ -236,7 +243,7 @@ options:
                         Theme name. Defaults to par
   -m {dark,light}, --theme-mode {dark,light}
                         Dark / Light mode. Defaults to dark
-  -s {local,site,chat,prompts,tools,create,options,logs}, --starting-tab {local,site,chat,prompts,tools,create,options,logs}
+  -s {local,site,chat,prompts,tools,create,execution,options,memory,logs}, --starting-tab {local,site,chat,prompts,tools,create,execution,options,memory,logs}
                         Starting tab. Defaults to local
   --use-last-tab-on-startup {0,1}
                         Use last tab on startup. Defaults to 1
@@ -278,6 +285,7 @@ PAR LLAMA includes an encrypted secrets vault (`src/parllama/secrets_manager.py`
 
 * Set `PARLLAMA_VAULT_KEY` in your environment to have the vault unlock automatically on startup.
 * The vault file uses restrictive `0600` permissions on POSIX systems.
+* Provider API keys entered in the Options tab are stored in the vault, and written to `settings.json` as `null`, only when `PARLLAMA_VAULT_KEY` is set and opens the vault. At startup, plaintext keys already in `settings.json` are moved into the vault under the same condition. Without a working `PARLLAMA_VAULT_KEY`, keys stay in `settings.json` (written with `0600` permissions) so they remain available on the next start.
 
 **Note:** The in-app "Secrets" tab UI (`SecretsView`) is currently disabled/in-progress — its `TabPane` is commented out in `src/parllama/screens/main_screen.py`. The vault's manager and encryption logic exist and are used programmatically, but there is currently no UI screen for managing secrets interactively.
 
@@ -370,7 +378,8 @@ make dev
 * Alternatively attach and send in one step: "/add.doc PATH_TO_DOCUMENT summarize this document".
 * On Anthropic, OpenAI, and Gemini the PDF is sent natively to the model; on Ollama and other providers the document's text is extracted and included in the prompt.
 * Attachments persist with the session: reload a past session later and keep asking questions about the same document.
-* Password-protected PDFs are not supported; size, page-count, and extracted-text limits are configurable in the settings file (`file_validation` group, see `docs/reference/configuration.md`).
+* Password-protected PDFs are not supported. Size, page-count, and extracted-text limits are configurable in the "File Validation" section of the Options tab, or in the settings file (`file_validation` group, see the [Configuration Reference](docs/reference/configuration.md)).
+* Document URLs are fetched only from public addresses; loopback, private-network, and link-local hosts are refused.
 
 ## Quick start OpenAI provider chat workflow
 * Start parllama.
@@ -449,7 +458,7 @@ Memory can be dynamically updated from any chat using these commands:
 - **`/memory.clear`**: Clear all memory content (with confirmation)
 
 #### Example Memory Content
-```
+```text
 My name is Alex and I'm a senior software engineer working primarily with:
 - Python (FastAPI, Django)
 - React and TypeScript
@@ -477,12 +486,15 @@ The memory system transforms PAR LLAMA into a truly personalized AI assistant th
 PAR LLAMA includes a powerful yet secure template execution system that allows you to run code snippets and commands directly from chat messages. This feature enables interactive development workflows, data analysis, and quick testing without leaving the chat interface.
 
 ### Security & Safety
-The execution system is designed with security as a top priority:
-- **Command Allowlists**: Only pre-approved commands can be executed
-- **Content Validation**: Dangerous patterns are automatically detected and blocked
-- **Sandboxing**: Commands run in a controlled environment with restricted permissions
+The execution system includes safeguards that reduce accidents:
+- **Confirmation**: Execution asks for confirmation before running by default (`execution_require_confirmation`)
+- **Command Allowlists**: Only pre-approved base commands can be executed
+- **Content Checks**: Configured dangerous patterns (for example `rm -rf`) are blocked by substring match
+- **Credential Scrubbing**: Environment variables whose names contain `KEY`, `TOKEN`, `SECRET`, `PASSWORD`, `PASSWD`, or `CREDENTIAL` are removed from the child process environment
 - **Timeout Protection**: All executions have configurable time limits
 - **Output Limiting**: Command output is truncated to prevent resource exhaustion
+
+**Important:** Template execution is not a sandbox. Commands run as your user with your filesystem access, so an allowed interpreter (`python`, `bash`, `node`, ...) can do anything you can, including reading credential files such as `~/.aws/credentials` or `~/.ssh`. The content checks are easily bypassed and a check that reports no warnings does not mean the code is safe. Review code before running it.
 
 ### Configuration
 Template execution settings are configurable in the Options tab under "Template Execution":
@@ -522,9 +534,9 @@ The system supports flexible execution templates that can:
 This feature transforms PAR LLAMA into a powerful development companion, enabling seamless transitions between conversation and code execution.
 
 ## Themes
-Themes are json files stored in the themes folder in the data directory which defaults to **~/.parllama/themes**  
+Themes are json files stored in the themes folder in the data directory which defaults to **~/.local/share/parllama/themes**  
 
-The default theme is "par" so can be located in **~/.parllama/themes/par.json**  
+The default theme is "par" so can be located in **~/.local/share/parllama/themes/par.json**. It is copied from the packaged `src/parllama/themes/par.json` when missing, and `--restore-defaults` deletes it so the packaged copy is restored on the next start.  
 
 Themes have a dark and light mode are in the following format:  
 ```json
@@ -561,6 +573,7 @@ Theme can be changed via command line with the ```--theme-name``` option.
 
 ## Contributing
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, code style, commit conventions, and the pull request process.
+The architecture is described in [project_design.md](project_design.md), and the release process in [docs/guides/release.md](docs/guides/release.md).
 
 ## FAQ
 * Q: Do I need Docker?
@@ -603,6 +616,9 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, code style, commit
 * Expand ability to import custom prompts of other tools
 * LLM tool use
 
+## License
+
+PAR LLAMA is released under the MIT License. See [LICENSE](LICENSE) for the full text.
 
 ## What's new
 

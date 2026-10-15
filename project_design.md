@@ -20,8 +20,10 @@ PAR LLAMA is a sophisticated Terminal User Interface (TUI) application for manag
 12. [Architecture Diagrams](#architecture-diagrams)
 13. [Execution and Template System](#execution-and-template-system)
 14. [Persistent Memory System](#persistent-memory-system)
-15. [Dialog System](#dialog-system)
-16. [Message System Organization](#message-system-organization)
+15. [Attachment System](#attachment-system)
+16. [Network Fetch Guard](#network-fetch-guard)
+17. [Dialog System](#dialog-system)
+18. [Message System Organization](#message-system-organization)
 
 ## Architecture Overview
 
@@ -64,11 +66,14 @@ PAR LLAMA follows a layered architecture with clear separation of concerns:
 
 ```mermaid
 flowchart TD
-    A[parllama command] --> B["__main__.py:run()"]
-    B --> C[Load Settings]
-    C --> D[Parse CLI Arguments]
-    D --> E[Create ParLlamaApp Instance]
-    E --> F[Initialize Managers]
+    A[parllama command] --> B["__main__.py: run()"]
+    B --> C["get_args() - Parse CLI Arguments"]
+    C --> D["bootstrap(args)"]
+    D --> D1["setup_directories() - paths.py"]
+    D1 --> D2["load_from_file() - migrate + validate settings.json"]
+    D2 --> D3["apply_cli_args() + save()"]
+    D3 --> E[Import and create ParLlamaApp]
+    E --> F[Attach managers, sync provider keys with vault]
     F --> G["app.run() - Start Textual"]
     G --> H["on_mount() - Setup UI"]
     H --> I[Push MainScreen]
@@ -79,10 +84,15 @@ flowchart TD
 
 ### Key Initialization Steps
 
-1. **Settings Loading**: Global singleton `settings` object created
-2. **Manager Registration**: Theme, Provider, Secrets, Ollama, Chat, Memory, Execution managers initialized
-3. **UI Creation**: MainScreen with tabbed interface constructed
-4. **Background Tasks**: Job processing and PS polling timers started
+1. **Argument Parsing**: `run()` in `src/parllama/__main__.py` parses the real CLI arguments with `get_args()`
+2. **Settings Bootstrap**: `bootstrap(args)` in `src/parllama/settings_manager.py` initializes the `settings` singleton in place. Constructing `Settings()` has no side effects; directory creation, legacy-location migration, settings.json loading, and CLI overrides all happen inside `bootstrap()`, which is idempotent
+3. **Manager Registration**: Theme, Provider, Secrets, Ollama, Chat, Memory, Execution managers are attached to the app; `settings.sync_provider_keys_with_vault()` runs once the secrets vault is attached
+4. **UI Creation**: MainScreen with tabbed interface constructed
+5. **Background Tasks**: Job processing and PS polling timers started
+
+### Directory Layout
+
+`src/parllama/paths.py` owns the on-disk layout. `setup_directories()` resolves the data directory (`--data-dir`, then `PARLLAMA_DATA_DIR`, then `$XDG_DATA_HOME/parllama`) and the cache directory (`$XDG_CACHE_HOME/parllama`), moves a legacy `~/.parllama` data directory and a legacy `<data_dir>/cache` folder to their XDG locations, creates the folders, and applies the `--restore-defaults` and `--purge-*` flags.
 
 ## UI Architecture
 
@@ -154,6 +164,8 @@ sequenceDiagram
     participant UserInput
     participant ChatTab
     participant ChatSession
+    participant StreamController
+    participant SessionStore
     participant LLM
     participant UI
 
@@ -161,11 +173,18 @@ sequenceDiagram
     UserInput->>ChatTab: Submit
     ChatTab->>ChatSession: send_chat()
     ChatSession->>UI: ChatMessage event
-    ChatSession->>LLM: Stream request
-    LLM-->>ChatSession: Response chunks
-    ChatSession-->>UI: ChatMessage updates
+    ChatSession->>LLM: Open stream (history via to_langchain_native)
+    ChatSession->>StreamController: run(stream, msg)
+    LLM-->>StreamController: Response chunks
+    StreamController-->>UI: ChatMessage updates
+    ChatSession->>SessionStore: write(session)
     ChatSession->>UI: ChatMessageSent
 ```
+
+`ChatSession` (`src/parllama/chat_session.py`) owns the conversation, LLM config, and generation entry points (`send_chat`, `continue_generation`). Two collaborators were extracted from it:
+
+- **StreamController** (`src/parllama/stream_controller.py`): the chunk loop shared by every generation path, including chunk assembly, token stats, abort handling, and provider error parsing. It reads the host session's id and config at call time because the session swaps them on `load()` and `new_session()`.
+- **SessionStore** (`src/parllama/session_store.py`): serializes sessions and reads and writes session JSON files in the chat directory through `SecureFileOperations`, including normalization of legacy message ids.
 
 #### Model Pull Operation
 
@@ -205,8 +224,9 @@ graph TD
         A --> D[chats/]
         A --> E[prompts/]
         A --> F[themes/]
-        A --> G[execution_templates/]
-        A --> H[memory/]
+        A --> G["execution/ (templates.json, history.json)"]
+        A --> H[md_exports/]
+        A --> H2[chat_history.json]
 
         D --> I[session_uuid.json]
         E --> J[prompt_uuid.json]
@@ -218,8 +238,12 @@ graph TD
         L --> M[ollama/]
         L --> N[image/]
         L --> O[provider_models.json]
+        L --> P["documents/ (sha256.bin)"]
+        L --> Q[execution/temp/]
     end
 ```
+
+`settings.json` is a nested JSON document with a `schema_version` key (currently `2`). User memory is stored in `settings.json` (`memory.user_memory`), not in a separate folder.
 
 ### Key Data Models
 
@@ -260,24 +284,7 @@ class SecureFileOperations:
 
 #### Configuration Settings
 
-Settings are decomposed into Pydantic config groups (`settings/config_groups.py`). File validation settings are in `FileValidationConfig`:
-
-```python
-file_validation_enabled: bool = True
-max_file_size_mb: float = 50.0
-max_image_size_mb: float = 50.0
-max_json_size_mb: float = 20.0
-max_zip_size_mb: float = 250.0
-max_total_attachment_size_mb: float = 250.0
-allowed_image_extensions: list[str] = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"]
-allowed_json_extensions: list[str] = [".json"]
-allowed_markdown_extensions: list[str] = [".md", ".markdown", ".txt"]
-allowed_zip_extensions: list[str] = [".zip"]
-validate_file_content: bool = True
-allow_zip_extraction: bool = True
-max_zip_compression_ratio: float = 100.0
-sanitize_filenames: bool = True
-```
+Settings are decomposed into Pydantic config groups (`src/parllama/settings/config_groups.py`). File validation settings, including the document attachment limits, are in `FileValidationConfig` and are accessed as `settings.file_validation.<field>`. Every key with its type and default is listed in the [Configuration Reference](docs/reference/configuration.md#file-validation-settings). The settings are editable in the "File Validation" section of the Options view.
 
 #### Security Features
 
@@ -294,7 +301,8 @@ File validation is integrated into:
 - **Settings Manager**: JSON configuration files
 - **Chat Sessions**: Conversation persistence
 - **Chat Prompts**: Template storage
-- **Image Caching**: Downloaded image validation
+- **Image Caching**: Downloaded image validation (`src/parllama/image_cache.py`)
+- **Document Attachments**: PDF, text, and Markdown validation (`src/parllama/attachment_utils.py`)
 - **Theme Manager**: Theme file validation
 - **Fabric Import**: ZIP file validation
 
@@ -418,7 +426,7 @@ disabled_providers: dict[LlmProvider, bool] = {
 def refresh_models(self):
     for p in llm_provider_types:
         # Check if provider is explicitly disabled
-        if settings.disabled_providers.get(p, False):
+        if settings.provider.disabled_providers.get(p, False):
             continue  # Skip disabled providers entirely
 
         if not is_provider_api_key_set(p):
@@ -434,7 +442,7 @@ def get_filtered_provider_select_options() -> list[tuple[str, LlmProvider]]:
     opts = get_provider_select_options()
     # Filter out any disabled providers
     opts = [(name, provider) for name, provider in opts
-            if not settings.disabled_providers.get(provider, False)]
+            if not settings.provider.disabled_providers.get(provider, False)]
     return opts
 ```
 
@@ -445,7 +453,7 @@ def _create_disable_checkbox(self, provider: LlmProvider) -> ComposeResult:
     provider_name = provider.value.lower()
     yield Checkbox(
         label=f"Disable {provider.value} Provider",
-        value=settings.disabled_providers.get(provider, False),
+        value=settings.provider.disabled_providers.get(provider, False),
         id=f"disable_{provider_name}_provider",
     )
 ```
@@ -524,7 +532,7 @@ graph TD
     subgraph "Settings Manager"
         E[Settings Class]
         E --> F[Validation & Type Checking]
-        E --> G[Backward Compatibility]
+        E --> G["Schema Migration (settings/migration.py)"]
         E --> H[Auto-save Functionality]
         E --> CG[Config Groups]
     end
@@ -562,6 +570,14 @@ graph TD
     E --> M
 ```
 
+### Settings Structure
+
+`Settings` (`src/parllama/settings_manager.py`) composes the config groups as nested Pydantic models. Code reads and writes a field through its group, for example `settings.ollama.ollama_host` or `settings.file_validation.max_document_size_mb`. There is no flat alias layer. A few fields that belong to no group (`starting_tab`, `last_tab`, `last_llm_config`, `langchain_config`, `max_log_lines`, and the runtime paths) live directly on `Settings`.
+
+`settings.json` mirrors that structure: each group is a nested object named after the group (`provider`, `ollama`, `ui`, `chat`, `execution`, `retry`, `timer`, `http`, `file_validation`, `memory`), next to `"schema_version": 2`. `load_from_file()` passes the raw JSON through `migrate_settings_data()` in `src/parllama/settings/migration.py`, which upgrades a legacy flat (version 1) file once; it is rewritten in the nested layout on the next save. Each value is then validated individually, so one bad value is logged and skipped rather than discarding the whole file. Runtime-derived paths (`data_dir`, `cache_dir`, `chat_dir`, the execution temp/templates/history paths, and so on) and the `no_save` flags are computed at startup and never persisted.
+
+Provider API keys are routed to the encrypted secrets vault when it can be unlocked unattended; see [Security Architecture](#security-architecture).
+
 ### Configuration Categories
 
 #### 1. Timer and Job Processing Settings
@@ -575,7 +591,7 @@ graph TD
 - **job_queue_max_size**: Maximum job queue capacity (default: 150)
 
 #### 3. HTTP Timeout Settings
-- **http_request_timeout**: General HTTP request timeout (default: 10.0s)
+- **http_request_timeout**: General HTTP request timeout (default: 30.0s)
 - **provider_model_request_timeout**: Provider model API timeout (default: 5.0s)
 - **update_check_timeout**: Version check timeout (default: 5.0s)
 - **image_fetch_timeout**: Image download timeout (default: 10.0s)
@@ -597,8 +613,8 @@ graph TD
 
 #### Backward Compatibility
 - All new configuration fields have sensible defaults
-- Existing settings files continue to work without modification
-- Gradual migration: settings are added to config file on next save
+- Legacy flat (schema version 1) settings files are migrated once on load by `src/parllama/settings/migration.py`
+- New fields are added to the config file on next save
 
 #### Validation and Safety
 - Minimum value validation (e.g., timeouts ≥ 0.1s, queue size ≥ 10)
@@ -618,19 +634,19 @@ graph TD
 ### Usage Examples
 
 ```python
-# Accessing configuration values
+# Accessing configuration values through their config group
 from parllama.settings_manager import settings
 
 # Use configurable timeouts instead of hard-coded values
-response = requests.get(url, timeout=settings.http_request_timeout)
+response = httpx.get(url, timeout=settings.http.http_request_timeout)
 
 # Use configurable notification timeouts
 self.notify("Error occurred", severity="error",
-           timeout=settings.notification_timeout_error)
+           timeout=settings.ui.notification_timeout_error)
 
 # Use configurable job queue settings
-queue = Queue(maxsize=settings.job_queue_max_size)
-queue.put(job, timeout=settings.job_queue_put_timeout)
+queue = Queue(maxsize=settings.timer.job_queue_max_size)
+queue.put(job, timeout=settings.timer.job_queue_put_timeout)
 ```
 
 ### Benefits
@@ -904,12 +920,14 @@ graph TD
 ### 1. Singleton Managers
 ```python
 # Global instances for cross-component access
-settings = Settings()
+settings = Settings()  # side-effect free; bootstrap(args) performs the I/O
 theme_manager = ThemeManager()
 provider_manager = ProviderManager()
 memory_manager = MemoryManager()
 secrets_manager = SecretsManager()
 ```
+
+Importing `settings` never creates directories or reads files. The composition roots (`run()` in `src/parllama/__main__.py`, `ParLlamaApp`, and the test suite's `conftest.py`) call `bootstrap(args)` explicitly.
 
 ### 2. Message-Based Architecture
 ```python
@@ -1151,12 +1169,13 @@ stateDiagram-v2
 
 1. **API Key Protection**:
    - Environment variables
-   - Encrypted secrets vault (PBKDF2-HMAC-SHA256 key derivation + AES-GCM encryption, see `secrets_manager.py`; unlockable at startup via `PARLLAMA_VAULT_KEY`)
-   - Separate storage from settings
+   - Encrypted secrets vault (PBKDF2-HMAC-SHA256 key derivation + AES-GCM encryption, see `src/parllama/secrets_manager.py`; unlockable at startup via `PARLLAMA_VAULT_KEY`)
+   - Provider keys entered in the Options view go through `Settings.set_provider_api_key()`, and existing plaintext keys are moved by `Settings.sync_provider_keys_with_vault()` at startup. A key is stored in the vault, and written to `settings.json` as `null`, only when the vault is unlocked and `PARLLAMA_VAULT_KEY` opens it, because that variable is the only way the vault unlocks unattended on the next start. Otherwise the key stays in `settings.json`, which is written with `0600` permissions
 
 2. **Session Encryption**: Optional password protection
-3. **Input Validation**: URL and path validation
+3. **Input Validation**: URL and path validation; remote fetches go through the [network fetch guard](#network-fetch-guard)
 4. **Secure Defaults**: Conservative security settings
+5. **Execution Safeguards**: Template execution requires confirmation by default and scrubs credential-bearing environment variables (`scrub_credential_env()` in `src/parllama/execution/command_executor.py`). It is not a sandbox: the child runs as the user with the user's filesystem access, and the allowlist (default `uv`, `python3`, `python`, `node`, `tsc`, `bash`, `sh`, `zsh`, `fish`) contains full interpreters
 
 **Note:** The vault's manager/encryption logic is implemented and used programmatically, but the in-app "Secrets" tab UI (`SecretsView`) is currently disabled/in-progress — its `TabPane` is commented out in `src/parllama/screens/main_screen.py`. There is currently no interactive UI screen for managing vault secrets.
 
@@ -1191,24 +1210,90 @@ graph TD
 
 ### Key Components
 
-- **ExecutionManager** (`execution/execution_manager.py`): Orchestrates template execution
-- **CommandExecutor** (`execution/command_executor.py`): Runs commands from templates
-- **TemplateMatcher** (`execution/template_matcher.py`): Matches user input to templates
-- **ExecutionTemplate** (`execution/execution_template.py`): Template data model
-- **ExecutionCoordinator** (`coordinators/execution_coordinator.py`): Coordinates between UI and execution engine
+- **ExecutionManager** (`src/parllama/execution/execution_manager.py`): Orchestrates template execution
+- **CommandExecutor** (`src/parllama/execution/command_executor.py`): Runs commands from templates
+- **TemplateMatcher** (`src/parllama/execution/template_matcher.py`): Matches user input to templates
+- **ExecutionTemplate** (`src/parllama/execution/execution_template.py`): Template data model
+- **ExecutionCoordinator** (`src/parllama/coordinators/execution_coordinator.py`): Coordinates between UI and execution engine
+
+The other coordinators in `src/parllama/coordinators/` were extracted from the main app class:
+
+- **ModelJobProcessor** (`src/parllama/coordinators/model_job_processor.py`): Processes model pull, push, copy, and create jobs through a bounded queue
+- **PsStatusPoller** (`src/parllama/coordinators/ps_status_poller.py`): Polls Ollama's running-model status and updates the PS status bar
+- **ClipboardService** (`src/parllama/coordinators/clipboard_service.py`): Copy, cut, and send for the focused widget
+- **SessionEventRouter** (`src/parllama/coordinators/session_event_router.py`): Routes session and prompt events to widgets, the chat view, and the chat manager
 
 ## Persistent Memory System
 
 ### Architecture
 
-- **MemoryManager** (`memory_manager.py`): Manages persistent conversation memory across sessions
-- **MemoryView** (`widgets/views/memory_view.py`): UI for browsing and managing memories
+- **MemoryManager** (`src/parllama/memory_manager.py`): Manages persistent conversation memory across sessions
+- **MemoryView** (`src/parllama/widgets/views/memory_view.py`): UI for browsing and managing memories
 - Broadcasts updates to all registered UI widgets via the message system
+
+## Attachment System
+
+Chat messages carry images (`ParllamaChatMessage.images`) and documents (`ParllamaChatMessage.documents`, a list of `DocumentAttachment`). The design and decision record is in [`docs/specs/issue-56-25-attachments.md`](docs/specs/issue-56-25-attachments.md). Implementation phases 1 through 6 have landed. The manual end-to-end TUI pass (attach, send, render, reload session) is still pending.
+
+### Entry Points
+
+All three entry points live in `ChatView` (`src/parllama/widgets/views/chat_view.py`):
+
+- **`ctrl+o`** opens `AttachFileDialog` (`src/parllama/dialogs/attach_file_dialog.py`). The chosen file becomes a pending-attachment chip above the chat input; clicking a chip removes it. Pending attachments ride on the next message sent.
+- **`/attach [FILE_OR_URL]`** adds a file or URL to the pending attachments; with no argument it opens the file picker.
+- **`/add.doc FILE_OR_URL PROMPT`** attaches a document and sends the prompt in one step.
+
+A message carries at most `MAX_IMAGES_PER_MESSAGE` (5) images and `MAX_DOCUMENTS_PER_MESSAGE` (3) documents. Files whose extension is in `allowed_document_extensions` are treated as documents; everything else goes down the image path.
+
+### Pipeline
+
+`attach_document()` in `src/parllama/attachment_utils.py` builds a `DocumentAttachment` from a local path or an http(s) URL:
+
+```mermaid
+flowchart LR
+    A[Path or URL] --> B{Remote?}
+    B -->|Local| C[FileValidator]
+    B -->|URL| D["net_guard SSRF check + size-capped download"]
+    D --> C
+    C --> E["ExtractionStrategy (TextLayerStrategy: pypdf / decode)"]
+    E --> F{"size <= inline_document_threshold_mb?"}
+    F -->|Yes| G["Inline: data_b64 + text in session JSON"]
+    F -->|No| H["Cache reference: cache_dir/documents/sha256.bin"]
+```
+
+1. **Validation**: the extension must map to a known MIME type (PDF, plain text, Markdown). Local files and downloaded payloads both go through `FileValidator` with the document size cap and the `%PDF-` magic-header check. Remote URLs are checked by `check_public_url()` on every redirect hop and the download aborts once it exceeds `max_document_size_mb`.
+2. **Extraction**: `EXTRACTION_STRATEGIES` is an ordered list of `ExtractionStrategy` implementations; the first whose `can_handle()` accepts the document wins. v1 ships only `TextLayerStrategy`, which rejects encrypted PDFs, enforces `max_pdf_pages`, and truncates text at `max_extracted_text_chars`. This is the OCR seam: an OCR strategy would populate the same `text` field with no changes to routing, persistence, or UI. OCR is not implemented; `enable_ocr` and `ocr_language` are inert settings.
+3. **Persistence**: documents at or below `inline_document_threshold_mb` are stored inline in the session JSON (`data_b64` plus extracted `text`). Larger ones store only metadata, extracted text, and a SHA-256 hash; the bytes are written to the documents cache under `$XDG_CACHE_HOME/parllama/documents/`. At send time `ensure_sendable()` re-derives the bytes from the cache, or by re-fetching `source_url`, and only accepts them if the SHA-256 matches the hash recorded at attach time.
+
+### Provider Routing
+
+`ParllamaChatMessage.to_langchain_native(provider)` (`src/parllama/chat_message.py`) decides per message, at send time, how documents reach the model:
+
+| Provider | Route |
+| --- | --- |
+| Anthropic, OpenAI, Gemini | Native file content part (`document_content_block()`), listed in `PROVIDER_NATIVE_DOCUMENTS` |
+| All other providers | Extracted text in a fenced `<document name="...">` block (`documents_as_text()`) |
+
+Because the route is not persisted, a session can switch providers and keep working with its documents. When a native provider's payload cannot be recovered (cache evicted, source gone), the message degrades to the extracted text and logs a warning.
+
+### Context Budget
+
+Before opening the stream, `ChatSession` computes a per-document character cap so the prompt leaves room for the reply (more reserve for thinking models). When the cap bites, extracted text is truncated client-side for the fenced-text route and the user is warned; the stored document is never modified. Token estimates come from `estimate_document_tokens()`: 1,600 tokens per PDF page for native routing, characters divided by four otherwise.
+
+## Network Fetch Guard
+
+Every code path that fetches a user- or model-supplied URL uses `src/parllama/net_guard.py`:
+
+- `check_public_url()` rejects non-http(s) URLs and hosts that resolve to loopback, private (RFC 1918 / ULA), link-local (including cloud metadata at `169.254.169.254`), multicast, or reserved addresses. Every resolved address must be public.
+- `open_guarded_stream()` opens one streaming GET on a shared `httpx.Client` with redirects disabled, so callers re-run `check_public_url()` on each redirect hop and enforce their own size caps while streaming.
+
+The two callers are the document pipeline (`src/parllama/attachment_utils.py`) and the chat image cache (`src/parllama/image_cache.py`). `fetch_and_cache_image()` validates local images with `FileValidator`, downloads remote images through the guard with the image size cap, validates the downloaded bytes, and caches them under `$XDG_CACHE_HOME/parllama/image/`. httpx is the project's HTTP client; `requests` is no longer a dependency.
 
 ## Dialog System
 
 The application uses a dedicated `dialogs/` directory for modal overlays:
 
+- `attach_file_dialog.py` - File picker for chat image and document attachments
 - `import_fabric_dialog.py` - Fabric prompt import with progress tracking
 - `import_templates_dialog.py` - Execution template import
 - `import_results_dialog.py` - Import results display
@@ -1256,7 +1341,7 @@ Messages are organized into domain-specific modules within `src/parllama/message
 Three critical memory leak issues were identified and resolved to ensure stable long-term operation:
 
 ### 1. Widget Subscription Management
-**Problem**: The `notify_subs` dictionary in `app.py` retained references to destroyed widgets indefinitely.
+**Problem**: The `notify_subs` dictionary in `src/parllama/app.py` retained references to destroyed widgets indefinitely.
 
 **Solution**:
 - Replaced `set[MessagePump]` with `WeakSet[MessagePump]` in the subscription system
@@ -1380,11 +1465,11 @@ def log_it(self, msg, severity="information", timeout: int = 5):
 def log_it(self, msg, severity="information", timeout: int | None = None):
     if timeout is None:
         if severity == "error":
-            timeout = int(settings.notification_timeout_error)
+            timeout = int(settings.ui.notification_timeout_error)
         elif severity == "warning":
-            timeout = int(settings.notification_timeout_warning)
+            timeout = int(settings.ui.notification_timeout_warning)
         else:
-            timeout = int(settings.notification_timeout_info)
+            timeout = int(settings.ui.notification_timeout_info)
 ```
 
 ### 4. Error Handling Consolidation
@@ -1452,13 +1537,13 @@ The auto-refresh feature follows the existing timer-based refresh pattern alread
 # Pattern used consistently across model operations
 if event.success:
     self.status_notify(f"Model {event.model_name} pulled.")
-    self.set_timer(settings.model_refresh_timer_interval, self.action_refresh_models)
+    self.set_timer(settings.timer.model_refresh_timer_interval, self.action_refresh_models)
 ```
 
 ### Implementation Details
 
 #### Core Components
-- **Event Handler**: `on_model_pulled()` method in `app.py`
+- **Event Handler**: `on_model_pulled()` method in `src/parllama/app.py`
 - **Timer System**: Uses existing `model_refresh_timer_interval` setting (1.0 seconds default)
 - **Refresh Method**: Leverages existing `action_refresh_models()` functionality
 
@@ -1470,7 +1555,7 @@ if event.success:
 5. Local model list updates to show newly downloaded model
 
 #### Configuration
-- Uses existing `settings.model_refresh_timer_interval` configuration
+- Uses existing `settings.timer.model_refresh_timer_interval` configuration
 - Default: 1.0 second delay before refresh
 - Configurable through settings system
 - Consistent with model creation auto-refresh behavior
@@ -1490,7 +1575,7 @@ def on_model_pulled(self, event: LocalModelPulled) -> None:
     if event.success:
         self.status_notify(f"Model {event.model_name} pulled.")
         # Auto-refresh local model list after successful pull
-        self.set_timer(settings.model_refresh_timer_interval, self.action_refresh_models)
+        self.set_timer(settings.timer.model_refresh_timer_interval, self.action_refresh_models)
     else:
         self.status_notify(f"Model {event.model_name} failed to pull.", severity="error")
 ```
