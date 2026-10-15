@@ -619,7 +619,8 @@ class ChatSession(ChatMessageContainer):
         )
         session.name_generated = True
 
-        if salt := data.get("__salt__"):
+        # SessionStore writes "_salt"; "__salt__" is tolerated for legacy/hand-edited files.
+        if salt := data.get("_salt") or data.get("__salt__"):
             session._salt = base64.b64decode(salt)
         else:
             session._salt = None
