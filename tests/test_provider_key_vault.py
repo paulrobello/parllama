@@ -127,10 +127,24 @@ def test_failed_vault_write_keeps_plaintext(tmp_path: Path) -> None:
     vault = _vault(tmp_path)
 
     s = _load_settings(tmp_path)
-    with patch.object(vault, "add_secret"):
+    with patch.object(vault, "_save_secrets", side_effect=ValueError("disk full")):
         s.sync_provider_keys_with_vault(vault)
 
     assert _keys_on_disk(tmp_path)["OpenAI"] == "sk-openai"
+    assert _keys_on_disk(tmp_path)["Anthropic"] == "sk-anthropic"
+
+
+def test_env_key_that_does_not_open_vault_keeps_plaintext(tmp_path: Path) -> None:
+    """Vault unlocked interactively, but PARLLAMA_VAULT_KEY is a different password: next start stays locked."""
+    vault = _vault(tmp_path)
+    os.environ["PARLLAMA_VAULT_KEY"] = "OtherPass456!"
+    s = _settings(tmp_path)
+
+    s.set_provider_api_key(LlmProvider.OPENAI, "sk-typed", vault)
+    s.save()
+
+    assert _keys_on_disk(tmp_path)["OpenAI"] == "sk-typed"
+    assert "OPENAI_API_KEY" not in vault
 
 
 def test_options_set_and_clear_route_through_vault(tmp_path: Path) -> None:

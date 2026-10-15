@@ -84,6 +84,8 @@ class Settings(BaseModel):
     _secure_ops: SecureFileOperations = PrivateAttr()
     _vault_backed_providers: set[LlmProvider] = PrivateAttr(default_factory=set)
     """Providers whose API key lives in the encrypted vault and is omitted from settings.json."""
+    _vault_env_key_checked: tuple[str, bool] | None = PrivateAttr(default=None)
+    """Memoized (PARLLAMA_VAULT_KEY, opens-the-vault) result; verification runs PBKDF2."""
 
     # -- Top-level fields not belonging to any config group --------------------
     no_save: bool = False
@@ -332,14 +334,28 @@ class Settings(BaseModel):
 
     # -- Provider key vault ----------------------------------------------------
 
-    @staticmethod
-    def _vault_persists_unattended(vault: SecretsManager) -> bool:
+    def _vault_persists_unattended(self, vault: SecretsManager) -> bool:
         """Return True when keys moved to ``vault`` will be readable on the next start with no user action.
 
-        That requires the vault to be unlocked now and ``PARLLAMA_VAULT_KEY`` to be set, since that
-        variable is the only path that unlocks the vault automatically at startup.
+        That requires the vault to be unlocked now and ``PARLLAMA_VAULT_KEY`` to actually open it,
+        since that variable is the only path that unlocks the vault automatically at startup.
         """
-        return not vault.locked and bool(os.environ.get("PARLLAMA_VAULT_KEY"))
+        env_key = os.environ.get("PARLLAMA_VAULT_KEY")
+        if vault.locked or not env_key or not vault.has_password:
+            return False
+        if self._vault_env_key_checked is None or self._vault_env_key_checked[0] != env_key:
+            self._vault_env_key_checked = (env_key, vault.verify_password(env_key))
+        return self._vault_env_key_checked[1]
+
+    @staticmethod
+    def _store_in_vault(vault: SecretsManager, env_name: str, value: str) -> bool:
+        """Write ``value`` to ``vault``; True only if it was persisted to disk."""
+        try:
+            vault.add_secret(env_name, value)
+        except ValueError as e:
+            logger.warning("Could not store %s in the vault, keeping it in settings.json: %s", env_name, e)
+            return False
+        return True
 
     def sync_provider_keys_with_vault(self, vault: SecretsManager) -> None:
         """Move plaintext provider API keys into ``vault`` and load vault-held keys into memory.
@@ -362,10 +378,8 @@ class Settings(BaseModel):
                 continue
             current = self.provider.provider_api_keys.get(p)
             if env_name not in vault:
-                if current and persist:
-                    vault.add_secret(env_name, current, no_raise=True)
-                    if env_name in vault:
-                        self._vault_backed_providers.add(p)
+                if current and persist and self._store_in_vault(vault, env_name, current):
+                    self._vault_backed_providers.add(p)
                 continue
             vault_value = vault.get_secret(env_name, "", no_raise=True)
             if not current:
@@ -401,11 +415,9 @@ class Settings(BaseModel):
             self._vault_backed_providers.discard(provider)
             return
 
-        if self._vault_persists_unattended(vault):
-            vault.add_secret(env_name, value, no_raise=True)
-            if env_name in vault and vault.get_secret(env_name, "", no_raise=True) == value:
-                self._vault_backed_providers.add(provider)
-                return
+        if self._vault_persists_unattended(vault) and self._store_in_vault(vault, env_name, value):
+            self._vault_backed_providers.add(provider)
+            return
         self._vault_backed_providers.discard(provider)
 
     # -- Save ------------------------------------------------------------------
