@@ -11,8 +11,10 @@ import pytest
 from par_ai_core.llm_config import LlmConfig
 from par_ai_core.llm_providers import LlmProvider
 
+from parllama.attachment_utils import documents_as_text
 from parllama.chat_message import ParllamaChatMessage, try_get_image_type
 from parllama.chat_session import ChatSession
+from parllama.document_attachment import DocumentAttachment
 
 
 def _llm_config() -> LlmConfig:
@@ -194,6 +196,76 @@ class TestContainerUnload:
         assert session["m1"] is not None
         session.unload()
         assert session["m1"] is None
+
+
+class TestDocumentTextTruncation:
+    """Documents are pre-truncated to leave response headroom, with a toast."""
+
+    def _session(self, num_ctx: int, thinking: bool) -> ChatSession:
+        session = ChatSession(
+            name="C",
+            llm_config=LlmConfig(provider=LlmProvider.OLLAMA, model_name="test-model", num_ctx=num_ctx),
+            messages=[
+                ParllamaChatMessage(
+                    id="u1",
+                    role="user",
+                    content="summarize",
+                    documents=[
+                        DocumentAttachment(
+                            name="big.txt",
+                            mime_type="text/plain",
+                            size_bytes=40000,
+                            sha256="e" * 64,
+                            text="x" * 40000,
+                        )
+                    ],
+                )
+            ],
+        )
+        with patch.object(ChatSession, "_model_supports_thinking", return_value=thinking):
+            return session
+
+    def test_thinking_model_gets_larger_reserve(self) -> None:
+        session = self._session(num_ctx=8192, thinking=True)
+        cap = session._document_text_char_cap()
+        # budget 8192 - reserve 4096 - conv ~= 0 -> per-doc cap near zero*4
+        assert cap is not None
+
+    def test_non_thinking_model_gets_full_page_reserve(self) -> None:
+        session = self._session(num_ctx=8192, thinking=False)
+        cap = session._document_text_char_cap()
+        # budget 8192 - reserve 1024 -> ~7168 tokens * 4 = ~28,672 chars per doc
+        assert cap is not None
+        assert 25_000 < cap <= 29_000
+
+    def test_fitting_document_gets_no_cap(self) -> None:
+        session = self._session(num_ctx=131072, thinking=False)
+        assert session._document_text_char_cap() is None
+
+    def test_cap_never_negative(self) -> None:
+        session = self._session(num_ctx=512, thinking=True)
+        cap = session._document_text_char_cap()
+        # reserve is clamped to half the budget, so a tiny window still
+        # leaves half for the prompt (512/2=256 tokens -> ~1024 chars)
+        assert cap is not None
+        assert 900 <= cap <= 1100
+
+    def test_prepare_budget_toasts_on_truncation(self) -> None:
+        session = self._session(num_ctx=2048, thinking=True)
+        with patch.object(session, "log_it") as mock_log:
+            cap = session._prepare_document_budget()
+        assert cap is not None
+        logged = " ".join(str(c.args[0]) for c in mock_log.call_args_list if c.args)
+        assert "Truncated big.txt" in logged
+
+    def test_prepare_budget_silent_when_fitting(self) -> None:
+        session = self._session(num_ctx=131072, thinking=False)
+        with patch.object(session, "log_it") as mock_log:
+            cap = session._prepare_document_budget()
+        assert cap is None
+        assert mock_log.call_args_list == [] or "Truncated" not in " ".join(
+            str(c.args[0]) for c in mock_log.call_args_list if c.args
+        )
 
 
 class TestEmptyModelSendGuard:

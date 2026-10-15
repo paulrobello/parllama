@@ -159,7 +159,9 @@ class ParllamaChatMessage(MessageSink):
             ]
         return OMessage(role=self.role, content=self.content, thinking=self.thinking or None, images=images)
 
-    def to_langchain_native(self, provider: LlmProvider | None = None) -> tuple[str, str | list[dict[str, Any]]]:
+    def to_langchain_native(
+        self, provider: LlmProvider | None = None, doc_text_char_cap: int | None = None
+    ) -> tuple[str, str | list[dict[str, Any]]]:
         """Convert a message to Langchain native format.
 
         Args:
@@ -167,6 +169,11 @@ class ParllamaChatMessage(MessageSink):
                 with native document support get file content parts for
                 attached documents; all others (and None) get the extracted
                 text fenced inline.
+            doc_text_char_cap: Max characters of extracted text per document
+                in the fenced fallback path (client-side truncation so the
+                prompt leaves room for the response). Ignored on providers
+                with native document routing; the stored document is never
+                modified.
         """
         content: str | list[dict[str, Any]] = self.content
         if self.images or self.documents:
@@ -197,7 +204,7 @@ class ParllamaChatMessage(MessageSink):
                             if doc.text:
                                 parts.append({"type": "text", "text": documents_as_text([doc])})
                 else:
-                    blocks = documents_as_text(self.documents)
+                    blocks = documents_as_text(self.documents, char_cap=doc_text_char_cap)
                     if blocks:
                         parts.append({"type": "text", "text": blocks})
             if parts:

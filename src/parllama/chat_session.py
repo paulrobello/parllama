@@ -18,6 +18,7 @@ from par_ai_core.llm_config import LlmConfig, ReasoningEffort, llm_run_manager
 from par_ai_core.llm_providers import LlmProvider
 from textual.message import Message
 
+from parllama.attachment_utils import TOKEN_WARN_THRESHOLD, estimate_document_tokens
 from parllama.chat_message import ParllamaChatMessage
 from parllama.chat_message_container import ChatMessageContainer
 from parllama.document_attachment import DocumentAttachment
@@ -569,36 +570,54 @@ class ChatSession(ChatMessageContainer):
                 chat_model.reasoning = True  # pyright: ignore [reportAttributeAccessIssue]
         return chat_model
 
-    def _warn_on_document_token_load(self) -> None:
-        """Notify when attached documents push the prompt near or past the
-        context budget (spec §6). Warns and proceeds — an interactive
-        confirm inside the streaming send path would stall the UI loop.
+    def _effective_ctx_budget(self) -> int:
+        """The context window the request will actually run in: the session's
+        ``num_ctx`` when set, else the model's configured window (for Ollama
+        that is where the server silently truncates the prompt), else a
+        conservative default."""
+        if self._llm_config.num_ctx:
+            return self._llm_config.num_ctx
+        from parllama.provider_manager import provider_manager
 
-        For providers with an explicit ``num_ctx`` the document load is
-        compared against it; otherwise against a fixed warn threshold.
+        return (
+            provider_manager.get_model_context_length(self._llm_config.provider, self._llm_config.model_name)
+            or TOKEN_WARN_THRESHOLD
+        )
+
+    def _document_text_char_cap(self) -> int | None:
+        """Per-document character cap that keeps room for the response.
+
+        Documents are pre-truncated client-side so the prompt leaves reserve
+        for the model's reply — thinking models need far more headroom than
+        a plain answer. None when the documents already fit.
         """
         docs = [d for m in self.messages if m.documents for d in m.documents]
         if not docs:
-            return
-        from parllama.attachment_utils import TOKEN_WARN_THRESHOLD, estimate_document_tokens
+            return None
 
+        budget = self._effective_ctx_budget()
+        reserve = 4096 if self._model_supports_thinking() else 1024
+        reserve = min(reserve, budget // 2)
+
+        conv_tokens = sum((len(m.content) + len(m.thinking)) // 4 for m in self.messages)
         doc_tokens = sum(estimate_document_tokens(d) for d in docs)
-        budget = self._llm_config.num_ctx or 0
-        if not budget:
-            # No explicit context window: use the model's effective one —
-            # for Ollama that is the model's configured num_ctx, the point
-            # where the server silently truncates the prompt.
-            from parllama.provider_manager import provider_manager
+        available = budget - reserve - conv_tokens
+        if available >= doc_tokens:
+            return None
+        return max(available // len(docs), 0) * 4
 
-            budget = provider_manager.get_model_context_length(self._llm_config.provider, self._llm_config.model_name)
-        if not budget:
-            budget = TOKEN_WARN_THRESHOLD
-        if doc_tokens > budget:
-            self.log_it(
-                f"Documents add ~{doc_tokens:,} tokens (model budget ~{budget:,}); the prompt may be truncated or rejected",
-                notify=True,
-                severity="warning",
-            )
+    def _prepare_document_budget(self) -> int | None:
+        """Compute the send-time document cap and toast when it bites."""
+        cap = self._document_text_char_cap()
+        if cap is None:
+            return None
+        names = ", ".join(d.name for m in self.messages if m.documents for d in m.documents)
+        self.log_it(
+            f"Truncated {names} to fit the model context window (raise Max Context Size for the full document)",
+            notify=True,
+            severity="warning",
+        )
+        return cap
 
     async def send_chat(
         self,
@@ -650,8 +669,11 @@ class ChatSession(ChatMessageContainer):
             ttft: float = 0.0  # time to first token
 
             # self.log_it(self._llm_config)
-            chat_history = [m.to_langchain_native(self._llm_config.provider) for m in self.messages]
-            self._warn_on_document_token_load()
+            doc_text_char_cap = self._prepare_document_budget()
+            chat_history = [
+                m.to_langchain_native(self._llm_config.provider, doc_text_char_cap=doc_text_char_cap)
+                for m in self.messages
+            ]
             # self.log_it(chat_history)
             chat_model = self._build_stream_chat_model()
 
@@ -1004,8 +1026,11 @@ class ChatSession(ChatMessageContainer):
             start_time = datetime.now(UTC)
             ttft: float = 0.0
 
-            chat_history = [m.to_langchain_native(self._llm_config.provider) for m in self.messages]
-            self._warn_on_document_token_load()
+            doc_text_char_cap = self._prepare_document_budget()
+            chat_history = [
+                m.to_langchain_native(self._llm_config.provider, doc_text_char_cap=doc_text_char_cap)
+                for m in self.messages
+            ]
             chat_model = self._build_stream_chat_model()
 
             stream: Iterator[BaseMessageChunk] = chat_model.stream(

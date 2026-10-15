@@ -240,7 +240,19 @@ def document_content_block(doc: DocumentAttachment) -> dict[str, Any]:
     }
 
 
-def documents_as_text(documents: list[DocumentAttachment]) -> str:
-    """Fenced text fallback for providers without native document support."""
-    blocks = [f'<document name="{d.name}">\n{d.text or ""}\n</document>' for d in documents]
+def documents_as_text(documents: list[DocumentAttachment], char_cap: int | None = None) -> str:
+    """Fenced text fallback for providers without native document support.
+
+    Args:
+        documents: The documents to render.
+        char_cap: Max characters of text per document; longer text is cut
+            with a visible marker (client-side truncation — the stored
+            document is untouched).
+    """
+    blocks = []
+    for d in documents:
+        text = d.text or ""
+        if char_cap is not None and len(text) > char_cap:
+            text = text[:char_cap] + "\n[...document truncated to fit the model context window...]"
+        blocks.append(f'<document name="{d.name}">\n{text}\n</document>')
     return "\n\n".join(blocks)

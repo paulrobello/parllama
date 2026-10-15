@@ -187,6 +187,7 @@ SessionConfig {
                     provider=self.provider_model_select.provider_name,
                     model_name=model_name,
                     temperature=self.get_temperature(),
+                    num_ctx=self.get_num_ctx(),
                     reasoning_effort=self.get_reasoning_effort(),
                     reasoning_budget=self.get_reasoning_budget(),
                 ),
@@ -210,6 +211,14 @@ SessionConfig {
             return float(self.temperature_input.value)
         except ValueError:
             return settings.last_llm_config.temperature if settings.last_llm_config.temperature is not None else 0.5
+
+    def get_num_ctx(self) -> int | None:
+        """Get the context window from the input field, falling back to the
+        last-used value so new sessions actually run at the size shown."""
+        try:
+            return int(self.num_ctx_input.value)
+        except ValueError:
+            return settings.last_llm_config.num_ctx
 
     def get_reasoning_effort(self) -> ReasoningEffort | None:
         return (
@@ -351,6 +360,7 @@ SessionConfig {
             if self.provider_model_select.model_select.value == Select.NULL:
                 self.notify("Model defined in session is not installed", severity="warning")
             self.temperature_input.value = str(self.session.temperature)
+            self.num_ctx_input.value = str(self.session.num_ctx or "")
 
         return True
 
