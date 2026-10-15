@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import time
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -129,9 +130,8 @@ class ProviderManager(MessageSink):
     def _fetch_provider_model_list(self, p: LlmProvider) -> list[str] | None:
         """Query a single provider's current chat-model list from its API.
 
-        Heavy provider SDKs (``openai``, ``groq``, ``google-genai``,
-        ``anthropic``) are imported lazily inside their branches so importing
-        this module does not pull them in at startup.
+        Dispatches to the provider's adapter in ``MODEL_LIST_FETCHERS`` and runs
+        the shared filter/sort path over the normalized result.
 
         Args:
             p: The provider to query.
@@ -141,87 +141,17 @@ class ProviderManager(MessageSink):
             or has no API key configured.
 
         Raises:
-            ValueError: If ``p`` is an unknown provider.
+            ValueError: If ``p`` has no registered fetch adapter.
         """
         if settings.provider.disabled_providers.get(p, False):
             return None
         if not is_provider_api_key_set(p):
             return None
 
-        new_list: list[str] = []
-        if p == LlmProvider.OLLAMA:
-            new_list = ollama_dm.get_model_names()
-        elif p == LlmProvider.LLAMACPP:
-            from openai import OpenAI
-
-            models = OpenAI(base_url=settings.provider.provider_base_urls[p] or provider_base_urls[p]).models.list()
-            data = sorted(models.data, key=lambda m: m.created, reverse=True)
-            for m in data:
-                new_list.append(m.id or "default")
-        elif p in [LlmProvider.OPENAI, LlmProvider.OPENROUTER, LlmProvider.XAI, LlmProvider.DEEPSEEK]:
-            from openai import OpenAI
-
-            models = list(
-                OpenAI(
-                    base_url=settings.provider.provider_base_urls[p] or provider_base_urls[p],
-                    api_key=settings.provider.provider_api_keys[p] or os.environ.get(provider_env_key_names[p]),
-                )
-                .models.list()
-                .data
-            )
-            if models:
-                models = [m for m in models if get_model_mode(p, m.id) in ["chat", "unknown"]]
-                if models[0].created is not None:
-                    data = sorted(models, key=lambda m: m.created, reverse=True)
-                else:
-                    data = sorted(models, key=lambda m: m.id)
-                for m in data:
-                    new_list.append(m.id)
-        elif p == LlmProvider.GROQ:
-            from groq import Groq
-
-            models = Groq(base_url=settings.provider.provider_base_urls[p] or provider_base_urls[p]).models.list().data
-            if models:
-                models = [m for m in models if get_model_mode(p, m.id) in ["chat", "unknown"]]
-                data = sorted(models, key=lambda m: m.created, reverse=True)
-                for m in data:
-                    new_list.append(m.id)
-        elif p == LlmProvider.ANTHROPIC:
-            import anthropic
-
-            models = list(anthropic.Anthropic().models.list(limit=50))
-            if models:
-                models = [m for m in models if get_model_mode(p, m.id) in ["chat", "unknown"]]
-                data = sorted(models, key=lambda m: m.created_at, reverse=True)
-                for m in data:
-                    new_list.append(m.id)
-        elif p == LlmProvider.LITELLM:
-            models = requests.get(
-                f"{settings.provider.provider_base_urls[p] or provider_base_urls[p]}/models",
-                timeout=settings.http.provider_model_request_timeout,
-            ).json()["data"]
-            if models:
-                models = [m for m in models if get_model_mode(p, m["id"]) in ["chat", "unknown"]]
-                data = sorted(models, key=lambda m: m["created"], reverse=True)
-                for m in data:
-                    new_list.append(m["id"])
-        elif p == LlmProvider.GEMINI:
-            from google import genai  # type: ignore
-
-            client = genai.Client(  # type: ignore[attr-defined]
-                api_key=settings.provider.provider_api_keys[p] or os.environ.get(provider_env_key_names[p])
-            )
-            models = list(client.models.list())  # type: ignore
-            if models:
-                models = [m for m in models if m.name and get_model_mode(p, m.name) in ["chat", "unknown"]]
-                data = sorted(models, key=lambda m: m.name or "")  # type: ignore
-                for m in data:
-                    if m.name:
-                        new_list.append(m.name.split("/")[1])
-        else:
+        fetcher = MODEL_LIST_FETCHERS.get(p)
+        if fetcher is None:
             raise ValueError(f"Unknown provider: {p}")
-
-        return new_list
+        return _filter_and_sort_models(p, fetcher(p))
 
     # pylint: disable=too-many-return-statements, too-many-branches
     def get_model_context_length(self, provider: LlmProvider, model_name: str) -> int:
@@ -403,6 +333,117 @@ class ProviderManager(MessageSink):
         self.log_it(f"Refreshing models for provider: {provider.value}")
         self._refresh_one_provider(provider)
         self.save_models()
+
+
+# -- Provider model-list fetch adapters --------------------------------------------
+#
+# Each adapter returns normalized ``(model_id, created)`` tuples, where ``created`` is a
+# POSIX timestamp or None. Heavy provider SDKs are imported inside the adapters so
+# importing this module does not pull them in at startup. Every network client is
+# built with ``settings.http.provider_model_request_timeout``.
+
+ModelEntry = tuple[str, float | None]
+"""A model id and its creation time (POSIX seconds), when the provider reports one."""
+
+_UNFILTERED_PROVIDERS: frozenset[LlmProvider] = frozenset({LlmProvider.OLLAMA, LlmProvider.LLAMACPP})
+"""Providers whose listed models are all usable for chat, so the chat-mode filter is skipped."""
+
+
+def _base_url(p: LlmProvider) -> str | None:
+    return settings.provider.provider_base_urls[p] or provider_base_urls[p]
+
+
+def _api_key(p: LlmProvider) -> str | None:
+    return settings.provider.provider_api_keys[p] or os.environ.get(provider_env_key_names[p])
+
+
+def _timeout() -> float:
+    return settings.http.provider_model_request_timeout
+
+
+def _fetch_ollama(p: LlmProvider) -> list[ModelEntry]:
+    return [(name, None) for name in ollama_dm.get_model_names()]
+
+
+def _fetch_llamacpp(p: LlmProvider) -> list[ModelEntry]:
+    from openai import OpenAI
+
+    models = OpenAI(base_url=_base_url(p), timeout=_timeout()).models.list().data
+    return [(m.id or "default", m.created) for m in models]
+
+
+def _fetch_openai_compatible(p: LlmProvider) -> list[ModelEntry]:
+    from openai import OpenAI
+
+    models = OpenAI(base_url=_base_url(p), api_key=_api_key(p), timeout=_timeout()).models.list().data
+    return [(m.id, m.created) for m in models]
+
+
+def _fetch_groq(p: LlmProvider) -> list[ModelEntry]:
+    from groq import Groq
+
+    models = Groq(base_url=_base_url(p), timeout=_timeout()).models.list().data
+    return [(m.id, m.created) for m in models]
+
+
+def _fetch_anthropic(p: LlmProvider) -> list[ModelEntry]:
+    import anthropic
+
+    models = anthropic.Anthropic(timeout=_timeout()).models.list(limit=50)
+    return [(m.id, m.created_at.timestamp() if m.created_at else None) for m in models]
+
+
+def _fetch_litellm(p: LlmProvider) -> list[ModelEntry]:
+    response = requests.get(f"{_base_url(p)}/models", timeout=_timeout())
+    response.raise_for_status()
+    payload = response.json()
+    models = payload.get("data") if isinstance(payload, dict) else None
+    if not isinstance(models, list):
+        raise ValueError("LiteLLM /models response has no 'data' list")
+    return [(str(m["id"]), m.get("created")) for m in models if isinstance(m, dict) and m.get("id")]
+
+
+def _fetch_gemini(p: LlmProvider) -> list[ModelEntry]:
+    from google import genai  # type: ignore
+    from google.genai import types  # type: ignore
+
+    client = genai.Client(  # type: ignore[attr-defined]
+        api_key=_api_key(p), http_options=types.HttpOptions(timeout=int(_timeout() * 1000))
+    )
+    return [(m.name.split("/", 1)[-1], None) for m in client.models.list() if m.name]
+
+
+MODEL_LIST_FETCHERS: dict[LlmProvider, Callable[[LlmProvider], list[ModelEntry]]] = {
+    LlmProvider.OLLAMA: _fetch_ollama,
+    LlmProvider.LLAMACPP: _fetch_llamacpp,
+    LlmProvider.OPENAI: _fetch_openai_compatible,
+    LlmProvider.OPENROUTER: _fetch_openai_compatible,
+    LlmProvider.XAI: _fetch_openai_compatible,
+    LlmProvider.DEEPSEEK: _fetch_openai_compatible,
+    LlmProvider.GROQ: _fetch_groq,
+    LlmProvider.ANTHROPIC: _fetch_anthropic,
+    LlmProvider.LITELLM: _fetch_litellm,
+    LlmProvider.GEMINI: _fetch_gemini,
+}
+"""Provider -> model-list fetch adapter. Adding a provider means adding one entry here."""
+
+
+def _filter_and_sort_models(p: LlmProvider, entries: list[ModelEntry]) -> list[str]:
+    """Keep chat-capable models and order them newest first.
+
+    Models are sorted by ``created`` descending when every entry has one; otherwise
+    (some or all lack it) by id ascending, so a missing timestamp never raises or
+    interleaves unpredictably. Ollama's local list keeps the order Ollama returned.
+    """
+    if p == LlmProvider.OLLAMA:
+        return [model_id for model_id, _ in entries]
+    if p not in _UNFILTERED_PROVIDERS:
+        entries = [e for e in entries if get_model_mode(p, e[0]) in ("chat", "unknown")]
+    if entries and all(created is not None for _, created in entries):
+        entries = sorted(entries, key=lambda e: e[1] or 0.0, reverse=True)
+    else:
+        entries = sorted(entries, key=lambda e: e[0])
+    return [model_id for model_id, _ in entries]
 
 
 provider_manager: ProviderManager = ProviderManager()
