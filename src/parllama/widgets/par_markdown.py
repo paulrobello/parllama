@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Iterable
+from functools import cache
 from typing import Self
 
 import clipman
@@ -96,6 +96,10 @@ class FenceCopyButton(Static):
 
 class ParMarkdownFence(MarkdownFence):
     """A fence Markdown block."""
+
+    # Opt out of text selection: read-only allow_select forwards to this
+    # ClassVar, and clicking a stale streamed block crashes Textual 8.2.8.
+    ALLOW_SELECT = False
 
     DEFAULT_CSS = """
     ParMarkdownFence {
@@ -195,18 +199,21 @@ class ParMarkdown(Markdown):
         if block_name in ("fence", "code_block"):
             return ParMarkdownFence
 
-        return self.BLOCKS[block_name]
+        return _no_select(self.BLOCKS[block_name])
 
-    def _parse_markdown(self, tokens: Iterable[Token]) -> Iterable[MarkdownBlock]:
-        """Build blocks with text selection disabled.
 
-        Clicking streamed markdown races Textual 8.2.8's mouse-selection
-        forwarding (stale block under the cursor:
-        ``AttributeError: 'NoneType' object has no attribute 'region'`` in
-        ``Screen._forward_event``), so blocks opt out of selection entirely —
-        copying goes through the per-message ctrl+c binding and the fence
-        copy buttons.
-        """
-        for block in super()._parse_markdown(tokens):
-            block.allow_select = False  # pyright: ignore[reportAttributeAccessIssue]
-            yield block
+@cache
+def _no_select(block_class: type[MarkdownBlock]) -> type[MarkdownBlock]:
+    """Subclass a markdown block with text selection disabled.
+
+    Textual's selection opt-out is a False ``ALLOW_SELECT`` class attribute
+    (Button, Select, Tree use it); ``allow_select`` is a read-only property
+    over that var, so per-instance assignment is not an option.
+
+    Clicking streamed markdown races Textual 8.2.8's mouse-selection
+    forwarding (stale block under the cursor:
+    ``AttributeError: 'NoneType' object has no attribute 'region'`` in
+    ``Screen._forward_event``), so blocks opt out entirely — copying goes
+    through the per-message ctrl+c binding and the fence copy buttons.
+    """
+    return type(f"Par{block_class.__name__}", (block_class,), {"ALLOW_SELECT": False})

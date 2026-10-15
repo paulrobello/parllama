@@ -1,7 +1,10 @@
 """Tests for the par_markdown module."""
 
-import pytest
-from parllama.widgets.par_markdown import sanitize_class_name
+import asyncio
+
+from markdown_it import MarkdownIt
+from parllama.widgets.par_markdown import ParMarkdown, sanitize_class_name
+from textual.app import App, ComposeResult
 
 
 class TestSanitizeClassName:
@@ -55,3 +58,26 @@ class TestSanitizeClassName:
         assert sanitize_class_name("a//b") == "a--b"
         assert sanitize_class_name("test!!!test") == "test---test"
         assert sanitize_class_name("foo|||bar") == "foo---bar"
+
+
+class TestBlockSelectionDisabled:
+    """Textual 8.2.8's mouse-selection forwarding crashes on stale streamed
+    blocks, so every block ParMarkdown builds must opt out of selection."""
+
+    def test_all_blocks_disable_selection(self) -> None:
+        """Heading, paragraph, and fence blocks all report allow_select False."""
+
+        async def scenario() -> list:
+            class Probe(App):
+                def compose(self) -> ComposeResult:
+                    yield ParMarkdown("")
+
+            app = Probe()
+            async with app.run_test():
+                widget = app.query_one(ParMarkdown)
+                tokens = MarkdownIt().parse("# Head\n\npara text\n\n```py\ncode\n```\n")
+                return list(widget._parse_markdown(tokens))
+
+        blocks = asyncio.run(scenario())
+        assert len(blocks) == 3
+        assert all(block.allow_select is False for block in blocks)
