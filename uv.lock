@@ -2828,7 +2828,6 @@ dependencies = [
     { name = "clipman" },
     { name = "cryptography" },
     { name = "docker" },
-    { name = "google-genai" },
     { name = "httpx" },
     { name = "humanize" },
     { name = "langchain" },
@@ -2838,17 +2837,14 @@ dependencies = [
     { name = "par-ai-core", extra = ["anthropic", "deepseek", "google", "groq", "litellm", "ollama", "openai", "openrouter", "pricing", "xai"] },
     { name = "pillow" },
     { name = "pydantic" },
-    { name = "pydantic-core" },
     { name = "pypdf" },
     { name = "python-dotenv" },
     { name = "pytz" },
-    { name = "requests" },
     { name = "rich" },
     { name = "rich-pixels" },
     { name = "semver" },
     { name = "textual" },
     { name = "textual-fspicker" },
-    { name = "urllib3" },
     { name = "xdg-base-dirs" },
 ]
 
@@ -2872,7 +2868,6 @@ dev = [
     { name = "types-beautifulsoup4" },
     { name = "types-orjson" },
     { name = "types-pytz" },
-    { name = "types-requests" },
 ]
 
 [package.metadata]
@@ -2881,7 +2876,6 @@ requires-dist = [
     { name = "clipman", specifier = ">=3.3.3" },
     { name = "cryptography", specifier = ">=50.0.2" },
     { name = "docker", specifier = ">=7.2.0" },
-    { name = "google-genai", specifier = ">=2.30.1" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "humanize", specifier = ">=4.16.0" },
     { name = "langchain", specifier = ">=1.4.6" },
@@ -2891,18 +2885,15 @@ requires-dist = [
     { name = "par-ai-core", extras = ["anthropic", "deepseek", "google", "groq", "litellm", "ollama", "openai", "openrouter", "pricing", "xai"], specifier = ">=0.5.9" },
     { name = "pillow", specifier = ">=12.3.0" },
     { name = "pydantic", specifier = ">=2.14.1" },
-    { name = "pydantic-core", specifier = ">=2.50.1" },
     { name = "pypdf", specifier = ">=6.20.1" },
     { name = "python-dotenv", specifier = ">=1.2.4" },
     { name = "pytz", specifier = ">=2026.5" },
-    { name = "requests", specifier = ">=2.34.2" },
     { name = "rich", specifier = ">=15.0.0" },
     { name = "rich-pixels", specifier = ">=3.0.1" },
     { name = "semver", specifier = ">=3.1.0" },
     { name = "textual", specifier = ">=8.2.8" },
     { name = "textual-fspicker", specifier = ">=1.0.1" },
     { name = "textual-serve", marker = "extra == 'web'", specifier = ">=1.1.3" },
-    { name = "urllib3", specifier = ">=2.8.0" },
     { name = "xdg-base-dirs", specifier = ">=6.0.3" },
 ]
 provides-extras = ["web"]
@@ -2922,7 +2913,6 @@ dev = [
     { name = "types-beautifulsoup4", specifier = ">=4.12.0.20250516" },
     { name = "types-orjson", specifier = ">=3.6.2" },
     { name = "types-pytz", specifier = ">=2026.5.0.20261006" },
-    { name = "types-requests", specifier = ">=2.33.0.20261006" },
 ]
 
 [[package]]
@@ -4390,18 +4380,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/ba/47/b493f47f2dd0971db06459439ebdeb114cf95029188268099b331bbc4727/types_pytz-2026.5.0.20261006.tar.gz", hash = "sha256:1a522c2ec03aad8d4baaf97105958019ad51704b1e471c882d1c6ccea3e5e64b", size = 11073, upload-time = "2026-10-06T08:15:12.87Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/77/38/e375026fb4ff74fed6bdb84d7d336571d0603b6b9675751579cec84cfc9b/types_pytz-2026.5.0.20261006-py3-none-any.whl", hash = "sha256:9e4a893b362a8eed4e10a348c80603ade65bdb3819419e589364afafe2ea08b1", size = 10168, upload-time = "2026-10-06T08:15:11.985Z" },
-]
-
-[[package]]
-name = "types-requests"
-version = "2.33.0.20261006"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "urllib3" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/57/15/9b7e2e2e7c87d01366185b198b3febc6bc0c973f2bf21a62da4ab7d3495e/types_requests-2.33.0.20261006.tar.gz", hash = "sha256:0652999e9306aea345f40732d58fa49a7f6cade6a0d74d92119c5c8d82eddaf0", size = 25316, upload-time = "2026-10-06T08:15:57.782Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/4d/72/b82789207b3d360ce9f5a4372c790c52cc3dd928aeb7d4faeec652b651b2/types_requests-2.33.0.20261006-py3-none-any.whl", hash = "sha256:26cc8146505cab33cda9737991929e4144c559bebe05078ccc6998f27c4ca2c1", size = 21445, upload-time = "2026-10-06T08:15:56.658Z" },
 ]
 
 [[package]]

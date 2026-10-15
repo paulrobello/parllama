@@ -6,7 +6,6 @@ import logging
 from datetime import UTC, datetime
 
 import httpx
-import requests
 from semver import Version
 
 from parllama import __version__
@@ -35,7 +34,7 @@ class UpdateManager(MessageSink):
                 response = await client.get(self.url, follow_redirects=True, timeout=settings.http.update_check_timeout)
                 data = response.json()
             return Version.parse(data["info"]["version"])
-        except requests.exceptions.RequestException as e:
+        except httpx.HTTPError as e:
             raise ValueError("Could not fetch version info") from e
 
     async def check_for_updates(self, force: bool = False) -> None:

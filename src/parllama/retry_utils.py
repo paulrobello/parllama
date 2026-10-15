@@ -13,7 +13,6 @@ from typing import TypeVar
 
 import httpx
 import ollama
-import requests
 
 logger = logging.getLogger(__name__)
 
@@ -44,9 +43,7 @@ RETRYABLE_EXCEPTIONS = (
     httpx.TimeoutException,
     httpx.NetworkError,
     httpx.HTTPStatusError,
-    requests.exceptions.ConnectionError,
-    requests.exceptions.Timeout,
-    requests.exceptions.RequestException,
+    httpx.TransportError,
     # Ollama specific errors that might be transient
     ollama.ResponseError,
 )
@@ -69,10 +66,6 @@ def _calculate_delay(attempt: int, config: RetryConfig) -> float:
 def _is_retryable_error(error: Exception) -> bool:
     """Check if an error should trigger a retry."""
     if isinstance(error, RETRYABLE_EXCEPTIONS):
-        # For requests HTTP errors, check status codes
-        if isinstance(error, requests.exceptions.RequestException):
-            if hasattr(error, "response") and error.response is not None and hasattr(error.response, "status_code"):
-                return error.response.status_code in RETRYABLE_STATUS_CODES
         # For httpx HTTP errors, check status codes
         if isinstance(error, httpx.HTTPStatusError):
             return error.response.status_code in RETRYABLE_STATUS_CODES

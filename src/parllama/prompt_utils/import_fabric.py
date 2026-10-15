@@ -9,7 +9,7 @@ import tempfile
 import zipfile
 from collections.abc import Callable
 
-import requests
+import httpx
 
 from parllama.chat_manager import chat_manager
 from parllama.chat_message import ParllamaChatMessage
@@ -341,51 +341,53 @@ class ImportFabricManager(MessageSink):
                     f"Establishing connection to GitHub (timeout: {settings.http.http_request_timeout}s)",
                 )
 
-            response = requests.get(url, timeout=settings.http.http_request_timeout, stream=True)
-            response.raise_for_status()
+            with httpx.stream(
+                "GET", url, timeout=settings.http.http_request_timeout, follow_redirects=True
+            ) as response:
+                response.raise_for_status()
 
-            if progress_callback:
-                progress_callback(18, "Connected successfully", "Connection established, preparing download")
-
-            # Check content length before downloading
-            content_length = response.headers.get("content-length")
-            total_size = 0
-            if content_length:
-                total_size = int(content_length)
-                size_mb = total_size / (1024 * 1024)
-                if size_mb > settings.file_validation.max_zip_size_mb:
-                    raise ValueError(
-                        f"ZIP file too large: {size_mb:.2f}MB exceeds limit of {settings.file_validation.max_zip_size_mb}MB"
-                    )
                 if progress_callback:
-                    progress_callback(18, "Download starting...", f"File size: {size_mb:.2f}MB")
+                    progress_callback(18, "Connected successfully", "Connection established, preparing download")
 
-            # Download with size checking and progress updates
-            downloaded_size = 0
-            max_size_bytes = settings.file_validation.max_zip_size_mb * 1024 * 1024
+                # Check content length before downloading
+                content_length = response.headers.get("content-length")
+                total_size = 0
+                if content_length:
+                    total_size = int(content_length)
+                    size_mb = total_size / (1024 * 1024)
+                    if size_mb > settings.file_validation.max_zip_size_mb:
+                        raise ValueError(
+                            f"ZIP file too large: {size_mb:.2f}MB exceeds limit of {settings.file_validation.max_zip_size_mb}MB"
+                        )
+                    if progress_callback:
+                        progress_callback(18, "Download starting...", f"File size: {size_mb:.2f}MB")
 
-            with open(save_path, "wb") as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    if chunk:
-                        downloaded_size += len(chunk)
-                        if downloaded_size > max_size_bytes:
-                            raise ValueError(
-                                f"Download exceeded size limit of {settings.file_validation.max_zip_size_mb}MB"
-                            )
-                        f.write(chunk)
+                # Download with size checking and progress updates
+                downloaded_size = 0
+                max_size_bytes = settings.file_validation.max_zip_size_mb * 1024 * 1024
 
-                        # Update progress based on download progress
-                        if progress_callback and total_size > 0:
-                            # Download progress maps to 18-30% of total progress
-                            download_percent = (downloaded_size / total_size) * 100
-                            overall_progress = 18 + int(download_percent * 0.12)  # 18-30%
-                            mb_downloaded = downloaded_size / (1024 * 1024)
-                            mb_total = total_size / (1024 * 1024)
-                            progress_callback(
-                                overall_progress,
-                                "Downloading...",
-                                f"{mb_downloaded:.1f}MB / {mb_total:.1f}MB ({download_percent:.1f}%)",
-                            )
+                with open(save_path, "wb") as f:
+                    for chunk in response.iter_bytes(chunk_size=8192):
+                        if chunk:
+                            downloaded_size += len(chunk)
+                            if downloaded_size > max_size_bytes:
+                                raise ValueError(
+                                    f"Download exceeded size limit of {settings.file_validation.max_zip_size_mb}MB"
+                                )
+                            f.write(chunk)
+
+                            # Update progress based on download progress
+                            if progress_callback and total_size > 0:
+                                # Download progress maps to 18-30% of total progress
+                                download_percent = (downloaded_size / total_size) * 100
+                                overall_progress = 18 + int(download_percent * 0.12)  # 18-30%
+                                mb_downloaded = downloaded_size / (1024 * 1024)
+                                mb_total = total_size / (1024 * 1024)
+                                progress_callback(
+                                    overall_progress,
+                                    "Downloading...",
+                                    f"{mb_downloaded:.1f}MB / {mb_total:.1f}MB ({download_percent:.1f}%)",
+                                )
 
             final_size_mb = downloaded_size / (1024 * 1024)
             self.log_it(f"Downloaded Fabric ZIP: {final_size_mb:.2f}MB")
@@ -393,13 +395,13 @@ class ImportFabricManager(MessageSink):
             if progress_callback:
                 progress_callback(30, "Download complete", f"Downloaded {final_size_mb:.2f}MB successfully")
 
-        except requests.Timeout as e:
+        except httpx.TimeoutException as e:
             error_msg = f"Connection timed out after {settings.http.http_request_timeout} seconds"
             recovery_suggestion = "Try increasing the HTTP timeout in Options or check your internet connection speed"
             if progress_callback:
                 progress_callback(0, "Connection timeout", f"{error_msg}\n\nSuggestion: {recovery_suggestion}")
             raise RuntimeError(f"Connection timeout: {error_msg}\n\nTry: {recovery_suggestion}") from e
-        except requests.RequestException as e:
+        except httpx.HTTPError as e:
             error_msg = str(e)
             recovery_suggestion = self._get_network_recovery_suggestion(error_msg)
             if progress_callback:

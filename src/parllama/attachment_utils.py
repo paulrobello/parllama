@@ -9,18 +9,19 @@ from __future__ import annotations
 import base64
 import hashlib
 import tempfile
+from contextlib import closing
 from io import BytesIO
 from pathlib import Path
 from typing import Any, Protocol
 from urllib.parse import urljoin
 
-import requests
+import httpx
 from par_ai_core.llm_providers import LlmProvider
 from pypdf import PdfReader
 from pypdf.errors import PdfReadError
 
 from parllama.document_attachment import DocumentAttachment
-from parllama.net_guard import UnsafeUrlError, check_public_url
+from parllama.net_guard import UnsafeUrlError, check_public_url, open_guarded_stream
 from parllama.settings_manager import settings
 from parllama.validators.file_validator import FileValidationError, FileValidator
 
@@ -143,9 +144,7 @@ def _fetch_remote(url: str) -> tuple[bytes, str]:
         current = url
         for _ in range(MAX_REMOTE_REDIRECTS + 1):
             _check_remote_url(current)
-            with requests.get(
-                current, timeout=settings.http.image_fetch_timeout, stream=True, allow_redirects=False
-            ) as response:
+            with closing(open_guarded_stream(current, timeout=settings.http.image_fetch_timeout)) as response:
                 if response.is_redirect:
                     location = response.headers.get("Location")
                     if not location:
@@ -156,7 +155,7 @@ def _fetch_remote(url: str) -> tuple[bytes, str]:
                 cap = settings.file_validation.max_document_size_mb * 1024 * 1024
                 chunks: list[bytes] = []
                 received = 0
-                for chunk in response.iter_content(chunk_size=64 * 1024):
+                for chunk in response.iter_bytes(chunk_size=64 * 1024):
                     received += len(chunk)
                     if received > cap:
                         raise AttachmentError(
@@ -165,7 +164,7 @@ def _fetch_remote(url: str) -> tuple[bytes, str]:
                     chunks.append(chunk)
                 return b"".join(chunks), url
         raise AttachmentError(f"Too many redirects fetching document (limit {MAX_REMOTE_REDIRECTS})")
-    except requests.RequestException as e:
+    except httpx.HTTPError as e:
         raise AttachmentError(f"Failed to download document: {e}") from e
 
 

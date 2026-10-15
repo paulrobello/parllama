@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+from contextlib import closing
 from pathlib import Path
 from urllib.parse import urljoin
 
-import requests
+import httpx
 from par_ai_core.utils import md5_hash
 
-from parllama.net_guard import UnsafeUrlError, check_public_url
+from parllama.net_guard import UnsafeUrlError, check_public_url, open_guarded_stream
 from parllama.secure_file_ops import SecureFileOperations
 from parllama.settings_manager import settings
 from parllama.validators.file_validator import FileValidationError
@@ -35,14 +36,8 @@ def _download_image(url: str) -> bytes:
     @retry_with_backoff(
         config=create_retry_config(max_attempts=http.image_fetch_max_attempts, base_delay=http.image_fetch_base_delay)
     )
-    def _get(current: str) -> requests.Response:
-        return requests.get(
-            current,
-            headers={"user-agent": _USER_AGENT},
-            timeout=http.image_fetch_timeout,
-            stream=True,
-            allow_redirects=False,
-        )
+    def _get(current: str) -> httpx.Response:
+        return open_guarded_stream(current, timeout=http.image_fetch_timeout, headers={"user-agent": _USER_AGENT})
 
     current = url
     for _ in range(MAX_IMAGE_REDIRECTS + 1):
@@ -50,7 +45,7 @@ def _download_image(url: str) -> bytes:
             check_public_url(current, "image")
         except UnsafeUrlError as e:
             raise FileNotFoundError(str(e)) from e
-        with _get(current) as response:
+        with closing(_get(current)) as response:
             if response.is_redirect:
                 location = response.headers.get("Location")
                 if not location:
@@ -60,7 +55,7 @@ def _download_image(url: str) -> bytes:
             response.raise_for_status()
             chunks: list[bytes] = []
             received = 0
-            for chunk in response.iter_content(chunk_size=64 * 1024):
+            for chunk in response.iter_bytes(chunk_size=64 * 1024):
                 received += len(chunk)
                 if received > cap:
                     raise FileNotFoundError(
@@ -108,7 +103,7 @@ def fetch_and_cache_image(image_path: str | Path) -> tuple[Path, bytes]:
                                 cache_file.unlink()
                             raise FileNotFoundError(f"Downloaded image failed validation: {e}") from e
 
-                except (requests.RequestException, OSError, FileValidationError) as e:
+                except (httpx.HTTPError, OSError, FileValidationError) as e:
                     raise FileNotFoundError(f"Failed to fetch image: {e}") from e
             else:
                 if fv.validate_file_content:

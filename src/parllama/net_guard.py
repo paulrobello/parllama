@@ -4,11 +4,37 @@ from __future__ import annotations
 
 import ipaddress
 import socket
+import threading
 from urllib.parse import urlsplit
+
+import httpx
 
 
 class UnsafeUrlError(ValueError):
     """Raised when a URL is not http(s) or resolves to a non-public address."""
+
+
+def open_guarded_stream(url: str, *, timeout: float, headers: dict[str, str] | None = None) -> httpx.Response:
+    """Open a streaming GET for one redirect hop, without following redirects.
+
+    The caller must have run :func:`check_public_url` on ``url`` and must close the
+    response (``contextlib.closing``). Redirects are left to the caller so every hop
+    is re-checked.
+
+    Raises:
+        httpx.HTTPError: If the request fails.
+    """
+    global _guarded_client
+    with _guarded_client_lock:
+        if _guarded_client is None:
+            _guarded_client = httpx.Client(follow_redirects=False)
+        client = _guarded_client
+    request = client.build_request("GET", url, headers=headers, timeout=timeout)
+    return client.send(request, stream=True, follow_redirects=False)
+
+
+_guarded_client: httpx.Client | None = None
+_guarded_client_lock = threading.Lock()
 
 
 def check_public_url(url: str, kind: str = "resource") -> None:

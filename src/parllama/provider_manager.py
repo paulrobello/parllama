@@ -8,9 +8,9 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+import httpx
 import litellm
 import orjson as json
-import requests
 from dotenv import load_dotenv
 from par_ai_core.llm_providers import (
     LlmProvider,
@@ -394,7 +394,7 @@ def _fetch_anthropic(p: LlmProvider) -> list[ModelEntry]:
 
 
 def _fetch_litellm(p: LlmProvider) -> list[ModelEntry]:
-    response = requests.get(f"{_base_url(p)}/models", timeout=_timeout())
+    response = httpx.get(f"{_base_url(p)}/models", timeout=_timeout(), follow_redirects=True)
     response.raise_for_status()
     payload = response.json()
     models = payload.get("data") if isinstance(payload, dict) else None
