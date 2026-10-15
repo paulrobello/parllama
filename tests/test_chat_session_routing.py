@@ -48,16 +48,10 @@ def test_chat_session_has_no_direct_delivery_bus() -> None:
     """Phase 6 removes the session-local direct delivery bus."""
     session = ChatSession(name="Session", llm_config=_llm_config(), messages=[])
 
-    removed_attrs = [
-        "_" + "subs",
-        "add" + "_sub",
-        "remove" + "_sub",
-        "_notify" + "_" + "subs",
-        "num" + "_" + "subs",
-        "clean" + "up",
-    ]
+    # Members of the removed per-session subscriber bus; delivery now goes through the app EventBus.
+    removed_attrs = ["_subs", "add_sub", "remove_sub", "_notify_subs", "num_subs", "cleanup"]
     for attr in removed_attrs:
-        assert not hasattr(session, attr)
+        assert not hasattr(session, attr), attr
 
 
 def test_session_changed_emits_textual_session_updated_to_app(isolated_chat_settings: None) -> None:

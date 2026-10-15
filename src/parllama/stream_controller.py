@@ -254,8 +254,8 @@ class StreamController:
                         host._emit(ChatGenerationAborted(host.id))
                         host._emit(ChatMessage(parent_id=host.id, message_id=msg.id, is_final=True))
                         stream.close()  # type: ignore
-                    except (OSError, ValueError):
-                        pass
+                    except (OSError, ValueError) as e:
+                        host.log_it(f"Ignoring error while aborting stream ({type(e).__name__}): {e}")
                     finally:
                         self._abort = False
                     return StreamResult(aborted=True, errored=False)

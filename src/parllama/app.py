@@ -263,7 +263,6 @@ Some functions are only available via slash / commands on that chat tab. You can
         """Push requested model event"""
         if self.add_job_to_queue(PushModelJob(modelName=event.model_name)):
             self.main_screen.local_view.post_message(SetModelNameLoading(event.model_name, True))
-        # self.notify(f"Model push {msg.model_name} requested")
 
     @on(LocalModelCreateRequested)
     def on_model_create_requested(self, event: LocalModelCreateRequested) -> None:
@@ -429,12 +428,6 @@ Some functions are only available via slash / commands on that chat tab. You can
             )
         finally:
             self.state_manager.set_refreshing(False, "local models")
-
-    # @on(LocalModelListLoaded)
-    # def on_model_data_loaded(self) -> None:
-    #     """Refresh model completed"""
-    #     self.post_message_all(StatusMessage("Local model list refreshed"))
-    #     # self.notify("Local models refreshed.")
 
     @on(SiteModelsRefreshRequested)
     def on_site_models_refresh_requested(self, msg: SiteModelsRefreshRequested) -> None:
