@@ -132,7 +132,6 @@ class ProviderManager(MessageSink):
             raise ValueError(f"Unknown provider: {p}")
         return _filter_and_sort_models(p, fetcher(p))
 
-    # pylint: disable=too-many-return-statements, too-many-branches
     def get_model_context_length(self, provider: LlmProvider, model_name: str) -> int:
         """Get a model's context length.
 
