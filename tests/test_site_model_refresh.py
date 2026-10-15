@@ -85,6 +85,7 @@ def test_card_fields_are_parsed(cache_dir: Path, manager: OllamaDataManager, mon
         SiteModel(
             name="llama3",
             description="llama3 description",
+            # Pins current composition (page url + absolute href doubles the namespace); url is unused by the UI.
             url="https://ollama.com/library/library/llama3",
             num_pulls="1.2M",
             num_tags="68",
