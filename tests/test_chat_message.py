@@ -15,6 +15,7 @@ from parllama.attachment_utils import documents_as_text
 from parllama.chat_message import ParllamaChatMessage, try_get_image_type
 from parllama.chat_session import ChatSession
 from parllama.document_attachment import DocumentAttachment
+from parllama.widgets.chat_message_widget import ChatMessageWidget
 
 
 def _llm_config() -> LlmConfig:
@@ -398,5 +399,13 @@ class TestThinkingAndFinishReason:
 
         assistant_id = session.get_last_ai_message().id
         final_flags = [e.is_final for e in emits if isinstance(e, ChatMessage) and e.message_id == assistant_id]
-        # placeholder emit, then one per chunk: reasoning, content, done
-        assert final_flags == [False, False, False, True]
+        # placeholder emit, per-chunk emits, then the guaranteed terminal emit
+        assert final_flags == [False, False, False, True, True]
+
+    def test_initially_final_message_renders_fenced_thinking(self) -> None:
+        """mk_msg_widget(is_final=True) must render the fenced thinking format
+        immediately — is_final was assigned after markdown_raw was read, so
+        reloaded sessions rendered the plain 'Thinking:' streaming format."""
+        msg = ParllamaChatMessage(role="assistant", content="answer", thinking="reasoning")
+        w = ChatMessageWidget.mk_msg_widget(msg=msg, session=None, is_final=True)
+        assert "````thinking" in w.markdown._initial_markdown

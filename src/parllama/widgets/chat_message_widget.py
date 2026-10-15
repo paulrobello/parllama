@@ -99,8 +99,11 @@ class ChatMessageWidget(Vertical, can_focus=True):
         super().__init__(id=f"cm_{msg.id}", **kwargs)
         self.session = session
         self.msg = msg
-        self.markdown = ParMarkdown(self.markdown_raw if is_final else "")
+        # is_final must be set BEFORE markdown_raw is read: raw_text branches
+        # on it, and the fenced thinking format would otherwise never render
+        # for initially-final messages.
         self.is_final = is_final
+        self.markdown = ParMarkdown(self.markdown_raw if is_final else "")
         self.border_title = self.msg.role
         self.fence_num: int = -1
         self._last_render_ts: float = 0.0

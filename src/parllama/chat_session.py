@@ -727,6 +727,10 @@ class ChatSession(ChatMessageContainer):
                     msg.content += f"\n\n{err_msg}"
                     msg.content = msg.content.strip()
 
+            if not is_aborted:
+                # Guarantee the terminal render even when the provider's last
+                # yielded chunk carries no done marker.
+                self._emit(ChatMessage(parent_id=self.id, message_id=msg.id, is_final=True))
             self._append_finish_reason_note(msg)
             self._accumulate_cost()
             self._changes.add("messages")
@@ -1082,6 +1086,8 @@ class ChatSession(ChatMessageContainer):
                     msg.content = msg.content.strip()
                     self._emit(ChatMessage(parent_id=self.id, message_id=msg.id, is_final=True))
 
+            if not is_aborted:
+                self._emit(ChatMessage(parent_id=self.id, message_id=msg.id, is_final=True))
             self._append_finish_reason_note(msg)
             self._accumulate_cost()
             self._changes.add("messages")

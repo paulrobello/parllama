@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from typing import Self
 
 import clipman
@@ -195,3 +196,17 @@ class ParMarkdown(Markdown):
             return ParMarkdownFence
 
         return self.BLOCKS[block_name]
+
+    def _parse_markdown(self, tokens: Iterable[Token]) -> Iterable[MarkdownBlock]:
+        """Build blocks with text selection disabled.
+
+        Clicking streamed markdown races Textual 8.2.8's mouse-selection
+        forwarding (stale block under the cursor:
+        ``AttributeError: 'NoneType' object has no attribute 'region'`` in
+        ``Screen._forward_event``), so blocks opt out of selection entirely —
+        copying goes through the per-message ctrl+c binding and the fence
+        copy buttons.
+        """
+        for block in super()._parse_markdown(tokens):
+            block.allow_select = False  # pyright: ignore[reportAttributeAccessIssue]
+            yield block
