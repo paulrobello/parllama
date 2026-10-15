@@ -8,6 +8,7 @@ from textual.containers import Container, Horizontal, Vertical
 from textual.events import Show
 from textual.widgets import Button, Checkbox, Input, Label, RichLog
 
+from parllama.messages.messages import SendToClipboard
 from parllama.settings_manager import settings
 
 
@@ -57,6 +58,7 @@ class LogView(Container):
                 yield self.auto_scroll
                 yield Label("Max Lines: ")
                 yield self.max_lines_input
+                yield Button("Copy", id="copy_log", variant="success")
                 yield Button("Clear", id="clear", variant="warning")
             yield self.richlog
 
@@ -75,6 +77,12 @@ class LogView(Container):
     def on_clear_pressed(self) -> None:
         """Handle clear button press"""
         self.richlog.clear()
+
+    @on(Button.Pressed, "#copy_log")
+    def on_copy_log_pressed(self) -> None:
+        """Copy the full log text to the clipboard"""
+        text = "\n".join(strip.text for strip in self.richlog.lines)
+        self.post_message(SendToClipboard(message=text))
 
     @on(Input.Changed, "#max_lines")
     def on_max_lines_changed(self, event: Input.Changed) -> None:
