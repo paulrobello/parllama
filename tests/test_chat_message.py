@@ -301,6 +301,30 @@ class TestEmptyModelSendGuard:
         logged = " ".join(str(c.args[0]) for c in mock_log.call_args_list if c.args)
         assert "No model selected" in logged
 
+    def test_continue_generation_empty_model_leaves_state_untouched(self, isolated_chat_settings: None) -> None:
+        """QA-001: the guard must not delete following messages, persist, or wedge the busy flag."""
+        session = ChatSession(
+            name="G3",
+            llm_config=LlmConfig(provider=LlmProvider.OLLAMA, model_name=""),
+            messages=[
+                ParllamaChatMessage(id="u1", role="user", content="q"),
+                ParllamaChatMessage(id="a1", role="assistant", content="x"),
+                ParllamaChatMessage(id="u2", role="user", content="follow-up"),
+                ParllamaChatMessage(id="a2", role="assistant", content="y"),
+            ],
+        )
+        with (
+            patch("parllama.chat_session.ChatSession.log_it"),
+            patch.object(session, "save") as mock_save,
+        ):
+            result = asyncio.run(session.continue_generation("a1"))
+
+        assert result is False
+        assert session.is_generating is False
+        assert [m.id for m in session.messages] == ["u1", "a1", "u2", "a2"]
+        assert session["a2"] is not None
+        mock_save.assert_not_called()
+
 
 class _FakeChunk:
     """Minimal AIMessageChunk stand-in for stream-loop tests."""

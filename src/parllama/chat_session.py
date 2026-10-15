@@ -1001,6 +1001,13 @@ class ChatSession(ChatMessageContainer):
         if msg is None or msg.role != "assistant":
             return False
 
+        # Must run before any mutation: the deletions below are persisted immediately.
+        if not self._llm_config.model_name.strip():
+            self.log_it(
+                "No model selected for this session — pick one in the session config", notify=True, severity="error"
+            )
+            return False
+
         # Strip abort suffix if present
         if msg.content.endswith(self.ABORT_SUFFIX):
             msg.content = msg.content[: -len(self.ABORT_SUFFIX)]
@@ -1021,11 +1028,6 @@ class ChatSession(ChatMessageContainer):
 
         self._changes.add("messages")
         self.save()
-        if not self._llm_config.model_name.strip():
-            self.log_it(
-                "No model selected for this session — pick one in the session config", notify=True, severity="error"
-            )
-            return False
         is_aborted = False
         try:
             self._ensure_memory_injection()
