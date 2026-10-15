@@ -281,10 +281,14 @@ class ChatMessageContainer(MessageSink):
         raise NotImplementedError("save not implemented in base class")
 
     def _emit_textual_message(self, event: ChatMessageDeleted) -> None:
-        """Emit a Textual message through the owning app."""
+        """Broadcast on the app's EventBus so ChatView can route the removal to tabs."""
         app = self.app or (self.parent.app if self.parent else None)
         if app:
-            app.post_message(event)
+            post_message_all = getattr(app, "post_message_all", None)
+            if post_message_all is not None:
+                post_message_all(event)
+            else:
+                app.post_message(event)
 
     def clear_messages(self) -> None:
         """Clear all messages"""
