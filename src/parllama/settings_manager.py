@@ -32,6 +32,7 @@ from pydantic import BaseModel, PrivateAttr, ValidationError
 from xdg_base_dirs import xdg_data_home
 
 from parllama import __application_binary__
+from parllama.keychain_store import keychain_available, keychain_delete, keychain_get, keychain_set
 from parllama.paths import setup_directories
 from parllama.secure_file_ops import SecureFileOperations, SecureFileOpsError
 from parllama.settings.config_groups import (
@@ -104,6 +105,8 @@ class Settings(BaseModel):
     _secure_ops: SecureFileOperations = PrivateAttr()
     _vault_backed_providers: set[LlmProvider] = PrivateAttr(default_factory=set)
     """Providers whose API key lives in the encrypted vault and is omitted from settings.json."""
+    _keychain_backed_providers: set[LlmProvider] = PrivateAttr(default_factory=set)
+    """Providers whose API key lives in the OS keychain and is omitted from settings.json."""
     _vault_env_key_checked: tuple[str, bool] | None = PrivateAttr(default=None)
     """Memoized (PARLLAMA_VAULT_KEY, opens-the-vault) result; verification runs PBKDF2."""
 
@@ -203,7 +206,7 @@ class Settings(BaseModel):
         data = self.model_dump(mode="json", exclude=exclude)
         data["schema_version"] = SCHEMA_VERSION
         keys = data["provider"]["provider_api_keys"]
-        for p in self._vault_backed_providers:
+        for p in self._vault_backed_providers | self._keychain_backed_providers:
             if p.value in keys:
                 keys[p.value] = None
         return data
@@ -321,12 +324,69 @@ class Settings(BaseModel):
             if provider in self._vault_backed_providers and not vault.locked and env_name in vault:
                 vault.remove_secret(env_name, no_raise=True)
             self._vault_backed_providers.discard(provider)
+            if provider in self._keychain_backed_providers:
+                keychain_delete(env_name)
+                self._keychain_backed_providers.discard(provider)
             return
 
         if self._vault_persists_unattended(vault) and self._store_in_vault(vault, env_name, value):
             self._vault_backed_providers.add(provider)
             return
         self._vault_backed_providers.discard(provider)
+        if self.provider.use_keychain and keychain_available() and keychain_set(env_name, value):
+            self._keychain_backed_providers.add(provider)
+            return
+        self._keychain_backed_providers.discard(provider)
+
+    def sync_provider_keys_with_keychain(self) -> None:
+        """Move provider API keys to/from the OS keychain per the ``use_keychain`` opt-in.
+
+        Runs once at startup after the vault sync; providers whose key the vault manages are
+        skipped. Opt-in on: plaintext keys move into the keychain and are omitted from
+        settings.json; keys already in the keychain are loaded into memory. Opt-in off: any
+        keychain-held keys are pulled back into settings.json and their keychain entries
+        removed. A missing keyring backend leaves keys in settings.json untouched.
+        """
+        enabled = self.provider.use_keychain
+        if enabled and not keychain_available():
+            logger.warning(
+                "use_keychain is set but no OS keychain backend is available; keeping provider keys in settings.json"
+            )
+            enabled = False
+
+        for p in llm_provider_types:
+            env_name = provider_config[p].env_key_name
+            if not env_name or p in self._vault_backed_providers:
+                continue
+            current = self.provider.provider_api_keys.get(p)
+            if not enabled:
+                if p not in self._keychain_backed_providers:
+                    continue
+                self._keychain_backed_providers.discard(p)
+                if not current:
+                    stored = keychain_get(env_name)
+                    if stored:
+                        self.provider.provider_api_keys[p] = stored
+                keychain_delete(env_name)
+                continue
+
+            stored = keychain_get(env_name)
+            if stored and not current:
+                self.provider.provider_api_keys[p] = stored
+                self._keychain_backed_providers.add(p)
+            elif current and not stored:
+                if keychain_set(env_name, current):
+                    self._keychain_backed_providers.add(p)
+            elif current and stored:
+                if current == stored:
+                    self._keychain_backed_providers.add(p)
+                else:
+                    logger.warning(
+                        "Keychain value for %s differs from settings.json; keeping the settings value", env_name
+                    )
+
+        self.update_env()
+        self.save()
 
     # -- Save ------------------------------------------------------------------
 

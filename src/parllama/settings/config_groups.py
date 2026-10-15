@@ -79,6 +79,12 @@ class ProviderConfig(BaseModel):
 
     disabled_providers: dict[LlmProvider, bool] = {p: False for p in llm_provider_types}
 
+    use_keychain: bool = False
+    """Opt-in: store provider API keys in the OS keychain (macOS Keychain, Windows Credential
+    Manager, Linux Secret Service) instead of plaintext settings.json. Keys managed by the
+    encrypted vault are unaffected. With no keyring backend (e.g. headless Linux) keys stay
+    in settings.json."""
+
 
 class OllamaConfig(BaseModel):
     """Ollama-specific connection and behavior settings."""

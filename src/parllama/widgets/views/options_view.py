@@ -312,6 +312,7 @@ class OptionsView(Horizontal):
         "allow_zip_extraction": ("file_validation.allow_zip_extraction", None),
         "sanitize_filenames": ("file_validation.sanitize_filenames", None),
         "enable_ocr": ("file_validation.enable_ocr", None),
+        "use_keychain": ("provider.use_keychain", lambda view, val: settings.sync_provider_keys_with_keychain()),
     }
 
     def compose(self) -> ComposeResult:
@@ -632,6 +633,11 @@ class OptionsView(Horizontal):
             yield Static(
                 "Any changes in this section may require app restart",
                 classes="mb-1",
+            )
+            yield Checkbox(
+                label="Store API keys in OS keychain",
+                value=settings.provider.use_keychain,
+                id="use_keychain",
             )
             for spec in PROVIDER_PANELS:
                 yield ProviderSettingsPanel(spec)

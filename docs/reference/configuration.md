@@ -42,6 +42,7 @@ Source group: `ProviderConfig`
 | `provider_base_urls` | `dict[str, str \| null]` | All providers `null` (use provider default) |
 | `provider_cache_hours` | `dict[str, int]` | Ollama `168`, LlamaCpp `24`, XAI `48`, OpenAI `48`, OpenRouter `24`, Groq `24`, Anthropic `48`, Gemini `48`, Bedrock `72`, GitHub `48`, Deepseek `48`, LiteLLM `24` |
 | `disabled_providers` | `dict[str, bool]` | All providers `false` |
+| `use_keychain` | `bool` | `false` |
 
 `provider_cache_hours` controls how long each provider's fetched model list is cached (in
 hours) before being refreshed automatically; see the Options screen for manual refresh controls.
@@ -54,6 +55,13 @@ vault, plaintext keys already in `settings.json` are moved into the vault at sta
 `provider_api_keys` as plaintext so they remain available on the next start; the file is written
 with `0600` permissions. Environment variables (e.g. `OPENAI_API_KEY`) also work and are never
 written to the file.
+
+With `use_keychain` enabled (Options > AI Providers), keys not managed by the vault are stored in
+the OS keychain instead: macOS Keychain, Windows Credential Manager, or the Linux Secret Service.
+Keys already in `settings.json` move into the keychain at startup, and `provider_api_keys` records
+them as `null`. Disabling the option moves keys back into `settings.json` and removes the keychain
+entries. Where no keyring backend exists (e.g. headless Linux), keys remain in `settings.json` as
+before.
 
 ## Ollama settings
 
