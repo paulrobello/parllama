@@ -24,24 +24,11 @@ class InputWithHistory(InputTabComplete):
         super().__init__(**kwargs)
 
     async def _on_key(self, event: events.Key) -> None:
-        """Override tab, up and down key behavior."""
+        """Map up/down to history navigation.
 
-        if event.key == "tab":
-            self._cursor_visible = True
-            if self.cursor_blink and self._blink_timer:
-                self._blink_timer.reset()
-            if self.cursor_at_end and self._suggestion and self.value != self._suggestion:
-                self.value = self._suggestion
-                self.cursor_position = len(self.value)
-                if self.submit_on_complete:
-                    await self.action_submit()
-                else:
-                    event.stop()
-                    event.prevent_default()
-            else:
-                if self.submit_on_tab:
-                    await self.action_submit()
-
+        Textual dispatches ``_on_key`` to every class in the MRO until ``prevent_default()``,
+        so InputTabComplete's tab handling runs without an explicit ``super()`` call.
+        """
         if event.key in ("up", "down"):
             event.stop()
             event.prevent_default()
@@ -49,8 +36,6 @@ class InputWithHistory(InputTabComplete):
                 self.post_message(HistoryPrev(input=self))
             if event.key == "down":
                 self.post_message(HistoryNext(input=self))
-            return
-        return await super()._on_key(event)
 
     def action_toggle_mode(self) -> None:
         """Request input mode toggle"""

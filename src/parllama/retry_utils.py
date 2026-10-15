@@ -87,6 +87,34 @@ def _is_retryable_error(error: Exception) -> bool:
     return False
 
 
+def _retry_delay(
+    func_name: str,
+    attempt: int,
+    config: RetryConfig,
+    error: Exception,
+    extra_exceptions: tuple[type[Exception], ...],
+) -> float | None:
+    """Decide what to do after a failed attempt.
+
+    Returns:
+        The delay in seconds before the next attempt, or None when the caller must re-raise
+        (final attempt reached, or the error is not retryable).
+    """
+    if attempt == config.max_attempts - 1:
+        logger.error(f"All {config.max_attempts} attempts failed for {func_name}")
+        return None
+
+    if not (_is_retryable_error(error) or isinstance(error, extra_exceptions)):
+        logger.debug(f"Non-retryable error in {func_name}: {error}")
+        return None
+
+    delay = _calculate_delay(attempt, config)
+    logger.warning(
+        f"Attempt {attempt + 1}/{config.max_attempts} failed for {func_name}: {error}. Retrying in {delay:.2f}s"
+    )
+    return delay
+
+
 def retry_with_backoff(
     config: RetryConfig | None = None,
     exceptions: tuple[type[Exception], ...] | None = None,
@@ -103,9 +131,7 @@ def retry_with_backoff(
     if config is None:
         config = DEFAULT_RETRY_CONFIG
 
-    retry_exceptions = RETRYABLE_EXCEPTIONS
-    if exceptions:
-        retry_exceptions = retry_exceptions + exceptions
+    extra_exceptions = exceptions or ()
 
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
         @wraps(func)
@@ -113,36 +139,16 @@ def retry_with_backoff(
             if not config.enabled:
                 return func(*args, **kwargs)
 
-            last_exception = None
-
             for attempt in range(config.max_attempts):
                 try:
                     return func(*args, **kwargs)
                 except Exception as e:
-                    last_exception = e
-
-                    # Don't retry on final attempt
-                    if attempt == config.max_attempts - 1:
-                        break
-
-                    # Check if error is retryable
-                    if not _is_retryable_error(e):
-                        logger.debug(f"Non-retryable error in {func.__name__}: {e}")
+                    delay = _retry_delay(func.__name__, attempt, config, e, extra_exceptions)
+                    if delay is None:
                         raise
-
-                    delay = _calculate_delay(attempt, config)
-                    logger.warning(
-                        f"Attempt {attempt + 1}/{config.max_attempts} failed for {func.__name__}: {e}. "
-                        f"Retrying in {delay:.2f}s"
-                    )
                     time.sleep(delay)
 
-            # All attempts failed, raise the last exception
-            logger.error(f"All {config.max_attempts} attempts failed for {func.__name__}")
-            if last_exception:
-                raise last_exception
-
-            # This shouldn't happen, but just in case
+            # Only reachable when max_attempts < 1
             raise RuntimeError(f"Retry logic failed for {func.__name__}")
 
         return wrapper
@@ -166,9 +172,7 @@ def async_retry_with_backoff(
     if config is None:
         config = DEFAULT_RETRY_CONFIG
 
-    retry_exceptions = RETRYABLE_EXCEPTIONS
-    if exceptions:
-        retry_exceptions = retry_exceptions + exceptions
+    extra_exceptions = exceptions or ()
 
     def decorator(func: Callable[..., Awaitable[T]]) -> Callable[..., Awaitable[T]]:
         @wraps(func)
@@ -176,36 +180,16 @@ def async_retry_with_backoff(
             if not config.enabled:
                 return await func(*args, **kwargs)
 
-            last_exception = None
-
             for attempt in range(config.max_attempts):
                 try:
                     return await func(*args, **kwargs)
                 except Exception as e:
-                    last_exception = e
-
-                    # Don't retry on final attempt
-                    if attempt == config.max_attempts - 1:
-                        break
-
-                    # Check if error is retryable
-                    if not _is_retryable_error(e):
-                        logger.debug(f"Non-retryable error in {func.__name__}: {e}")
+                    delay = _retry_delay(func.__name__, attempt, config, e, extra_exceptions)
+                    if delay is None:
                         raise
-
-                    delay = _calculate_delay(attempt, config)
-                    logger.warning(
-                        f"Attempt {attempt + 1}/{config.max_attempts} failed for {func.__name__}: {e}. "
-                        f"Retrying in {delay:.2f}s"
-                    )
                     await asyncio.sleep(delay)
 
-            # All attempts failed, raise the last exception
-            logger.error(f"All {config.max_attempts} attempts failed for {func.__name__}")
-            if last_exception:
-                raise last_exception
-
-            # This shouldn't happen, but just in case
+            # Only reachable when max_attempts < 1
             raise RuntimeError(f"Retry logic failed for {func.__name__}")
 
         return wrapper

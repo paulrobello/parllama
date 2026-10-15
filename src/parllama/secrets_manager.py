@@ -190,8 +190,24 @@ class SecretsManager(MessageSink):
 
         return FileLock(file_path, mode)
 
+    def _overwrite_copy(self, data: bytes | str | None, kind: str) -> None:
+        """Zero a mutable bytearray copy of ``data``; shared core of the ``_secure_clear_*`` helpers.
+
+        Python ``bytes``/``str`` are immutable and may be interned or referenced elsewhere, so only
+        the copy is overwritten. Non-``bytes``/``str`` input is ignored; failures are logged, never raised.
+        """
+        if not isinstance(data, bytes | str):
+            return
+        try:
+            mutable_copy = bytearray(data if isinstance(data, bytes) else data.encode("utf-8"))
+            for i in range(len(mutable_copy)):
+                mutable_copy[i] = 0
+            del mutable_copy
+        except (TypeError, AttributeError, UnicodeEncodeError, MemoryError) as e:
+            self.log_it(f"Warning: Could not securely clear {kind} from memory: {e}")
+
     def _secure_clear_bytes(self, data: bytes) -> None:
-        """Best-effort overwrite of a bytearray copy of ``data``.
+        """Best-effort overwrite of a bytearray copy of ``data`` (``bytes`` or ``str``).
 
         WARNING: This does NOT guarantee the original ``bytes``/``str`` object
         is erased from the Python heap. Python strings and bytes are immutable
@@ -200,28 +216,7 @@ class SecretsManager(MessageSink):
         outside this method's control. Treat this as defense-in-depth only,
         never as a substitute for proper secret lifetime management.
         """
-        if data is None:
-            return
-
-        try:
-            # For Python strings and bytes, we can't reliably clear them from memory
-            # because they are immutable and Python manages their memory internally.
-            # This is a best-effort attempt to overwrite the data, but Python's
-            # garbage collector and string interning may prevent actual clearing.
-
-            # Create a mutable bytearray copy and clear it
-            if isinstance(data, bytes | str):
-                # Convert to mutable bytearray and clear it
-                mutable_copy = bytearray(data if isinstance(data, bytes) else data.encode("utf-8"))
-                # Zero out the mutable copy
-                for i in range(len(mutable_copy)):
-                    mutable_copy[i] = 0
-                # Clear the reference
-                del mutable_copy
-
-        except (TypeError, AttributeError, UnicodeEncodeError, MemoryError) as e:
-            # If secure clearing fails, log but don't raise
-            self.log_it(f"Warning: Could not securely clear bytes from memory: {e}")
+        self._overwrite_copy(data, "bytes")
 
     def _secure_clear_string(self, data: str) -> None:
         """Best-effort overwrite of a bytearray copy of ``data``.
@@ -233,26 +228,8 @@ class SecretsManager(MessageSink):
         method's control. Treat this as defense-in-depth only, never as a
         substitute for proper secret lifetime management.
         """
-        if data is None:
-            return
-
-        try:
-            # For Python strings, we can't reliably clear them from memory
-            # because they are immutable and Python manages their memory internally.
-            # This is a best-effort approach.
-
-            # Create a mutable bytearray copy and clear it
-            if isinstance(data, str):
-                mutable_copy = bytearray(data.encode("utf-8"))
-                # Zero out the mutable copy
-                for i in range(len(mutable_copy)):
-                    mutable_copy[i] = 0
-                # Clear the reference
-                del mutable_copy
-
-        except (TypeError, AttributeError, UnicodeEncodeError, MemoryError) as e:
-            # If secure clearing fails, log but don't raise
-            self.log_it(f"Warning: Could not securely clear string from memory: {e}")
+        if isinstance(data, str):
+            self._overwrite_copy(data, "string")
 
     def _secure_clear_dict(self, data: dict) -> None:
         """Best-effort recursive overwrite of string/bytes values in ``data``.
