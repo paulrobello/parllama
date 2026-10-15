@@ -566,6 +566,12 @@ class ChatSession(ChatMessageContainer):
         is_aborted = False
         msg: ParllamaChatMessage | None = None
         try:
+            if not self._llm_config.model_name.strip():
+                self.log_it(
+                    "No model selected for this session — pick one in the session config", notify=True, severity="error"
+                )
+                return False
+
             # Check if we need to inject memory at the start of conversation
             self._ensure_memory_injection()
 
@@ -915,6 +921,11 @@ class ChatSession(ChatMessageContainer):
 
         self._changes.add("messages")
         self.save()
+        if not self._llm_config.model_name.strip():
+            self.log_it(
+                "No model selected for this session — pick one in the session config", notify=True, severity="error"
+            )
+            return False
         is_aborted = False
         try:
             self._ensure_memory_injection()

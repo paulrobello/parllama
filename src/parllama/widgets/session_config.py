@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from par_ai_core.llm_config import LlmConfig, ReasoningEffort
+from par_ai_core.llm_providers import provider_config
 from textual import on
 from textual.app import ComposeResult
 from textual.containers import Horizontal, VerticalScroll
@@ -170,13 +171,21 @@ SessionConfig {
     async def action_new_session(self, session_name: str = "New Chat") -> None:
         """Start new session"""
         # self.notify("New session")
+        # Same fallback precedence the model select uses at init: the widget's
+        # value is blank until its option list loads, and a session must not
+        # be created with an empty model name.
+        model_name = (
+            self.provider_model_select.model_name
+            or settings.last_llm_config.model_name
+            or provider_config[self.provider_model_select.provider_name].default_model
+        )
         with self.prevent(Input.Changed):
             self.session = chat_manager.new_session(
                 session_name=session_name,
                 llm_config=LlmConfig(
                     # provider=provider_name_to_enum(self.provider_model_select.provider_name),
                     provider=self.provider_model_select.provider_name,
-                    model_name=self.provider_model_select.model_name,
+                    model_name=model_name,
                     temperature=self.get_temperature(),
                     reasoning_effort=self.get_reasoning_effort(),
                     reasoning_budget=self.get_reasoning_budget(),

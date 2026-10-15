@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import base64
 from pathlib import Path
 from unittest.mock import patch
@@ -193,3 +194,35 @@ class TestContainerUnload:
         assert session["m1"] is not None
         session.unload()
         assert session["m1"] is None
+
+
+class TestEmptyModelSendGuard:
+    """send_chat must refuse an empty model name with a clear error instead of
+    building a request the provider rejects with a cryptic pydantic error."""
+
+    def test_send_chat_refuses_empty_model(self, isolated_chat_settings: None) -> None:
+        session = ChatSession(
+            name="G",
+            llm_config=LlmConfig(provider=LlmProvider.OLLAMA, model_name=""),
+            messages=[],
+        )
+        with patch("parllama.chat_session.ChatSession.log_it") as mock_log:
+            result = asyncio.run(session.send_chat("hello"))
+
+        assert result is False
+        assert len(session.messages) == 0
+        logged = " ".join(str(c.args[0]) for c in mock_log.call_args_list if c.args)
+        assert "No model selected" in logged
+
+    def test_continue_generation_refuses_empty_model(self, isolated_chat_settings: None) -> None:
+        session = ChatSession(
+            name="G2",
+            llm_config=LlmConfig(provider=LlmProvider.OLLAMA, model_name=""),
+            messages=[ParllamaChatMessage(id="a1", role="assistant", content="x")],
+        )
+        with patch("parllama.chat_session.ChatSession.log_it") as mock_log:
+            result = asyncio.run(session.continue_generation("a1"))
+
+        assert result is False
+        logged = " ".join(str(c.args[0]) for c in mock_log.call_args_list if c.args)
+        assert "No model selected" in logged

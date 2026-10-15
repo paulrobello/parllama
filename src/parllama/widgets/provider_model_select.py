@@ -23,7 +23,7 @@ from parllama.messages.messages import (
 )
 from parllama.provider_manager import provider_manager
 from parllama.settings_manager import settings
-from parllama.widgets.deferred_select import DeferredSelect
+from parllama.widgets.deferred_select import NULL, DeferredSelect
 
 
 def get_filtered_provider_select_options() -> list[tuple[str, LlmProvider]]:
@@ -231,6 +231,19 @@ class ProviderModelSelect(Container):
 
         opts = provider_manager.get_model_select_options(self.provider_select.value)  # type: ignore
         self.model_select.set_options(opts)
+        # A select that stayed blank while the list was loading (deferred
+        # value pending) must self-heal once options land: apply the same
+        # default-model selection as provider_select_changed and post
+        # ProviderModelSelected (notify_changed) so the session's llm_config
+        # follows — without this, a session created before the list loaded
+        # keeps model_name='' and every send fails provider-side.
+        if self.model_select.value == Select.NULL and self.model_select.deferred_value == NULL:
+            msv = provider_config[  # pyright: ignore [reportArgumentType]
+                self.provider_select.value
+            ].default_model
+            if msv in provider_manager.get_model_names(self.provider_select.value):  # type: ignore
+                self.model_select.deferred_value = msv
+        self.notify_changed()
 
     def is_valid(self) -> bool:
         """Check if valid"""
