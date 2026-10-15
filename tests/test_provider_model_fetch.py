@@ -52,6 +52,19 @@ def test_non_chat_models_are_filtered_except_for_local_providers() -> None:
     assert local == ["chat-model", "embed-model"]
 
 
+def test_gemini_filter_sees_full_resource_name_and_result_is_stripped() -> None:
+    seen: list[str] = []
+
+    def mode(p: LlmProvider, name: str) -> str:
+        seen.append(name)
+        return "chat"
+
+    with patch.object(pm, "get_model_mode", side_effect=mode):
+        result = pm._filter_and_sort_models(LlmProvider.GEMINI, [("models/gemini-b", None), ("models/gemini-a", None)])
+    assert seen == ["models/gemini-b", "models/gemini-a"]
+    assert result == ["gemini-a", "gemini-b"]
+
+
 def test_ollama_keeps_local_order() -> None:
     assert pm._filter_and_sort_models(LlmProvider.OLLAMA, [("z", None), ("a", None)]) == ["z", "a"]
 
@@ -105,8 +118,9 @@ def test_litellm_adapter_tolerates_missing_created() -> None:
 def test_fetch_dispatches_through_registry(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setitem(settings.provider.disabled_providers, LlmProvider.GROQ, False)
     monkeypatch.setitem(pm.MODEL_LIST_FETCHERS, LlmProvider.GROQ, lambda p: [("a", 1.0), ("b", 2.0)])
-    with patch.object(pm, "is_provider_api_key_set", return_value=True), patch.object(
-        pm, "get_model_mode", return_value="chat"
+    with (
+        patch.object(pm, "is_provider_api_key_set", return_value=True),
+        patch.object(pm, "get_model_mode", return_value="chat"),
     ):
         assert pm.ProviderManager()._fetch_provider_model_list(LlmProvider.GROQ) == ["b", "a"]
 

@@ -410,7 +410,9 @@ def _fetch_gemini(p: LlmProvider) -> list[ModelEntry]:
     client = genai.Client(  # type: ignore[attr-defined]
         api_key=_api_key(p), http_options=types.HttpOptions(timeout=int(_timeout() * 1000))
     )
-    return [(m.name.split("/", 1)[-1], None) for m in client.models.list() if m.name]
+    # Full resource names ("models/<id>") are kept for the chat-mode lookup; the prefix is
+    # stripped after filtering by _filter_and_sort_models.
+    return [(m.name, None) for m in client.models.list() if m.name]
 
 
 MODEL_LIST_FETCHERS: dict[LlmProvider, Callable[[LlmProvider], list[ModelEntry]]] = {
@@ -443,6 +445,8 @@ def _filter_and_sort_models(p: LlmProvider, entries: list[ModelEntry]) -> list[s
         entries = sorted(entries, key=lambda e: e[1] or 0.0, reverse=True)
     else:
         entries = sorted(entries, key=lambda e: e[0])
+    if p == LlmProvider.GEMINI:
+        return [model_id.split("/", 1)[-1] for model_id, _ in entries]
     return [model_id for model_id, _ in entries]
 
 
