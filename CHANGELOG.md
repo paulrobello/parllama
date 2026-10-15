@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-10-15
+
 ### Security
 
 - **Credential scrub for executed commands**: commands run through execution templates no longer inherit provider API keys, tokens, secrets, or `PARLLAMA_VAULT_KEY` in their environment, and the confirmation dialog states what the child environment contains. The allowlist/blocklist is documented as a policy speed bump, not a sandbox.
@@ -21,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Site-model refresh failures no longer close the app**: network and parse errors notify the user and clear the loading state instead of crashing the worker.
 - **Update check failures** raise the documented `ValueError` and surface a notification instead of an unhandled worker exception.
 - **Input history widgets** no longer triple-submit on Tab, and the retry helper now honors its `exceptions=` argument.
+- **Session salt loss broke chat decryption**: `ChatSession.from_json` read `__salt__` while the session store writes `_salt`, so loading a session through the session list dropped its salt and the next save destroyed it; the reader now accepts both keys.
+- **`make publish` / `make test-publish` recipes fixed for uv 0.12.1**: the old argument forms were parsed as file paths; `publish` now checks against `https://pypi.org/simple/` and `test-publish` targets the TestPyPI index declared in `pyproject.toml`.
 
 ### Changed
 
@@ -28,12 +32,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Chat engine split**: `StreamController` and `SessionStore` extracted from `ChatSession`, collapsing the duplicated streaming loops between `send_chat` and `continue_generation`.
 - **Single HTTP client**: internal network calls unified on httpx; `requests` and duplicate transitive pins removed.
 - **Provider model fetching** now runs through a per-provider adapter registry with uniform timeouts and `None`-safe sorting.
-- Test suite grew from 260 to 397 tests; bugbear lint rules enabled; verified-dead code removed.
+- **EventBus migration completed**: the last ~20 stop-and-delegate `App` message handlers now broadcast at source; chat, prompt, and session traffic no longer routes through the app class and the `SessionEventRouter` is gone.
+- **Build gate cleanup**: new `make checkall-ci` (CI-parity gate); `lint` is check-only with `lint-fix` carrying `--fix`; coverage is scoped to the `parllama` package; the `debug` target no longer recurses through `make`.
+- Test suite grew from 260 to 408 tests; bugbear lint rules enabled; verified-dead code removed.
 
 ### Added
 
 - File-validation settings exposed in the Options view (File Validation section).
 - Release runbook at `docs/guides/release.md`.
+- **Opt-in OS keychain storage for provider API keys**: a new "Store API keys in OS keychain" toggle in Options > AI Providers moves vault-unbacked keys into the OS keychain via `keyring` (macOS Keychain, Windows Credential Manager, Linux Secret Service). Off by default; where no backend exists keys stay in `settings.json` with a warning, and turning the toggle off pulls keys back into `settings.json`.
 
 ## [0.9.2] - 2026-07-10
 
