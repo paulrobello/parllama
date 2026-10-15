@@ -6,9 +6,11 @@ import json
 import mimetypes
 import os
 import zipfile
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 from textual.validation import ValidationResult, Validator
+
+_ZIP_EXTRACT_CHUNK_BYTES = 64 * 1024
 
 
 class FileValidationError(Exception):
@@ -296,8 +298,8 @@ class FileValidator(Validator):
                     total_size += info.file_size
                     compressed_size += info.compress_size
 
-                    # Check for directory traversal in zip entries
-                    if ".." in info.filename or info.filename.startswith("/"):
+                    # Check for directory traversal and absolute (POSIX or Windows) zip entries
+                    if is_unsafe_zip_entry_name(info.filename):
                         raise FileValidationError(f"ZIP contains unsafe path: {info.filename}")
 
                 # Check compression ratio (zip bomb detection)
@@ -346,6 +348,86 @@ class FileValidator(Validator):
             return True
 
         return False
+
+
+def is_unsafe_zip_entry_name(name: str) -> bool:
+    """Return True if a ZIP entry name could escape the extraction directory.
+
+    Rejects ``..`` segments, POSIX-absolute names, and Windows-absolute names:
+    drive-letter forms (``C:\\x``, ``C:/x``, drive-relative ``C:x``), UNC forms
+    (``\\\\server\\share``, ``//server/share``) and root-relative ``\\x``.
+
+    Args:
+        name: The entry name as stored in the archive.
+
+    Returns:
+        True if the name is unsafe to extract.
+    """
+    if ".." in name or name.startswith(("/", "\\")):
+        return True
+    return bool(PureWindowsPath(name).drive)
+
+
+def safe_extract_zip(
+    zip_file: zipfile.ZipFile,
+    dest_dir: str | Path,
+    max_total_bytes: int,
+    max_entry_bytes: int | None = None,
+) -> int:
+    """Extract a ZIP archive while enforcing byte caps on the actual decompressed data.
+
+    Declared ``file_size`` values in the central directory are attacker-controlled,
+    so caps are enforced against the bytes really written, chunk by chunk.
+
+    Args:
+        zip_file: An open ZipFile to extract.
+        dest_dir: Directory to extract into. Every entry must resolve inside it.
+        max_total_bytes: Maximum total decompressed bytes across all entries.
+        max_entry_bytes: Optional maximum decompressed bytes for any single entry.
+
+    Returns:
+        Total number of decompressed bytes written.
+
+    Raises:
+        FileValidationError: If an entry name is unsafe or a byte cap is exceeded.
+            A partially written entry is removed before raising.
+    """
+    dest_root = Path(dest_dir).resolve()
+    total_written = 0
+
+    for info in zip_file.infolist():
+        if is_unsafe_zip_entry_name(info.filename):
+            raise FileValidationError(f"ZIP contains unsafe path: {info.filename}")
+
+        target = (dest_root / info.filename).resolve()
+        if not target.is_relative_to(dest_root):
+            raise FileValidationError(f"ZIP contains unsafe path: {info.filename}")
+
+        if info.is_dir():
+            target.mkdir(parents=True, exist_ok=True)
+            continue
+
+        target.parent.mkdir(parents=True, exist_ok=True)
+        entry_written = 0
+        try:
+            with zip_file.open(info) as source, target.open("wb") as out:
+                while chunk := source.read(_ZIP_EXTRACT_CHUNK_BYTES):
+                    entry_written += len(chunk)
+                    if max_entry_bytes is not None and entry_written > max_entry_bytes:
+                        raise FileValidationError(
+                            f"ZIP entry exceeds size limit of {max_entry_bytes} bytes: {info.filename}"
+                        )
+                    if total_written + entry_written > max_total_bytes:
+                        raise FileValidationError(
+                            f"ZIP extraction exceeds total size limit of {max_total_bytes} bytes at {info.filename}"
+                        )
+                    out.write(chunk)
+        except FileValidationError:
+            target.unlink(missing_ok=True)
+            raise
+        total_written += entry_written
+
+    return total_written
 
 
 def validate_directory_path(path: Path, must_exist: bool = True, must_be_writable: bool = False) -> None:

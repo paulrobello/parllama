@@ -17,7 +17,7 @@ from parllama.chat_prompt import ChatPrompt
 from parllama.message_sink import MessageSink
 from parllama.secure_file_ops import SecureFileOperations, SecureFileOpsError
 from parllama.settings_manager import settings
-from parllama.validators import FileValidationError, FileValidator
+from parllama.validators import FileValidationError, FileValidator, safe_extract_zip
 
 
 class ImportFabricManager(MessageSink):
@@ -485,8 +485,13 @@ class ImportFabricManager(MessageSink):
                 if progress_callback:
                     progress_callback(40, "Security validation passed", f"Extracting {total_files} files...")
 
-                # Extract safely with progress updates
-                zip_ref.extractall(extract_to)
+                # Extract with byte caps enforced on the actual decompressed data, not the declared sizes
+                safe_extract_zip(
+                    zip_ref,
+                    extract_to,
+                    max_total_bytes=int(max_uncompressed * 1024 * 1024),
+                    max_entry_bytes=int(settings.file_validation.max_file_size_mb * 1024 * 1024),
+                )
 
                 if progress_callback:
                     progress_callback(45, "Extraction complete", "Validating extracted files...")

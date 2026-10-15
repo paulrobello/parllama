@@ -7,6 +7,8 @@ from .file_validator import (
     FileValidator,
     get_safe_file_size,
     is_text_file,
+    is_unsafe_zip_entry_name,
+    safe_extract_zip,
     sanitize_filename,
     validate_directory_path,
 )
@@ -18,6 +20,8 @@ __all__ = [
     "HttpValidator",
     "get_safe_file_size",
     "is_text_file",
+    "is_unsafe_zip_entry_name",
+    "safe_extract_zip",
     "sanitize_filename",
     "validate_directory_path",
 ]

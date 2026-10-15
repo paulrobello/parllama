@@ -12,6 +12,8 @@ from parllama.validators.file_validator import (
     FileValidator,
     get_safe_file_size,
     is_text_file,
+    is_unsafe_zip_entry_name,
+    safe_extract_zip,
     sanitize_filename,
     validate_directory_path,
 )
@@ -161,6 +163,18 @@ class TestZipBombDetection:
         with pytest.raises(FileValidationError, match="unsafe path"):
             validator.validate_file_path(zip_path)
 
+    @pytest.mark.parametrize("entry_name", ["C:\\evil.txt", "C:/evil.txt", "C:evil.txt", "\\\\server\\share\\x.txt"])
+    def test_zip_with_windows_absolute_entry_rejected(self, tmp_path, entry_name):
+        """A ZIP entry with a Windows drive-letter or UNC path is rejected."""
+        validator = FileValidator(max_size_mb=10.0, check_content=True)
+        zip_path = tmp_path / "windows_abs.zip"
+
+        with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_STORED) as zf:
+            zf.writestr(zipfile.ZipInfo(entry_name), "gotcha")
+
+        with pytest.raises(FileValidationError, match="unsafe path"):
+            validator.validate_file_path(zip_path)
+
     def test_invalid_zip_file_rejected(self, tmp_path):
         """A file with a .zip extension that isn't a real ZIP archive is rejected."""
         validator = FileValidator(max_size_mb=10.0, check_content=True)
@@ -169,6 +183,91 @@ class TestZipBombDetection:
 
         with pytest.raises(FileValidationError):
             validator.validate_file_path(zip_path)
+
+
+class TestSafeExtractZip:
+    """Test byte-capped, path-checked ZIP extraction."""
+
+    def test_extracts_entries_within_caps(self, tmp_path):
+        """Entries within both caps are extracted with their content and directory structure."""
+        zip_path = tmp_path / "ok.zip"
+        with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_STORED) as zf:
+            zf.writestr("dir/", "")
+            zf.writestr("dir/a.txt", "alpha")
+            zf.writestr("b.txt", "beta")
+        dest = tmp_path / "out"
+        dest.mkdir()
+
+        with zipfile.ZipFile(zip_path) as zf:
+            written = safe_extract_zip(zf, dest, max_total_bytes=1024)
+
+        assert written == len("alpha") + len("beta")
+        assert (dest / "dir" / "a.txt").read_text() == "alpha"
+        assert (dest / "b.txt").read_text() == "beta"
+
+    def test_total_byte_cap_enforced_during_extraction(self, tmp_path):
+        """Honest, uncompressed entries whose combined size exceeds the cap stop extraction at the cap."""
+        zip_path = tmp_path / "big_total.zip"
+        with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_STORED) as zf:
+            for i in range(4):
+                zf.writestr(f"part{i}.bin", b"x" * 1000)
+        dest = tmp_path / "out"
+        dest.mkdir()
+
+        # Stored entries have a 1:1 ratio, so only the extraction-time cap can fire here.
+        with zipfile.ZipFile(zip_path) as zf:
+            with pytest.raises(FileValidationError, match="total size limit"):
+                safe_extract_zip(zf, dest, max_total_bytes=2500)
+
+        written = sum(p.stat().st_size for p in dest.rglob("*") if p.is_file())
+        assert written <= 2500
+        assert not (dest / "part2.bin").exists()
+
+    def test_per_entry_byte_cap_enforced_during_extraction(self, tmp_path):
+        """A single entry larger than max_entry_bytes is rejected and its partial file removed."""
+        zip_path = tmp_path / "big_entry.zip"
+        with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_STORED) as zf:
+            zf.writestr("huge.bin", b"x" * 5000)
+        dest = tmp_path / "out"
+        dest.mkdir()
+
+        with zipfile.ZipFile(zip_path) as zf:
+            with pytest.raises(FileValidationError, match="entry exceeds size limit"):
+                safe_extract_zip(zf, dest, max_total_bytes=1_000_000, max_entry_bytes=1000)
+
+        assert not (dest / "huge.bin").exists()
+
+    @pytest.mark.parametrize("entry_name", ["../escape.txt", "/abs.txt", "C:\\evil.txt", "//server/share/x.txt"])
+    def test_unsafe_entry_names_rejected_before_writing(self, tmp_path, entry_name):
+        """Traversal, POSIX-absolute and Windows-absolute entry names are refused at extraction."""
+        zip_path = tmp_path / "unsafe.zip"
+        with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_STORED) as zf:
+            zf.writestr(zipfile.ZipInfo(entry_name), "gotcha")
+        dest = tmp_path / "out"
+        dest.mkdir()
+
+        with zipfile.ZipFile(zip_path) as zf:
+            with pytest.raises(FileValidationError, match="unsafe path"):
+                safe_extract_zip(zf, dest, max_total_bytes=1024)
+
+        assert not any(dest.iterdir())
+
+    @pytest.mark.parametrize(
+        ("name", "unsafe"),
+        [
+            ("Fabric-main/data/patterns/x/system.md", False),
+            ("plain.txt", False),
+            ("a/../b.txt", True),
+            ("/etc/passwd", True),
+            ("\\root.txt", True),
+            ("C:\\Windows\\x.dll", True),
+            ("c:relative.txt", True),
+            ("\\\\host\\share\\x", True),
+        ],
+    )
+    def test_is_unsafe_zip_entry_name(self, name, unsafe):
+        """The entry-name predicate flags traversal and absolute forms only."""
+        assert is_unsafe_zip_entry_name(name) is unsafe
 
 
 class TestPathContainment:
