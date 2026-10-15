@@ -154,8 +154,8 @@ class LocalModelGridList(Grid, can_focus=False):
                 self.selected = items[new_index]
                 return
 
-    def action_select_up(self) -> None:
-        """Select the item to the top."""
+    def _grid_move(self, delta: int) -> None:
+        """Move the selection one row through the 2-column grid; delta is -1 (up) or 1 (down)."""
         focused = self.selected
         if not focused:
             self.select_first_item()
@@ -170,46 +170,30 @@ class LocalModelGridList(Grid, can_focus=False):
                 row = current_index // num_cols  # Calculate the current row
                 col = current_index % num_cols  # Calculate the current column
 
-                # Move up one row, wrapping around if necessary
-                new_row = (row - 1) % num_rows
+                # Move delta rows, wrapping around if necessary
+                new_row = (row + delta) % num_rows
                 new_index = new_row * num_cols + col
 
                 # Handle the case when there are an odd number of items and the last row has only one item
                 if new_index >= num_items:
-                    if col == 0:
-                        new_index = num_items - 1  # Move to the last item in the first column
+                    if delta < 0:
+                        if col == 0:
+                            new_index = num_items - 1  # Move to the last item in the first column
+                        else:
+                            new_index = num_items - 2  # Move to the last item in the second column
                     else:
-                        new_index = num_items - 2  # Move to the last item in the second column
+                        new_index = col  # Move to the first item in the current column
 
                 self.selected = items[new_index]
                 return
+
+    def action_select_up(self) -> None:
+        """Select the item above in the grid."""
+        self._grid_move(-1)
 
     def action_select_down(self) -> None:
-        """Select the item to the bottom."""
-        focused = self.selected
-        if not focused:
-            self.select_first_item()
-            return
-        items = self.query(LocalModelListItem)
-        for current_index, item in enumerate(items):
-            if item == focused:
-                num_items = len(items)
-                num_cols = 2  # Assuming a 2-column grid
-                num_rows = (num_items + num_cols - 1) // num_cols  # Calculate the number of rows
-
-                row = current_index // num_cols  # Calculate the current row
-                col = current_index % num_cols  # Calculate the current column
-
-                # Move down one row, wrapping around if necessary
-                new_row = (row + 1) % num_rows
-                new_index = new_row * num_cols + col
-
-                # Handle the case when there are an odd number of items and the last row has only one item
-                if new_index >= num_items:
-                    new_index = col  # Move to the first item in the current column
-
-                self.selected = items[new_index]
-                return
+        """Select the item below in the grid."""
+        self._grid_move(1)
 
     def action_delete_item(self) -> None:
         """Delete the selected item."""

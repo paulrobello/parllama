@@ -225,8 +225,8 @@ class ExecutionView(Container):
         except (ValueError, RuntimeError, OSError) as e:
             self.notify(f"Error loading templates: {e}", severity="error")
 
-    async def update_stats(self) -> None:
-        """Update the statistics display."""
+    def _render_stats(self) -> None:
+        """Render template statistics into the stats label."""
         try:
             execution_manager = get_execution_manager()
             stats = execution_manager.get_template_stats()
@@ -244,26 +244,14 @@ class ExecutionView(Container):
 
         except (RuntimeError, KeyError, LookupError):
             pass  # Ignore stats update errors
+
+    async def update_stats(self) -> None:
+        """Update the statistics display."""
+        self._render_stats()
 
     def update_stats_sync(self) -> None:
         """Synchronous version of update_stats for use in callbacks."""
-        try:
-            execution_manager = get_execution_manager()
-            stats = execution_manager.get_template_stats()
-
-            stats_text = (
-                f"Templates: {stats['total_templates']} "
-                f"(Enabled: {stats['enabled_templates']}) | "
-                f"Executions: {stats['total_executions']} "
-                f"(Success: {stats['successful_executions']}, "
-                f"Rate: {stats['success_rate']:.1f}%)"
-            )
-
-            stats_label = self.query_one("#stats_label", Label)
-            stats_label.update(stats_text)
-
-        except (RuntimeError, KeyError, LookupError):
-            pass  # Ignore stats update errors
+        self._render_stats()
 
     @on(Button.Pressed, "#new_template")
     def create_new_template(self) -> None:
