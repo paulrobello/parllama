@@ -680,7 +680,9 @@ Chat Commands:
         )
 
     async def _cmd_add_image_arg(self, raw_arg: str, cmd_arg: str) -> None:
-        arg_str = cmd_arg.strip()
+        # Parse from raw_arg: image paths/URLs are case-sensitive and the
+        # lowercased cmd_arg mangles them.
+        arg_str = raw_arg.strip()
         if not arg_str:
             self.notify("Usage: /add.image FILE_NAME_OR_URL PROMPT", severity="error")
             return
@@ -721,7 +723,9 @@ Chat Commands:
 
     async def _cmd_add_doc_arg(self, raw_arg: str, cmd_arg: str) -> None:
         """Handle /add.doc FILE_OR_URL PROMPT — attach a document and send."""
-        arg_str = cmd_arg.strip()
+        # Parse from raw_arg: paths and URLs are case-sensitive and the
+        # lowercased cmd_arg mangles them (e.g. CHANGELOG.md -> changelog.md).
+        arg_str = raw_arg.strip()
         if not arg_str:
             self.notify("Usage: /add.doc FILE_NAME_OR_URL PROMPT", severity="error")
             return
@@ -758,7 +762,7 @@ Chat Commands:
 
     async def _cmd_attach_arg(self, raw_arg: str, cmd_arg: str) -> None:
         """Handle /attach [FILE_OR_URL] — attach without sending."""
-        arg = cmd_arg.strip()
+        arg = raw_arg.strip()
         if not arg:
             self.attach_file_worker()
             return
