@@ -225,6 +225,9 @@ class SiteModelView(Container):
     def on_site_models_loaded(self, event: SiteModelsLoaded) -> None:
         """Update list, turn off loading indicator and update namespace suggester"""
         event.stop()
+        if not event.refreshed:
+            self.lv.loading = False
+            return
         self.lv.remove_children()
         self.lv.mount(*ollama_dm.site_models)
         self.lv.loading = False

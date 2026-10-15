@@ -466,8 +466,10 @@ Some functions are only available via slash / commands on that chat tab. You can
                     notify=True,
                 )
             )
-            # The site view's loading indicator is cleared only by SiteModelsLoaded; it re-shows the prior list.
-            self.main_screen.site_view.post_message(SiteModelsLoaded(ollama_namespace=msg.ollama_namespace))
+            # The site view's loading indicator is cleared only by SiteModelsLoaded.
+            self.main_screen.site_view.post_message(
+                SiteModelsLoaded(ollama_namespace=msg.ollama_namespace, refreshed=False)
+            )
         finally:
             self.state_manager.set_refreshing(False, operation)
 

@@ -29,9 +29,13 @@ class LocalModelCopyRequested(AppRequest):
 
 @dataclass
 class SiteModelsLoaded(Message):
-    """Message to notify screen that site models are loaded."""
+    """Message to notify screen that site models are loaded.
+
+    ``refreshed`` is False when the refresh failed: the list is unchanged and must not be re-mounted.
+    """
 
     ollama_namespace: str
+    refreshed: bool = True
 
 
 @dataclass

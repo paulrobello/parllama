@@ -8,11 +8,15 @@ from unittest.mock import MagicMock
 
 import httpx
 import pytest
+from textual.app import App, ComposeResult
 
 from parllama import app as app_module
 from parllama.app import ParLlamaApp
 from parllama.messages.model_messages import SiteModelsLoaded, SiteModelsRefreshRequested
 from parllama.messages.ui_messages import LogIt
+from parllama.models.ollama_data import SiteModel
+from parllama.widgets.site_model_list_item import SiteModelListItem
+from parllama.widgets.views.site_model_view import SiteModelView
 
 
 class _WorkerApp:
@@ -51,6 +55,7 @@ def test_refresh_failure_notifies_user_and_clears_loading(monkeypatch: pytest.Mo
     assert "Failed to refresh site models" in str(logged[0].msg)
     site_view_messages = [c.args[0] for c in stub.main_screen.site_view.post_message.call_args_list]
     assert [type(m) for m in site_view_messages] == [SiteModelsLoaded]
+    assert site_view_messages[0].refreshed is False
     stub.state_manager.set_refreshing.assert_called_with(False, "site models: library")
 
 
@@ -64,3 +69,31 @@ def test_refresh_success_does_not_log_error(monkeypatch: pytest.MonkeyPatch) -> 
     site_view_messages = [c.args[0] for c in stub.main_screen.site_view.post_message.call_args_list]
     assert [type(m) for m in site_view_messages] == [SiteModelsLoaded]
     stub.state_manager.set_refreshing.assert_called_with(False, "site models: library")
+
+
+@pytest.fixture
+def anyio_backend() -> str:
+    return "asyncio"
+
+
+class _SiteApp(App[None]):
+    def compose(self) -> ComposeResult:
+        yield SiteModelView()
+
+
+@pytest.mark.anyio
+async def test_failed_refresh_after_good_load_keeps_list_and_clears_loading(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A second SiteModelsLoaded with an unchanged list must not re-mount already-mounted items."""
+    model = SiteModel(name="llama3", description="", url="", num_pulls="", num_tags="", tags=[], updated="")
+    monkeypatch.setattr(app_module.ollama_dm, "site_models", [SiteModelListItem(model)])
+
+    app = _SiteApp()
+    async with app.run_test() as pilot:
+        view = app.query_one(SiteModelView)
+        view.post_message(SiteModelsLoaded(ollama_namespace="library"))
+        await pilot.pause()
+        view.lv.loading = True
+        view.post_message(SiteModelsLoaded(ollama_namespace="library", refreshed=False))
+        await pilot.pause()
+        assert len(view.lv.query(SiteModelListItem)) == 1
+        assert view.lv.loading is False
