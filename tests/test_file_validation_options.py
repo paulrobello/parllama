@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from textual.app import App, ComposeResult
 
-from parllama.settings_manager import Settings, _apply_flat_data_to_settings, settings
+from parllama.settings_manager import Settings, apply_settings_data, settings
 from parllama.theme_manager import theme_manager
 from parllama.widgets.views.options_view import (
     _FILE_VALIDATION_EXTENSION_FIELDS,
@@ -20,8 +20,8 @@ def anyio_backend() -> str:
     return "asyncio"
 
 
-def test_file_validation_settings_round_trip_through_flat_data() -> None:
-    """Non-default file-validation values saved to the flat dict are restored on load."""
+def test_file_validation_settings_round_trip_through_file_data() -> None:
+    """Non-default file-validation values in the saved payload are restored on load."""
     source = Settings()
     source.file_validation.file_validation_enabled = False
     source.file_validation.max_image_size_mb = 12.5
@@ -32,10 +32,10 @@ def test_file_validation_settings_round_trip_through_flat_data() -> None:
     source.file_validation.ocr_language = "deu"
     source.file_validation.sanitize_filenames = False
     source.file_validation.allowed_document_extensions = [".pdf", ".rst"]
-    data = source.model_dump(mode="json")
+    data = source.to_file_data()
 
     target = Settings()
-    _apply_flat_data_to_settings(target, data)
+    apply_settings_data(target, data)
 
     assert target.file_validation.file_validation_enabled is False
     assert target.file_validation.max_image_size_mb == 12.5
@@ -52,7 +52,10 @@ def test_file_validation_load_ignores_empty_extension_lists_and_clamps_numbers()
     """An empty saved extension list keeps the default and out-of-range numbers are clamped."""
     target = Settings()
     default_exts = list(target.file_validation.allowed_image_extensions)
-    _apply_flat_data_to_settings(target, {"allowed_image_extensions": [], "max_pdf_pages": 0, "ocr_language": ""})
+    apply_settings_data(
+        target,
+        {"file_validation": {"allowed_image_extensions": [], "max_pdf_pages": 0, "ocr_language": ""}},
+    )
     assert target.file_validation.allowed_image_extensions == default_exts
     assert target.file_validation.max_pdf_pages == 1
     assert target.file_validation.ocr_language == "eng"

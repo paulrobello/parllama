@@ -49,7 +49,7 @@ def _vault(tmp_path: Path, *, unlock: bool = True) -> SecretsManager:
 
 
 def _keys_on_disk(tmp_path: Path) -> dict:
-    return json.loads((tmp_path / "settings.json").read_text())["provider_api_keys"]
+    return json.loads((tmp_path / "settings.json").read_text())["provider"]["provider_api_keys"]
 
 
 def _write_legacy_settings(tmp_path: Path) -> None:

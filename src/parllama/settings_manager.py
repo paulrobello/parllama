@@ -11,6 +11,7 @@ itself is a pure data model with optional I/O methods.
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import logging
 import os
@@ -19,9 +20,9 @@ from argparse import Namespace
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-from par_ai_core.llm_config import LlmMode, ReasoningEffort
+from par_ai_core.llm_config import ReasoningEffort
 from par_ai_core.llm_providers import (
     LangChainConfig,
     LlmProvider,
@@ -29,7 +30,7 @@ from par_ai_core.llm_providers import (
     provider_config,
     provider_name_to_enum,
 )
-from pydantic import BaseModel, PrivateAttr
+from pydantic import BaseModel, PrivateAttr, ValidationError
 from xdg_base_dirs import xdg_data_home
 
 from parllama import __application_binary__
@@ -47,12 +48,37 @@ from parllama.settings.config_groups import (
     TimerConfig,
     UIConfig,
 )
+from parllama.settings.migration import CONFIG_GROUPS, SCHEMA_VERSION, migrate_settings_data
 from parllama.utils import TabType, get_args, valid_tabs
 
 if TYPE_CHECKING:
     from parllama.secrets_manager import SecretsManager
 
 logger = logging.getLogger(__name__)
+
+
+RUNTIME_FIELDS: frozenset[str] = frozenset(
+    {
+        "no_save",
+        "no_save_chat",
+        "data_dir",
+        "settings_file",
+        "cache_dir",
+        "ollama_cache_dir",
+        "image_cache_dir",
+        "chat_dir",
+        "prompt_dir",
+        "export_md_dir",
+        "secrets_file",
+        "provider_models_file",
+        "chat_history_file",
+    }
+)
+"""Fields derived from CLI args / environment at startup; never persisted or loaded."""
+
+RUNTIME_EXECUTION_FIELDS: frozenset[str] = frozenset(
+    {"execution_temp_dir", "execution_templates_file", "execution_history_file"}
+)
 
 
 @dataclass
@@ -172,56 +198,35 @@ class Settings(BaseModel):
 
     # -- Serialization ---------------------------------------------------------
 
-    _CONFIG_GROUP_NAMES: tuple[str, ...] = (
-        "provider",
-        "ollama",
-        "ui",
-        "chat",
-        "execution",
-        "retry",
-        "timer",
-        "http",
-        "file_validation",
-        "memory",
-    )
+    def to_file_data(self) -> dict[str, Any]:
+        """Return the JSON-ready nested payload written to settings.json.
 
-    def model_dump(self, **kwargs) -> dict:  # type: ignore[override]
-        """Flatten nested config groups into a single dict for backward-compatible JSON."""
-        # Use Pydantic's built-in serialization for the top-level model first.
-        # This correctly handles dataclasses (LastLlmConfig), LangChainConfig,
-        # datetime fields, enum dict keys, etc.
-        raw = super().model_dump(**kwargs)
-        result: dict = {}
-
-        # Copy top-level fields (skip the config group names)
-        for key, val in raw.items():
-            if key not in self._CONFIG_GROUP_NAMES:
-                result[key] = val
-
-        # Flatten each config group into the result
-        for group_name in self._CONFIG_GROUP_NAMES:
-            group_data = raw.get(group_name, {})
-            if isinstance(group_data, dict):
-                result.update(group_data)
-
-        if self._vault_backed_providers and isinstance(result.get("provider_api_keys"), dict):
-            result["provider_api_keys"] = {
-                p: (None if p in self._vault_backed_providers else v) for p, v in result["provider_api_keys"].items()
-            }
-
-        return result
+        Runtime-derived paths are excluded and vault-backed provider keys are written as null.
+        """
+        exclude: dict[str, Any] = dict.fromkeys(RUNTIME_FIELDS, True)
+        exclude["execution"] = dict.fromkeys(RUNTIME_EXECUTION_FIELDS, True)
+        data = self.model_dump(mode="json", exclude=exclude)
+        data["schema_version"] = SCHEMA_VERSION
+        keys = data["provider"]["provider_api_keys"]
+        for p in self._vault_backed_providers:
+            if p.value in keys:
+                keys[p.value] = None
+        return data
 
     def load_from_file(self) -> None:
-        """Load settings from file using flat-to-nested mapping."""
+        """Load settings.json, migrating older layouts, and validate each value into this instance."""
         if not self.settings_file.exists():
             return
 
         try:
             data = self._secure_ops.read_json_file(self.settings_file)
-            _apply_flat_data_to_settings(self, data)
-            self.update_env()
         except (FileNotFoundError, SecureFileOpsError):
-            pass  # If file does not exist or validation fails, continue with default settings
+            return  # If file does not exist or validation fails, continue with default settings
+        if not isinstance(data, dict):
+            logger.warning("Ignoring settings file %s: top level is not an object", self.settings_file)
+            return
+        apply_settings_data(self, migrate_settings_data(data))
+        self.update_env()
 
     # -- Environment -----------------------------------------------------------
 
@@ -340,8 +345,7 @@ class Settings(BaseModel):
         self._secure_ops.create_directory(self.data_dir, parents=True, exist_ok=True)
 
         try:
-            settings_data = self.model_dump()
-            _convert_paths_to_strings(settings_data)
+            settings_data = self.to_file_data()
             self._secure_ops.write_json_file(
                 self.settings_file,
                 settings_data,
@@ -355,8 +359,7 @@ class Settings(BaseModel):
             logger.warning(f"Failed to save settings securely: {e}")
             # Fallback to an atomic save without the secure-ops validation layer.
             try:
-                settings_data = self.model_dump()
-                _convert_paths_to_strings(settings_data)
+                settings_data = self.to_file_data()
                 temp_path: Path | None = None
                 try:
                     with tempfile.NamedTemporaryFile(
@@ -488,345 +491,81 @@ def apply_cli_args(settings_obj: Settings, args: Namespace) -> None:
         settings_obj.ollama.ollama_ps_poll_interval = args.ps_poll
 
 
-def _apply_flat_data_to_settings(settings_obj: Settings, data: dict) -> None:
-    """Apply a flat dictionary (from settings.json) to the Settings object.
+_PROVIDER_MAP_FIELDS: frozenset[str] = frozenset(
+    {"provider_api_keys", "provider_base_urls", "provider_cache_hours", "disabled_providers"}
+)
 
-    This replaces the original 250-line hand-written deserializer with a
-    data-driven approach that maps flat keys to the correct config group.
-    Legacy field migrations are handled inline.
+
+def _normalize_provider_map(field: str, saved: object, current: dict[LlmProvider, Any]) -> dict[LlmProvider, Any]:
+    """Merge a saved provider-keyed map over ``current``, accepting legacy provider names and skipping unknown ones.
+
+    Providers absent from the saved map keep their current value, so a provider added in a
+    newer release gets its default. Empty API keys and base URLs are stored as None.
     """
-    url = data.get("ollama_host", settings_obj.ollama.ollama_host)
+    result: dict[LlmProvider, Any] = dict(current)
+    if not isinstance(saved, dict):
+        return result
+    for name, value in saved.items():
+        try:
+            provider = provider_name_to_enum(str(name))
+        except ValueError:
+            logger.warning("Ignoring unknown provider %r in settings %s", name, field)
+            continue
+        if field in ("provider_api_keys", "provider_base_urls"):
+            value = value or None
+        result[provider] = value
+    return result
 
-    if url:
-        if url.startswith("http://") or url.startswith("https://"):
-            settings_obj.ollama.ollama_host = url
-        else:
-            logger.warning("ollama_host must start with http:// or https://")
 
-    # Provider API keys
-    saved_provider_api_keys = data.get("provider_api_keys") or {}
-    provider_api_keys: dict[LlmProvider, str | None] = {}
-    for p in llm_provider_types:
-        provider_api_keys[p] = None
+def _assign_validated(target: BaseModel, field: str, value: Any, where: str) -> None:
+    """Validate ``value`` against ``target``'s field and assign it; on failure log and keep the current value."""
+    try:
+        target.__pydantic_validator__.validate_assignment(target, field, value)
+    except ValidationError as e:
+        logger.warning("Ignoring invalid setting %s.%s=%r: %s", where, field, value, e.errors()[0]["msg"])
 
-    for k, v in saved_provider_api_keys.items():
-        p: LlmProvider = provider_name_to_enum(k)
-        provider_api_keys[p] = v or None
-    settings_obj.provider.provider_api_keys = provider_api_keys
 
-    # Provider base URLs
-    saved_provider_base_urls = data.get("provider_base_urls") or {}
-    provider_base_urls: dict[LlmProvider, str | None] = {}
-    for p in llm_provider_types:
-        provider_base_urls[p] = None
+def apply_settings_data(settings_obj: Settings, data: dict[str, Any]) -> None:
+    """Apply a current-schema (nested) settings payload to ``settings_obj``, field by field.
 
-    for k, v in saved_provider_base_urls.items():
-        provider_base_urls[provider_name_to_enum(k)] = v or None
+    Each field is validated by Pydantic in isolation, so one bad value never resets a whole
+    group: numeric fields are clamped by their group annotations and invalid values keep the
+    current setting. Runtime-derived paths in the payload are ignored.
 
-    if not provider_base_urls[LlmProvider.OLLAMA]:
-        provider_base_urls[LlmProvider.OLLAMA] = settings_obj.ollama.ollama_host
-    settings_obj.provider.provider_base_urls = provider_base_urls
+    Args:
+        settings_obj: The settings instance to update in place.
+        data: Payload already migrated to the current schema (see ``migrate_settings_data``).
+    """
+    for name, model in CONFIG_GROUPS.items():
+        saved_group = data.get(name)
+        if not isinstance(saved_group, dict):
+            continue
+        group = getattr(settings_obj, name)
+        for field, value in saved_group.items():
+            if field not in model.model_fields or field in RUNTIME_EXECUTION_FIELDS:
+                continue
+            if field in _PROVIDER_MAP_FIELDS:
+                value = _normalize_provider_map(field, value, getattr(group, field))
+            _assign_validated(group, field, value, name)
 
-    # LangChain config
-    saved_langchain_config = data.get("langchain_config") or {}
-    settings_obj.langchain_config = LangChainConfig(**saved_langchain_config)
+    for field, value in data.items():
+        if field in CONFIG_GROUPS or field in RUNTIME_FIELDS or field not in Settings.model_fields:
+            continue
+        if field == "last_llm_config":
+            if not isinstance(value, dict):
+                continue
+            value = {**dataclasses.asdict(settings_obj.last_llm_config), **value}
+            if value.get("temperature") is None:
+                value["temperature"] = 0.5
+        if field == "max_log_lines" and isinstance(value, int):
+            value = max(0, value)
+        _assign_validated(settings_obj, field, value, "settings")
 
-    # UI settings
-    settings_obj.ui.theme_name = data.get("theme_name", settings_obj.ui.theme_name)
-    settings_obj.ui.theme_mode = data.get("theme_mode", settings_obj.ui.theme_mode)
-    settings_obj.ollama.site_models_namespace = data.get("site_models_namespace", "")
-    settings_obj.ui.check_for_updates = data.get("check_for_updates", settings_obj.ui.check_for_updates)
-    settings_obj.ui.new_version_notified = data.get("new_version_notified", settings_obj.ui.new_version_notified)
-    settings_obj.ui.show_first_run = data.get("show_first_run", settings_obj.ui.show_first_run)
-    settings_obj.ui.theme_fallback_name = data.get("theme_fallback_name", settings_obj.ui.theme_fallback_name)
-
-    lvc = data.get("last_version_check")
-    if lvc:
-        settings_obj.last_version_check = datetime.fromisoformat(lvc)
-    else:
-        settings_obj.last_version_check = None
-
-    # Notification timeouts
-    settings_obj.ui.notification_timeout_error = max(
-        0.1, data.get("notification_timeout_error", settings_obj.ui.notification_timeout_error)
-    )
-    settings_obj.ui.notification_timeout_info = max(
-        0.1, data.get("notification_timeout_info", settings_obj.ui.notification_timeout_info)
-    )
-    settings_obj.ui.notification_timeout_warning = max(
-        0.1, data.get("notification_timeout_warning", settings_obj.ui.notification_timeout_warning)
-    )
-    settings_obj.ui.notification_timeout_extended = max(
-        0.1, data.get("notification_timeout_extended", settings_obj.ui.notification_timeout_extended)
-    )
-
-    # Tab settings (with legacy field migration)
-    settings_obj.starting_tab = data.get("starting_tab", data.get("starting_screen", "Local"))
-    if settings_obj.starting_tab not in valid_tabs:
-        settings_obj.starting_tab = "Local"
-
-    settings_obj.last_tab = data.get("last_tab", data.get("last_screen", "Local"))
     if settings_obj.last_tab not in valid_tabs:
         settings_obj.last_tab = settings_obj.starting_tab
 
-    settings_obj.use_last_tab_on_startup = data.get("use_last_tab_on_startup", settings_obj.use_last_tab_on_startup)
-
-    # Last LLM config (with legacy field migration)
-    last_llm_config = data.get("last_llm_config", {})
-    settings_obj.last_llm_config.provider = provider_name_to_enum(
-        data.get(
-            "last_chat_provider",
-            last_llm_config.get("provider", settings_obj.last_llm_config.provider.value),
-        )
-    )
-    settings_obj.last_llm_config.model_name = data.get(
-        "last_chat_model",
-        last_llm_config.get("model_name", settings_obj.last_llm_config.model_name),
-    )
-    settings_obj.last_llm_config.temperature = data.get(
-        "last_chat_temperature",
-        last_llm_config.get("temperature", settings_obj.last_llm_config.temperature),
-    )
-    if settings_obj.last_llm_config.temperature is None:
-        settings_obj.last_llm_config.temperature = 0.5
-    settings_obj.last_chat_session_id = data.get("last_chat_session_id", settings_obj.last_chat_session_id)
-
-    # Ollama settings
-    settings_obj.max_log_lines = max(0, data.get("max_log_lines", 1000))
-    settings_obj.ollama.ollama_ps_poll_interval = max(
-        0, data.get("ollama_ps_poll_interval", settings_obj.ollama.ollama_ps_poll_interval)
-    )
-    settings_obj.ollama.load_local_models_on_startup = data.get(
-        "load_local_models_on_startup", settings_obj.ollama.load_local_models_on_startup
-    )
-    settings_obj.ollama.local_model_sort = data.get("local_model_sort", settings_obj.ollama.local_model_sort)
-    settings_obj.ollama.site_model_sort = data.get("site_model_sort", settings_obj.ollama.site_model_sort)
-
-    # Chat settings
-    settings_obj.chat.auto_name_session = data.get("auto_name_session", settings_obj.chat.auto_name_session)
-    settings_obj.chat.auto_name_session_llm_config = data.get(
-        "auto_name_session_llm_config",
-        {
-            "class_name": "LlmConfig",
-            "provider": LlmProvider.OLLAMA,
-            "mode": LlmMode.CHAT,
-            "model_name": "",
-            "temperature": 0.5,
-            "streaming": True,
-        },
-    )
-    if settings_obj.chat.auto_name_session_llm_config and isinstance(
-        settings_obj.chat.auto_name_session_llm_config["provider"], str
-    ):
-        settings_obj.chat.auto_name_session_llm_config["provider"] = provider_name_to_enum(
-            settings_obj.chat.auto_name_session_llm_config["provider"]
-        )
-
-    if settings_obj.chat.auto_name_session_llm_config and isinstance(
-        settings_obj.chat.auto_name_session_llm_config["mode"], str
-    ):
-        settings_obj.chat.auto_name_session_llm_config["mode"] = LlmMode(
-            settings_obj.chat.auto_name_session_llm_config["mode"]
-        )
-
-    if settings_obj.chat.auto_name_session_llm_config:
-        if "class_name" in settings_obj.chat.auto_name_session_llm_config:
-            del settings_obj.chat.auto_name_session_llm_config["class_name"]
-
-    settings_obj.chat.chat_tab_max_length = max(
-        8, data.get("chat_tab_max_length", settings_obj.chat.chat_tab_max_length)
-    )
-    settings_obj.chat.return_to_single_line_on_submit = data.get(
-        "return_to_single_line_on_submit",
-        settings_obj.chat.return_to_single_line_on_submit,
-    )
-    settings_obj.chat.always_show_session_config = data.get(
-        "always_show_session_config", settings_obj.chat.always_show_session_config
-    )
-    settings_obj.chat.close_session_config_on_submit = data.get(
-        "close_session_config_on_submit",
-        settings_obj.chat.close_session_config_on_submit,
-    )
-    settings_obj.chat.save_chat_input_history = data.get(
-        "save_chat_input_history", settings_obj.chat.save_chat_input_history
-    )
-    settings_obj.chat.chat_input_history_length = data.get(
-        "chat_input_history_length", settings_obj.chat.chat_input_history_length
-    )
-
-    # Network retry settings
-    settings_obj.retry.max_retry_attempts = max(
-        1, data.get("max_retry_attempts", settings_obj.retry.max_retry_attempts)
-    )
-    settings_obj.retry.retry_backoff_factor = max(
-        1.0, data.get("retry_backoff_factor", settings_obj.retry.retry_backoff_factor)
-    )
-    settings_obj.retry.retry_base_delay = max(0.1, data.get("retry_base_delay", settings_obj.retry.retry_base_delay))
-    settings_obj.retry.retry_max_delay = max(1.0, data.get("retry_max_delay", settings_obj.retry.retry_max_delay))
-    settings_obj.retry.enable_network_retries = data.get(
-        "enable_network_retries", settings_obj.retry.enable_network_retries
-    )
-
-    # Timer and job processing settings
-    settings_obj.timer.job_timer_interval = max(
-        0.1, data.get("job_timer_interval", settings_obj.timer.job_timer_interval)
-    )
-    settings_obj.timer.ps_timer_interval = max(0.1, data.get("ps_timer_interval", settings_obj.timer.ps_timer_interval))
-    settings_obj.timer.model_refresh_timer_interval = max(
-        0.1, data.get("model_refresh_timer_interval", settings_obj.timer.model_refresh_timer_interval)
-    )
-    settings_obj.timer.job_queue_put_timeout = max(
-        0.01, data.get("job_queue_put_timeout", settings_obj.timer.job_queue_put_timeout)
-    )
-    settings_obj.timer.job_queue_get_timeout = max(
-        0.01, data.get("job_queue_get_timeout", settings_obj.timer.job_queue_get_timeout)
-    )
-    settings_obj.timer.job_queue_max_size = max(
-        10, data.get("job_queue_max_size", settings_obj.timer.job_queue_max_size)
-    )
-
-    # HTTP timeout settings
-    settings_obj.http.http_request_timeout = max(
-        1.0, data.get("http_request_timeout", settings_obj.http.http_request_timeout)
-    )
-    settings_obj.http.provider_model_request_timeout = max(
-        1.0, data.get("provider_model_request_timeout", settings_obj.http.provider_model_request_timeout)
-    )
-    settings_obj.http.update_check_timeout = max(
-        1.0, data.get("update_check_timeout", settings_obj.http.update_check_timeout)
-    )
-    settings_obj.http.image_fetch_timeout = max(
-        1.0, data.get("image_fetch_timeout", settings_obj.http.image_fetch_timeout)
-    )
-
-    # Image fetch retry settings
-    settings_obj.http.image_fetch_max_attempts = max(
-        1, data.get("image_fetch_max_attempts", settings_obj.http.image_fetch_max_attempts)
-    )
-    settings_obj.http.image_fetch_base_delay = max(
-        0.1, data.get("image_fetch_base_delay", settings_obj.http.image_fetch_base_delay)
-    )
-
-    # Provider disable settings (with legacy migration)
-    saved_disabled_providers = data.get("disabled_providers") or {}
-    disabled_providers: dict[LlmProvider, bool] = {}
-    for p in llm_provider_types:
-        disabled_providers[p] = False
-
-    for k, v in saved_disabled_providers.items():
-        provider = provider_name_to_enum(k)
-        disabled_providers[provider] = bool(v)
-
-    # Handle legacy disable_litellm_provider setting
-    legacy_disable_litellm = data.get("disable_litellm_provider", False)
-    if legacy_disable_litellm:
-        disabled_providers[LlmProvider.LITELLM] = True
-
-    settings_obj.provider.disabled_providers = disabled_providers
-
-    # Execution settings
-    settings_obj.execution.execution_enabled = data.get("execution_enabled", settings_obj.execution.execution_enabled)
-    settings_obj.execution.execution_timeout_seconds = max(
-        1, data.get("execution_timeout_seconds", settings_obj.execution.execution_timeout_seconds)
-    )
-    settings_obj.execution.execution_max_output_size = max(
-        100, data.get("execution_max_output_size", settings_obj.execution.execution_max_output_size)
-    )
-    settings_obj.execution.execution_background_limit = max(
-        1, data.get("execution_background_limit", settings_obj.execution.execution_background_limit)
-    )
-    saved_execution_allowed_commands = data.get("execution_allowed_commands")
-    if saved_execution_allowed_commands and isinstance(saved_execution_allowed_commands, list):
-        settings_obj.execution.execution_allowed_commands = saved_execution_allowed_commands
-
-    saved_execution_security_patterns = data.get("execution_security_patterns")
-    if saved_execution_security_patterns and isinstance(saved_execution_security_patterns, list):
-        settings_obj.execution.execution_security_patterns = saved_execution_security_patterns
-
-    _apply_file_validation_data(settings_obj, data)
-
-    # Memory settings
-    settings_obj.memory.user_memory = data.get("user_memory", settings_obj.memory.user_memory)
-    settings_obj.memory.memory_enabled = data.get("memory_enabled", settings_obj.memory.memory_enabled)
-    settings_obj.memory.memory_llm_config = data.get("memory_llm_config", settings_obj.memory.memory_llm_config)
-
-
-def _apply_file_validation_data(settings_obj: Settings, data: dict) -> None:
-    """Apply flat file-validation keys (from settings.json) to the Settings object.
-
-    Numeric values are clamped to the same minimums the Options view enforces, empty
-    extension lists are ignored so defaults survive, and a blank OCR language keeps the
-    current value.
-    """
-    settings_obj.file_validation.file_validation_enabled = data.get(
-        "file_validation_enabled", settings_obj.file_validation.file_validation_enabled
-    )
-    settings_obj.file_validation.max_file_size_mb = max(
-        0.1, data.get("max_file_size_mb", settings_obj.file_validation.max_file_size_mb)
-    )
-    settings_obj.file_validation.max_image_size_mb = max(
-        0.1, data.get("max_image_size_mb", settings_obj.file_validation.max_image_size_mb)
-    )
-    settings_obj.file_validation.max_json_size_mb = max(
-        0.1, data.get("max_json_size_mb", settings_obj.file_validation.max_json_size_mb)
-    )
-    settings_obj.file_validation.max_zip_size_mb = max(
-        0.1, data.get("max_zip_size_mb", settings_obj.file_validation.max_zip_size_mb)
-    )
-    settings_obj.file_validation.max_total_attachment_size_mb = max(
-        0.1, data.get("max_total_attachment_size_mb", settings_obj.file_validation.max_total_attachment_size_mb)
-    )
-    settings_obj.file_validation.max_document_size_mb = max(
-        0.1, data.get("max_document_size_mb", settings_obj.file_validation.max_document_size_mb)
-    )
-    settings_obj.file_validation.max_pdf_pages = max(
-        1, data.get("max_pdf_pages", settings_obj.file_validation.max_pdf_pages)
-    )
-    settings_obj.file_validation.max_extracted_text_chars = max(
-        1000, data.get("max_extracted_text_chars", settings_obj.file_validation.max_extracted_text_chars)
-    )
-    settings_obj.file_validation.inline_document_threshold_mb = max(
-        0.0, data.get("inline_document_threshold_mb", settings_obj.file_validation.inline_document_threshold_mb)
-    )
-    settings_obj.file_validation.enable_ocr = data.get("enable_ocr", settings_obj.file_validation.enable_ocr)
-    settings_obj.file_validation.ocr_language = data.get("ocr_language") or settings_obj.file_validation.ocr_language
-    settings_obj.file_validation.validate_file_content = data.get(
-        "validate_file_content", settings_obj.file_validation.validate_file_content
-    )
-    settings_obj.file_validation.allow_zip_extraction = data.get(
-        "allow_zip_extraction", settings_obj.file_validation.allow_zip_extraction
-    )
-    settings_obj.file_validation.max_zip_compression_ratio = max(
-        1.0, data.get("max_zip_compression_ratio", settings_obj.file_validation.max_zip_compression_ratio)
-    )
-    settings_obj.file_validation.sanitize_filenames = data.get(
-        "sanitize_filenames", settings_obj.file_validation.sanitize_filenames
-    )
-    for ext_key in (
-        "allowed_image_extensions",
-        "allowed_json_extensions",
-        "allowed_markdown_extensions",
-        "allowed_zip_extensions",
-        "allowed_document_extensions",
-    ):
-        saved_extensions = data.get(ext_key)
-        if saved_extensions and isinstance(saved_extensions, list):
-            setattr(settings_obj.file_validation, ext_key, saved_extensions)
-
-
-def _convert_paths_to_strings(data: dict) -> None:
-    """Recursively convert Path objects to strings in the settings data."""
-    for key, value in data.items():
-        if isinstance(value, Path):
-            data[key] = str(value)
-        elif isinstance(value, dict):
-            _convert_paths_to_strings(value)
-        elif isinstance(value, list):
-            for i, item in enumerate(value):
-                if isinstance(item, Path):
-                    value[i] = str(item)
-                elif isinstance(item, dict):
-                    _convert_paths_to_strings(item)
+    if not settings_obj.provider.provider_base_urls.get(LlmProvider.OLLAMA):
+        settings_obj.provider.provider_base_urls[LlmProvider.OLLAMA] = settings_obj.ollama.ollama_host
 
 
 # -- Module-level lazy singleton -------------------------------------------------

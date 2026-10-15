@@ -1,19 +1,36 @@
 # Configuration Reference
 
-PAR LLAMA persists its configuration in a flat JSON file, `settings.json`, located in the
+PAR LLAMA persists its configuration in a JSON file, `settings.json`, located in the
 application's data directory (see `PARLLAMA_DATA_DIR` in the main [README](../../README.md#environment-variables-for-par-llama-configuration)).
 Most settings are managed through the Options tab in the UI, but this reference documents
 every adjustable key for anyone who wants to hand-edit `settings.json` directly.
 
 The source of truth for these keys, their types, and their defaults is
 [`src/parllama/settings/config_groups.py`](../../src/parllama/settings/config_groups.py). The
-`Settings` model (`src/parllama/settings_manager.py`) composes these config groups and flattens
-them into the top-level keys shown below when it serializes to `settings.json` -- there are no
-nested objects in the file itself.
+`Settings` model (`src/parllama/settings_manager.py`) composes these config groups, and the file
+mirrors that structure: each group's keys sit in a nested object named after the group (the
+lowercase name shown under each "Source group" heading below: `provider`, `ollama`, `ui`, `chat`,
+`execution`, `retry`, `timer`, `http`, `file_validation`, `memory`). Keys that belong to no group
+(for example `starting_tab`, `last_llm_config`, `langchain_config`) stay at the top level, next to
+`"schema_version": 2`.
 
-> **Caution:** Back up `settings.json` before hand-editing it. Invalid values may be silently
-> replaced with defaults or cause validation errors on startup. Stop PAR LLAMA before editing the
-> file, since it is rewritten on save.
+```json
+{
+    "schema_version": 2,
+    "starting_tab": "Local",
+    "ollama": { "ollama_host": "http://localhost:11434", "ollama_ps_poll_interval": 3 },
+    "retry": { "max_retry_attempts": 3 }
+}
+```
+
+Files written by releases before schema version 2 stored every key flat at the top level. They
+are migrated automatically the first time they are loaded and rewritten in the nested layout on
+the next save. An older release cannot read a version 2 file and falls back to its defaults.
+
+> **Caution:** Back up `settings.json` before hand-editing it. On load each value is validated
+> individually: numeric values below a key's minimum are raised to that minimum, and any other
+> invalid value is logged and ignored, keeping the previous value. Stop PAR LLAMA before editing
+> the file, since it is rewritten on save.
 
 ## Provider settings
 
