@@ -73,7 +73,7 @@ def test_redirect_to_private_image_host_is_refused(image_cache_dir: Path) -> Non
         with pytest.raises(FileNotFoundError, match="non-public address"):
             fetch_and_cache_image("http://public.example/pic.png")
     assert mock_get.call_count == 1
-    
+
 
 def test_oversized_image_download_is_refused(image_cache_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(settings.file_validation, "max_image_size_mb", 0.001)

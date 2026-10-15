@@ -35,6 +35,7 @@ from parllama.messages.chat_messages import (
     ChatMessage,
     ChatMessageDeleted,
     ClearChatInputHistory,
+    StartModelChat,
 )
 from parllama.messages.execution_messages import ExecuteMessageRequested, ExecutionCompleted, ExecutionFailed
 from parllama.messages.model_messages import (
@@ -52,6 +53,7 @@ from parllama.messages.model_messages import (
     LocalModelPushed,
     LocalModelPushRequested,
     ModelInteractRequested,
+    PrefillCreateModel,
     SetModelNameLoading,
     SiteModelsLoaded,
     SiteModelsRefreshRequested,
@@ -496,18 +498,16 @@ Some functions are only available via slash / commands on that chat tab. You can
     @on(LocalCreateModelFromExistingRequested)
     def on_create_model_from_existing_requested(self, msg: LocalCreateModelFromExistingRequested) -> None:
         """Create model from existing event"""
-        create_view = self.main_screen.create_view
-        create_view.prefill_from_existing(msg)
         self.main_screen.change_tab("Create")
-        create_view.name_input.focus()
+        self.main_screen.create_view.post_message(PrefillCreateModel(request=msg))
 
     @on(ModelInteractRequested)
-    async def on_model_interact_requested(self, event: ModelInteractRequested) -> None:
+    def on_model_interact_requested(self, event: ModelInteractRequested) -> None:
         """Model interact requested event"""
-        chat_view = self.main_screen.chat_view
-        await chat_view.start_model_chat(LlmProvider.OLLAMA, event.model_name)
         self.main_screen.change_tab("Chat")
-        chat_view.user_input.focus()
+        self.main_screen.chat_view.post_message(
+            StartModelChat(provider=LlmProvider.OLLAMA, model_name=event.model_name)
+        )
 
     @on(ClearChatInputHistory)
     def on_clear_chat_history(self, event: ClearChatInputHistory) -> None:

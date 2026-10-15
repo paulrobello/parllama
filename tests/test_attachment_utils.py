@@ -210,7 +210,7 @@ class TestRemoteDocumentSecurity:
             with pytest.raises(AttachmentError, match="non-public address"):
                 attach_document("http://public.example/doc.txt")
         assert mock_get.call_count == 1
-        
+
     def test_public_remote_text_attaches(self, isolated_settings: Path) -> None:
         with (
             patch("parllama.net_guard.socket.getaddrinfo", _resolve_to("93.184.216.34")),
@@ -223,7 +223,9 @@ class TestRemoteDocumentSecurity:
     def test_remote_pdf_without_pdf_header_rejected(self, isolated_settings: Path) -> None:
         with (
             patch("parllama.net_guard.socket.getaddrinfo", _resolve_to("93.184.216.34")),
-            patch("parllama.attachment_utils.open_guarded_stream", return_value=_FakeResponse(b"<html>not a pdf</html>")),
+            patch(
+                "parllama.attachment_utils.open_guarded_stream", return_value=_FakeResponse(b"<html>not a pdf</html>")
+            ),
         ):
             with pytest.raises(AttachmentError, match="missing %PDF- header"):
                 attach_document("https://public.example/doc.pdf")

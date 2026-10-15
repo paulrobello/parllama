@@ -41,6 +41,7 @@ from parllama.messages.chat_messages import (
     ChatMessageDeleted,
     ChatMessageSent,
     ClearChatInputHistory,
+    StartModelChat,
     UpdateChatControlStates,
 )
 from parllama.messages.prompt_messages import PromptListChanged, PromptListLoaded, PromptSelected
@@ -1051,6 +1052,13 @@ Chat Commands:
         provider_model_select = self.active_tab.session_config.provider_model_select
         provider_model_select.provider_select.value = provider
         provider_model_select.model_select.deferred_value = model_name
+
+    @on(StartModelChat)
+    async def on_start_model_chat(self, event: StartModelChat) -> None:
+        """Handle the App's intent to chat with a specific model."""
+        event.stop()
+        await self.start_model_chat(event.provider, event.model_name)
+        self.user_input.focus()
 
     async def remove_active_tab(self) -> None:
         """Remove the active tab"""

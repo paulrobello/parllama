@@ -161,3 +161,11 @@ class ModelInteractRequested(Message):
     """Message to notify that a model interact has been requested."""
 
     model_name: str
+
+
+@dataclass
+class PrefillCreateModel(Message):
+    """Intent posted to the create-model view: fill the form from an existing model and focus it."""
+
+    request: LocalCreateModelFromExistingRequested
+    """The original request carrying the source model's details."""

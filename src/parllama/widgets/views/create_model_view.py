@@ -10,7 +10,11 @@ from textual.events import Show
 from textual.widgets import Button, Input, Label, TextArea
 
 from parllama.dialogs.error_dialog import ErrorDialog
-from parllama.messages.model_messages import LocalCreateModelFromExistingRequested, LocalModelCreateRequested
+from parllama.messages.model_messages import (
+    LocalCreateModelFromExistingRequested,
+    LocalModelCreateRequested,
+    PrefillCreateModel,
+)
 from parllama.messages.ui_messages import ChangeTab
 from parllama.ollama_data_manager import VALID_QUANTIZE_LEVELS
 
@@ -113,6 +117,13 @@ class ModelCreateView(Container):
         self.ta_template.text = msg.model_template
         self.ta_license.text = msg.model_license or ""
         self.quantize_input.value = msg.quantization_level or ""
+
+    @on(PrefillCreateModel)
+    def on_prefill_create_model(self, event: PrefillCreateModel) -> None:
+        """Handle the App's intent to start a new model from an existing one."""
+        event.stop()
+        self.prefill_from_existing(event.request)
+        self.name_input.focus()
 
     def _on_show(self, event: Show) -> None:
         """Focus the name on show"""
