@@ -27,6 +27,7 @@ from parllama.attachment_utils import (
     MAX_IMAGES_PER_MESSAGE,
     AttachmentError,
     attach_document,
+    strip_wrapping_quotes,
 )
 from parllama.chat_manager import ChatSession, chat_manager
 from parllama.chat_message import ParllamaChatMessage
@@ -383,7 +384,7 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
 
     def _attach_pending(self, path_or_url: str) -> None:
         """Add a file or URL to the pending attachments for the next message."""
-        src = path_or_url.strip()
+        src = strip_wrapping_quotes(path_or_url)
         name = Path(src.split("?")[0]).name or src
         if Path(src.split("?")[0]).suffix.lower() in settings.allowed_document_extensions:
             if len(self.pending_documents) >= MAX_DOCUMENTS_PER_MESSAGE:

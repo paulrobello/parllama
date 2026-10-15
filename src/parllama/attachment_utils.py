@@ -137,9 +137,21 @@ def _fetch_remote(url: str) -> tuple[bytes, str]:
         raise AttachmentError(f"Failed to download document: {e}") from e
 
 
+def strip_wrapping_quotes(path_or_url: str) -> str:
+    """Remove one pair of matching surrounding quotes.
+
+    OS drag-and-drop inserts file paths into text inputs wrapped in single
+    or double quotes; left in place they break extension detection.
+    """
+    s = path_or_url.strip()
+    if len(s) >= 2 and s[0] == s[-1] and s[0] in ("'", '"'):
+        return s[1:-1].strip()
+    return s
+
+
 def attach_document(path_or_url: str) -> DocumentAttachment:
     """Validate, extract, and build a DocumentAttachment from a local path or URL."""
-    src = path_or_url.strip()
+    src = strip_wrapping_quotes(path_or_url)
     is_remote = src.startswith("http://") or src.startswith("https://")
 
     ext = Path(src.split("?")[0]).suffix.lower()

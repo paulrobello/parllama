@@ -108,6 +108,15 @@ class TestAttachDocument:
         assert ensure_sendable(doc) is True
         assert doc.data_b64 is not None
 
+    def test_quoted_drag_dropped_path_attaches(self, isolated_settings: Path, tmp_path: Path) -> None:
+        """OS drag-and-drop inserts paths wrapped in single quotes; they must
+        classify as documents (not images) and attach cleanly."""
+        f = tmp_path / "goal_cookbook.pdf"
+        f.write_bytes(_make_text_pdf("dragged in"))
+        doc = attach_document("'" + str(f) + "'")
+        assert doc.name == "goal_cookbook.pdf"
+        assert doc.mime_type == "application/pdf"
+
     def test_missing_file_rejected(self, isolated_settings: Path) -> None:
         with pytest.raises(AttachmentError, match="not found"):
             attach_document("/nonexistent/doc.pdf")
