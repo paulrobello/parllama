@@ -69,6 +69,9 @@ class _EmitApp:
     def post_message(self, m: Message) -> None:
         self.emits.append(m)
 
+    def post_message_all(self, m: Message) -> None:
+        self.emits.append(m)
+
 
 @pytest.fixture
 def chat_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:

@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from par_ai_core.llm_providers import (
     LlmProvider,
@@ -46,7 +46,7 @@ from parllama.messages.chat_messages import (
 )
 from parllama.messages.prompt_messages import PromptListChanged, PromptListLoaded, PromptSelected
 from parllama.messages.provider_messages import ProviderModelsChanged
-from parllama.messages.session_messages import DeleteSession, SessionSelected, SessionToPrompt, SessionUpdated
+from parllama.messages.session_messages import DeleteSession, SessionSelected, SessionUpdated
 from parllama.messages.ui_messages import ChangeTab, LogIt, RegisterForUpdates, UpdateTabLabel
 from parllama.provider_manager import provider_manager
 from parllama.settings_manager import settings
@@ -55,6 +55,9 @@ from parllama.widgets.session_config import SessionConfig
 from parllama.widgets.session_list import SessionList
 from parllama.widgets.user_input import UserInput
 from parllama.widgets.views.chat_tab import ChatTab
+
+if TYPE_CHECKING:
+    from parllama.app import ParLlamaApp
 
 valid_commands: list[str] = [
     "/help",
@@ -242,6 +245,9 @@ class ChatView(Vertical, can_focus=False, can_focus_children=True):
                 widget=self,
                 event_names=[
                     ProviderModelsChanged,
+                    ChatMessage,
+                    ChatMessageDeleted,
+                    ChatGenerationAborted,
                     DeleteSession,
                     SessionSelected,
                     PromptListLoaded,
@@ -521,7 +527,8 @@ Chat Commands:
         await self.active_tab.action_new_session()
 
     async def _cmd_session_delete(self) -> None:
-        self.app.post_message(DeleteSession(session_id=self.session.id))
+        chat_manager.delete_session(self.session.id)
+        cast("ParLlamaApp", self.app).post_message_all(DeleteSession(session_id=self.session.id))
 
     async def _cmd_session_provider(self) -> None:
         self.active_tab.session_config.display = True
@@ -637,12 +644,10 @@ Chat Commands:
         else:
             (submit_on_load, v) = vs
         v = v.strip()
-        self.app.post_message(
-            SessionToPrompt(
-                session_id=self.session.id,
-                submit_on_load=submit_on_load == "1",
-                prompt_name=v,
-            )
+        chat_manager.session_to_prompt(
+            session_id=self.session.id,
+            submit_on_load=submit_on_load == "1",
+            prompt_name=v,
         )
 
     async def _cmd_session_system_prompt_arg(self, raw_arg: str, cmd_arg: str) -> None:

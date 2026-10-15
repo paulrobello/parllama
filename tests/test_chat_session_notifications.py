@@ -14,19 +14,14 @@ from parllama.chat_manager import ChatManager
 from parllama.chat_message import ParllamaChatMessage
 from parllama.chat_session import ChatSession
 from parllama.messages.chat_messages import ChatMessageDeleted
-from parllama.messages.session_messages import (
-    DeleteSession,
-    SessionAutoNameRequested,
-    SessionListChanged,
-    SessionUpdated,
-)
+from parllama.messages.session_messages import DeleteSession, SessionListChanged, SessionUpdated
 from parllama.messages.ui_messages import LogIt
 from parllama.settings_manager import settings
 
 
 @dataclass
 class RecordingApp:
-    """Minimal app test double that records posted Textual messages."""
+    """Minimal app test double that records Textual messages and bus broadcasts."""
 
     messages: list[Message] = field(default_factory=list)
 
@@ -34,24 +29,9 @@ class RecordingApp:
         """Record a posted Textual message."""
         self.messages.append(message)
 
-
-@dataclass
-class SessionRoutingApp:
-    """Minimal app double that records and routes session Textual messages."""
-
-    manager: ChatManager
-    messages: list[Message] = field(default_factory=list)
-
-    def post_message(self, message: Message) -> None:
-        """Record a posted Textual message and mimic app session routing."""
+    def post_message_all(self, message: Message) -> None:
+        """Record a broadcast Textual message."""
         self.messages.append(message)
-        if isinstance(message, SessionUpdated):
-            if {"name", "model", "temperature"} & set(message.changed):
-                self.manager.notify_sessions_changed()
-        elif isinstance(message, DeleteSession):
-            self.manager.delete_session(message.session_id)
-        elif isinstance(message, SessionAutoNameRequested):
-            self.manager.auto_name_session(message.session_id, message.llm_config, message.context)
 
 
 @pytest.fixture
@@ -66,17 +46,27 @@ def isolated_chat_settings(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> N
     monkeypatch.setattr(settings, "no_save_chat", True)
 
 
-def test_notify_changed_emits_session_update_and_invalidates_session_list(
-    isolated_chat_settings: None,
-) -> None:
-    """_notify_changed emits Textual SessionUpdated for app/controller routing."""
-    manager = ChatManager()
-    app = SessionRoutingApp(manager)
-    manager.app = app  # type: ignore[assignment]
+def _mounted_session(manager: ChatManager, app: RecordingApp) -> ChatSession:
+    """Register a fresh session under the local manager, delegating the singleton to it."""
     session = ChatSession(name="Session", llm_config=_llm_config(), messages=[])
     manager._id_to_session[session.id] = session  # pylint: disable=protected-access
     manager.mount(session)
     session.set_app(app)  # type: ignore[arg-type]
+    return session
+
+
+def test_notify_changed_notifies_manager_and_broadcasts_session_update(
+    isolated_chat_settings: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """_notify_changed calls the chat manager directly and broadcasts SessionUpdated."""
+    from parllama.chat_manager import chat_manager as singleton
+
+    manager = ChatManager()
+    app = RecordingApp()
+    manager.app = app  # type: ignore[assignment]
+    monkeypatch.setattr(singleton, "maybe_notify_session_updated", manager.maybe_notify_session_updated)
+    session = _mounted_session(manager, app)
 
     session._notify_changed({"name"})  # pylint: disable=protected-access
 
@@ -87,15 +77,15 @@ def test_notify_changed_emits_session_update_and_invalidates_session_list(
     assert any(isinstance(message, SessionListChanged) for message in app.messages)
 
 
-def test_session_delete_emits_delete_session_for_app_routing(isolated_chat_settings: None) -> None:
-    """ChatSession.delete emits Textual DeleteSession for app/controller routing."""
+def test_session_delete_deletes_via_manager_and_broadcasts(isolated_chat_settings: None, monkeypatch: pytest.MonkeyPatch) -> None:
+    """ChatSession.delete deletes via the chat manager and broadcasts DeleteSession."""
+    from parllama.chat_manager import chat_manager as singleton
+
     manager = ChatManager()
-    app = SessionRoutingApp(manager)
+    app = RecordingApp()
     manager.app = app  # type: ignore[assignment]
-    session = ChatSession(name="Session", llm_config=_llm_config(), messages=[])
-    manager._id_to_session[session.id] = session  # pylint: disable=protected-access
-    manager.mount(session)
-    session.set_app(app)  # type: ignore[arg-type]
+    monkeypatch.setattr(singleton, "delete_session", manager.delete_session)
+    session = _mounted_session(manager, app)
 
     session.delete()
 
@@ -104,35 +94,39 @@ def test_session_delete_emits_delete_session_for_app_routing(isolated_chat_setti
     assert any(isinstance(message, SessionListChanged) for message in app.messages)
 
 
-def test_session_auto_name_request_routes_to_chat_manager_and_logs(
+def test_session_auto_name_calls_chat_manager_and_logs(
     isolated_chat_settings: None,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """SessionAutoNameRequested routes to ChatManager and updates the session name."""
+    """Auto-naming calls the chat manager directly and updates the session name."""
+    from parllama.chat_manager import chat_manager as singleton
+
     manager = ChatManager()
-    app = SessionRoutingApp(manager)
+    app = RecordingApp()
     manager.app = app  # type: ignore[assignment]
-    session = ChatSession(name="Session", llm_config=_llm_config(), messages=[])
-    manager._id_to_session[session.id] = session  # pylint: disable=protected-access
-    manager.mount(session)
-    session.set_app(app)  # type: ignore[arg-type]
+    monkeypatch.setattr(singleton, "auto_name_session", manager.auto_name_session)
+    monkeypatch.setattr(singleton, "maybe_notify_session_updated", manager.maybe_notify_session_updated)
+    session = _mounted_session(manager, app)
     session.add_message(ParllamaChatMessage(role="user", content="hello"))
     session.add_message(ParllamaChatMessage(role="assistant", content="hi"))
     app.messages.clear()
+    monkeypatch.setattr(settings.chat, "auto_name_session", True)
+    monkeypatch.setattr(settings.chat, "auto_name_session_llm_config", _llm_config().to_json())
     monkeypatch.setattr("parllama.chat_manager.llm_session_name", lambda context, llm_config: "Generated Name")
 
-    app.post_message(SessionAutoNameRequested(session_id=session.id, llm_config=_llm_config(), context="chat context"))
+    session._maybe_trigger_auto_naming(False)  # pylint: disable=protected-access
 
     assert session.name == "Generated Name"
-    assert any(isinstance(message, SessionAutoNameRequested) for message in app.messages)
     assert any(isinstance(message, LogIt) for message in app.messages)
     assert any(isinstance(message, SessionListChanged) for message in app.messages)
 
 
-def test_chat_message_deletion_emits_textual_message_deleted(isolated_chat_settings: None) -> None:
-    """Deleting a chat message emits Textual ChatMessageDeleted through app routing."""
+def test_chat_message_deletion_broadcasts_textual_message_deleted(
+    isolated_chat_settings: None,
+) -> None:
+    """Deleting a chat message broadcasts ChatMessageDeleted on the event bus."""
     manager = ChatManager()
-    app = SessionRoutingApp(manager)
+    app = RecordingApp()
     manager.app = app  # type: ignore[assignment]
     session = ChatSession(name="Session", llm_config=_llm_config(), messages=[])
     manager._id_to_session[session.id] = session  # pylint: disable=protected-access

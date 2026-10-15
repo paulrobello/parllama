@@ -412,7 +412,10 @@ class TestThinkingAndFinishReason:
         emits: list[ChatMessage] = []
 
         class EmitApp:
-            def post_message(self, m) -> None:
+            def post_message(self, m) -> None:  # noqa: ANN001
+                emits.append(m)
+
+            def post_message_all(self, m) -> None:  # noqa: ANN001
                 emits.append(m)
 
         session.set_app(EmitApp())

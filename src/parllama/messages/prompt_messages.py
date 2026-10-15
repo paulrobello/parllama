@@ -8,7 +8,6 @@ from par_ai_core.llm_providers import LlmProvider
 from textual.message import Message
 
 from parllama.messages._base import AppRequest
-from parllama.messages.shared import PromptChanges
 
 
 @dataclass
@@ -54,10 +53,3 @@ class PromptSelected(PromptMessage):
 @dataclass
 class PromptListLoaded(Message):
     """Prompt list loaded"""
-
-
-@dataclass
-class PromptUpdated(PromptMessage):
-    """Prompt was updated."""
-
-    changed: PromptChanges

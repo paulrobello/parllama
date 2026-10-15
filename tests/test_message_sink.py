@@ -13,8 +13,7 @@ from parllama.messages.execution_messages import (
     ExecutionTemplateDeleted,
     ExecutionTemplateUpdated,
 )
-from parllama.messages.prompt_messages import PromptUpdated
-from parllama.messages.session_messages import SessionAutoNameRequested
+from parllama.messages.session_messages import SessionUpdated
 from parllama.messages.shared import PromptChanges
 from parllama.messages.ui_messages import LogIt
 
@@ -38,17 +37,13 @@ def test_new_textual_message_types_preserve_required_payloads() -> None:
     llm_config = LlmConfig(provider=LlmProvider.OLLAMA, model_name="llama3.2", temperature=0.5)
     prompt_changes: PromptChanges = {"name"}
 
-    auto_name = SessionAutoNameRequested(session_id="session-id", llm_config=llm_config, context="context")
-    prompt_updated = PromptUpdated(prompt_id="prompt-id", changed=prompt_changes)
+    session_updated = SessionUpdated(session_id="session-id", changed=prompt_changes)
     template_added = ExecutionTemplateAdded(template_id="template-id")
     template_updated = ExecutionTemplateUpdated(template_id="template-id")
     template_deleted = ExecutionTemplateDeleted(template_id="template-id")
 
-    assert auto_name.session_id == "session-id"
-    assert auto_name.llm_config is llm_config
-    assert auto_name.context == "context"
-    assert prompt_updated.prompt_id == "prompt-id"
-    assert prompt_updated.changed == prompt_changes
+    assert session_updated.session_id == "session-id"
+    assert session_updated.changed == prompt_changes
     assert template_added.template_id == "template-id"
     assert template_updated.template_id == "template-id"
     assert template_deleted.template_id == "template-id"

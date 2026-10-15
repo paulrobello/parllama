@@ -10,25 +10,24 @@ from textual.message import Message
 
 from parllama.chat_manager import ChatManager
 from parllama.chat_prompt import ChatPrompt
-from parllama.messages.prompt_messages import DeletePrompt, PromptListChanged, PromptUpdated
+from parllama.messages.prompt_messages import DeletePrompt, PromptListChanged
 from parllama.messages.ui_messages import LogIt
 from parllama.settings_manager import settings
 
 
 @dataclass
-class PromptRoutingApp:
-    """Minimal app double that records and routes prompt Textual messages."""
+class RecordingApp:
+    """Minimal app double that records Textual messages and bus broadcasts."""
 
-    manager: ChatManager
     messages: list[Message] = field(default_factory=list)
 
     def post_message(self, message: Message) -> None:
-        """Record a posted Textual message and mimic app prompt routing."""
+        """Record a posted Textual message."""
         self.messages.append(message)
-        if isinstance(message, PromptUpdated):
-            self.manager.notify_prompts_changed()
-        elif isinstance(message, DeletePrompt):
-            self.manager.delete_prompt(message.prompt_id)
+
+    def post_message_all(self, message: Message) -> None:
+        """Record a broadcast Textual message."""
+        self.messages.append(message)
 
 
 @pytest.fixture
@@ -42,11 +41,17 @@ def isolated_prompt_settings(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) ->
     monkeypatch.setattr(settings, "prompt_dir", prompt_dir)
 
 
-def test_prompt_save_emits_prompt_updated_and_invalidates_prompt_list(isolated_prompt_settings: None) -> None:
-    """ChatPrompt.save should emit Textual PromptUpdated for app/controller routing."""
+def test_prompt_save_notifies_manager_and_invalidates_prompt_list(
+    isolated_prompt_settings: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """ChatPrompt._notify_changed notifies the chat manager directly."""
+    from parllama.chat_manager import chat_manager as singleton
+
     manager = ChatManager()
-    app = PromptRoutingApp(manager)
+    app = RecordingApp()
     manager.app = app  # type: ignore[assignment]
+    monkeypatch.setattr(singleton, "notify_prompts_changed", manager.notify_prompts_changed)
     prompt = ChatPrompt(name="Prompt", description="before", messages=[])
     manager.add_prompt(prompt)
     app.messages.clear()
@@ -54,15 +59,20 @@ def test_prompt_save_emits_prompt_updated_and_invalidates_prompt_list(isolated_p
     prompt.description = "after"
 
     assert prompt.save() is False
-    assert any(isinstance(message, PromptUpdated) for message in app.messages)
     assert any(isinstance(message, PromptListChanged) for message in app.messages)
 
 
-def test_prompt_delete_emits_delete_prompt_and_invalidates_prompt_list(isolated_prompt_settings: None) -> None:
-    """ChatPrompt.delete should emit Textual DeletePrompt for app/controller routing."""
+def test_prompt_delete_deletes_via_manager_and_broadcasts(
+    isolated_prompt_settings: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """ChatPrompt.delete deletes via the chat manager and broadcasts DeletePrompt."""
+    from parllama.chat_manager import chat_manager as singleton
+
     manager = ChatManager()
-    app = PromptRoutingApp(manager)
+    app = RecordingApp()
     manager.app = app  # type: ignore[assignment]
+    monkeypatch.setattr(singleton, "delete_prompt", manager.delete_prompt)
     prompt = ChatPrompt(name="Prompt", description="description", messages=[])
     manager.add_prompt(prompt)
     app.messages.clear()

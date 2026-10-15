@@ -31,6 +31,10 @@ class RoutingApp:
         if isinstance(message, DeleteSession):
             self.manager.delete_session(message.session_id)
 
+    def post_message_all(self, message: Message) -> None:
+        """Record a bus broadcast."""
+        self.messages.append(message)
+
 
 @pytest.fixture
 def isolated_chat_settings(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

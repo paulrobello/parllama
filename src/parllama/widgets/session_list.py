@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from functools import partial
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from textual import on
 from textual.app import ComposeResult
@@ -16,6 +16,9 @@ from parllama.messages.session_messages import DeleteSession, SessionListChanged
 from parllama.messages.ui_messages import RegisterForUpdates, UnRegisterForUpdates
 from parllama.widgets.dbl_click_list_item import DblClickListItem
 from parllama.widgets.session_list_item import SessionListItem
+
+if TYPE_CHECKING:
+    from parllama.app import ParLlamaApp
 
 
 class SessionList(Vertical, can_focus=False, can_focus_children=True):
@@ -76,7 +79,8 @@ class SessionList(Vertical, can_focus=False, can_focus_children=True):
         selected_item: SessionListItem = cast(SessionListItem, self.list_view.highlighted_child)
         if not selected_item:
             return
-        self.app.post_message(DeleteSession(session_id=selected_item.session.id))
+        chat_manager.delete_session(selected_item.session.id)
+        cast("ParLlamaApp", self.app).post_message_all(DeleteSession(session_id=selected_item.session.id))
         self.set_timer(0.1, self.list_view.focus)
         self.set_timer(0.2, partial(self.focus_next_item, self.list_view.index or 0))
 

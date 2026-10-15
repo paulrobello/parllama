@@ -7,6 +7,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import TYPE_CHECKING, cast
 
 import orjson as json
 import pytz
@@ -14,10 +15,13 @@ import rich.repr
 
 from parllama.chat_message import ParllamaChatMessage
 from parllama.chat_message_container import ChatMessageContainer
-from parllama.messages.prompt_messages import DeletePrompt, PromptUpdated
+from parllama.messages.prompt_messages import DeletePrompt
 from parllama.messages.shared import PromptChanges, prompt_change_list
 from parllama.secure_file_ops import SecureFileOperations, SecureFileOpsError
 from parllama.settings_manager import settings
+
+if TYPE_CHECKING:
+    from parllama.app import ParLlamaApp
 
 
 @rich.repr.auto
@@ -83,16 +87,19 @@ class ChatPrompt(ChatMessageContainer):
             self._batching = False
 
     def delete(self) -> None:
-        """Delete the prompt"""
+        """Delete the prompt via the chat manager and announce it."""
+        from parllama.chat_manager import chat_manager  # lazy: circular import
+
+        chat_manager.delete_prompt(self.id)
         app = self.app or (self.parent.app if self.parent else None)
         if app:
-            app.post_message(DeletePrompt(prompt_id=self.id))
+            cast("ParLlamaApp", app).post_message_all(DeletePrompt(prompt_id=self.id))
 
     def _notify_changed(self, changed: PromptChanges) -> None:
-        """Notify changed"""
-        app = self.app or (self.parent.app if self.parent else None)
-        if app:
-            app.post_message(PromptUpdated(prompt_id=self.id, changed=changed))
+        """Notify the chat manager that prompts changed."""
+        from parllama.chat_manager import chat_manager  # lazy: circular import
+
+        chat_manager.notify_prompts_changed()
 
     @property
     def description(self) -> str:

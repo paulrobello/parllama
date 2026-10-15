@@ -77,7 +77,6 @@ from parllama.messages.prompt_messages import (
     PromptListLoaded,
     PromptMessage,
     PromptSelected,
-    PromptUpdated,
 )
 
 # Provider operations
@@ -91,11 +90,9 @@ from parllama.messages.provider_messages import (
 from parllama.messages.session_messages import (
     DeleteSession,
     NewChatSession,
-    SessionAutoNameRequested,
     SessionListChanged,
     SessionMessage,
     SessionSelected,
-    SessionToPrompt,
     SessionUpdated,
 )
 
@@ -146,11 +143,9 @@ __all__ = [
     # Session
     "DeleteSession",
     "NewChatSession",
-    "SessionAutoNameRequested",
     "SessionListChanged",
     "SessionMessage",
     "SessionSelected",
-    "SessionToPrompt",
     "SessionUpdated",
     # Chat
     "ChatContinueRequested",
@@ -173,7 +168,6 @@ __all__ = [
     "PromptListLoaded",
     "PromptMessage",
     "PromptSelected",
-    "PromptUpdated",
     # Provider
     "ProviderModelSelected",
     "ProviderModelsChanged",

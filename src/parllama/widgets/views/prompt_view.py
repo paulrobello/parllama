@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from functools import partial
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from textual import on
 from textual.app import ComposeResult
@@ -24,6 +24,9 @@ from parllama.settings_manager import settings
 from parllama.widgets.input_blur_submit import InputBlurSubmit
 from parllama.widgets.prompt_list import PromptList
 from parllama.widgets.provider_model_select import ProviderModelSelect
+
+if TYPE_CHECKING:
+    from parllama.app import ParLlamaApp
 
 
 class PromptView(Container):
@@ -158,7 +161,7 @@ class PromptView(Container):
 
     @on(PromptSelected)
     def on_prompt_selected(self, event: PromptSelected) -> None:
-        """Prompt selected event"""
+        """Enrich the selection with UI state, then broadcast it to the chat view."""
         try:
             if self.temperature_input.value:
                 event.temperature = float(self.temperature_input.value)
@@ -169,6 +172,8 @@ class PromptView(Container):
             event.model_name = self.provider_model_select.model_select.value  # type: ignore
         else:
             event.model_name = None
+        event.stop()
+        cast("ParLlamaApp", self.app).post_message_all(event)
 
     @on(Button.Pressed, "#import")
     def import_prompts(self, event: Message) -> None:

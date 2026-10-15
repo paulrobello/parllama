@@ -11,7 +11,6 @@ from unittest.mock import MagicMock
 
 from parllama.chat_manager import ChatManager
 from parllama.coordinators.clipboard_service import ClipboardService
-from parllama.coordinators.session_event_router import SessionEventRouter
 from parllama.event_bus import EventBus
 from parllama.messages.chat_messages import ChatMessage
 from parllama.messages.prompt_messages import PromptListChanged
@@ -75,27 +74,16 @@ class _ChatMessageWithNewField(ChatMessage):
     attachment_count: int = 0
 
 
-def test_session_router_forwards_every_chat_message_field() -> None:
-    """Forwarding copies the original event, so a field added later is not silently dropped."""
-    app = MagicMock()
+def test_event_bus_broadcast_preserves_every_chat_message_field() -> None:
+    """Broadcast copies the original event, so a field added later is not silently dropped."""
+    bus = EventBus()
+    widget = MagicMock()
+    bus.subscribe(widget, [_ChatMessageWithNewField])
     event = _ChatMessageWithNewField(parent_id="p1", message_id="m1", is_final=True, attachment_count=3)
-    SessionEventRouter(app).chat_message(event)
 
-    forwarded = app.main_screen.chat_view.post_message.call_args[0][0]
-    assert type(forwarded) is _ChatMessageWithNewField
-    assert forwarded is not event
-    assert dataclasses.asdict(forwarded) == dataclasses.asdict(event)
+    bus.broadcast(event)
 
-
-def test_session_router_forwards_chat_message_to_chat_view() -> None:
-    """Chat messages are re-posted to the chat view with fields preserved."""
-    app = MagicMock()
-    event = ChatMessage(parent_id="p1", message_id="m1", is_final=True)
-    SessionEventRouter(app).chat_message(event)
-
-    app.main_screen.chat_view.post_message.assert_called_once()
-    forwarded = app.main_screen.chat_view.post_message.call_args[0][0]
-    assert isinstance(forwarded, ChatMessage)
-    assert forwarded.parent_id == "p1"
-    assert forwarded.message_id == "m1"
-    assert forwarded.is_final is True
+    delivered = widget.post_message.call_args[0][0]
+    assert type(delivered) is _ChatMessageWithNewField
+    assert delivered is not event
+    assert dataclasses.asdict(delivered) == dataclasses.asdict(event)

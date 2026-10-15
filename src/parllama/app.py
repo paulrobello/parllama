@@ -24,16 +24,12 @@ from parllama.coordinators.clipboard_service import ClipboardService
 from parllama.coordinators.execution_coordinator import ExecutionCoordinator
 from parllama.coordinators.model_job_processor import ModelJobProcessor
 from parllama.coordinators.ps_status_poller import PsStatusPoller
-from parllama.coordinators.session_event_router import SessionEventRouter
 from parllama.dialogs.help_dialog import HelpDialog
 from parllama.dialogs.information import InformationDialog
 from parllama.dialogs.theme_dialog import ThemeDialog
 from parllama.event_bus import EventBus
 from parllama.memory_manager import memory_manager
 from parllama.messages.chat_messages import (
-    ChatGenerationAborted,
-    ChatMessage,
-    ChatMessageDeleted,
     ClearChatInputHistory,
     StartModelChat,
 )
@@ -58,15 +54,7 @@ from parllama.messages.model_messages import (
     SiteModelsLoaded,
     SiteModelsRefreshRequested,
 )
-from parllama.messages.prompt_messages import DeletePrompt, PromptSelected, PromptUpdated
 from parllama.messages.provider_messages import ProviderModelsChanged, RefreshProviderModelsRequested
-from parllama.messages.session_messages import (
-    DeleteSession,
-    SessionAutoNameRequested,
-    SessionSelected,
-    SessionToPrompt,
-    SessionUpdated,
-)
 from parllama.messages.ui_messages import (
     ChangeTab,
     LogIt,
@@ -125,7 +113,6 @@ class ParLlamaApp(App[None]):
     execution_coordinator: ExecutionCoordinator
     clipboard_service: ClipboardService
     ps_status_poller: PsStatusPoller
-    session_event_router: SessionEventRouter
 
     def __init__(self) -> None:
         """Initialize the application."""
@@ -143,7 +130,6 @@ class ParLlamaApp(App[None]):
         self.execution_coordinator = ExecutionCoordinator(self)
         self.clipboard_service = ClipboardService(self)
         self.ps_status_poller = PsStatusPoller(self)
-        self.session_event_router = SessionEventRouter(self)
 
         theme_manager.set_app(self)
         provider_manager.set_app(self)
@@ -520,72 +506,6 @@ Some functions are only available via slash / commands on that chat tab. You can
         """Clear chat history event"""
         event.stop()
         self.post_message_all(event)
-
-    @on(ChatMessage)
-    def on_chat_message(self, event: ChatMessage) -> None:
-        """Route chat message events to the chat view."""
-        event.stop()
-        self.session_event_router.chat_message(event)
-
-    @on(ChatMessageDeleted)
-    def on_chat_message_deleted(self, event: ChatMessageDeleted) -> None:
-        """Route chat message deletion events to the chat view."""
-        event.stop()
-        self.session_event_router.chat_message_deleted(event)
-
-    @on(ChatGenerationAborted)
-    def on_chat_generation_aborted(self, event: ChatGenerationAborted) -> None:
-        """Route chat generation abort events to the chat view."""
-        event.stop()
-        self.session_event_router.chat_generation_aborted(event)
-
-    @on(SessionSelected)
-    def on_session_selected(self, event: SessionSelected) -> None:
-        """Session selected event"""
-        event.stop()
-        self.session_event_router.session_selected(event)
-
-    @on(SessionUpdated)
-    def on_session_updated(self, event: SessionUpdated) -> None:
-        """Session updated event."""
-        event.stop()
-        self.session_event_router.session_updated(event)
-
-    @on(PromptSelected)
-    def on_prompt_selected(self, event: PromptSelected) -> None:
-        """Session selected event"""
-        event.stop()
-        self.session_event_router.prompt_selected(event)
-
-    @on(DeleteSession)
-    def on_delete_session(self, event: DeleteSession) -> None:
-        """Delete session event"""
-        event.stop()
-        self.session_event_router.delete_session(event)
-
-    @on(SessionAutoNameRequested)
-    def on_session_auto_name_requested(self, event: SessionAutoNameRequested) -> None:
-        """Session auto-name requested event."""
-        event.stop()
-        self.session_event_router.session_auto_name_requested(event)
-
-    @on(PromptUpdated)
-    def on_prompt_updated(self, event: PromptUpdated) -> None:
-        """Prompt updated event."""
-        event.stop()
-        self.session_event_router.prompt_updated(event)
-
-    @on(DeletePrompt)
-    def on_delete_prompt(self, event: DeletePrompt) -> None:
-        """Delete prompt event"""
-        event.stop()
-        self.session_event_router.delete_prompt(event)
-
-    @on(SessionToPrompt)
-    def on_session_to_prompt(self, event: SessionToPrompt) -> None:
-        """Session to prompt event"""
-        event.stop()
-        self.session_event_router.session_to_prompt(event)
 
     @on(LogIt)
     def on_log_it(self, event: LogIt) -> None:

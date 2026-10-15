@@ -7,7 +7,7 @@ import uuid
 from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, cast
 
 import orjson as json
 import pytz
@@ -22,12 +22,15 @@ from parllama.chat_message import ParllamaChatMessage
 from parllama.chat_message_container import ChatMessageContainer
 from parllama.document_attachment import DocumentAttachment
 from parllama.messages.chat_messages import ChatMessage, ChatMessageDeleted
-from parllama.messages.session_messages import DeleteSession, SessionAutoNameRequested, SessionUpdated
+from parllama.messages.session_messages import DeleteSession, SessionUpdated
 from parllama.messages.shared import SessionChanges, session_change_list
 from parllama.models.ollama_data import MessageRoles
 from parllama.models.token_stats import TokenStats
 from parllama.secure_file_ops import SecureFileOpsError
 from parllama.session_store import SessionStore
+
+if TYPE_CHECKING:
+    from parllama.app import ParLlamaApp
 from parllama.settings_manager import settings
 from parllama.stream_controller import StreamController
 
@@ -142,17 +145,23 @@ class ChatSession(ChatMessageContainer):
             self.clear_changes()
 
     def _emit(self, event: Message) -> None:
-        """Emit a Textual message through the owning app."""
+        """Broadcast a Textual message on the app's event bus."""
         app = self.app or (self.parent.app if self.parent else None)
         if app:
-            app.post_message(event)
+            cast("ParLlamaApp", app).post_message_all(event)
 
     def delete(self) -> None:
-        """Delete the session"""
+        """Delete the session via the chat manager and announce it."""
+        from parllama.chat_manager import chat_manager  # lazy: circular import
+
+        chat_manager.delete_session(self.id)
         self._emit(DeleteSession(session_id=self.id))
 
     def _notify_changed(self, changed: SessionChanges) -> None:
-        """Notify changed"""
+        """Notify the chat manager and broadcast the change."""
+        from parllama.chat_manager import chat_manager  # lazy: circular import
+
+        chat_manager.maybe_notify_session_updated(changed)
         self._emit(SessionUpdated(session_id=self.id, changed=changed))
 
     @property
@@ -359,15 +368,13 @@ class ChatSession(ChatMessageContainer):
         ai_msg = self.get_first_ai_message()
         if user_msg and ai_msg and user_msg.content and ai_msg.content:
             self.log_it("Auto naming session", notify=True)
-            app = self.app or (self.parent.app if self.parent else None)
-            if app:
-                app.post_message(
-                    SessionAutoNameRequested(
-                        session_id=self.id,
-                        llm_config=LlmConfig.from_json(settings.chat.auto_name_session_llm_config),
-                        context=f"#USER\n{user_msg.content}\n\n#ASSISTANT\n{ai_msg.content}",
-                    )
-                )
+            from parllama.chat_manager import chat_manager  # lazy: circular import
+
+            chat_manager.auto_name_session(
+                self.id,
+                LlmConfig.from_json(settings.chat.auto_name_session_llm_config),
+                context=f"#USER\n{user_msg.content}\n\n#ASSISTANT\n{ai_msg.content}",
+            )
 
     _thinking_capability_cache: ClassVar[dict[str, bool]] = {}
     """Model name → whether the Ollama model declares the 'thinking' capability."""
