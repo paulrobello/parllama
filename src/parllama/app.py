@@ -8,7 +8,7 @@ from queue import Empty
 from httpx import ConnectError
 from ollama import ProgressResponse
 from par_ai_core.llm_providers import LlmProvider
-from rich.console import ConsoleRenderable, RenderableType, RichCast
+from rich.console import ConsoleRenderable, RichCast
 from textual import on, work
 from textual.app import App
 from textual.binding import Binding
@@ -56,8 +56,6 @@ from parllama.messages.messages import (
     LocalModelPushRequested,
     LogIt,
     ModelInteractRequested,
-    PromptListChanged,
-    PromptListLoaded,
     PromptSelected,
     PromptUpdated,
     ProviderModelsChanged,
@@ -66,7 +64,6 @@ from parllama.messages.messages import (
     RegisterForUpdates,
     SendToClipboard,
     SessionAutoNameRequested,
-    SessionListChanged,
     SessionSelected,
     SessionToPrompt,
     SessionUpdated,
@@ -118,7 +115,6 @@ class ParLlamaApp(App[None]):
 
     event_bus: EventBus
     main_screen: MainScreen
-    last_status: RenderableType = ""
     chat_manager: ChatManager
     job_timer: Timer | None
     ps_timer: Timer | None
@@ -160,7 +156,6 @@ class ParLlamaApp(App[None]):
         self.ps_timer = None
         self.title = __application_title__
 
-        self.last_status = ""
         if settings.ui.theme_name not in theme_manager.list_themes():
             settings.ui.theme_name = f"{settings.ui.theme_name}_{settings.ui.theme_mode}"
             if settings.ui.theme_name not in theme_manager.list_themes():
@@ -179,6 +174,8 @@ class ParLlamaApp(App[None]):
     async def on_mount(self) -> None:
         """Display the screen."""
         self.main_screen = MainScreen()
+        # Status/ps bar updates are ordinary bus events with the main screen as their subscriber.
+        self.event_bus.subscribe(self.main_screen, [StatusMessage, PsMessage])
 
         # Initialize execution system
         await self.execution_coordinator.initialize()
@@ -486,16 +483,7 @@ Some functions are only available via slash / commands on that chat tab. You can
         self.main_screen.post_message(StatusMessage(msg))
 
     def post_message_all(self, event: Message) -> None:
-        """Post a message to all screens"""
-        if isinstance(event, StatusMessage):
-            if event.log_it:
-                self.log(event.msg)
-            self.last_status = event.msg
-            self.main_screen.post_message(event)
-            return
-        if isinstance(event, PsMessage):
-            self.main_screen.post_message(event)
-            return
+        """Broadcast an event to every widget subscribed to its type on the EventBus."""
         self.event_bus.broadcast(event)
 
     @on(ChangeTab)
@@ -537,12 +525,6 @@ Some functions are only available via slash / commands on that chat tab. You can
         event.stop()
         self.post_message_all(event)
 
-    @on(SessionListChanged)
-    def on_session_list_changed(self, event: SessionListChanged) -> None:
-        """Session list changed event"""
-        event.stop()
-        self.session_event_router.session_list_changed(event)
-
     @on(ChatMessage)
     def on_chat_message(self, event: ChatMessage) -> None:
         """Route chat message events to the chat view."""
@@ -560,12 +542,6 @@ Some functions are only available via slash / commands on that chat tab. You can
         """Route chat generation abort events to the chat view."""
         event.stop()
         self.session_event_router.chat_generation_aborted(event)
-
-    @on(PromptListChanged)
-    def on_prompt_list_changed(self, event: PromptListChanged) -> None:
-        """Prompt list changed event"""
-        event.stop()
-        self.session_event_router.prompt_list_changed(event)
 
     @on(SessionSelected)
     def on_session_selected(self, event: SessionSelected) -> None:
@@ -614,12 +590,6 @@ Some functions are only available via slash / commands on that chat tab. You can
         """Session to prompt event"""
         event.stop()
         self.session_event_router.session_to_prompt(event)
-
-    @on(PromptListLoaded)
-    def on_prompt_list_loaded(self, event: PromptListLoaded) -> None:
-        """Prompt list loaded event"""
-        event.stop()
-        self.session_event_router.prompt_list_loaded(event)
 
     @on(LogIt)
     def on_log_it(self, event: LogIt) -> None:

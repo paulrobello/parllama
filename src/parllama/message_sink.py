@@ -44,6 +44,24 @@ class MessageSink:
         self.app.post_message(message)
         return True
 
+    def broadcast(self, message: Message) -> bool:
+        """Publish a domain event straight to the app's EventBus subscribers.
+
+        Avoids routing pure fan-out events through an App ``@on`` handler. Hosts
+        without an ``event_bus`` (tests, headless use) receive it via ``post_message``.
+
+        Returns:
+            True if the message was published; False when no app is attached.
+        """
+        if self.app is None:
+            return False
+        bus = getattr(self.app, "event_bus", None)
+        if bus is None:
+            self.app.post_message(message)
+        else:
+            bus.broadcast(message)
+        return True
+
     def log_it(
         self,
         msg: ConsoleRenderable | RichCast | str | object,

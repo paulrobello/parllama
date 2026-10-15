@@ -12,6 +12,7 @@ to another.
 
 from __future__ import annotations
 
+import threading
 from dataclasses import is_dataclass, replace
 from weakref import WeakSet
 
@@ -30,6 +31,8 @@ class EventBus:
 
     def __init__(self) -> None:
         self._subs: dict[type[Message], WeakSet[MessagePump]] = {}
+        # Managers broadcast from worker threads; subscriptions change on the UI thread.
+        self._lock = threading.Lock()
 
     # ------------------------------------------------------------------
     # Subscription management
@@ -42,10 +45,11 @@ class EventBus:
             widget: The Textual widget (or any MessagePump) to deliver to.
             event_types: Message subclasses the widget wants to receive.
         """
-        for event_type in event_types:
-            if event_type not in self._subs:
-                self._subs[event_type] = WeakSet()
-            self._subs[event_type].add(widget)
+        with self._lock:
+            for event_type in event_types:
+                if event_type not in self._subs:
+                    self._subs[event_type] = WeakSet()
+                self._subs[event_type].add(widget)
 
     def unsubscribe(self, widget: MessagePump) -> None:
         """Remove *widget* from all subscriptions.
@@ -53,8 +57,9 @@ class EventBus:
         Args:
             widget: The widget to unregister.
         """
-        for subscriber_set in self._subs.values():
-            subscriber_set.discard(widget)
+        with self._lock:
+            for subscriber_set in self._subs.values():
+                subscriber_set.discard(widget)
 
     # ------------------------------------------------------------------
     # Broadcasting
@@ -78,14 +83,13 @@ class EventBus:
         Args:
             event: The message to broadcast.
         """
-        event_type = event.__class__
-        subscribers = self._subs.get(event_type)
+        with self._lock:
+            subscribers = list(self._subs.get(event.__class__, ()))
         if not subscribers:
             return
         # Opt-out is a property of the event, not the recipient, so read it once.
         shared = getattr(event, "broadcast_shared", False)
-        # Iterate over a snapshot to guard against WeakSet shrinking mid-loop.
-        for widget in list(subscribers):
+        for widget in subscribers:
             message: Message = event
             if not shared and is_dataclass(event):
                 message = replace(event)

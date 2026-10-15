@@ -1,14 +1,17 @@
 """Session and prompt event router extracted from ParLlamaApp (ARC-105).
 
 Centralizes what happens when a session- or prompt-related message reaches the
-App: fanning the event out to registered widgets via ``post_message_all``,
-forwarding chat messages to the chat view, and coordinating the chat manager.
-The App keeps the thin ``@on`` handlers Textual requires and delegates here.
+App and needs more than fan-out: forwarding chat messages to the chat view and
+coordinating the chat manager. Pure fan-out events (session/prompt list changes)
+are broadcast to the EventBus at their source and never reach the App.
 """
 
 from __future__ import annotations
 
+from dataclasses import is_dataclass, replace
 from typing import TYPE_CHECKING
+
+from textual.message import Message
 
 from parllama.chat_manager import chat_manager
 from parllama.messages.messages import (
@@ -17,12 +20,9 @@ from parllama.messages.messages import (
     ChatMessageDeleted,
     DeletePrompt,
     DeleteSession,
-    PromptListChanged,
-    PromptListLoaded,
     PromptSelected,
     PromptUpdated,
     SessionAutoNameRequested,
-    SessionListChanged,
     SessionSelected,
     SessionToPrompt,
     SessionUpdated,
@@ -48,29 +48,25 @@ class SessionEventRouter:
         """
         self._app = app
 
-    def session_list_changed(self, event: SessionListChanged) -> None:
-        """Fan out a session-list-changed event to registered widgets."""
-        self._app.post_message_all(event)
-
     def chat_message(self, event: ChatMessage) -> None:
         """Forward a chat message to the chat view."""
-        self._app.main_screen.chat_view.post_message(
-            ChatMessage(parent_id=event.parent_id, message_id=event.message_id, is_final=event.is_final)
-        )
+        self._forward_to_chat_view(event)
 
     def chat_message_deleted(self, event: ChatMessageDeleted) -> None:
         """Forward a chat-message deletion to the chat view."""
-        self._app.main_screen.chat_view.post_message(
-            ChatMessageDeleted(parent_id=event.parent_id, message_id=event.message_id)
-        )
+        self._forward_to_chat_view(event)
 
     def chat_generation_aborted(self, event: ChatGenerationAborted) -> None:
         """Forward a chat-generation abort to the chat view."""
-        self._app.main_screen.chat_view.post_message(ChatGenerationAborted(session_id=event.session_id))
+        self._forward_to_chat_view(event)
 
-    def prompt_list_changed(self, event: PromptListChanged) -> None:
-        """Fan out a prompt-list-changed event to registered widgets."""
-        self._app.post_message_all(event)
+    def _forward_to_chat_view(self, event: Message) -> None:
+        """Re-post ``event`` to the chat view as a field-complete copy.
+
+        The App handler already called ``stop()`` on the original, so a fresh copy is
+        posted; ``dataclasses.replace`` carries every field, including ones added later.
+        """
+        self._app.main_screen.chat_view.post_message(replace(event) if is_dataclass(event) else event)
 
     def session_selected(self, event: SessionSelected) -> None:
         """Fan out a session-selected event to registered widgets."""
@@ -106,7 +102,3 @@ class SessionEventRouter:
     def session_to_prompt(self, event: SessionToPrompt) -> None:
         """Convert a session to a prompt via the chat manager."""
         chat_manager.session_to_prompt(event.session_id, event.submit_on_load, event.prompt_name)
-
-    def prompt_list_loaded(self, event: PromptListLoaded) -> None:
-        """Fan out a prompt-list-loaded event to registered widgets."""
-        self._app.post_message_all(event)

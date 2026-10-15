@@ -156,7 +156,7 @@ class ChatManager(MessageSink):
         """Notify changed"""
         # self.log_it("CM Notify session changed")
         if self.app:
-            self.app.post_message(SessionListChanged())
+            self.broadcast(SessionListChanged())
 
     def get_or_create_session(
         self,
@@ -298,7 +298,7 @@ class ChatManager(MessageSink):
             except Exception as e:  # noqa: BLE001
                 self.log_it(f"Unexpected error loading prompt: {type(e).__name__}: {e}", notify=True, severity="error")
         if self.app:
-            self.app.post_message(PromptListLoaded())
+            self.broadcast(PromptListLoaded())
 
     def add_prompt(self, prompt: ChatPrompt) -> None:
         """Add a custom prompt"""
@@ -323,7 +323,7 @@ class ChatManager(MessageSink):
         """Notify changed"""
         # self.log_it("CM Notify prompts changed")
         if self.app:
-            self.app.post_message(PromptListChanged())
+            self.broadcast(PromptListChanged())
 
 
 chat_manager: ChatManager = ChatManager()

@@ -135,6 +135,7 @@ class MainScreen(Screen[None]):
         # msg.stop()
         self.update_status(msg.msg)
         if msg.log_it:
+            self.log(msg.msg)
             self.log_view.richlog.write(msg.msg)
 
     def update_status(self, msg: RenderableType):
