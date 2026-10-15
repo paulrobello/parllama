@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from queue import Empty
 
-from httpx import ConnectError
+from httpx import ConnectError, HTTPError
 from ollama import ProgressResponse
 from par_ai_core.llm_providers import LlmProvider
 from rich.console import ConsoleRenderable, RichCast
@@ -464,7 +464,17 @@ Some functions are only available via slash / commands on that chat tab. You can
             self.post_message_all(
                 StatusMessage(f"Site models for {msg.ollama_namespace or 'models'} loaded. force={msg.force}")
             )
-
+        except (HTTPError, OSError, ValueError, AttributeError, TypeError, KeyError) as e:
+            # Network failures and unexpected ollama.com markup must not kill the app (workers exit on error).
+            self.post_message(
+                LogIt(
+                    f"Failed to refresh site models: {e}",
+                    severity="error",
+                    notify=True,
+                )
+            )
+            # The site view's loading indicator is cleared only by SiteModelsLoaded; it re-shows the prior list.
+            self.main_screen.site_view.post_message(SiteModelsLoaded(ollama_namespace=msg.ollama_namespace))
         finally:
             self.state_manager.set_refreshing(False, operation)
 
