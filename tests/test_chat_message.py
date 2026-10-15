@@ -226,3 +226,71 @@ class TestEmptyModelSendGuard:
         assert result is False
         logged = " ".join(str(c.args[0]) for c in mock_log.call_args_list if c.args)
         assert "No model selected" in logged
+
+
+class _FakeChunk:
+    """Minimal AIMessageChunk stand-in for stream-loop tests."""
+
+    def __init__(self, content="", additional_kwargs=None, response_metadata=None) -> None:
+        self.content = content
+        self.additional_kwargs = additional_kwargs or {}
+        self.response_metadata = response_metadata or {}
+
+
+class _FakeChatModel:
+    """Chat model double yielding scripted chunks."""
+
+    name = "fake"
+
+    def __init__(self, chunks: list[_FakeChunk]) -> None:
+        self._chunks = chunks
+        self.reasoning = None
+
+    def stream(self, chat_history, config=None):
+        yield from self._chunks
+
+
+class TestThinkingAndFinishReason:
+    """Reasoning deltas reach msg.thinking; a token-limit finish is visible."""
+
+    def test_reasoning_streams_into_thinking_and_length_note_appended(
+        self, isolated_chat_settings: None
+    ) -> None:
+        session = ChatSession(
+            name="T",
+            llm_config=LlmConfig(provider=LlmProvider.OLLAMA, model_name="test-model"),
+            messages=[ParllamaChatMessage(id="u1", role="user", content="q")],
+        )
+        fake = _FakeChatModel(
+            [
+                _FakeChunk(additional_kwargs={"reasoning_content": "step one "}),
+                _FakeChunk(content="partial answer"),
+                _FakeChunk(response_metadata={"done_reason": "length", "model": "test-model"}),
+            ]
+        )
+        with patch.object(LlmConfig, "build_chat_model", return_value=fake), patch.object(
+            ChatSession, "_model_supports_thinking", return_value=True
+        ):
+            result = asyncio.run(session.send_chat("hello"))
+
+        assert result is True
+        assistant = session.get_last_ai_message()
+        assert assistant.thinking == "step one "
+        assert "partial answer" in assistant.content
+        assert "token limit" in assistant.content
+        # reasoning=True was requested for the thinking-capable Ollama model
+        assert fake.reasoning is True
+
+    def test_no_reasoning_flag_for_non_thinking_model(self, isolated_chat_settings: None) -> None:
+        session = ChatSession(
+            name="T2",
+            llm_config=LlmConfig(provider=LlmProvider.OLLAMA, model_name="test-model"),
+            messages=[ParllamaChatMessage(id="u1", role="user", content="q")],
+        )
+        fake = _FakeChatModel([_FakeChunk(content="hi")])
+        with patch.object(LlmConfig, "build_chat_model", return_value=fake), patch.object(
+            ChatSession, "_model_supports_thinking", return_value=False
+        ):
+            asyncio.run(session.send_chat("hello"))
+
+        assert fake.reasoning is None

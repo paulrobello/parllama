@@ -8,7 +8,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 import orjson as json
 import pytz
@@ -445,6 +445,7 @@ class ChatSession(ChatMessageContainer):
                 time_til_first_token=int(ttft),
             )
         if hasattr(chunk, "response_metadata"):
+            self._stream_done_reason = chunk.response_metadata.get("done_reason") or self._stream_done_reason
             if "model" in chunk.response_metadata:
                 self._stream_stats = TokenStats(
                     model=chunk.response_metadata.get("model") or "?",
@@ -460,6 +461,21 @@ class ChatSession(ChatMessageContainer):
                     total_tokens=0,
                     time_til_first_token=int(ttft),
                 )
+
+    def _append_finish_reason_note(self, msg: ParllamaChatMessage) -> None:
+        """Append a visible note when generation ended at a token limit.
+
+        An empty assistant message with no explanation reads as a hang; this
+        names the cause (context window or output cap) and the fix.
+        """
+        if self._stream_done_reason != "length":
+            return
+        note = (
+            "\n\n[Generation stopped at the token limit. The model used its whole "
+            "context window (thinking models can spend it all before answering) — "
+            "raise num_ctx in the session config or ask about a smaller part of the document.]"
+        )
+        msg.content += note
 
     def _handle_stream_error(self, e: Exception, msg: ParllamaChatMessage) -> str | None:
         """Log a streaming error and determine the message text to append to ``msg``.
@@ -516,6 +532,43 @@ class ChatSession(ChatMessageContainer):
                     )
                 )
 
+    _thinking_capability_cache: ClassVar[dict[str, bool]] = {}
+    """Model name → whether the Ollama model declares the 'thinking' capability."""
+
+    def _model_supports_thinking(self) -> bool:
+        """Whether the session's Ollama model declares the 'thinking' capability."""
+        name = self._llm_config.model_name
+        cached = ChatSession._thinking_capability_cache.get(name)
+        if cached is not None:
+            return cached
+        try:
+            from parllama.ollama_data_manager import ollama_dm
+
+            info = ollama_dm.ollama_client.show(name)
+            supported = "thinking" in (info.get("capabilities") or [])
+        except Exception as e:  # noqa: BLE001
+            self.log_it(f"Could not query model capabilities for {name}: {e}")
+            supported = False
+        ChatSession._thinking_capability_cache[name] = supported
+        return supported
+
+    def _build_stream_chat_model(self) -> Any:
+        """Build the chat model for streaming, enabling reasoning passthrough
+        for Ollama thinking models.
+
+        Without ``reasoning=True`` langchain-ollama discards the model's
+        thinking output entirely: the model still thinks (its chat template
+        forces it), but every chunk arrives empty and a long reasoning phase
+        looks like a hang.
+        """
+        chat_model = self._llm_config.build_chat_model()
+        if self._llm_config.provider == LlmProvider.OLLAMA and self._model_supports_thinking():
+            # ChatOllama exposes a `reasoning` field; guarded with hasattr so
+            # the type stays BaseChatModel for every other provider.
+            if hasattr(chat_model, "reasoning"):
+                chat_model.reasoning = True  # pyright: ignore [reportAttributeAccessIssue]
+        return chat_model
+
     def _warn_on_document_token_load(self) -> None:
         """Notify when attached documents push the prompt near or past the
         context budget (spec §6). Warns and proceeds — an interactive
@@ -530,10 +583,19 @@ class ChatSession(ChatMessageContainer):
         from parllama.attachment_utils import TOKEN_WARN_THRESHOLD, estimate_document_tokens
 
         doc_tokens = sum(estimate_document_tokens(d) for d in docs)
-        budget = self._llm_config.num_ctx or TOKEN_WARN_THRESHOLD
+        budget = self._llm_config.num_ctx or 0
+        if not budget:
+            # No explicit context window: use the model's effective one —
+            # for Ollama that is the model's configured num_ctx, the point
+            # where the server silently truncates the prompt.
+            from parllama.provider_manager import provider_manager
+
+            budget = provider_manager.get_model_context_length(self._llm_config.provider, self._llm_config.model_name)
+        if not budget:
+            budget = TOKEN_WARN_THRESHOLD
         if doc_tokens > budget:
             self.log_it(
-                f"Documents add ~{doc_tokens:,} tokens (budget ~{budget:,}); the prompt may be truncated or rejected",
+                f"Documents add ~{doc_tokens:,} tokens (model budget ~{budget:,}); the prompt may be truncated or rejected",
                 notify=True,
                 severity="warning",
             )
@@ -562,6 +624,7 @@ class ChatSession(ChatMessageContainer):
             True if generation completed normally; False if it was aborted
             by the user or failed with an error.
         """
+        self._stream_done_reason: str | None = None
         self._generating = True
         is_aborted = False
         msg: ParllamaChatMessage | None = None
@@ -590,7 +653,7 @@ class ChatSession(ChatMessageContainer):
             chat_history = [m.to_langchain_native(self._llm_config.provider) for m in self.messages]
             self._warn_on_document_token_load()
             # self.log_it(chat_history)
-            chat_model = self._llm_config.build_chat_model()
+            chat_model = self._build_stream_chat_model()
 
             # self.log_it(self._llm_config)
 
@@ -606,6 +669,11 @@ class ChatSession(ChatMessageContainer):
                 for chunk in stream:
                     # self.log_it(chunk)
                     elapsed_time = datetime.now(UTC) - start_time
+                    reasoning_delta = (
+                        chunk.additional_kwargs.get("reasoning_content") if chunk.additional_kwargs else None
+                    )
+                    if reasoning_delta:
+                        msg.thinking += reasoning_delta
                     if chunk.content:
                         if num_tokens == 0:
                             ttft = elapsed_time.total_seconds()
@@ -633,6 +701,7 @@ class ChatSession(ChatMessageContainer):
                     msg.content += f"\n\n{err_msg}"
                     msg.content = msg.content.strip()
 
+            self._append_finish_reason_note(msg)
             self._accumulate_cost()
             self._changes.add("messages")
             self.save()
@@ -911,6 +980,7 @@ class ChatSession(ChatMessageContainer):
         if idx == -1:
             return False
 
+        self._stream_done_reason = None
         self._generating = True
         removed_ids = [m.id for m in self.messages[idx + 1 :]]
         self.messages = self.messages[: idx + 1]
@@ -936,7 +1006,7 @@ class ChatSession(ChatMessageContainer):
 
             chat_history = [m.to_langchain_native(self._llm_config.provider) for m in self.messages]
             self._warn_on_document_token_load()
-            chat_model = self._llm_config.build_chat_model()
+            chat_model = self._build_stream_chat_model()
 
             stream: Iterator[BaseMessageChunk] = chat_model.stream(
                 chat_history,  # type: ignore
@@ -946,6 +1016,11 @@ class ChatSession(ChatMessageContainer):
             try:
                 for chunk in stream:
                     elapsed_time = datetime.now(UTC) - start_time
+                    reasoning_delta = (
+                        chunk.additional_kwargs.get("reasoning_content") if chunk.additional_kwargs else None
+                    )
+                    if reasoning_delta:
+                        msg.thinking += reasoning_delta
                     if chunk.content:
                         if num_tokens == 0:
                             ttft = elapsed_time.total_seconds()
@@ -974,6 +1049,7 @@ class ChatSession(ChatMessageContainer):
                     msg.content = msg.content.strip()
                     self._emit(ChatMessage(parent_id=self.id, message_id=msg.id, is_final=True))
 
+            self._append_finish_reason_note(msg)
             self._accumulate_cost()
             self._changes.add("messages")
             self.save()
