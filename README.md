@@ -573,6 +573,7 @@ Theme can be changed via command line with the ```--theme-name``` option.
 
 ## Contributing
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, code style, commit conventions, and the pull request process.
+The architecture is described in [project_design.md](project_design.md), and the release process in [docs/guides/release.md](docs/guides/release.md).
 
 ## FAQ
 * Q: Do I need Docker?
