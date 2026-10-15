@@ -1,8 +1,8 @@
 # Spec: Unified Attachment System (Issues #56 + #25)
 
-**Status:** Draft for review — not yet approved for implementation
+**Status:** Implemented — phases 1–6 landed 2026-10-14 (see §7 and §9). Remaining: manual TUI pass, phase 7 docs polish, and the open questions in §9
 **Covers:** [#56 Add support for pdf](https://github.com/paulrobello/par-llama/issues/56), [#25 Add insert image and document option](https://github.com/paulrobello/par-llama/issues/25)
-**Grounded against:** parllama @ `05917f1` (v0.9.2)
+**Grounded against:** parllama @ `05917f1` (v0.9.2). File and line references in §2–§4 describe that commit, not the current tree
 
 ## 1. Problem statements
 
@@ -17,20 +17,20 @@ These pair naturally: one attachment pipeline covering images and documents, wit
 ## 2. Current state (verified)
 
 - Messages are `ParllamaChatMessage` (`src/parllama/chat_message.py`): `role`, `content`, `thinking`, `images: list[str] | None`, `tool_calls`. Only `images` exists; there is no document concept.
-- Full history is sent every turn: `chat_session.py:554` (`send_chat`) and `:895` (`continue_generation`) build `[m.to_langchain_native() for m in self.messages]` and stream it.
-- Image entry point today: `/add.image PATH_OR_URL PROMPT` (`widgets/views/chat_view.py:567`, registered at `:630` in `_PREFIX_COMMANDS`). No file picker, no paste, no document support.
-- Image handling is single-image: `ParllamaChatMessage.__init__` (`chat_message.py:93-98`) and `to_langchain_native` (`chat_message.py:123-144`) encode/send **only `images[0]`**; additional images are silently dropped.
-- File validation: `validators/file_validator.py` (extension whitelist, size caps, content sniffing, zip-bomb ratio). No `.pdf` extension, no PDF content validation.
-- Settings: `settings/config_groups.py` `FileValidationSettings` — `max_image_size_mb: 50.0`, `allowed_image_extensions` includes `.webp`, `.bmp`.
+- Full history is sent every turn: `src/parllama/chat_session.py:554` (`send_chat`) and `:895` (`continue_generation`) build `[m.to_langchain_native() for m in self.messages]` and stream it.
+- Image entry point today: `/add.image PATH_OR_URL PROMPT` (`src/parllama/widgets/views/chat_view.py:567`, registered at `:630` in `_PREFIX_COMMANDS`). No file picker, no paste, no document support.
+- Image handling is single-image: `ParllamaChatMessage.__init__` (`src/parllama/chat_message.py:93-98`) and `to_langchain_native` (`src/parllama/chat_message.py:123-144`) encode/send **only `images[0]`**; additional images are silently dropped.
+- File validation: `src/parllama/validators/file_validator.py` (extension whitelist, size caps, content sniffing, zip-bomb ratio). No `.pdf` extension, no PDF content validation.
+- Settings: `src/parllama/settings/config_groups.py` `FileValidationConfig` — `max_image_size_mb: 50.0`, `allowed_image_extensions` includes `.webp`, `.bmp`.
 - `textual-fspicker` is already a dependency (file picker dialogs available with no new deps).
 - Providers come from `par_ai_core` `LlmConfig.build_chat_model()` → LangChain chat models (langchain-core ≥1.4.8). `par_ai_core` has no document/file-part helpers today (only `llm_image_utils.py`).
 
 ### Findings (bugs surfaced by grounding, fixed by this work)
 
-- **F1 — extension mismatch:** `try_get_image_type` (`chat_message.py:18-30`) accepts only `jpeg/png/gif`, but `allowed_image_extensions` whitelists `.webp/.bmp`. A webp passes validation, then `to_langchain_native` catches the `ValueError` and **replaces the entire message content with the error string** (`chat_message.py:133-134`). User message silently destroyed.
+- **F1 — extension mismatch:** `try_get_image_type` (`src/parllama/chat_message.py:18-30`) accepts only `jpeg/png/gif`, but `allowed_image_extensions` whitelists `.webp/.bmp`. A webp passes validation, then `to_langchain_native` catches the `ValueError` and **replaces the entire message content with the error string** (`src/parllama/chat_message.py:133-134`). User message silently destroyed.
 - **F2 — multi-image drop:** only `images[0]` is ever sent (F-fidelity bug; the same message can never carry 2+ images usefully).
 - **F3 — error clobbering:** any image-conversion failure replaces `msg.content` with the exception text instead of the user's text.
-- **F4 — `to_ollama_native` drops images entirely** (`chat_message.py:119-121`); harmless today (Ollama goes through the LangChain path) but a trap.
+- **F4 — `to_ollama_native` drops images entirely** (`src/parllama/chat_message.py:119-121`); harmless today (Ollama goes through the LangChain path) but a trap.
 
 ## 3. Goals / Non-goals
 
@@ -67,10 +67,10 @@ class DocumentAttachment:
     num_pages: int | None
 ```
 
-- `ParllamaChatMessage.__init__` gains `documents: list[dict] | None = None` (dicts → `DocumentAttachment`; keeps `ParllamaChatMessage(**m)` session loading working, `chat_session.py:157`).
+- `ParllamaChatMessage.__init__` gains `documents: list[dict] | None = None` (dicts → `DocumentAttachment`; keeps `ParllamaChatMessage(**m)` session loading working, `src/parllama/chat_session.py:157`).
 - `to_dict()` includes `documents`; absent key in old JSON → `None` → unchanged behavior.
 - `__str__` (markdown export) renders `[Document: name (N pages)]`.
-- Unlike images (inlined to data-URLs at construction, `chat_message.py:93-98`), documents are **not** eagerly decoded: `data_b64`/`text` are populated by the attach pipeline (4.4) so message construction stays cheap and loading old sessions does no I/O.
+- Unlike images (inlined to data-URLs at construction, `src/parllama/chat_message.py:93-98`), documents are **not** eagerly decoded: `data_b64`/`text` are populated by the attach pipeline (4.4) so message construction stays cheap and loading old sessions does no I/O.
 
 ### 4.2 Provider routing
 
@@ -95,7 +95,7 @@ Native-vs-fallback is decided per message at send time, not persisted — a sess
 
 ### 4.3 History fidelity fixes (#56 part B)
 
-`to_langchain_native()` (`chat_message.py:123-144`) reworked:
+`to_langchain_native()` (`src/parllama/chat_message.py:123-144`) reworked:
 
 1. Emit **all** images as `image_url` parts, not `images[0]` (F2).
 2. Extend `try_get_image_type` to accept `webp`/`bmp` → `image_url` data-URLs (F1). (Check what Ollama/vision models actually accept at impl time; if webp is rejected by a provider, that's a provider error surfaced to the user — not a silently-destroyed message.)
@@ -107,27 +107,27 @@ Native-vs-fallback is decided per message at send time, not persisted — a sess
    </document>
    ```
 5. `to_ollama_native()` is left alone (F4 noted, unused path; out of scope).
-6. `thinking` remains excluded from what is sent (existing documented constraint, `chat_message.py:135-140`); tool_calls inclusion is a separate concern — **not** changed in this work (touched only if trivially safe in the same function; default: no behavior change).
+6. `thinking` remains excluded from what is sent (existing documented constraint, `src/parllama/chat_message.py:135-140`); tool_calls inclusion is a separate concern — **not** changed in this work (touched only if trivially safe in the same function; default: no behavior change).
 
-`check_consecutive_messages` (`chat_session.py:963`) gains `documents` merging alongside `images` (same pattern).
+`check_consecutive_messages` (`src/parllama/chat_session.py:963`) gains `documents` merging alongside `images` (same pattern).
 
 ### 4.4 Attach pipeline
 
-`attach_file(path_or_url, role_message)` in `attachment_utils.py`:
+`attach_file(path_or_url, role_message)` in `src/parllama/attachment_utils.py`:
 
-1. **Resolve source (decision 2026-10-14: local files AND remote URLs).** Local paths read through `SecureFileOperations`. Remote `http(s)://` URLs validate via `HttpValidator`, download with the same retry/UA pattern as `fetch_and_cache_image` (`settings_manager.py:1565`), and enforce `max_document_size_mb` on the streamed response *before* parsing — aborting mid-stream once the cap is exceeded.
+1. **Resolve source (decision 2026-10-14: local files AND remote URLs).** Local paths read through `SecureFileOperations`. Remote `http(s)://` URLs validate via `HttpValidator`, download with the same retry/UA pattern as `fetch_and_cache_image` (`src/parllama/settings_manager.py:1565`), and enforce `max_document_size_mb` on the streamed response *before* parsing — aborting mid-stream once the cap is exceeded.
 2. **Validate** via `FileValidator` with new settings (§4.5): extension whitelist, size cap, `%PDF-` magic-header check, encrypted-PDF detection (fail with actionable error: "password-protected PDFs are not supported"), page-count cap.
 3. **Extract** (pypdf) text + page count immediately for all providers (needed for token estimates and fallback); store `data_b64` only when file is within the size cap for native send.
-4. **Cache** extracted text in `~/.cache/parllama/documents/` keyed by content hash, mirroring `fetch_and_cache_image` in `settings_manager.py`.
+4. **Cache** extracted text in `~/.cache/parllama/documents/` keyed by content hash, mirroring `fetch_and_cache_image` in `src/parllama/settings_manager.py`.
 5. Return the `DocumentAttachment` for the caller to put on the message.
 
 New dependency: `pypdf>=5` (pure Python, MIT). No other new deps.
 
 Extraction runs behind a narrow seam (§4.8) so the fallback path is a strategy, not a hard-coded pypdf call.
 
-### 4.5 Settings (Options → File Security section)
+### 4.5 Settings (Options → File Validation section)
 
-`FileValidationSettings` (`settings/config_groups.py`) additions:
+`FileValidationConfig` (`src/parllama/settings/config_groups.py`) additions:
 
 ```python
 max_document_size_mb: float = 32.0
@@ -142,7 +142,7 @@ All surfaced in the Options view next to the existing file-validation controls.
 
 1. **Keybinding `ctrl+p` on the chat input** ("Attach file") opens a `textual-fspicker` `FileDialog` filtered to images + documents. Selected file → validation → pending-attachment chip row above the input (name, type, size, remove with `ctrl+x` on chip). On submit, chips attach to the outgoing user message. This is the "insert option" #25 asks for.
 2. **Slash commands**, mirroring `/add.image`:
-   - `/add.doc PATH_OR_URL PROMPT` — attach + send (same arg-parsing shape as `_cmd_add_image_arg`, `chat_view.py:567`).
+   - `/add.doc PATH_OR_URL PROMPT` — attach + send (same arg-parsing shape as `_cmd_add_image_arg`, `src/parllama/widgets/views/chat_view.py:567`).
    - `/attach` — opens the same file picker with no send.
    - `/add.image` unchanged (but now supports multiple calls before submit, since F2 is fixed).
 3. **Rendering:** `ChatMessageWidget` shows attachments as a header row: `[📄 report.pdf · 12 pages · ~9k tokens]`. Images render as today. Markdown export includes document markers (§4.1).
@@ -195,10 +195,10 @@ Each phase ends with `make checkall` green and an atomic commit. Tests use pytes
 
 | Phase | Scope | Verify |
 |---|---|---|
-| 1 | Fidelity fixes F1–F3 in `chat_message.py` (multi-image, webp/bmp, no error clobber) | Unit tests: `to_langchain_native` with 1/2/N images, webp fixture, failing-image path keeps content |
+| 1 | Fidelity fixes F1–F3 in `src/parllama/chat_message.py` (multi-image, webp/bmp, no error clobber) | Unit tests: `to_langchain_native` with 1/2/N images, webp fixture, failing-image path keeps content |
 | 2 | Settings (§4.5) + `FileValidator` PDF support (magic header, page cap, encrypted detection) | Unit tests per validator branch; `make checkall` |
 | 3 | `DocumentAttachment` model + persistence round-trip (to_dict/`**m`/markdown export) | Unit tests: old-JSON load, new-JSON round-trip, export |
-| 4 | `attachment_utils.py`: capability map, content blocks, pypdf extraction, cache, token estimates | Unit tests with fixture PDFs (1-page, N-page, encrypted, oversized) |
+| 4 | `src/parllama/attachment_utils.py`: capability map, content blocks, pypdf extraction, cache, token estimates | Unit tests with fixture PDFs (1-page, N-page, encrypted, oversized) |
 | 5 | Wire into send path (`to_langchain_native` document branch) + token guardrail + `check_consecutive_messages` | Unit tests with mocked chat models per provider class |
 | 6 | UI: `ctrl+p` picker + chips, `/add.doc`, `/attach`, widget rendering, help.md | `make checkall` + manual TUI pass (attach → send → render → reload session) |
 | 7 | README/docs polish | Review |
@@ -226,6 +226,7 @@ Implementation notes (2026-10-14, phases 2–6 landed):
 - The attach keybinding is **ctrl+o** (`ctrl+p` was already bound to session config, spec §4.6 said ctrl+p — superseded).
 - The token guardrail (§6) **warns and proceeds** rather than requiring interactive confirmation — a modal confirm inside the streaming send path would stall the UI loop. Deviation noted here; revisit if providers reject oversized prompts often.
 - FileValidator gained only the `%PDF-` magic-header check; page-count/encryption checks live in the attach pipeline where pypdf is loaded (spec §4.4 said validator — superseded, same effect).
+- Remote fetching (§4.4, §5) no longer mirrors `fetch_and_cache_image` in `src/parllama/settings_manager.py`: image caching moved to `src/parllama/image_cache.py`, and both images and documents now go through the shared SSRF guard in `src/parllama/net_guard.py` (public-address check on every redirect hop, redirects not followed automatically). Downloaded documents run through the same `FileValidator` checks as local files, and cache or URL re-derivation at send time only accepts bytes whose SHA-256 matches the hash recorded at attach time.
 
 Still open:
 
