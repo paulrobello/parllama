@@ -140,7 +140,11 @@ def _check_remote_url(url: str) -> None:
     if parts.scheme not in ("http", "https") or not parts.hostname:
         raise AttachmentError(f"Only http(s) document URLs are allowed: {url}")
     try:
-        infos = socket.getaddrinfo(parts.hostname, parts.port or None, proto=socket.IPPROTO_TCP)
+        port = parts.port
+    except ValueError as e:
+        raise AttachmentError(f"Invalid document URL: {url}") from e
+    try:
+        infos = socket.getaddrinfo(parts.hostname, port or None, proto=socket.IPPROTO_TCP)
     except (socket.gaierror, UnicodeError) as e:
         raise AttachmentError(f"Cannot resolve document host '{parts.hostname}': {e}") from e
     for info in infos:

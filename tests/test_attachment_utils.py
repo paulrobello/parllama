@@ -190,6 +190,10 @@ class TestRemoteDocumentSecurity:
         with pytest.raises(AttachmentError):
             _check_remote_url("file:///etc/passwd")
 
+    def test_malformed_port_is_attachment_error(self, isolated_settings: Path) -> None:
+        with pytest.raises(AttachmentError, match="Invalid document URL"):
+            _check_remote_url("http://example.com:99999/a.txt")
+
     def test_redirect_to_private_address_rejected(self, isolated_settings: Path) -> None:
         def fake_getaddrinfo(host, port, *args, **kwargs):
             address = "93.184.216.34" if host == "public.example" else "169.254.169.254"
