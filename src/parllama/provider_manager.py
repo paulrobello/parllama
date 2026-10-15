@@ -33,27 +33,6 @@ from parllama.settings_manager import settings
 # litellm is already loaded transitively via the par_ai_core imports above.
 litellm.suppress_debug_info = True
 
-openai_model_context_windows = {
-    "chatgpt-4o-latest": 128_000,
-    "gpt-4o-mini": 128_000,
-    "gpt-4o-mini-2024-07-18": 128_000,
-    "gpt-4-turbo": 128_000,
-    "gpt-4-turbo-2024-04-09": 128_000,
-    "gpt-4-turbo-preview": 128_000,
-    "gpt-4-0125-preview": 128_000,
-    "gpt-4-1106-preview": 128_000,
-    "gpt-4": 8_192,
-    "gpt-4-0613": 8_192,
-    "gpt-4-0314": 8_192,
-    "gpt-3.5-turbo-0125": 16_385,
-    "gpt-3.5-turbo": 16_385,
-    "gpt-3.5-turbo-1106": 16_385,
-    "gpt-3.5-turbo-instruct": 4_096,
-    "text-moderation-latest": 32_768,
-    "text-moderation-stable": 32_768,
-    "text-moderation-007": 32_768,
-}
-
 
 class ProviderManager(MessageSink):
     """Manages providers and their models"""

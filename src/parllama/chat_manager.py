@@ -96,15 +96,6 @@ class ChatManager(MessageSink):
                 break
         return session_name
 
-    def mk_llm_session_name(self, text: str) -> str | None:
-        """Generate a unique LLM session name"""
-        if not settings.chat.auto_name_session_llm_config:
-            return None
-        base_name = llm_session_name(text, LlmConfig.from_json(settings.chat.auto_name_session_llm_config))
-        if not base_name:
-            return None
-        return self.mk_session_name(base_name)
-
     def new_session(
         self,
         *,

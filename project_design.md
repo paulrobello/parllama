@@ -1391,7 +1391,7 @@ def log_it(self, msg, severity="information", timeout: int | None = None):
 **Problem**: Repetitive error handling patterns across model operations led to ~60 lines of duplicate code and maintenance burden.
 
 **Solution**:
-- Created centralized `handle_ollama_error()` method in app.py
+- Created centralized `handle_ollama_error()` method (now in `src/parllama/coordinators/model_job_processor.py`)
 - Consolidated error handling for all model operations (copy, pull, push, create)
 - Maintained existing functionality while reducing code duplication
 

@@ -625,12 +625,6 @@ Some functions are only available via slash / commands on that chat tab. You can
         """Log a message to the log view"""
         self.main_screen.log_view.richlog.write(msg)
 
-    def handle_ollama_error(
-        self, operation: str, model_name: str, error: Exception, custom_handling: bool = False
-    ) -> str:
-        """Handle common Ollama error patterns. Delegates to ModelJobProcessor."""
-        return self.model_job_processor.handle_ollama_error(operation, model_name, error, custom_handling)
-
     async def action_shutdown(self) -> None:
         """Quit the application"""
         settings.shutting_down = True
