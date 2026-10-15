@@ -105,7 +105,7 @@ parllama --version
 
 ## Individual Workflows
 
-The pipeline stages also exist as separate, manually dispatched workflows for partial reruns. Each one runs `make checkall` and `make package` before doing anything else.
+The pipeline stages also exist as separate, manually dispatched workflows for partial reruns. Each publishing workflow runs `make checkall` and `make package` before doing anything else; CI runs only `make checkall`.
 
 | Workflow | File | Purpose |
 | --- | --- | --- |
