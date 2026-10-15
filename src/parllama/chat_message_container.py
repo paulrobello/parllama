@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -17,7 +16,6 @@ from textual.app import App
 from parllama.chat_message import ParllamaChatMessage
 from parllama.message_sink import MessageSink
 from parllama.messages.chat_messages import ChatMessageDeleted
-from parllama.settings_manager import settings
 
 
 @rich.repr.auto
@@ -269,15 +267,6 @@ class ChatMessageContainer(MessageSink):
             str,
             json.OPT_INDENT_2,
         ).decode("utf-8")
-
-    def export_as_markdown(self, filename: str) -> bool:
-        """Save the chat session to markdown file"""
-        try:
-            with open(os.path.join(settings.export_md_dir, filename), "w", encoding="utf-8") as f:
-                f.write(str(self))
-            return True
-        except OSError:
-            return False
 
     @property
     def context_length(self) -> int:
