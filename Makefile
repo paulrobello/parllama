@@ -58,7 +58,7 @@ chat_dev:	        # Run in dev mode
 
 .PHONY: debug
 debug:	        # Run in debug mode
-	TEXTUAL=devtools make
+	TEXTUAL=devtools $(run) $(lib)
 
 .PHONY: console
 console:	        # Run textual dev console
@@ -70,7 +70,7 @@ test:	        # Run tests
 
 .PHONY: coverage
 coverage:	        # Run coverage tests
-	$(run) pytest --cov=parllama.secrets_manager --cov-report=term-missing
+	$(run) pytest --cov=parllama --cov-report=term-missing
 
 ##############################################################################
 .PHONY: uv-lock
@@ -109,7 +109,11 @@ format:                         # Reformat the code with ruff.
 	$(ruff) format src/$(lib)
 
 .PHONY: lint
-lint:                           # Run ruff lint over the library
+lint:                           # Run ruff lint over the library (check only, no fixes)
+	$(ruff) check src/$(lib)
+
+.PHONY: lint-fix
+lint-fix:                       # Run ruff lint over the library, applying safe fixes
 	$(ruff) check src/$(lib) --fix
 
 .PHONY: lint-unsafe
@@ -126,6 +130,9 @@ typecheck-stats:			# Perform static type checks with pyright and print stats
 
 .PHONY: checkall
 checkall: format lint typecheck test	        # Check all the things
+
+.PHONY: checkall-ci
+checkall-ci: checkall package	        # CI-parity gate: what CI plus the release pipeline's package build
 
 .PHONY: pre-commit	        # run pre-commit checks on all files
 pre-commit:
