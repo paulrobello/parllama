@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import base64
+import hashlib
+import socket
 from pathlib import Path
 from unittest.mock import patch
 
@@ -12,10 +14,12 @@ from par_ai_core.llm_providers import LlmProvider
 
 from parllama.attachment_utils import (
     AttachmentError,
+    _check_remote_url,
     attach_document,
     ensure_sendable,
     estimate_document_tokens,
     provider_supports_native_documents,
+    resolve_payload,
 )
 from parllama.chat_message import ParllamaChatMessage
 from parllama.chat_session import ChatSession
@@ -132,6 +136,134 @@ class TestAttachDocument:
         f.write_bytes(b"whatever")
         with pytest.raises(AttachmentError, match="Unsupported document type"):
             attach_document(str(f))
+
+
+def _resolve_to(address: str):
+    """getaddrinfo stand-in that resolves every host to ``address``."""
+
+    def fake_getaddrinfo(host, port, *args, **kwargs):
+        family = socket.AF_INET6 if ":" in address else socket.AF_INET
+        return [(family, socket.SOCK_STREAM, 6, "", (address, port or 0))]
+
+    return fake_getaddrinfo
+
+
+class _FakeResponse:
+    """Minimal streaming requests.Response stand-in."""
+
+    def __init__(self, body: bytes = b"", status: int = 200, location: str | None = None) -> None:
+        self._body = body
+        self.status_code = status
+        self.headers = {"Location": location} if location else {}
+        self.is_redirect = location is not None
+
+    def __enter__(self) -> _FakeResponse:
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        return None
+
+    def raise_for_status(self) -> None:
+        return None
+
+    def iter_content(self, chunk_size: int = 1):
+        yield self._body
+
+
+class TestRemoteDocumentSecurity:
+    """SEC-003: SSRF guard, remote content validation, and hash-verified re-derivation."""
+
+    @pytest.mark.parametrize(
+        "address",
+        ["127.0.0.1", "10.0.0.5", "192.168.1.10", "172.16.0.1", "169.254.169.254", "::1", "fe80::1", "::ffff:127.0.0.1"],
+    )
+    def test_non_public_targets_rejected(self, isolated_settings: Path, address: str) -> None:
+        with (
+            patch("parllama.attachment_utils.socket.getaddrinfo", _resolve_to(address)),
+            patch("parllama.attachment_utils.requests.get") as mock_get,
+        ):
+            with pytest.raises(AttachmentError, match="non-public address"):
+                attach_document("http://internal.example/doc.txt")
+        mock_get.assert_not_called()
+
+    def test_non_http_scheme_rejected(self, isolated_settings: Path) -> None:
+        with pytest.raises(AttachmentError):
+            _check_remote_url("file:///etc/passwd")
+
+    def test_redirect_to_private_address_rejected(self, isolated_settings: Path) -> None:
+        def fake_getaddrinfo(host, port, *args, **kwargs):
+            address = "93.184.216.34" if host == "public.example" else "169.254.169.254"
+            return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (address, port or 0))]
+
+        redirect = _FakeResponse(status=302, location="http://metadata.internal/latest/meta-data")
+        with (
+            patch("parllama.attachment_utils.socket.getaddrinfo", fake_getaddrinfo),
+            patch("parllama.attachment_utils.requests.get", return_value=redirect) as mock_get,
+        ):
+            with pytest.raises(AttachmentError, match="non-public address"):
+                attach_document("http://public.example/doc.txt")
+        assert mock_get.call_count == 1
+        assert mock_get.call_args.kwargs["allow_redirects"] is False
+
+    def test_public_remote_text_attaches(self, isolated_settings: Path) -> None:
+        with (
+            patch("parllama.attachment_utils.socket.getaddrinfo", _resolve_to("93.184.216.34")),
+            patch("parllama.attachment_utils.requests.get", return_value=_FakeResponse(b"remote text")),
+        ):
+            doc = attach_document("https://public.example/notes.txt")
+        assert doc.text == "remote text"
+        assert doc.source_url == "https://public.example/notes.txt"
+
+    def test_remote_pdf_without_pdf_header_rejected(self, isolated_settings: Path) -> None:
+        with (
+            patch("parllama.attachment_utils.socket.getaddrinfo", _resolve_to("93.184.216.34")),
+            patch("parllama.attachment_utils.requests.get", return_value=_FakeResponse(b"<html>not a pdf</html>")),
+        ):
+            with pytest.raises(AttachmentError, match="missing %PDF- header"):
+                attach_document("https://public.example/doc.pdf")
+
+    def _cache_referenced_doc(self, body: bytes, source_url: str | None = None) -> DocumentAttachment:
+        return DocumentAttachment(
+            name="big.txt",
+            mime_type="text/plain",
+            size_bytes=len(body),
+            sha256=hashlib.sha256(body).hexdigest(),
+            text=body.decode(),
+            inline=False,
+            source_url=source_url,
+        )
+
+    def test_tampered_cache_file_is_not_sent(self, isolated_settings: Path) -> None:
+        doc = self._cache_referenced_doc(b"original bytes")
+        cache_dir = settings.cache_dir / "documents"
+        cache_dir.mkdir(parents=True)
+        (cache_dir / f"{doc.sha256}.bin").write_bytes(b"tampered bytes")
+
+        assert resolve_payload(doc) is None
+        assert ensure_sendable(doc) is False
+
+    def test_refetch_with_changed_content_is_rejected(self, isolated_settings: Path) -> None:
+        doc = self._cache_referenced_doc(b"original bytes", source_url="https://public.example/big.txt")
+        with (
+            patch("parllama.attachment_utils.socket.getaddrinfo", _resolve_to("93.184.216.34")),
+            patch("parllama.attachment_utils.requests.get", return_value=_FakeResponse(b"swapped bytes")),
+        ):
+            assert resolve_payload(doc) is None
+
+    def test_refetch_with_matching_content_is_accepted(self, isolated_settings: Path) -> None:
+        doc = self._cache_referenced_doc(b"original bytes", source_url="https://public.example/big.txt")
+        with (
+            patch("parllama.attachment_utils.socket.getaddrinfo", _resolve_to("93.184.216.34")),
+            patch("parllama.attachment_utils.requests.get", return_value=_FakeResponse(b"original bytes")),
+        ):
+            assert resolve_payload(doc) == b"original bytes"
+
+    def test_refetch_of_private_source_url_is_blocked(self, isolated_settings: Path) -> None:
+        """A crafted session file must not turn send into an internal-network fetch."""
+        doc = self._cache_referenced_doc(b"x", source_url="http://169.254.169.254/latest/meta-data")
+        with patch("parllama.attachment_utils.requests.get") as mock_get:
+            assert resolve_payload(doc) is None
+        mock_get.assert_not_called()
 
 
 class TestProviderRouting:

@@ -8,9 +8,13 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import ipaddress
+import socket
+import tempfile
 from io import BytesIO
 from pathlib import Path
 from typing import Any, Protocol
+from urllib.parse import urljoin, urlsplit
 
 import requests
 from par_ai_core.llm_providers import LlmProvider
@@ -119,22 +123,77 @@ def _validator() -> FileValidator:
     )
 
 
-def _fetch_remote(url: str) -> tuple[bytes, str]:
-    """Download a remote document, enforcing the size cap mid-stream."""
+MAX_REMOTE_REDIRECTS = 5
+
+
+def _check_remote_url(url: str) -> None:
+    """Reject URLs that are not http(s) or whose host resolves to a non-public address.
+
+    Blocks loopback, RFC1918/ULA private, link-local (including cloud metadata at
+    169.254.169.254), multicast, and reserved ranges. Every resolved address must be
+    public. A DNS answer that changes between this check and the connect is not covered.
+
+    Raises:
+        AttachmentError: If the URL may not be fetched.
+    """
+    parts = urlsplit(url)
+    if parts.scheme not in ("http", "https") or not parts.hostname:
+        raise AttachmentError(f"Only http(s) document URLs are allowed: {url}")
     try:
-        with requests.get(url, timeout=settings.image_fetch_timeout, stream=True) as response:
-            response.raise_for_status()
-            cap = settings.max_document_size_mb * 1024 * 1024
-            chunks: list[bytes] = []
-            received = 0
-            for chunk in response.iter_content(chunk_size=64 * 1024):
-                received += len(chunk)
-                if received > cap:
-                    raise AttachmentError(f"Document exceeds {settings.max_document_size_mb}MB download limit")
-                chunks.append(chunk)
-            return b"".join(chunks), url
+        infos = socket.getaddrinfo(parts.hostname, parts.port or None, proto=socket.IPPROTO_TCP)
+    except (socket.gaierror, UnicodeError) as e:
+        raise AttachmentError(f"Cannot resolve document host '{parts.hostname}': {e}") from e
+    for info in infos:
+        ip = ipaddress.ip_address(str(info[4][0]).split("%", 1)[0])
+        if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
+            ip = ip.ipv4_mapped
+        if not ip.is_global or ip.is_multicast:
+            raise AttachmentError(f"Refusing to fetch document from non-public address {ip} ({parts.hostname})")
+
+
+def _fetch_remote(url: str) -> tuple[bytes, str]:
+    """Download a remote document, enforcing the SSRF guard on every hop and the size cap mid-stream."""
+    try:
+        current = url
+        for _ in range(MAX_REMOTE_REDIRECTS + 1):
+            _check_remote_url(current)
+            with requests.get(
+                current, timeout=settings.image_fetch_timeout, stream=True, allow_redirects=False
+            ) as response:
+                if response.is_redirect:
+                    location = response.headers.get("Location")
+                    if not location:
+                        raise AttachmentError("Document redirect without a Location header")
+                    current = urljoin(current, location)
+                    continue
+                response.raise_for_status()
+                cap = settings.max_document_size_mb * 1024 * 1024
+                chunks: list[bytes] = []
+                received = 0
+                for chunk in response.iter_content(chunk_size=64 * 1024):
+                    received += len(chunk)
+                    if received > cap:
+                        raise AttachmentError(f"Document exceeds {settings.max_document_size_mb}MB download limit")
+                    chunks.append(chunk)
+                return b"".join(chunks), url
+        raise AttachmentError(f"Too many redirects fetching document (limit {MAX_REMOTE_REDIRECTS})")
     except requests.RequestException as e:
         raise AttachmentError(f"Failed to download document: {e}") from e
+
+
+def _validate_remote_payload(payload: bytes, ext: str) -> None:
+    """Run downloaded bytes through the same FileValidator checks applied to local files.
+
+    Raises:
+        AttachmentError: If the payload fails validation.
+    """
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        tmp_path = Path(tmp_dir) / f"remote{ext}"
+        tmp_path.write_bytes(payload)
+        try:
+            _validator().validate_file_path(tmp_path)
+        except FileValidationError as e:
+            raise AttachmentError(str(e)) from e
 
 
 def strip_wrapping_quotes(path_or_url: str) -> str:
@@ -162,6 +221,7 @@ def attach_document(path_or_url: str) -> DocumentAttachment:
 
     if is_remote:
         payload, source_url = _fetch_remote(src)
+        _validate_remote_payload(payload, ext)
         name = Path(src.split("?")[0]).name or "document"
     else:
         path = Path(src)
@@ -204,18 +264,26 @@ def attach_document(path_or_url: str) -> DocumentAttachment:
 
 
 def resolve_payload(doc: DocumentAttachment) -> bytes | None:
-    """Re-derive a cache-referenced document's bytes; None when unrecoverable."""
+    """Re-derive a cache-referenced document's bytes; None when unrecoverable.
+
+    Cached and re-fetched bytes are only returned when their SHA-256 matches the hash
+    recorded at attach time, so a provider never receives content other than what was
+    validated and previewed.
+    """
     if doc.data_b64:
         return doc.payload_bytes
     cached = _documents_cache_dir() / f"{doc.sha256}.bin"
     if cached.is_file():
-        return cached.read_bytes()
+        payload = cached.read_bytes()
+        if hashlib.sha256(payload).hexdigest() == doc.sha256:
+            return payload
     if doc.source_url:
         try:
             payload, _ = _fetch_remote(doc.source_url)
-            return payload
         except AttachmentError:
             return None
+        if hashlib.sha256(payload).hexdigest() == doc.sha256:
+            return payload
     return None
 
 
