@@ -147,11 +147,11 @@ spackage:			# Create a source package for the library
 
 .PHONY: test-publish
 test-publish: package		# Upload to testpypi
-	$(publish) upload --index testpypi --check-url
+	$(publish) --index testpypi
 
 .PHONY: publish
 publish: package		# Upload to pypi
-	$(publish) upload --check-url
+	$(publish) --check-url https://pypi.org/simple/
 
 ##############################################################################
 # Utility.

@@ -120,7 +120,7 @@ The pipeline stages also exist as separate, manually dispatched workflows for pa
 
 The Makefile has `make test-publish` (TestPyPI) and `make publish` (PyPI) targets that run `uv publish` from a developer machine. Prefer the CI workflows: they use trusted publishing, sign the artifacts, and keep the tag, GitHub Release, and PyPI upload consistent.
 
-> **Warning:** As of uv 0.12.1 both targets fail before uploading anything. The recipes pass a bare `--check-url`, which uv now requires a URL for, and `test-publish` names a `testpypi` index that the project does not configure. Use the workflows above until the targets are fixed.
+> **Note:** The recipes use uv 0.12.1+ syntax: `publish` passes `--check-url https://pypi.org/simple/`, and `test-publish` selects the `testpypi` index defined in `pyproject.toml` (`--index` and `--check-url` are mutually exclusive; the index's `publish-url` is the upload endpoint). Verify without uploading by appending `--dry-run` to the recipe's `uv publish` invocation.
 
 ## Troubleshooting
 
