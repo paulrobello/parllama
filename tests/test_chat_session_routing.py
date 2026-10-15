@@ -13,7 +13,8 @@ from textual.message import Message
 from parllama.chat_manager import ChatManager
 from parllama.chat_message import ParllamaChatMessage
 from parllama.chat_session import ChatSession
-from parllama.messages.messages import ChatMessage, ChatMessageDeleted, DeleteSession, SessionUpdated
+from parllama.messages.chat_messages import ChatMessage, ChatMessageDeleted
+from parllama.messages.session_messages import DeleteSession, SessionUpdated
 from parllama.settings_manager import settings
 
 

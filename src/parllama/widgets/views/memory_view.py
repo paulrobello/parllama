@@ -7,7 +7,7 @@ from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.widgets import Button, Checkbox, Static, TextArea
 
-from parllama.messages.messages import MemoryUpdated, RegisterForUpdates
+from parllama.messages.ui_messages import MemoryUpdated, RegisterForUpdates
 from parllama.settings_manager import settings
 
 

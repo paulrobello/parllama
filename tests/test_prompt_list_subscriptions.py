@@ -22,7 +22,8 @@ import pytest
 from textual.app import App, ComposeResult
 from textual.message import Message
 
-from parllama.messages.messages import PromptListChanged, PromptSelected, RegisterForUpdates
+from parllama.messages.prompt_messages import PromptListChanged, PromptSelected
+from parllama.messages.ui_messages import RegisterForUpdates
 from parllama.widgets.prompt_list import PromptList
 
 

@@ -7,7 +7,8 @@ from weakref import WeakSet
 
 from textual.message import Message
 
-from parllama.messages.messages import LocalModelPulled, RegisterForUpdates
+from parllama.messages.model_messages import LocalModelPulled
+from parllama.messages.ui_messages import RegisterForUpdates
 
 
 def test_register_for_updates_uses_message_classes_not_string_names() -> None:

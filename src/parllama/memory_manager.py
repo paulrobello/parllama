@@ -35,7 +35,7 @@ class MemoryManager:
 
         # Notify the UI that memory has been updated
         if self._app and hasattr(self._app, "post_message_all"):
-            from parllama.messages.messages import MemoryUpdated
+            from parllama.messages.ui_messages import MemoryUpdated
 
             # Use post_message_all to broadcast to all registered widgets
             # Type ignore because post_message_all is a ParLlamaApp method, not base App

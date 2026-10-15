@@ -24,7 +24,7 @@ from par_ai_core.pricing_lookup import get_api_cost_model_name, get_model_metada
 from textual.app import App
 
 from parllama.message_sink import MessageSink
-from parllama.messages.messages import ProviderModelsChanged, RefreshProviderModelsRequested
+from parllama.messages.provider_messages import ProviderModelsChanged, RefreshProviderModelsRequested
 from parllama.ollama_data_manager import ollama_dm
 from parllama.settings_manager import settings
 

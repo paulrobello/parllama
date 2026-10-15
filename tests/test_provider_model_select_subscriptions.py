@@ -6,7 +6,9 @@ import pytest
 from textual.app import App, ComposeResult
 from textual.message import Message
 
-from parllama.messages.messages import ProviderModelsChanged, RegisterForUpdates, SessionUpdated
+from parllama.messages.provider_messages import ProviderModelsChanged
+from parllama.messages.session_messages import SessionUpdated
+from parllama.messages.ui_messages import RegisterForUpdates
 from parllama.widgets.provider_model_select import ProviderModelSelect
 
 

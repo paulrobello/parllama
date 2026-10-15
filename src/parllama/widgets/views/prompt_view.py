@@ -18,7 +18,8 @@ from parllama.chat_prompt import ChatPrompt
 from parllama.dialogs.edit_prompt_dialog import EditPromptDialog
 from parllama.dialogs.import_fabric_dialog import ImportFabricDialog
 from parllama.dialogs.yes_no_dialog import YesNoDialog
-from parllama.messages.messages import DeletePrompt, PromptDeleteRequested, PromptSelected, RegisterForUpdates
+from parllama.messages.prompt_messages import DeletePrompt, PromptDeleteRequested, PromptSelected
+from parllama.messages.ui_messages import RegisterForUpdates
 from parllama.settings_manager import settings
 from parllama.widgets.input_blur_submit import InputBlurSubmit
 from parllama.widgets.prompt_list import PromptList

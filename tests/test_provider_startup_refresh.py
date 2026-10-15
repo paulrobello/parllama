@@ -5,10 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import orjson as json
-
 from par_ai_core.llm_providers import LlmProvider
 
-from parllama.messages.messages import RefreshProviderModelsRequested
+from parllama.messages.provider_messages import RefreshProviderModelsRequested
 from parllama.provider_manager import ProviderManager
 
 

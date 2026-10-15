@@ -9,7 +9,7 @@ from textual.binding import Binding
 from textual.message import Message
 from textual.widgets import TextArea
 
-from parllama.messages.messages import HistoryNext, HistoryPrev, ToggleInputMode
+from parllama.messages.chat_messages import HistoryNext, HistoryPrev, ToggleInputMode
 
 
 class UserTextArea(TextArea):

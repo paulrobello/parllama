@@ -14,7 +14,7 @@ import rich.repr
 
 from parllama.chat_message import ParllamaChatMessage
 from parllama.chat_message_container import ChatMessageContainer
-from parllama.messages.messages import DeletePrompt, PromptUpdated
+from parllama.messages.prompt_messages import DeletePrompt, PromptUpdated
 from parllama.messages.shared import PromptChanges, prompt_change_list
 from parllama.secure_file_ops import SecureFileOperations, SecureFileOpsError
 from parllama.settings_manager import settings

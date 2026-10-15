@@ -34,27 +34,19 @@ from parllama.chat_message import ParllamaChatMessage
 from parllama.dialogs.attach_file_dialog import AttachFileDialog
 from parllama.dialogs.information import InformationDialog
 from parllama.document_attachment import DocumentAttachment
-from parllama.messages.messages import (
-    ChangeTab,
+from parllama.messages.chat_messages import (
     ChatContinueRequested,
     ChatGenerationAborted,
     ChatMessage,
     ChatMessageDeleted,
     ChatMessageSent,
     ClearChatInputHistory,
-    DeleteSession,
-    LogIt,
-    PromptListChanged,
-    PromptListLoaded,
-    PromptSelected,
-    ProviderModelsChanged,
-    RegisterForUpdates,
-    SessionSelected,
-    SessionToPrompt,
-    SessionUpdated,
     UpdateChatControlStates,
-    UpdateTabLabel,
 )
+from parllama.messages.prompt_messages import PromptListChanged, PromptListLoaded, PromptSelected
+from parllama.messages.provider_messages import ProviderModelsChanged
+from parllama.messages.session_messages import DeleteSession, SessionSelected, SessionToPrompt, SessionUpdated
+from parllama.messages.ui_messages import ChangeTab, LogIt, RegisterForUpdates, UpdateTabLabel
 from parllama.provider_manager import provider_manager
 from parllama.settings_manager import settings
 from parllama.widgets.clickable_label import ClickableLabel

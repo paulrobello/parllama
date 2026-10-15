@@ -10,7 +10,7 @@ from textual.app import App
 from textual.message import Message
 from textual.notifications import SeverityLevel
 
-from parllama.messages.messages import LogIt
+from parllama.messages.ui_messages import LogIt
 
 
 class MessageSink:

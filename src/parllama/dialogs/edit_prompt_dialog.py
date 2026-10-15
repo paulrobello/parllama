@@ -14,7 +14,7 @@ from textual.widgets import Button, Checkbox, Input, Label, Select, Static, Text
 
 from parllama.chat_message import ParllamaChatMessage
 from parllama.chat_prompt import ChatPrompt
-from parllama.messages.messages import DeletePromptMessage
+from parllama.messages.prompt_messages import DeletePromptMessage
 from parllama.settings_manager import settings
 from parllama.widgets.custom_prompt_message_edit import CustomPromptMessageEdit
 from parllama.widgets.field_set import FieldSet

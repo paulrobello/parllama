@@ -12,7 +12,7 @@ from textual.app import App, ComposeResult
 
 from parllama.chat_manager import chat_manager
 from parllama.chat_session import ChatSession
-from parllama.messages.messages import SessionListChanged, SessionSelected
+from parllama.messages.session_messages import SessionListChanged, SessionSelected
 from parllama.settings_manager import settings
 from parllama.widgets.session_list import SessionList
 

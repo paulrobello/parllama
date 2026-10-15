@@ -7,7 +7,7 @@ from textual.app import App, ComposeResult
 from textual.message import Message
 from textual.widgets import Label, TabbedContent, TabPane
 
-from parllama.messages.messages import SiteModelsRefreshRequested
+from parllama.messages.model_messages import SiteModelsRefreshRequested
 from parllama.widgets.views.site_model_view import SiteModelView
 
 

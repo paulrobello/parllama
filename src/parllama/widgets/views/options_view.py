@@ -15,7 +15,8 @@ from textual.validation import Integer, Number
 from textual.widgets import Button, Checkbox, Input, Label, Select, Static
 
 import parllama
-from parllama.messages.messages import ClearChatInputHistory, ProviderModelSelected
+from parllama.messages.chat_messages import ClearChatInputHistory
+from parllama.messages.provider_messages import ProviderModelSelected
 from parllama.settings_manager import settings
 from parllama.theme_manager import theme_manager
 from parllama.utils import shorten_path, valid_tabs

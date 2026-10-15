@@ -16,7 +16,9 @@ from parllama.chat_prompt import ChatPrompt
 from parllama.chat_session import ChatSession
 from parllama.llm_session_helpers import llm_session_name
 from parllama.message_sink import MessageSink
-from parllama.messages.messages import ChangeTab, PromptListChanged, PromptListLoaded, SessionListChanged
+from parllama.messages.prompt_messages import PromptListChanged, PromptListLoaded
+from parllama.messages.session_messages import SessionListChanged
+from parllama.messages.ui_messages import ChangeTab
 from parllama.settings_manager import settings
 
 

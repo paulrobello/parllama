@@ -12,12 +12,8 @@ from parllama.execution.command_executor import CommandExecutor
 from parllama.execution.execution_manager import ExecutionManager
 from parllama.execution.execution_template import ExecutionTemplate
 from parllama.execution.template_matcher import TemplateMatcher
-from parllama.messages.messages import (
-    ChatMessage,
-    ExecuteMessageRequested,
-    ExecutionCompleted,
-    ExecutionFailed,
-)
+from parllama.messages.chat_messages import ChatMessage
+from parllama.messages.execution_messages import ExecuteMessageRequested, ExecutionCompleted, ExecutionFailed
 from parllama.secure_file_ops import SecureFileOpsError
 from parllama.settings_manager import settings
 

@@ -11,7 +11,7 @@ from textual.widget import Widget
 from textual.widgets import Button, Select, TextArea
 
 from parllama.chat_message import ParllamaChatMessage
-from parllama.messages.messages import DeletePromptMessage
+from parllama.messages.prompt_messages import DeletePromptMessage
 from parllama.models.ollama_data import MessageRoles, MessageRoleSelectOptions
 from parllama.utils import mk_trash_button
 

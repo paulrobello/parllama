@@ -22,19 +22,17 @@ from parllama.chat_manager import ChatSession, chat_manager
 from parllama.chat_message import ParllamaChatMessage
 from parllama.document_attachment import DocumentAttachment
 from parllama.llm_session_helpers import llm_summarize_session
-from parllama.messages.messages import (
+from parllama.messages.chat_messages import (
     ChatContinueRequested,
     ChatMessage,
     ChatMessageDeleted,
     ChatMessageSent,
-    DeleteSession,
-    PromptSelected,
-    SessionSelected,
-    SessionUpdated,
     UpdateChatControlStates,
     UpdateChatStatus,
-    UpdateTabLabel,
 )
+from parllama.messages.prompt_messages import PromptSelected
+from parllama.messages.session_messages import DeleteSession, SessionSelected, SessionUpdated
+from parllama.messages.ui_messages import UpdateTabLabel
 from parllama.models.ollama_data import FullModel, MessageRoles
 from parllama.ollama_data_manager import ollama_dm
 from parllama.provider_manager import provider_manager

@@ -21,15 +21,9 @@ from parllama.attachment_utils import TOKEN_WARN_THRESHOLD, estimate_document_to
 from parllama.chat_message import ParllamaChatMessage
 from parllama.chat_message_container import ChatMessageContainer
 from parllama.document_attachment import DocumentAttachment
-from parllama.messages.messages import (
-    ChatMessage,
-    ChatMessageDeleted,
-    DeleteSession,
-    SessionAutoNameRequested,
-    SessionChanges,
-    SessionUpdated,
-)
-from parllama.messages.shared import session_change_list
+from parllama.messages.chat_messages import ChatMessage, ChatMessageDeleted
+from parllama.messages.session_messages import DeleteSession, SessionAutoNameRequested, SessionUpdated
+from parllama.messages.shared import SessionChanges, session_change_list
 from parllama.models.ollama_data import MessageRoles
 from parllama.models.token_stats import TokenStats
 from parllama.secure_file_ops import SecureFileOpsError

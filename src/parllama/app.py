@@ -30,17 +30,14 @@ from parllama.dialogs.information import InformationDialog
 from parllama.dialogs.theme_dialog import ThemeDialog
 from parllama.event_bus import EventBus
 from parllama.memory_manager import memory_manager
-from parllama.messages.messages import (
-    ChangeTab,
+from parllama.messages.chat_messages import (
     ChatGenerationAborted,
     ChatMessage,
     ChatMessageDeleted,
     ClearChatInputHistory,
-    DeletePrompt,
-    DeleteSession,
-    ExecuteMessageRequested,
-    ExecutionCompleted,
-    ExecutionFailed,
+)
+from parllama.messages.execution_messages import ExecuteMessageRequested, ExecutionCompleted, ExecutionFailed
+from parllama.messages.model_messages import (
     LocalCreateModelFromExistingRequested,
     LocalModelCopied,
     LocalModelCopyRequested,
@@ -54,22 +51,26 @@ from parllama.messages.messages import (
     LocalModelPullRequested,
     LocalModelPushed,
     LocalModelPushRequested,
-    LogIt,
     ModelInteractRequested,
-    PromptSelected,
-    PromptUpdated,
-    ProviderModelsChanged,
-    PsMessage,
-    RefreshProviderModelsRequested,
-    RegisterForUpdates,
-    SendToClipboard,
+    SetModelNameLoading,
+    SiteModelsLoaded,
+    SiteModelsRefreshRequested,
+)
+from parllama.messages.prompt_messages import DeletePrompt, PromptSelected, PromptUpdated
+from parllama.messages.provider_messages import ProviderModelsChanged, RefreshProviderModelsRequested
+from parllama.messages.session_messages import (
+    DeleteSession,
     SessionAutoNameRequested,
     SessionSelected,
     SessionToPrompt,
     SessionUpdated,
-    SetModelNameLoading,
-    SiteModelsLoaded,
-    SiteModelsRefreshRequested,
+)
+from parllama.messages.ui_messages import (
+    ChangeTab,
+    LogIt,
+    PsMessage,
+    RegisterForUpdates,
+    SendToClipboard,
     StatusMessage,
     UnRegisterForUpdates,
 )

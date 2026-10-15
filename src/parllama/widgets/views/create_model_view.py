@@ -10,8 +10,8 @@ from textual.events import Show
 from textual.widgets import Button, Input, Label, TextArea
 
 from parllama.dialogs.error_dialog import ErrorDialog
-from parllama.messages.messages import ChangeTab, LocalModelCreateRequested
-from parllama.messages.model_messages import LocalCreateModelFromExistingRequested
+from parllama.messages.model_messages import LocalCreateModelFromExistingRequested, LocalModelCreateRequested
+from parllama.messages.ui_messages import ChangeTab
 from parllama.ollama_data_manager import VALID_QUANTIZE_LEVELS
 
 

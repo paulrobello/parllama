@@ -14,14 +14,10 @@ from typing import TYPE_CHECKING
 from textual.message import Message
 
 from parllama.chat_manager import chat_manager
-from parllama.messages.messages import (
-    ChatGenerationAborted,
-    ChatMessage,
-    ChatMessageDeleted,
-    DeletePrompt,
+from parllama.messages.chat_messages import ChatGenerationAborted, ChatMessage, ChatMessageDeleted
+from parllama.messages.prompt_messages import DeletePrompt, PromptSelected, PromptUpdated
+from parllama.messages.session_messages import (
     DeleteSession,
-    PromptSelected,
-    PromptUpdated,
     SessionAutoNameRequested,
     SessionSelected,
     SessionToPrompt,

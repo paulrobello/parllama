@@ -17,7 +17,7 @@ from textual.widgets import Input, Select, TabbedContent
 from parllama.dialogs.input_dialog import InputDialog
 from parllama.dialogs.model_details_dialog import ModelDetailsDialog
 from parllama.dialogs.yes_no_dialog import YesNoDialog
-from parllama.messages.messages import (
+from parllama.messages.model_messages import (
     LocalModelCopied,
     LocalModelCopyRequested,
     LocalModelDelete,
@@ -30,10 +30,10 @@ from parllama.messages.messages import (
     LocalModelPushed,
     LocalModelPushRequested,
     ModelInteractRequested,
-    RegisterForUpdates,
     SetModelNameLoading,
     ShowLocalModel,
 )
+from parllama.messages.ui_messages import RegisterForUpdates
 from parllama.ollama_data_manager import MODEL_SORT_OPTIONS, ollama_dm
 from parllama.settings_manager import settings
 from parllama.widgets.filter_input import FilterInput
