@@ -48,6 +48,40 @@ def _parse_comma_list(value: str) -> list[str]:
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
+def _parse_extension_list(value: str) -> list[str]:
+    """Parse a comma-separated extension string into lowercase, dot-prefixed, de-duplicated extensions."""
+    extensions: list[str] = []
+    for item in _parse_comma_list(value):
+        ext = item.lower() if item.startswith(".") else f".{item.lower()}"
+        if ext not in extensions:
+            extensions.append(ext)
+    return extensions
+
+
+# File-validation numeric inputs: widget_id -> (label, minimum, maximum, is_integer).
+_FILE_VALIDATION_NUMBER_FIELDS: dict[str, tuple[str, float, float, bool]] = {
+    "max_file_size_mb": ("Max general file size (MB)", 0.1, 1000.0, False),
+    "max_image_size_mb": ("Max image size (MB)", 0.1, 1000.0, False),
+    "max_json_size_mb": ("Max JSON size (MB)", 0.1, 1000.0, False),
+    "max_zip_size_mb": ("Max ZIP size (MB)", 0.1, 10000.0, False),
+    "max_total_attachment_size_mb": ("Max total attachment size per message (MB)", 0.1, 10000.0, False),
+    "max_document_size_mb": ("Max document size (MB)", 0.1, 1000.0, False),
+    "max_pdf_pages": ("Max PDF pages", 1, 100000, True),
+    "max_extracted_text_chars": ("Max extracted text characters", 1000, 100_000_000, True),
+    "inline_document_threshold_mb": ("Inline document threshold (MB)", 0.0, 1000.0, False),
+    "max_zip_compression_ratio": ("Max ZIP compression ratio", 1.0, 10000.0, False),
+}
+
+# File-validation extension list inputs: widget_id -> label.
+_FILE_VALIDATION_EXTENSION_FIELDS: dict[str, str] = {
+    "allowed_image_extensions": "Allowed image extensions (comma separated)",
+    "allowed_json_extensions": "Allowed JSON extensions (comma separated)",
+    "allowed_markdown_extensions": "Allowed markdown extensions (comma separated)",
+    "allowed_zip_extensions": "Allowed ZIP extensions (comma separated)",
+    "allowed_document_extensions": "Allowed document extensions (comma separated)",
+}
+
+
 class OptionsView(Horizontal):
     """Widget for setting application options."""
 
@@ -153,6 +187,31 @@ class OptionsView(Horizontal):
         view._execution_settings_changed = True
 
     @staticmethod
+    def _set_file_validation_number(view: OptionsView, value: str) -> None:
+        """Set a numeric file-validation setting named by the current widget ID."""
+        widget_id = view._current_widget_id
+        is_integer = _FILE_VALIDATION_NUMBER_FIELDS[widget_id][3]
+        setattr(settings, widget_id, int(value) if is_integer else float(value))
+
+    @staticmethod
+    def _set_file_validation_extensions(view: OptionsView, value: str) -> None:
+        """Set a file-validation extension list named by the current widget ID; empty lists are rejected."""
+        widget_id = view._current_widget_id
+        extensions = _parse_extension_list(value)
+        if not extensions:
+            view.notify(
+                f"{widget_id} must contain at least one extension; keeping the previous value",
+                severity="error",
+                timeout=settings.notification_timeout_extended,
+            )
+            return
+        setattr(settings, widget_id, extensions)
+
+    @staticmethod
+    def _set_ocr_language(view: OptionsView, value: str) -> None:
+        settings.ocr_language = value.strip() or "eng"
+
+    @staticmethod
     def _set_langchain_base_url(view: OptionsView, value: str) -> None:
         settings.langchain_config.base_url = value
 
@@ -217,6 +276,10 @@ class OptionsView(Horizontal):
         # Execution (comma-separated lists with side effects)
         "execution_allowed_commands": (_set_execution_allowed_commands, None),
         "execution_security_patterns": (_set_execution_security_patterns, None),
+        # File validation
+        **dict.fromkeys(_FILE_VALIDATION_NUMBER_FIELDS, (_set_file_validation_number, None)),
+        **dict.fromkeys(_FILE_VALIDATION_EXTENSION_FIELDS, (_set_file_validation_extensions, None)),
+        "ocr_language": (_set_ocr_language, None),
     }
 
     # --- Checkboxes -----------------------------------------------------
@@ -237,6 +300,11 @@ class OptionsView(Horizontal):
             "execution_enabled",
             lambda view, val: setattr(view, "_execution_settings_changed", True),
         ),
+        "file_validation_enabled": ("file_validation_enabled", None),
+        "validate_file_content": ("validate_file_content", None),
+        "allow_zip_extraction": ("allow_zip_extraction", None),
+        "sanitize_filenames": ("sanitize_filenames", None),
+        "enable_ocr": ("enable_ocr", None),
     }
 
     def compose(self) -> ComposeResult:
@@ -250,6 +318,7 @@ class OptionsView(Horizontal):
                 yield from self._compose_theme_section()
                 yield from self._compose_network_section()
                 yield from self._compose_chat_section()
+                yield from self._compose_file_validation_section()
 
             with Vertical(classes="column"):
                 yield from self._compose_providers_section()
@@ -485,6 +554,67 @@ class OptionsView(Horizontal):
             yield ProviderModelSelect(
                 provider=(llmc.provider if llmc else None),
                 model_name=(llmc.model_name if llmc else None),
+            )
+
+    def _compose_file_validation_section(self) -> ComposeResult:
+        """Compose the File Validation section (size caps, allowed extensions, document extraction)."""
+        with Vertical(classes="section") as vsfv:
+            vsfv.border_title = "File Validation"
+            yield Checkbox(
+                label="File validation enabled",
+                value=settings.file_validation_enabled,
+                id="file_validation_enabled",
+            )
+            yield Checkbox(
+                label="Validate file content",
+                value=settings.validate_file_content,
+                id="validate_file_content",
+            )
+            yield Checkbox(
+                label="Allow ZIP extraction",
+                value=settings.allow_zip_extraction,
+                id="allow_zip_extraction",
+            )
+            yield Checkbox(
+                label="Sanitize filenames",
+                value=settings.sanitize_filenames,
+                id="sanitize_filenames",
+            )
+            for widget_id, (label, minimum, maximum, is_integer) in _FILE_VALIDATION_NUMBER_FIELDS.items():
+                yield Label(label)
+                if is_integer:
+                    yield InputBlurSubmit(
+                        value=str(getattr(settings, widget_id)),
+                        max_length=len(str(int(maximum))),
+                        type="integer",
+                        validators=[Integer(minimum=int(minimum), maximum=int(maximum))],
+                        id=widget_id,
+                    )
+                else:
+                    yield InputBlurSubmit(
+                        value=str(getattr(settings, widget_id)),
+                        max_length=len(str(int(maximum))) + 3,
+                        type="number",
+                        validators=[Number(minimum=minimum, maximum=maximum)],
+                        id=widget_id,
+                    )
+            for widget_id, label in _FILE_VALIDATION_EXTENSION_FIELDS.items():
+                yield Label(label)
+                yield InputBlurSubmit(
+                    value=", ".join(getattr(settings, widget_id)),
+                    max_length=200,
+                    id=widget_id,
+                )
+            yield Checkbox(
+                label="Enable OCR for scanned PDFs",
+                value=settings.enable_ocr,
+                id="enable_ocr",
+            )
+            yield Label("OCR language")
+            yield InputBlurSubmit(
+                value=settings.ocr_language,
+                max_length=20,
+                id="ocr_language",
             )
 
     def _compose_providers_section(self) -> ComposeResult:

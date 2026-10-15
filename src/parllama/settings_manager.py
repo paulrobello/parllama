@@ -1548,10 +1548,55 @@ def _apply_flat_data_to_settings(settings_obj: Settings, data: dict) -> None:
     if saved_execution_security_patterns and isinstance(saved_execution_security_patterns, list):
         settings_obj.execution_security_patterns = saved_execution_security_patterns
 
+    _apply_file_validation_data(settings_obj, data)
+
     # Memory settings
     settings_obj.user_memory = data.get("user_memory", settings_obj.user_memory)
     settings_obj.memory_enabled = data.get("memory_enabled", settings_obj.memory_enabled)
     settings_obj.memory_llm_config = data.get("memory_llm_config", settings_obj.memory_llm_config)
+
+
+def _apply_file_validation_data(settings_obj: Settings, data: dict) -> None:
+    """Apply flat file-validation keys (from settings.json) to the Settings object.
+
+    Numeric values are clamped to the same minimums the Options view enforces, empty
+    extension lists are ignored so defaults survive, and a blank OCR language keeps the
+    current value.
+    """
+    settings_obj.file_validation_enabled = data.get("file_validation_enabled", settings_obj.file_validation_enabled)
+    settings_obj.max_file_size_mb = max(0.1, data.get("max_file_size_mb", settings_obj.max_file_size_mb))
+    settings_obj.max_image_size_mb = max(0.1, data.get("max_image_size_mb", settings_obj.max_image_size_mb))
+    settings_obj.max_json_size_mb = max(0.1, data.get("max_json_size_mb", settings_obj.max_json_size_mb))
+    settings_obj.max_zip_size_mb = max(0.1, data.get("max_zip_size_mb", settings_obj.max_zip_size_mb))
+    settings_obj.max_total_attachment_size_mb = max(
+        0.1, data.get("max_total_attachment_size_mb", settings_obj.max_total_attachment_size_mb)
+    )
+    settings_obj.max_document_size_mb = max(0.1, data.get("max_document_size_mb", settings_obj.max_document_size_mb))
+    settings_obj.max_pdf_pages = max(1, data.get("max_pdf_pages", settings_obj.max_pdf_pages))
+    settings_obj.max_extracted_text_chars = max(
+        1000, data.get("max_extracted_text_chars", settings_obj.max_extracted_text_chars)
+    )
+    settings_obj.inline_document_threshold_mb = max(
+        0.0, data.get("inline_document_threshold_mb", settings_obj.inline_document_threshold_mb)
+    )
+    settings_obj.enable_ocr = data.get("enable_ocr", settings_obj.enable_ocr)
+    settings_obj.ocr_language = data.get("ocr_language") or settings_obj.ocr_language
+    settings_obj.validate_file_content = data.get("validate_file_content", settings_obj.validate_file_content)
+    settings_obj.allow_zip_extraction = data.get("allow_zip_extraction", settings_obj.allow_zip_extraction)
+    settings_obj.max_zip_compression_ratio = max(
+        1.0, data.get("max_zip_compression_ratio", settings_obj.max_zip_compression_ratio)
+    )
+    settings_obj.sanitize_filenames = data.get("sanitize_filenames", settings_obj.sanitize_filenames)
+    for ext_key in (
+        "allowed_image_extensions",
+        "allowed_json_extensions",
+        "allowed_markdown_extensions",
+        "allowed_zip_extensions",
+        "allowed_document_extensions",
+    ):
+        saved_extensions = data.get(ext_key)
+        if saved_extensions and isinstance(saved_extensions, list):
+            setattr(settings_obj, ext_key, saved_extensions)
 
 
 def _convert_paths_to_strings(data: dict) -> None:
