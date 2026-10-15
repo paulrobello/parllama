@@ -52,7 +52,6 @@ class MessageSink:
         timeout: int | None = None,
     ) -> bool:
         """Emit a Textual log message and optionally request a notification."""
-        # Lazy import to avoid triggering Settings initialization at module import time
         from parllama.settings_manager import settings
 
         if timeout is None:

@@ -34,11 +34,17 @@ class ImportFabricManager(MessageSink):
         self.id_to_prompt = {}
         self.import_ids = set()
         self.repo_zip_url = "https://github.com/danielmiessler/fabric/archive/refs/heads/main.zip"
-        self._cache_folder = os.path.join(settings.cache_dir, "fabric_prompts")
         self._last_folder: str | None = None
 
-        # Initialize secure file operations for Fabric imports
-        self._secure_ops = SecureFileOperations(
+    @property
+    def _cache_folder(self) -> str:
+        """Download/extract folder; resolved on use so the singleton can be built before bootstrap."""
+        return os.path.join(settings.cache_dir, "fabric_prompts")
+
+    @property
+    def _secure_ops(self) -> SecureFileOperations:
+        """Secure file operations for Fabric imports, from the current file-validation settings."""
+        return SecureFileOperations(
             max_file_size_mb=settings.file_validation.max_zip_size_mb,
             allowed_extensions=settings.file_validation.allowed_zip_extensions
             + settings.file_validation.allowed_markdown_extensions,
@@ -46,8 +52,10 @@ class ImportFabricManager(MessageSink):
             sanitize_filenames=settings.file_validation.sanitize_filenames,
         )
 
-        # Create ZIP file validator with stricter settings for external downloads
-        self._zip_validator = FileValidator(
+    @property
+    def _zip_validator(self) -> FileValidator:
+        """ZIP validator with stricter settings for external downloads."""
+        return FileValidator(
             max_size_mb=settings.file_validation.max_zip_size_mb,
             allowed_extensions=settings.file_validation.allowed_zip_extensions,
             check_content=True,

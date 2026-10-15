@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from parllama.settings_manager import initialize_settings
+from parllama.settings_manager import bootstrap
 from parllama.utils import get_args
 
 # if os.environ.get("DEBUG"):
@@ -14,11 +14,8 @@ from parllama.utils import get_args
 
 
 def run() -> None:
-    """Run the application."""
-    # Parse real CLI args and initialize the Settings singleton BEFORE importing
-    # parllama.app: importing the app eagerly triggers the lazy `settings`
-    # singleton, so the explicit args must be applied first or CLI flags are lost.
-    settings = initialize_settings(get_args())
+    """Run the application: bootstrap settings from the real CLI args, then start the app."""
+    settings = bootstrap(get_args())
     print(f"Settings folder {settings.data_dir}")
 
     from parllama.app import ParLlamaApp

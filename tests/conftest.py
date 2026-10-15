@@ -1,12 +1,28 @@
 """Pytest configuration and shared fixtures."""
 
+import os
 import tempfile
 from pathlib import Path
-from unittest.mock import mock_open, patch
 
-import pytest
+# Isolate every user-data and cache path before any parllama module is imported, so the
+# test session can never read, migrate, or rewrite the developer's real settings.json.
+_TEST_HOME = Path(tempfile.mkdtemp(prefix="parllama-tests-"))
+os.environ["XDG_DATA_HOME"] = str(_TEST_HOME / "data")
+os.environ["XDG_CACHE_HOME"] = str(_TEST_HOME / "cache")
+os.environ["PARLLAMA_DATA_DIR"] = str(_TEST_HOME / "data" / "parllama")
 
-from parllama.secrets_manager import SecretsManager
+from unittest.mock import mock_open, patch  # noqa: E402
+
+import pytest  # noqa: E402
+
+import parllama.paths  # noqa: E402
+from parllama.secrets_manager import SecretsManager  # noqa: E402
+from parllama.settings_manager import bootstrap  # noqa: E402
+from parllama.utils import get_args  # noqa: E402
+
+# setup_directories moves a legacy ~/.parllama into the data dir; never let it touch the real one.
+parllama.paths.old_data_dir = _TEST_HOME / "no-legacy-data-dir"
+bootstrap(get_args([]))
 
 
 @pytest.fixture

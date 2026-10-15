@@ -472,19 +472,5 @@ class OllamaDataManager(MessageSink):
         return model.num_ctx()
 
 
-_ollama_dm: OllamaDataManager | None = None
-
-
-def _get_ollama_dm() -> OllamaDataManager:
-    """Lazily create the OllamaDataManager singleton on first access."""
-    global _ollama_dm
-    if _ollama_dm is None:
-        _ollama_dm = OllamaDataManager()
-    return _ollama_dm
-
-
-def __getattr__(name: str):  # type: ignore[misc]
-    """Module-level __getattr__ for lazy singleton initialization."""
-    if name == "ollama_dm":
-        return _get_ollama_dm()
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+ollama_dm: OllamaDataManager = OllamaDataManager()
+"""Process-wide singleton. Construction performs no I/O; wiring happens in ``set_app``."""

@@ -18,6 +18,10 @@ class MemoryManager:
         """Initialize the memory manager."""
         self._app = app
 
+    def set_app(self, app: App[Any] | None) -> None:
+        """Set the Textual app used to broadcast memory updates."""
+        self._app = app
+
     @property
     def memory_content(self) -> str:
         """Get current memory content."""
@@ -159,20 +163,5 @@ Please update the memory according to the instruction above. Return only the upd
         settings.save()
 
 
-# Global memory manager instance (lazily initialized)
-_memory_manager: MemoryManager | None = None
-
-
-def _get_memory_manager() -> MemoryManager:
-    """Lazily create the MemoryManager singleton on first access."""
-    global _memory_manager
-    if _memory_manager is None:
-        _memory_manager = MemoryManager()
-    return _memory_manager
-
-
-def __getattr__(name: str):  # type: ignore[misc]
-    """Module-level __getattr__ for lazy singleton initialization."""
-    if name == "memory_manager":
-        return _get_memory_manager()
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+memory_manager: MemoryManager = MemoryManager()
+"""Process-wide singleton. Construction performs no I/O; wiring happens in ``set_app``."""

@@ -53,21 +53,31 @@ class SecretsManager(MessageSink):
     """Dict containing encrypted secrets."""
     _export_to_env: dict[str, bool]
     """Dict tracking which secrets should be exported to environment."""
-    _secrets_file: Path
-    """JSON file containing encrypted secrets."""
+    _secrets_file_override: Path | None
+    """Explicit vault file, or None to follow ``settings.secrets_file``."""
     _file_lock: threading.Lock
     """Lock for file operations to prevent race conditions."""
 
-    def __init__(self, secrets_file: Path, **kwargs) -> None:
-        """Initialize Manager and load vault."""
+    def __init__(self, secrets_file: Path | None = None, **kwargs) -> None:
+        """Initialize the manager. No file I/O happens until ``set_app`` or an explicit load.
+
+        Args:
+            secrets_file: Vault file. When omitted, ``settings.secrets_file`` is resolved at use
+                time, so the process singleton can be constructed before settings are bootstrapped.
+        """
         super().__init__(**kwargs)
         self._secrets = {}
         self._export_to_env = {}
         self._salt = gen_salt()
         self._key_secure = None
         self._key = None
-        self._secrets_file = secrets_file
+        self._secrets_file_override = secrets_file
         self._file_lock = threading.Lock()
+
+    @property
+    def _secrets_file(self) -> Path:
+        """JSON file containing encrypted secrets."""
+        return self._secrets_file_override if self._secrets_file_override is not None else settings.secrets_file
 
     def set_app(self, app: App[Any] | None) -> None:
         """Set the app and load existing sessions and prompts from storage"""
@@ -845,19 +855,5 @@ def gen_salt() -> bytes:
     return os.urandom(16)
 
 
-_secrets_manager: SecretsManager | None = None
-
-
-def _get_secrets_manager() -> SecretsManager:
-    """Lazily create the SecretsManager singleton on first access."""
-    global _secrets_manager
-    if _secrets_manager is None:
-        _secrets_manager = SecretsManager(settings.secrets_file)
-    return _secrets_manager
-
-
-def __getattr__(name: str):  # type: ignore[misc]
-    """Module-level __getattr__ for lazy singleton initialization."""
-    if name == "secrets_manager":
-        return _get_secrets_manager()
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+secrets_manager: SecretsManager = SecretsManager()
+"""Process-wide singleton. Construction performs no I/O; wiring happens in ``set_app``."""

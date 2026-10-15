@@ -39,15 +39,19 @@ class ThemeModeError(InvalidThemeError):
 class ThemeManager(MessageSink):
     """Theme manager for Textual"""
 
-    theme_folder: Path
-
     def __init__(self) -> None:
-        """Initialize the theme manager"""
+        """Initialize the theme manager. Settings-derived state is resolved on use, after bootstrap."""
         super().__init__(id="theme_manager")
-        self.theme_folder = Path(settings.data_dir) / "themes"
 
-        # Initialize secure file operations for themes
-        self._secure_ops = SecureFileOperations(
+    @property
+    def theme_folder(self) -> Path:
+        """Folder holding theme JSON files."""
+        return Path(settings.data_dir) / "themes"
+
+    @property
+    def _secure_ops(self) -> SecureFileOperations:
+        """Secure file operations configured from the current file-validation settings."""
+        return SecureFileOperations(
             max_file_size_mb=settings.file_validation.max_json_size_mb,
             allowed_extensions=settings.file_validation.allowed_json_extensions,
             validate_content=settings.file_validation.validate_file_content,
@@ -139,19 +143,5 @@ class ThemeManager(MessageSink):
         self.app.theme = theme_name
 
 
-_theme_manager: ThemeManager | None = None
-
-
-def _get_theme_manager() -> ThemeManager:
-    """Lazily create the ThemeManager singleton on first access."""
-    global _theme_manager
-    if _theme_manager is None:
-        _theme_manager = ThemeManager()
-    return _theme_manager
-
-
-def __getattr__(name: str):  # type: ignore[misc]
-    """Module-level __getattr__ for lazy singleton initialization."""
-    if name == "theme_manager":
-        return _get_theme_manager()
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+theme_manager: ThemeManager = ThemeManager()
+"""Process-wide singleton. Construction performs no I/O; wiring happens in ``set_app``."""

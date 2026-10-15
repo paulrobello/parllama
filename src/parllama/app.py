@@ -29,6 +29,7 @@ from parllama.dialogs.help_dialog import HelpDialog
 from parllama.dialogs.information import InformationDialog
 from parllama.dialogs.theme_dialog import ThemeDialog
 from parllama.event_bus import EventBus
+from parllama.memory_manager import memory_manager
 from parllama.messages.messages import (
     ChangeTab,
     ChatGenerationAborted,
@@ -81,7 +82,7 @@ from parllama.prompt_utils.import_fabric import import_fabric_manager
 from parllama.provider_manager import provider_manager
 from parllama.screens.main_screen import MainScreen
 from parllama.secrets_manager import secrets_manager
-from parllama.settings_manager import settings
+from parllama.settings_manager import bootstrap, settings
 from parllama.state_manager import initialize_state_manager
 from parllama.theme_manager import theme_manager
 from parllama.update_manager import update_manager
@@ -129,6 +130,9 @@ class ParLlamaApp(App[None]):
 
     def __init__(self) -> None:
         """Initialize the application."""
+        # No-op after __main__.run; required when the app is launched directly
+        # (e.g. `textual run parllama.app:ParLlamaApp`).
+        bootstrap()
         super().__init__()
         self.event_bus = EventBus()
 
@@ -150,11 +154,7 @@ class ParLlamaApp(App[None]):
         chat_manager.set_app(self)
         update_manager.set_app(self)
         import_fabric_manager.set_app(self)
-
-        # Initialize memory manager
-        from parllama.memory_manager import memory_manager
-
-        memory_manager._app = self
+        memory_manager.set_app(self)
 
         self.job_timer = None
         self.ps_timer = None

@@ -59,24 +59,36 @@ class ProviderManager(MessageSink):
 
     provider_models: dict[LlmProvider, list[str]]
 
+    _cache_file_override: Path | None = None
+
     def __init__(self):
-        """Initialize the data manager."""
+        """Initialize the data manager. No I/O happens until ``set_app``."""
         super().__init__(id="data_manager")
-        # Load .env from data directory (deferred from module-level to avoid import-time side effects)
-        load_dotenv(Path(settings.data_dir) / ".env")
         self.provider_models = {}
         for p in llm_provider_types:
             self.provider_models[p] = []
         self.provider_models[LlmProvider.LLAMACPP] = ["default"]
-        self.cache_file = Path(settings.provider_models_file)
+
+    @property
+    def cache_file(self) -> Path:
+        """Provider model-list cache file; follows ``settings.provider_models_file`` unless overridden."""
+        if self._cache_file_override is not None:
+            return self._cache_file_override
+        return Path(settings.provider_models_file)
+
+    @cache_file.setter
+    def cache_file(self, value: Path) -> None:
+        self._cache_file_override = value
 
     def set_app(self, app: App[Any] | None) -> None:
-        """Set the app and trigger the initial model load.
+        """Set the app, load ``<data_dir>/.env``, and trigger the initial model load.
 
         Args:
             app: The Textual app instance used for message emission, or None to detach.
         """
         super().set_app(app)
+        if app is not None:
+            load_dotenv(Path(settings.data_dir) / ".env")
         self.load_models()
 
     def refresh_models(self):
@@ -393,19 +405,5 @@ class ProviderManager(MessageSink):
         self.save_models()
 
 
-_provider_manager: ProviderManager | None = None
-
-
-def _get_provider_manager() -> ProviderManager:
-    """Lazily create the ProviderManager singleton on first access."""
-    global _provider_manager
-    if _provider_manager is None:
-        _provider_manager = ProviderManager()
-    return _provider_manager
-
-
-def __getattr__(name: str):  # type: ignore[misc]
-    """Module-level __getattr__ for lazy singleton initialization."""
-    if name == "provider_manager":
-        return _get_provider_manager()
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+provider_manager: ProviderManager = ProviderManager()
+"""Process-wide singleton. Construction performs no I/O; wiring happens in ``set_app``."""

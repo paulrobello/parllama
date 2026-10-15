@@ -156,8 +156,7 @@ class Settings(BaseModel):
         """Initialize Settings with Pydantic defaults only.
 
         No side effects (CLI parsing, directory creation, file I/O) occur here.
-        Call :func:`initialize_settings` or rely on the lazy module-level
-        ``settings`` singleton to trigger full initialization on first access.
+        Call :func:`bootstrap` to perform full initialization.
         """
         super().__init__()
 
@@ -172,14 +171,12 @@ class Settings(BaseModel):
     def _full_initialize(self, args: Namespace | None = None) -> None:
         """Perform full initialization with CLI args, directory setup, and I/O.
 
-        This is called lazily on first access to the module-level ``settings``
-        singleton.  It is safe to call multiple times -- subsequent calls are
-        no-ops.
+        Called by :func:`bootstrap`. It is safe to call multiple times --
+        subsequent calls are no-ops.
 
         When no ``Namespace`` is supplied, this never parses the real process
         ``sys.argv`` -- doing so implicitly here would consume argv belonging
-        to whatever host process triggered the lazy singleton (e.g. pytest's
-        own flags during test collection). Instead it falls back to a
+        to whatever host process is running (e.g. pytest's own flags). Instead it falls back to a
         defaults ``Namespace`` built from an empty argument list. Real CLI
         argv parsing must be performed explicitly by the caller (the actual
         CLI entry point) and passed in via ``args``.
@@ -568,32 +565,29 @@ def apply_settings_data(settings_obj: Settings, data: dict[str, Any]) -> None:
         settings_obj.provider.provider_base_urls[LlmProvider.OLLAMA] = settings_obj.ollama.ollama_host
 
 
-# -- Module-level lazy singleton -------------------------------------------------
+# -- Module-level singleton -------------------------------------------------------
 
-_settings: Settings | None = None
+settings: Settings = Settings()
+"""Process-wide settings. Holds Pydantic defaults until :func:`bootstrap` runs.
+
+Constructing it performs no I/O, so importing this module (or any module that
+imports ``settings``) never touches the filesystem. The object identity never
+changes, so ``from parllama.settings_manager import settings`` is safe at any
+import order.
+"""
 
 
-def initialize_settings(args: Namespace | None = None) -> Settings:
-    """Create and fully initialize the Settings singleton.
+def bootstrap(args: Namespace | None = None) -> Settings:
+    """Initialize the ``settings`` singleton in place: directories, settings.json, CLI overrides.
 
-    This is the single entry-point for constructing a ready-to-use Settings
-    instance.  It is idempotent -- calling it again after the singleton is
-    already initialized simply returns the existing instance.
+    Called once by each composition root (``parllama.__main__.run``, ``ParLlamaApp``, the test
+    suite's conftest). Idempotent: later calls return the already-initialized singleton.
+
+    Args:
+        args: Parsed CLI arguments. ``None`` uses defaults and never parses ``sys.argv``.
+
+    Returns:
+        The initialized ``settings`` singleton.
     """
-    global _settings
-    if _settings is None:
-        _settings = Settings()
-    _settings._full_initialize(args)
-    return _settings
-
-
-def _get_settings() -> Settings:
-    """Lazily create and fully initialize the Settings singleton on first access."""
-    return initialize_settings()
-
-
-def __getattr__(name: str):  # type: ignore[misc]
-    """Module-level __getattr__ for lazy singleton initialization."""
-    if name == "settings":
-        return _get_settings()
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    settings._full_initialize(args)
+    return settings
