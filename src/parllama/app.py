@@ -495,29 +495,18 @@ Some functions are only available via slash / commands on that chat tab. You can
     @on(LocalCreateModelFromExistingRequested)
     def on_create_model_from_existing_requested(self, msg: LocalCreateModelFromExistingRequested) -> None:
         """Create model from existing event"""
-        self.main_screen.create_view.name_input.value = f"my-{msg.model_name}"
-        if not self.main_screen.create_view.name_input.value.endswith(":latest"):
-            self.main_screen.create_view.name_input.value += ":latest"
-        self.main_screen.create_view.input_from.value = msg.model_name
-        self.main_screen.create_view.ta_system_prompt.text = msg.system_prompt or ""
-        self.main_screen.create_view.ta_template.text = msg.model_template
-        self.main_screen.create_view.ta_license.text = msg.model_license or ""
-        self.main_screen.create_view.quantize_input.value = msg.quantization_level or ""
+        create_view = self.main_screen.create_view
+        create_view.prefill_from_existing(msg)
         self.main_screen.change_tab("Create")
-        self.main_screen.create_view.name_input.focus()
+        create_view.name_input.focus()
 
     @on(ModelInteractRequested)
     async def on_model_interact_requested(self, event: ModelInteractRequested) -> None:
         """Model interact requested event"""
-        await self.main_screen.chat_view.action_new_tab()
-        self.main_screen.chat_view.active_tab.session_config.provider_model_select.provider_select.value = (
-            LlmProvider.OLLAMA
-        )
-        self.main_screen.chat_view.active_tab.session_config.provider_model_select.model_select.deferred_value = (
-            event.model_name
-        )
+        chat_view = self.main_screen.chat_view
+        await chat_view.start_model_chat(LlmProvider.OLLAMA, event.model_name)
         self.main_screen.change_tab("Chat")
-        self.main_screen.chat_view.user_input.focus()
+        chat_view.user_input.focus()
 
     @on(ClearChatInputHistory)
     def on_clear_chat_history(self, event: ClearChatInputHistory) -> None:

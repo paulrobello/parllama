@@ -1048,6 +1048,18 @@ Chat Commands:
         await self.chat_tabs.add_pane(tab)
         self.chat_tabs.active = str(tab.id)
 
+    async def start_model_chat(self, provider: LlmProvider, model_name: str) -> None:
+        """Open a new chat tab preset to ``provider``/``model_name``.
+
+        Args:
+            provider: The LLM provider to select in the new tab.
+            model_name: The model to select once the provider's model list loads.
+        """
+        await self.action_new_tab()
+        provider_model_select = self.active_tab.session_config.provider_model_select
+        provider_model_select.provider_select.value = provider
+        provider_model_select.model_select.deferred_value = model_name
+
     async def remove_active_tab(self) -> None:
         """Remove the active tab"""
         await self.chat_tabs.remove_pane(self.chat_tabs.active)
