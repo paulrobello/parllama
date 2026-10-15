@@ -159,12 +159,15 @@ class ChatMessageWidget(Vertical, can_focus=True):
     @property
     def markdown_raw(self) -> str:
         """The raw markdown."""
-        # First fix malformed tags, then convert to markdown
+        # First fix malformed tags, then convert to markdown.
+        # 4-backtick fences: reasoning text often contains its own
+        # triple-backtick code blocks, which would terminate a 3-backtick
+        # thinking fence early and render the rest as normal response text.
         text = self.raw_text
         text = text.replace("<thinkinking", "<think>")
         text = text.replace("</thinkinking", "</think>")
-        text = text.replace("<think>", "\n```thinking\n")
-        text = text.replace("</think>", "\n```\n")
+        text = text.replace("<think>", "\n````thinking\n")
+        text = text.replace("</think>", "\n````\n")
         return text
 
     async def update(self) -> None:

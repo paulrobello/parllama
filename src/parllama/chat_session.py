@@ -716,7 +716,11 @@ class ChatSession(ChatMessageContainer):
                         break
 
                     self._update_stream_stats_from_chunk(chunk, elapsed_time, ttft)
-                    self._emit(ChatMessage(parent_id=self.id, message_id=msg.id, is_final=not chunk.content))
+                    self._emit(
+                        ChatMessage(
+                            parent_id=self.id, message_id=msg.id, is_final=not chunk.content and not reasoning_delta
+                        )
+                    )
             except Exception as e:  # noqa: BLE001
                 err_msg = self._handle_stream_error(e, msg)
                 if err_msg is not None:
@@ -1066,7 +1070,11 @@ class ChatSession(ChatMessageContainer):
                         break
 
                     self._update_stream_stats_from_chunk(chunk, elapsed_time, ttft)
-                    self._emit(ChatMessage(parent_id=self.id, message_id=msg.id, is_final=not chunk.content))
+                    self._emit(
+                        ChatMessage(
+                            parent_id=self.id, message_id=msg.id, is_final=not chunk.content and not reasoning_delta
+                        )
+                    )
             except Exception as e:  # noqa: BLE001
                 err_msg = self._handle_stream_error(e, msg)
                 if err_msg is not None:

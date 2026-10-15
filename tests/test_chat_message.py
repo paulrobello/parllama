@@ -366,3 +366,37 @@ class TestThinkingAndFinishReason:
             asyncio.run(session.send_chat("hello"))
 
         assert fake.reasoning is None
+
+    def test_reasoning_chunks_do_not_flip_is_final(self, isolated_chat_settings: None) -> None:
+        """Thinking chunks stream with empty content; they must not mark the
+        message final (which flips the render between fenced and plain
+        'Thinking:' formats mid-stream). Only the terminal done-chunk does."""
+        from parllama.messages.messages import ChatMessage
+
+        session = ChatSession(
+            name="T3",
+            llm_config=LlmConfig(provider=LlmProvider.OLLAMA, model_name="test-model"),
+            messages=[ParllamaChatMessage(id="u1", role="user", content="q")],
+        )
+        chunks = [
+            _FakeChunk(additional_kwargs={"reasoning_content": "hmm"}),
+            _FakeChunk(content="answer text"),
+            _FakeChunk(response_metadata={"done_reason": "stop", "model": "m"}),
+        ]
+        emits: list[ChatMessage] = []
+
+        class EmitApp:
+            def post_message(self, m) -> None:
+                emits.append(m)
+
+        session.set_app(EmitApp())
+        fake = _FakeChatModel(chunks)
+        with patch.object(LlmConfig, "build_chat_model", return_value=fake), patch.object(
+            ChatSession, "_model_supports_thinking", return_value=True
+        ):
+            asyncio.run(session.send_chat("hello"))
+
+        assistant_id = session.get_last_ai_message().id
+        final_flags = [e.is_final for e in emits if isinstance(e, ChatMessage) and e.message_id == assistant_id]
+        # placeholder emit, then one per chunk: reasoning, content, done
+        assert final_flags == [False, False, False, True]
