@@ -147,11 +147,15 @@ class ChatMessageWidget(Vertical, can_focus=True):
 
     @property
     def raw_text(self) -> str:
-        """The raw text."""
+        """The raw text, with thinking as a <think> block.
+
+        The fenced form is used for streaming renders too: markdown_raw turns
+        the opening <think> into an (unclosed) `````thinking fence, so the
+        thinking box appears with the first reasoning chunk and closes when
+        the answer starts. is_final only controls render throttling.
+        """
         if self.msg.thinking:
-            if self.is_final:
-                return f"<think>{self.msg.thinking}</think>\n\n{self.msg.content}"
-            return f"Thinking: {self.msg.thinking}\n\n{self.msg.content}"
+            return f"<think>{self.msg.thinking}</think>\n\n{self.msg.content}"
         return self.msg.content
 
     @property

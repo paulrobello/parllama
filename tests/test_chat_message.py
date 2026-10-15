@@ -16,6 +16,7 @@ from parllama.chat_message import ParllamaChatMessage, try_get_image_type
 from parllama.chat_session import ChatSession
 from parllama.document_attachment import DocumentAttachment
 from parllama.widgets.chat_message_widget import ChatMessageWidget
+from parllama.widgets.par_markdown import ParMarkdownFence
 
 
 def _llm_config() -> LlmConfig:
@@ -409,3 +410,36 @@ class TestThinkingAndFinishReason:
         msg = ParllamaChatMessage(role="assistant", content="answer", thinking="reasoning")
         w = ChatMessageWidget.mk_msg_widget(msg=msg, session=None, is_final=True)
         assert "````thinking" in w.markdown._initial_markdown
+
+    def test_streaming_thinking_renders_live_fence(self) -> None:
+        """The thinking fence must appear during streaming (is_final False)
+        and stay mounted once answer text arrives — previously the fence only
+        existed in the final render, so thinking showed as plain text for the
+        entire stream."""
+        from textual.app import App, ComposeResult
+
+        async def scenario() -> list[bool]:
+            w = ChatMessageWidget.mk_msg_widget(
+                msg=ParllamaChatMessage(role="assistant", content="", id="a1"),
+                session=None,
+                is_final=False,
+            )
+
+            class Probe(App):
+                def compose(self) -> ComposeResult:
+                    yield w
+
+            app = Probe()
+            flags: list[bool] = []
+            async with app.run_test() as pilot:
+                w.msg.thinking = "pondering"
+                await w.update()
+                await pilot.pause()
+                flags.append(any(f.has_class("thinking") for f in w.markdown.query(ParMarkdownFence)))
+                w.msg.content = "answer text"
+                await w.update()
+                await pilot.pause()
+                flags.append(any(f.has_class("thinking") for f in w.markdown.query(ParMarkdownFence)))
+            return flags
+
+        assert asyncio.run(scenario()) == [True, True]
