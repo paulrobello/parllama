@@ -46,9 +46,14 @@ Source group: `ProviderConfig`
 `provider_cache_hours` controls how long each provider's fetched model list is cached (in
 hours) before being refreshed automatically; see the Options screen for manual refresh controls.
 
-**Note:** Provider API keys stored in `provider_api_keys` are plaintext in `settings.json` at
-present -- prefer environment variables (e.g. `OPENAI_API_KEY`) or the [encrypted secrets
-vault](../../README.md#secrets-vault) where possible.
+**Note:** Provider API keys are kept out of `settings.json` when the [encrypted secrets
+vault](../../README.md#secrets-vault) can be unlocked unattended, that is, when the vault is unlocked
+and `PARLLAMA_VAULT_KEY` opens it. In that case keys entered in the Options tab are stored in the
+vault, plaintext keys already in `settings.json` are moved into the vault at startup, and
+`provider_api_keys` records them as `null`. Without a working `PARLLAMA_VAULT_KEY`, keys stay in
+`provider_api_keys` as plaintext so they remain available on the next start; the file is written
+with `0600` permissions. Environment variables (e.g. `OPENAI_API_KEY`) also work and are never
+written to the file.
 
 ## Ollama settings
 
@@ -104,9 +109,9 @@ Source group: `ExecutionConfig` -- controls the template execution / command-run
 | `execution_enabled` | `bool` | `true` |
 | `execution_timeout_seconds` | `int` | `30` |
 | `execution_max_output_size` | `int` (bytes) | `10000` |
-| `execution_temp_dir` | `path` | data-dir subdirectory (set at startup) |
-| `execution_templates_file` | `path` | data-dir file (set at startup) |
-| `execution_history_file` | `path` | data-dir file (set at startup) |
+| `execution_temp_dir` | `path` | `<cache dir>/execution/temp` (runtime only, not saved) |
+| `execution_templates_file` | `path` | `<data dir>/execution/templates.json` (runtime only, not saved) |
+| `execution_history_file` | `path` | `<data dir>/execution/history.json` (runtime only, not saved) |
 | `execution_require_confirmation` | `bool` | `true` |
 | `execution_allowed_commands` | `list[str]` | `["uv", "python3", "python", "node", "tsc", "bash", "sh", "zsh", "fish"]` |
 | `execution_background_limit` | `int` | `3` |
@@ -201,12 +206,16 @@ These fields live directly on `Settings` rather than in a config group (see
 
 | Key | Type | Default |
 |---|---|---|
-| `no_save` | `bool` | `false` |
-| `no_save_chat` | `bool` | `false` |
 | `starting_tab` | `str` | `"Local"` |
 | `use_last_tab_on_startup` | `bool` | `true` |
 | `max_log_lines` | `int` | `1000` |
 
-Directory and file path fields (`data_dir`, `cache_dir`, `chat_dir`, `prompt_dir`, `secrets_file`,
-etc.) are computed relative to the data directory at startup and are not intended for manual
-editing.
+`starting_tab` is stored capitalized (`"Local"`, `"Site"`, `"Chat"`, ...). The `--starting-tab` CLI
+flag takes the lowercase form (`local`, `site`, `chat`, ...) and capitalizes it before saving.
+
+`no_save` and `no_save_chat` are runtime-only flags set by `--no-save` and `--no-chat-save`; they are
+never written to or read from `settings.json`. Directory and file path fields (`data_dir`,
+`cache_dir`, `chat_dir`, `prompt_dir`, `secrets_file`, the `execution_*` paths, etc.) are likewise
+computed at startup and never saved. Data paths sit under the data directory
+(`~/.local/share/parllama` by default) and cache paths under the XDG cache directory
+(`~/.cache/parllama` by default).
