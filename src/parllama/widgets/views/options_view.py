@@ -204,6 +204,7 @@ class OptionsView(Horizontal):
                 severity="error",
                 timeout=settings.notification_timeout_extended,
             )
+            view.query_one(f"#{widget_id}", Input).value = ", ".join(getattr(settings, widget_id))
             return
         setattr(settings, widget_id, extensions)
 
