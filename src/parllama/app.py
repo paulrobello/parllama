@@ -145,6 +145,7 @@ class ParLlamaApp(App[None]):
         theme_manager.set_app(self)
         provider_manager.set_app(self)
         secrets_manager.set_app(self)
+        settings.sync_provider_keys_with_vault(secrets_manager)
         ollama_dm.set_app(self)
         chat_manager.set_app(self)
         update_manager.set_app(self)

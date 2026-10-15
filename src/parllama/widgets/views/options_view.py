@@ -155,8 +155,10 @@ class OptionsView(Horizontal):
 
     def _set_provider_api_key(self, value: str) -> None:
         """Set a provider API key by extracting the provider from the widget ID."""
+        from parllama.secrets_manager import secrets_manager
+
         provider = _PROVIDER_BY_WIDGET_NAME[self._current_widget_id.rsplit("_api_key", 1)[0]]
-        settings.provider_api_keys[provider] = value or None
+        settings.set_provider_api_key(provider, value, secrets_manager)
 
     def _set_provider_cache_hours(self, value: str) -> None:
         """Set a provider cache duration by extracting the provider from the widget ID."""

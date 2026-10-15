@@ -19,6 +19,7 @@ from argparse import Namespace
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import requests
 from par_ai_core.llm_config import LlmMode, ReasoningEffort
@@ -50,6 +51,9 @@ from parllama.settings.config_groups import (
 from parllama.utils import TabType, get_args, valid_tabs
 from parllama.validators.file_validator import FileValidationError
 
+if TYPE_CHECKING:
+    from parllama.secrets_manager import SecretsManager
+
 logger = logging.getLogger(__name__)
 
 old_data_dir = Path("~/.parllama").expanduser()
@@ -78,6 +82,8 @@ class Settings(BaseModel):
     # -- Private / non-serialized state ---------------------------------------
     _shutting_down: bool = PrivateAttr(default=False)
     _secure_ops: SecureFileOperations = PrivateAttr()
+    _vault_backed_providers: set[LlmProvider] = PrivateAttr(default_factory=set)
+    """Providers whose API key lives in the encrypted vault and is omitted from settings.json."""
 
     # -- Top-level fields not belonging to any config group --------------------
     no_save: bool = False
@@ -288,6 +294,11 @@ class Settings(BaseModel):
             if isinstance(group_data, dict):
                 result.update(group_data)
 
+        if self._vault_backed_providers and isinstance(result.get("provider_api_keys"), dict):
+            result["provider_api_keys"] = {
+                p: (None if p in self._vault_backed_providers else v) for p, v in result["provider_api_keys"].items()
+            }
+
         return result
 
     def load_from_file(self) -> None:
@@ -318,6 +329,84 @@ class Settings(BaseModel):
             os.environ["LANGCHAIN_API_KEY"] = self.langchain_config.api_key
         if self.langchain_config.project:
             os.environ["LANGCHAIN_PROJECT"] = self.langchain_config.project
+
+    # -- Provider key vault ----------------------------------------------------
+
+    @staticmethod
+    def _vault_persists_unattended(vault: SecretsManager) -> bool:
+        """Return True when keys moved to ``vault`` will be readable on the next start with no user action.
+
+        That requires the vault to be unlocked now and ``PARLLAMA_VAULT_KEY`` to be set, since that
+        variable is the only path that unlocks the vault automatically at startup.
+        """
+        return not vault.locked and bool(os.environ.get("PARLLAMA_VAULT_KEY"))
+
+    def sync_provider_keys_with_vault(self, vault: SecretsManager) -> None:
+        """Move plaintext provider API keys into ``vault`` and load vault-held keys into memory.
+
+        Runs once after the vault is attached to the app. Keys are moved only when the vault can be
+        unlocked unattended on the next start; otherwise settings.json keeps them so nothing is lost.
+        A vault entry that already holds a different value for the same variable is left untouched
+        and the plaintext copy is kept.
+
+        Args:
+            vault: The application secrets vault.
+        """
+        if vault.locked:
+            return
+
+        persist = self._vault_persists_unattended(vault)
+        for p in llm_provider_types:
+            env_name = provider_config[p].env_key_name
+            if not env_name:
+                continue
+            current = self.provider.provider_api_keys.get(p)
+            if env_name not in vault:
+                if current and persist:
+                    vault.add_secret(env_name, current, no_raise=True)
+                    if env_name in vault:
+                        self._vault_backed_providers.add(p)
+                continue
+            vault_value = vault.get_secret(env_name, "", no_raise=True)
+            if not current:
+                if vault_value:
+                    self.provider.provider_api_keys[p] = vault_value
+                    self._vault_backed_providers.add(p)
+            elif current == vault_value:
+                if persist:
+                    self._vault_backed_providers.add(p)
+            else:
+                logger.warning("Vault value for %s differs from settings.json; keeping the settings value", env_name)
+
+        self.update_env()
+        self.save()
+
+    def set_provider_api_key(self, provider: LlmProvider, value: str | None, vault: SecretsManager) -> None:
+        """Set a provider API key, storing it in ``vault`` instead of settings.json when possible.
+
+        Args:
+            provider: Provider whose key is being set.
+            value: New key, or empty/None to clear it.
+            vault: The application secrets vault.
+        """
+        value = value or None
+        self.provider.provider_api_keys[provider] = value
+        env_name = provider_config[provider].env_key_name
+        if not env_name:
+            return
+
+        if value is None:
+            if provider in self._vault_backed_providers and not vault.locked and env_name in vault:
+                vault.remove_secret(env_name, no_raise=True)
+            self._vault_backed_providers.discard(provider)
+            return
+
+        if self._vault_persists_unattended(vault):
+            vault.add_secret(env_name, value, no_raise=True)
+            if env_name in vault and vault.get_secret(env_name, "", no_raise=True) == value:
+                self._vault_backed_providers.add(provider)
+                return
+        self._vault_backed_providers.discard(provider)
 
     # -- Save ------------------------------------------------------------------
 
