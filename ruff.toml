@@ -41,7 +41,8 @@ target-version = "py311"
 # McCabe complexity (`C901`) by default.
 # C901/PLR0915 guard function complexity; BLE001 flags blind `except Exception`
 # (deliberate resilience boundaries are marked with `# noqa: BLE001`).
-select = ["E4", "E5", "E7", "E9", "F", "W", "UP", "I", "C901", "PLR0915", "BLE001"]
+# B (flake8-bugbear) catches mutable defaults, loop-variable closures and un-chained re-raises.
+select = ["E4", "E5", "E7", "E9", "F", "W", "UP", "I", "C901", "PLR0915", "BLE001", "B"]
 ignore = ["E501"]
 
 # Allow fix for all enabled rules (when `--fix`) is provided.

@@ -114,7 +114,7 @@ async def test_provider_panels_stack_without_overlap_in_options_view() -> None:
             assert all("section" in panel.classes for panel in panels)
             assert all(panel.region.height > 3 for panel in panels), "a panel collapsed"
             rects = sorted((panel.region for panel in panels), key=lambda r: r.y)
-            for upper, lower in zip(rects, rects[1:]):
+            for upper, lower in zip(rects, rects[1:], strict=False):
                 assert upper.bottom <= lower.y, "provider panels overlap vertically"
     finally:
         settings.ui.theme_name = original_theme

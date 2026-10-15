@@ -500,7 +500,7 @@ class ImportFabricManager(MessageSink):
 
                 # Validate extracted files don't exceed expected patterns
                 extracted_files = 0
-                for root, dirs, files in os.walk(extract_to):
+                for _root, _dirs, files in os.walk(extract_to):
                     extracted_files += len(files)
                     if extracted_files > 10000:  # Reasonable limit for Fabric patterns
                         raise ValueError(f"Too many files extracted: {extracted_files}")

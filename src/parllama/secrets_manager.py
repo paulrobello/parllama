@@ -242,7 +242,7 @@ class SecretsManager(MessageSink):
             return
 
         try:
-            for key, value in data.items():
+            for value in data.values():
                 if isinstance(value, str):
                     self._secure_clear_string(value)
                 elif isinstance(value, bytes):
@@ -672,7 +672,7 @@ class SecretsManager(MessageSink):
     def clear(self) -> None:
         """Clear vault and remove password with proper cleanup."""
         # Securely clear existing secrets from memory
-        for key, encrypted_value in self._secrets.items():
+        for encrypted_value in self._secrets.values():
             # Clear the encrypted value string from memory
             self._secure_clear_string(encrypted_value)
 

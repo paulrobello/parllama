@@ -364,7 +364,7 @@ class CommandExecutor:
                 process.kill()
                 await process.wait()
 
-            raise subprocess.TimeoutExpired(command_display, template.timeout)
+            raise subprocess.TimeoutExpired(command_display, template.timeout) from None
 
     async def _execute_background(
         self,
