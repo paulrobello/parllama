@@ -8,6 +8,7 @@ delegates the loop body here.
 from __future__ import annotations
 
 import asyncio
+import time
 from typing import TYPE_CHECKING
 
 import humanize
@@ -36,14 +37,31 @@ class PsStatusPoller:
         """
         self._app = app
 
+    async def _wait_poll_interval(self) -> None:
+        """Sleep one poll interval in short ticks so shutdown is observed within ~0.25s.
+
+        Sleeping the full interval could leave the thread running up to a whole
+        poll interval after app teardown, stalling executor shutdown.
+        """
+        deadline = time.monotonic() + settings.ollama.ollama_ps_poll_interval
+        while time.monotonic() < deadline and not settings.shutting_down and self._app._running:
+            await asyncio.sleep(0.25)
+
     async def poll(self) -> None:
-        """Loop until shutdown, broadcasting the first running model's status."""
+        """Loop until the app stops running, broadcasting the first running model's status.
+
+        Thread workers cannot be cancelled, so the loop must observe app
+        shutdown itself; otherwise event-loop teardown joins a thread that
+        never exits.
+        """
         was_blank = False
-        while not settings.shutting_down:
+        while True:
+            if settings.shutting_down or not self._app._running:
+                break
             if settings.ollama.ollama_ps_poll_interval < 1:
                 self._app.post_message_all(PsMessage(msg=""))
                 break
-            await asyncio.sleep(settings.ollama.ollama_ps_poll_interval)
+            await self._wait_poll_interval()
             ret = ollama_dm.model_ps()
             if len(ret.models) < 1:
                 if not was_blank:

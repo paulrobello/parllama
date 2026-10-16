@@ -326,20 +326,22 @@ Some functions are only available via slash / commands on that chat tab. You can
 
     @work(group="do_jobs", thread=True)
     async def do_jobs(self) -> None:
-        """Poll for queued jobs."""
+        """Poll for queued jobs until the app stops running.
+
+        Thread workers cannot be cancelled, so the loop must observe shutdown
+        itself; otherwise event-loop teardown joins a thread that never exits.
+        """
         while True:
+            if not self._running or settings.shutting_down:
+                return
             try:
                 job: QueueJob = self.model_job_processor.job_queue.get(
                     block=True, timeout=settings.timer.job_queue_get_timeout
                 )
-                if settings.shutting_down:
-                    return
                 if not job:
                     continue
                 await self.model_job_processor.process_job(job)
             except Empty:
-                if self._exit:
-                    return
                 continue
 
     @on(LocalModelPulled)

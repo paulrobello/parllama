@@ -625,6 +625,7 @@ PAR LLAMA is released under the MIT License. See [LICENSE](LICENSE) for the full
 ### v0.10.1 (Latest)
 
 * **Fix**: Deleting a chat message now removes its widget from the chat view; previously the message vanished from the session but the widget stayed on screen and a second delete crashed the app
+* **Fix**: Rare teardown hang removed — background poller threads now stop when the app stops running instead of looping forever in test and embedded runs
 
 ### v0.10.0
 

@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **Deleting a chat message now removes its widget**: the EventBus migration left `ChatMessageDeleted` posting straight to the App, which no longer forwards it, so the widget stayed on screen after its message was deleted and a second delete crashed the app with a `KeyError`. The event now broadcasts on the EventBus; a regression test pins the routing.
+- **Flaky teardown hang fixed**: the background job poller and the Ollama PS status poller now stop when the app stops running. They previously looped forever whenever the quit-path flags were not set (as in tests and embedded runs), occasionally stalling event-loop shutdown for 5 minutes (asyncio's thread-join timeout); CI jobs and the release pipeline's build stage now carry explicit `timeout-minutes` guards and pytest dumps thread stacks for any test that hangs over 60 seconds.
 
 ## [0.10.0] - 2026-10-15
 
